@@ -98,7 +98,7 @@ No LaunchDaemon restart was performed because `/api/version` already reported th
 Local `/api/version` result:
 
 ```json
-{"git_sha": "239f74a", "git_branch": "feature/answer-api", "server_started_at": "2026-06-23T16:49:03.125841+00:00", "python_module": "pocketsteel.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}
+{"git_sha": "239f74a", "git_branch": "feature/answer-api", "server_started_at": "2026-06-23T16:49:03.125841+00:00", "python_module": "steel_guitar_rag.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}
 ```
 
 `deploy/macos/install-private-preview-launchdaemon.sh version` also returned `239f74a`.

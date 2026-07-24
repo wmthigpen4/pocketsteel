@@ -11,8 +11,8 @@
 
 ## Files changed
 
-- `pocketsteel/copedent_transfer.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/copedent_transfer.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `ui/answer-client.js`
 - `ui/melody-workbench.html`
 - `tests/test_copedent_transfer.py`
@@ -47,8 +47,8 @@
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/copedent_transfer.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/copedent_transfer.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `ui/answer-client.js`
 - `ui/melody-workbench.html`
 - `tests/test_copedent_transfer.py`

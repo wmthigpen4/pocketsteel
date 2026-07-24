@@ -8,13 +8,13 @@
 
 ## Files changed
 
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Added `RootlessChordQualityRequest`.
   - Added rootless chord-quality alias normalization for `sus`, `sus2`, `sus4`, `suspended`, `dominant`, `dom`, `dom7`, `dominant 7`, `7th`, `V7`, `5 dominant 7`, `5 dom 7`, `5^7`, `dim`, `diminished`, `dim7`, `aug`, `augmented`, and `+ chord`.
   - Added teacher-first chord-quality definition answers.
   - Prevented rootless quality aliases from entering invalid chord-symbol guardrails.
   - Extended rooted unsupported-quality parsing for compact symbols such as `Gsus4`, `Dsus2`, `Gdim`, and `Gaug`.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Routed rootless chord-quality answers before invalid chord-symbol guardrails.
   - Included chord-tone definitions in unsupported rooted-quality answers.
 - `tests/test_fretboard_examples.py`
@@ -46,7 +46,7 @@
 - Local backend URL: `http://127.0.0.1:8793`
 - Expected backend port: `8793`
 - Expected git HEAD: `f6d8ad2` plus this uncommitted scoped patch during local smoke
-- Version endpoint result: `{"git_sha":"f6d8ad2","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"scaffold"}`
+- Version endpoint result: `{"git_sha":"f6d8ad2","git_branch":"feature/answer-api","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"scaffold"}`
 - Root URL status: not used as proof
 - API fallback status: API fallback only, not browser smoke
 - Exact URL the user should test: protected-preview UI path after Lane 12 restart/verification for the committed hash
@@ -65,7 +65,7 @@
 - Rootless quality questions return no fretboard, no source cards, and no warnings.
 - Rooted unsupported qualities stay deterministic and source-free, with chord-tone definitions and no hallucinated position payload.
 - `5^7` is now intentionally treated as V7/scale-degree dominant language rather than generic ambiguous notation.
-- Existing dirty `pocketsteel/api.py` `/api/version` work was not touched or staged by this slice.
+- Existing dirty `steel_guitar_rag/api.py` `/api/version` work was not touched or staged by this slice.
 
 ## Risk assessment
 

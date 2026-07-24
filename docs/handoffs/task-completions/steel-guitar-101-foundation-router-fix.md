@@ -14,11 +14,11 @@ Intentionally not changed:
 - No UI files.
 - No `/api/answer` schema changes.
 - No auth, deployment, DNS, corpus, Chroma/vector stores, embeddings, scraping, source-inbox, private data, or visual assets.
-- No broad rename from Steel Guitar RAG to The Turnaround.
+- No broad rename from Steel Guitar RAG to Steel Guitar RAG.
 
 ## Files Changed
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added `FOUNDATION_CONCEPT_ANSWERS`.
   - Added `FOUNDATION_COMPARISON_ANSWERS`.
   - Added foundation concept normalization and question matching.
@@ -91,14 +91,14 @@ Reason:
 - Focused and broad backend suites passed; only known unrelated static/UI full-suite failures remain.
 
 Rollback:
-- Revert the foundation answer block and tests from `pocketsteel/curated_answers.py` and `tests/test_api_search.py`.
+- Revert the foundation answer block and tests from `steel_guitar_rag/curated_answers.py` and `tests/test_api_search.py`.
 
 ## Commit Readiness
 
 Safe to commit.
 
 Safe-to-stage file list:
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/steel-guitar-101-foundation-router-fix.md`
 

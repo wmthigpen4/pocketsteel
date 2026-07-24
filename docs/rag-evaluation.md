@@ -1,6 +1,6 @@
 # RAG Evaluation
 
-This lightweight evaluation system checks whether The Turnaround's Electronics-only RAG retrieves useful forum content and produces grounded, practical answers.
+This lightweight evaluation system checks whether Steel Guitar RAG's Electronics-only RAG retrieves useful forum content and produces grounded, practical answers.
 
 ## Current Scope
 

@@ -12,8 +12,8 @@ Implementation commit: `edf70968efb53f5919c232ca0c99a4b22e80342a`.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
 - This handoff.

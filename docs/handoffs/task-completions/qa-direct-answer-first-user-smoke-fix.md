@@ -81,11 +81,11 @@ Full-suite failure classification:
 
 Changed by Lane 05 direct-answer-first patch, approved for exact-hunk commit:
 
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/answer_contracts.py`
   - Approve only the added contract entries for `direct_yes_no_practical`, `chord_quality_theory`, `unsupported_exact_mapping`, `forum_context_secondary`, and `when_to_use_musical_context`.
-- `pocketsteel/basic_chord_answers.py`
+- `steel_guitar_rag/basic_chord_answers.py`
   - Approve only dominant-7 normalization/parsing, `dominant_seventh_spelling_for_answer`, updated dominant-7 direct answer, rooted sus wording cleanup, and `sus_chord_usage_answer_for_question`.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Approve only the `sus_chord_usage_answer_for_question` import, early routing for direct practical/sus usage answers, and `direct_yes_no_practical_answer`.
 - `tests/test_api_search.py`
   - Approve only the four direct-answer-first regression tests:
@@ -146,7 +146,7 @@ Recommended lane: **01 Repo Steward**.
 Exact next prompt:
 
 ```text
-Repo Steward: QA approved the direct-answer-first backend slice in docs/handoffs/task-completions/qa-direct-answer-first-user-smoke-fix.md. Proceed under auto-approval. Stage only the approved exact hunks in pocketsteel/answer_contracts.py, pocketsteel/basic_chord_answers.py, pocketsteel/curated_answers.py, tests/test_api_search.py, plus the direct-answer-first and QA handoff files if handoff policy requires them. Keep all unrelated parked corpus/source/static/UI/root-script/docs files unstaged. Run git diff --check and the focused/required backend tests named in the QA handoff, then commit with a scoped message. If exact-hunk staging cannot isolate the approved slice, write a blocker handoff instead of committing.
+Repo Steward: QA approved the direct-answer-first backend slice in docs/handoffs/task-completions/qa-direct-answer-first-user-smoke-fix.md. Proceed under auto-approval. Stage only the approved exact hunks in steel_guitar_rag/answer_contracts.py, steel_guitar_rag/basic_chord_answers.py, steel_guitar_rag/curated_answers.py, tests/test_api_search.py, plus the direct-answer-first and QA handoff files if handoff policy requires them. Keep all unrelated parked corpus/source/static/UI/root-script/docs files unstaged. Run git diff --check and the focused/required backend tests named in the QA handoff, then commit with a scoped message. If exact-hunk staging cannot isolate the approved slice, write a blocker handoff instead of committing.
 ```
 
 If Repo Steward blocks because of static/UI full-suite failures, recommended Lane 06/static prompt:

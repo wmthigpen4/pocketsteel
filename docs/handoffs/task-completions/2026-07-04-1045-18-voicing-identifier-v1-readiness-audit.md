@@ -50,7 +50,7 @@ The Explorer already contains a functional Voicing Identifier path:
   - confidence labels,
   - dominant/V7 special handling,
   - Chord / Voicing Finder helpers.
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
   - deterministic Explorer row validation,
   - interval metadata,
   - `classify_inversion(...)`,
@@ -321,7 +321,7 @@ Lane 06 / frontend:
 
 Lane 05 / backend only if parity is needed:
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 
 Docs:
@@ -372,7 +372,7 @@ Read/inspection:
 - `ui/e9-fretboard-explorer.html`
 - `ui/e9-fretboard-explorer.js`
 - `ui/e9-music-rules.js`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_frontend_answer_ui.py`
 - `tests/test_fretboard_explorer.py`
 - prior Voicing Identifier, Chord / Voicing Finder, shared music-rules, and 5-7-8 handoffs.

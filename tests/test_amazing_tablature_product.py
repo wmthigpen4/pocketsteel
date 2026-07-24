@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from pocketsteel.amazing_tablature_product import (
+from steel_guitar_rag.amazing_tablature_product import (
     ARRANGEMENT_RESPONSE_SCHEMA_VERSION,
     build_arrangement_contract,
     resolve_arrangement_preferences,
     route_signature,
 )
-from pocketsteel.melody_assistant import melody_exercise_response
+from steel_guitar_rag.melody_assistant import melody_exercise_response
 
 
 @pytest.mark.parametrize(

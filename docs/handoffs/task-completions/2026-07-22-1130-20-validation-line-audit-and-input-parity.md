@@ -39,7 +39,7 @@ ground truth, or result was opened. No runtime model was activated.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_melody_import.py`
@@ -129,7 +129,7 @@ is needed before those submissions are scored.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_melody_import.py`

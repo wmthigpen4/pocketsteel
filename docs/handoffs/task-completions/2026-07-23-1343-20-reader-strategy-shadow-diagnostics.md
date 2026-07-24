@@ -66,7 +66,7 @@ modified.
 - Rejected structural diagnostic:
   - focused contact-consensus tests: 11 passed before the diagnostic code was
     removed.
-- `git diff --name-only -- pocketsteel/amazing_tablature_extraction.py
+- `git diff --name-only -- steel_guitar_rag/amazing_tablature_extraction.py
   tests/test_amazing_tablature_extraction.py`
   - Empty after removal of the rejected fallback.
 
@@ -90,7 +90,7 @@ Latest machine-only shadow:
 The current bottleneck is no longer improved by card-size changes, Apple OCR,
 or same-fret inference. A separate concurrent scoped diff is implementing an
 evaluation-only scorer for complete machine candidates. That work is parked in
-`pocketsteel/amazing_tablature_training.py`, `scripts/amazing_tablature.py`,
+`steel_guitar_rag/amazing_tablature_training.py`, `scripts/amazing_tablature.py`,
 and `tests/test_amazing_tablature_training.py`; this task did not alter or
 stage it.
 
@@ -115,7 +115,7 @@ path is presented in a compact, score-and-tab-aligned form.
 ## Files that must not be staged
 
 - `docs/handoffs/task-completions/integration-status.md`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - other pre-existing untracked handoffs

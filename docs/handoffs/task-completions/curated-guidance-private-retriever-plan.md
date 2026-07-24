@@ -22,7 +22,7 @@ Intentionally not changed:
 ## Files Changed
 
 Created:
-- `pocketsteel/curated_guidance_retriever.py`
+- `steel_guitar_rag/curated_guidance_retriever.py`
 - `tests/test_curated_guidance_retriever.py`
 - `docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md`
 
@@ -41,7 +41,7 @@ Generated/updated ignored artifacts during verification:
 ## Retriever Behavior
 
 Module:
-- `pocketsteel.curated_guidance_retriever`
+- `steel_guitar_rag.curated_guidance_retriever`
 
 Entry points:
 - `curated_guidance_retrieval_enabled(env=None) -> bool`
@@ -104,7 +104,7 @@ Result:
 - `6 passed in 0.02s`
 
 ```bash
-.venv/bin/python -m py_compile pocketsteel/curated_guidance_retriever.py scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py
+.venv/bin/python -m py_compile steel_guitar_rag/curated_guidance_retriever.py scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py
 ```
 
 Result:
@@ -121,7 +121,7 @@ Result:
 
 ```bash
 ENABLE_CURATED_GUIDANCE_RETRIEVAL=1 .venv/bin/python - <<'PY'
-from pocketsteel.curated_guidance_retriever import search_curated_guidance
+from steel_guitar_rag.curated_guidance_retriever import search_curated_guidance
 queries = [
     "How do I tune a split on string 6?",
     "What is pick blocking?",
@@ -157,7 +157,7 @@ Result:
 ## Git Status Notes
 
 Scoped new files from this task:
-- `pocketsteel/curated_guidance_retriever.py`
+- `steel_guitar_rag/curated_guidance_retriever.py`
 - `tests/test_curated_guidance_retriever.py`
 - `docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md`
 
@@ -174,7 +174,7 @@ The broader worktree contains many unrelated parked changes and untracked files 
 ## Safe-To-Stage Files
 
 For a future exact-path Repo Steward commit, the curated-guidance implementation slice can include:
-- `pocketsteel/curated_guidance_retriever.py`
+- `steel_guitar_rag/curated_guidance_retriever.py`
 - `tests/test_curated_guidance_retriever.py`
 - `docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md`
 
@@ -214,7 +214,7 @@ Remaining risks:
 - Private-review excerpts are short, but future UI/API wiring must preserve auth and visibility gates.
 
 Rollback:
-- Remove `pocketsteel/curated_guidance_retriever.py` and `tests/test_curated_guidance_retriever.py`.
+- Remove `steel_guitar_rag/curated_guidance_retriever.py` and `tests/test_curated_guidance_retriever.py`.
 - Leave generated `corpus-private` outputs ignored/uncommitted.
 - Since no production routing was changed, rollback has no protected-preview behavior impact.
 
@@ -227,7 +227,7 @@ Suggested next prompt:
 
 ```text
 Lane: 15 QA / Answer Eval
-Review the private-review curated_guidance retriever spike. Read `pocketsteel/curated_guidance_retriever.py`, `tests/test_curated_guidance_retriever.py`, and `docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md`. Verify the feature flag defaults off, private-review JSONL loading works only when enabled, quality filters exclude or demote the documented flags, excerpts are capped to 500 characters, and no private generated outputs are staged. Run the focused retriever tests, the offline curated-guidance retrieval eval if the ignored JSONL is present, `git diff --check`, and `git check-ignore` for the corpus-private outputs. Report whether this is ready for Repo Steward exact-path staging.
+Review the private-review curated_guidance retriever spike. Read `steel_guitar_rag/curated_guidance_retriever.py`, `tests/test_curated_guidance_retriever.py`, and `docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md`. Verify the feature flag defaults off, private-review JSONL loading works only when enabled, quality filters exclude or demote the documented flags, excerpts are capped to 500 characters, and no private generated outputs are staged. Run the focused retriever tests, the offline curated-guidance retrieval eval if the ignored JSONL is present, `git diff --check`, and `git check-ignore` for the corpus-private outputs. Report whether this is ready for Repo Steward exact-path staging.
 ```
 
 Human decision needed:

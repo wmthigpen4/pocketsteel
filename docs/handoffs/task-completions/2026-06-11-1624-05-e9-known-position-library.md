@@ -10,8 +10,8 @@
 # Files changed
 
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
-  - `pocketsteel/api_contract.py`
+  - `steel_guitar_rag/fretboard_examples.py`
+  - `steel_guitar_rag/api_contract.py`
   - `tests/test_fretboard_examples.py`
   - `tests/test_api_contract.py`
   - `tests/test_api_search.py`
@@ -24,7 +24,7 @@
 
 # Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_examples.py pocketsteel/api_contract.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_examples.py steel_guitar_rag/api_contract.py`
   - Passed.
 - `.venv/bin/python -m pytest tests/test_fretboard_examples.py tests/test_api_contract.py tests/test_api_search.py::test_location_based_g_chord_answer_includes_fretboard_payload tests/test_api_search.py::test_i_iv_v_question_includes_fretboard_payload tests/test_api_search.py::test_common_grips_question_includes_fretboard_payload tests/test_api_search.py::test_non_location_answer_omits_fretboard_payload`
   - Passed: 24 tests.
@@ -76,4 +76,4 @@ Safe to commit
 # Suggested next step
 
 - Lane: 15 QA / Answer Eval
-- Recommended prompt: "Add QA fixtures for `response.fretboard.positions` using the G major MVP payload from `pocketsteel/fretboard_examples.py`. Verify `g-open-3`, `g-af-6`, and `g-ab-10` remain stable, no raw geometry fields appear, and existing answer responses without fretboard payloads remain unchanged."
+- Recommended prompt: "Add QA fixtures for `response.fretboard.positions` using the G major MVP payload from `steel_guitar_rag/fretboard_examples.py`. Verify `g-open-3`, `g-af-6`, and `g-ab-10` remain stable, no raw geometry fields appear, and existing answer responses without fretboard payloads remain unchanged."

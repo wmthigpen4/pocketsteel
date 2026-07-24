@@ -23,9 +23,9 @@ Because the deterministic router missed those phrasings, `/api/answer` continued
 
 ## Files Changed
 
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Added major chord-position parser patterns for `across the fretboard`, `show me <root> chord positions`, and `where are <root> chord positions` phrasing.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added across-fretboard answer enrichment for deterministic major chord answers, using already validated lower-octave A+B and E-lower positions when present.
 - `tests/test_fretboard_examples.py`
   - Added D major parser/payload regression coverage.
@@ -122,7 +122,7 @@ Risk: low to medium.
 
 Why: the code path is narrow and covered by focused + full test runs, but the working tree is heavily dirty and the touched files contain overlapping changes from prior lanes. Commit/staging risk is mostly git hygiene, not runtime behavior.
 
-Rollback: revert the added parser patterns in `pocketsteel/fretboard_examples.py`, the across-fretboard enrichment block in `pocketsteel/curated_answers.py`, and the D-specific test additions.
+Rollback: revert the added parser patterns in `steel_guitar_rag/fretboard_examples.py`, the across-fretboard enrichment block in `steel_guitar_rag/curated_answers.py`, and the D-specific test additions.
 
 ## Commit Readiness
 
@@ -130,8 +130,8 @@ Safe to commit after Repo Steward hunk-level review.
 
 Safe-to-stage file list for this slice:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/d-chord-across-fretboard-answer-fix.md`

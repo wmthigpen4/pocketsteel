@@ -2,7 +2,7 @@
 
 Upload the eight numbered markdown files in this folder into the ChatGPT Project files area.
 
-These files are stable orchestration context for Pocket Steel / Steel Guitar RAG work. They summarize the repo operating model, lane responsibilities, prompt standards, current integration state, tab-engine direction, source/copyright guardrails, and smoke-test expectations.
+These files are stable orchestration context for Steel Guitar RAG / Steel Guitar RAG work. They summarize the repo operating model, lane responsibilities, prompt standards, current integration state, tab-engine direction, source/copyright guardrails, and smoke-test expectations.
 
 Keep the repo files as the source of truth. Regenerate this bundle when `docs/handoffs/task-completions/integration-status.md` changes significantly, when lane ownership changes, or when the tab/source/copyright contract changes.
 

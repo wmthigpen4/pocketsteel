@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pocketsteel.steel_rules import (
+from steel_guitar_rag.steel_rules import (
     COMMON_E9_GRIPS,
     STANDARD_E9_OPEN_STRINGS,
     STANDARD_EMMONS_CHANGES,

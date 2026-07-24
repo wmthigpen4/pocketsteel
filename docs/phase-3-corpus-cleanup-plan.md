@@ -1,6 +1,6 @@
 # Phase 3 Corpus Cleanup Plan
 
-Scope: plan a safe `corpus_v2` cleanup and rebuild for The Turnaround without modifying the current production Chroma store, current `corpus-unified/chunks.jsonl`, scraper behavior, backend answer code, or raw corpus data.
+Scope: plan a safe `corpus_v2` cleanup and rebuild for Steel Guitar RAG without modifying the current production Chroma store, current `corpus-unified/chunks.jsonl`, scraper behavior, backend answer code, or raw corpus data.
 
 Task mode: GREEN for this planning document. Later implementation phases that change chunking, corpus outputs, embedding outputs, or app configuration require explicit approval under `AGENTS.md`.
 
@@ -354,7 +354,7 @@ Exit criteria:
 Use this prompt for the next phase:
 
 ```text
-Begin Phase 3A read-only corpus profiling for The Turnaround.
+Begin Phase 3A read-only corpus profiling for Steel Guitar RAG.
 
 Task mode: GREEN only if strictly read-only.
 

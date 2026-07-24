@@ -27,7 +27,7 @@ Protected paths and unrelated dirty files:
 
 Entry point:
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `RetrievalApi.__call__`
 - `/api/answer` branch starts after auth/rate-limit/request parsing.
 
@@ -70,7 +70,7 @@ Do not make tab generation depend on retrieved sources.
 Committed slice:
 
 - Commit: `686fd3c feat: add deterministic tab engine slice`.
-- Module: `pocketsteel/tab_engine.py`.
+- Module: `steel_guitar_rag/tab_engine.py`.
 - Endpoint: `POST /api/tab/render`.
 - Tests: `tests/test_tab_engine.py`.
 
@@ -115,14 +115,14 @@ Invalid structured tab returns `ok: false`, empty `tab`, and structured validati
 
 Likely implementation files:
 
-- `pocketsteel/api_contract.py`
+- `steel_guitar_rag/api_contract.py`
   - Add optional tab response TypedDicts.
   - Add `tabExample: NotRequired[TabExamplePayload]` or `tab: NotRequired[TabExamplePayload]` to `AnswerResponse`.
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/tab_engine.py`
   - Add stable example metadata and a selector function, not broad generation.
   - Suggested function: `tab_example_payload_for_question(question: str, *, answer_intent: dict | None = None) -> dict | None`.
   - Suggested helper: `tab_example_payload(example_id: str, *, title: str, description: str, intent: str) -> dict`.
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Import the selector/helper.
   - Attach optional tab payload in existing answer return branches.
   - Keep `/api/tab/render` unchanged.
@@ -189,7 +189,7 @@ Proposed optional response addition:
     "metadata": {
       "profile": "default_e9",
       "event_count": 2,
-      "source": "pocketsteel.tab_engine"
+      "source": "steel_guitar_rag.tab_engine"
     }
   }
 }
@@ -323,7 +323,7 @@ Specific examples that should not attach tab:
 
 Rules:
 
-- All answer-attached tabs must come from `pocketsteel.tab_engine`.
+- All answer-attached tabs must come from `steel_guitar_rag.tab_engine`.
 - Build payloads from `TabEvent` objects, not handwritten tab strings.
 - Always call `render_example()` or `render_tab()` before attachment.
 - Attach only when `result.ok is True` and `result.issues == ()`.
@@ -356,7 +356,7 @@ def build_tab_example_payload(example_id: str) -> dict | None:
         "tab": result.tab,
         "events": [event.to_dict() for event in events],
         "issues": [],
-        "metadata": {**result.metadata, "source": "pocketsteel.tab_engine"},
+        "metadata": {**result.metadata, "source": "steel_guitar_rag.tab_engine"},
     }
 ```
 
@@ -463,7 +463,7 @@ Recommended commands for implementation lane:
 ```bash
 git status --short
 git diff --check
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/api_contract.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/api_contract.py
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
 .venv/bin/python -m pytest tests/test_api_contract.py -q
 .venv/bin/python -m pytest tests/test_api_search.py -q
@@ -498,8 +498,8 @@ Scope:
 - Do not generate arbitrary or copyrighted song tabs.
 
 Implement:
-1. Add optional `tabExample` response contract in `pocketsteel/api_contract.py`.
-2. Add tab example metadata and selector helpers in `pocketsteel/tab_engine.py`.
+1. Add optional `tabExample` response contract in `steel_guitar_rag/api_contract.py`.
+2. Add tab example metadata and selector helpers in `steel_guitar_rag/tab_engine.py`.
 3. Attach `tabExample` in `/api/answer` only for safe deterministic tab/example intents:
    - G major grip
    - G to C move
@@ -518,7 +518,7 @@ Tests:
 Run:
 - `git status --short`
 - `git diff --check`
-- `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/api_contract.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/api_contract.py`
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q`
 - `.venv/bin/python -m pytest tests/test_api_search.py -q`
@@ -537,12 +537,12 @@ Do not stage or commit unless the worktree scope is clean and QA/Repo Steward cr
 - `docs/handoffs/task-completions/2026-06-18-01-tab-engine-repo-steward-commit.md`
 - `docs/handoffs/task-completions/2026-06-18-15-tab-engine-qa-matrix.md`
 - `docs/handoffs/task-completions/2026-06-18-1516-06-tab-engine-answer-ux.md`
-- `pocketsteel/api.py`
-- `pocketsteel/tab_engine.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/answering.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/tab_engine.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/answering.py`
 - `tests/test_tab_engine.py`
 - `tests/test_api_contract.py`
 - `tests/test_api_search.py`
@@ -583,7 +583,7 @@ Risk for this docs-only task: low.
 Rollback for future implementation:
 
 - Remove `tabExample` optional contract from `AnswerResponse`.
-- Remove selector/helper functions from `pocketsteel/tab_engine.py`.
+- Remove selector/helper functions from `steel_guitar_rag/tab_engine.py`.
 - Remove `/api/answer` attachment calls.
 - Keep `/api/tab/render` untouched unless a separate rollback is needed.
 

@@ -10,9 +10,9 @@ Intentionally not changed: auth policy, upload/import enablement, persistence, s
 
 ## Files changed
 
-- `pocketsteel/api.py`
-- `pocketsteel/melody_import.py`
-- `pocketsteel/resources/public_domain_songs/starter_songbook_v1.json` (new)
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/melody_import.py`
+- `steel_guitar_rag/resources/public_domain_songs/starter_songbook_v1.json` (new)
 - `ui/answer-client.js`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
@@ -90,9 +90,9 @@ No. The feature scope was approved. User smoke should begin only after committed
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/api.py`
-- `pocketsteel/melody_import.py`
-- `pocketsteel/resources/public_domain_songs/starter_songbook_v1.json`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/melody_import.py`
+- `steel_guitar_rag/resources/public_domain_songs/starter_songbook_v1.json`
 - `ui/answer-client.js`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`

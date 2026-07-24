@@ -137,7 +137,7 @@ Write a validation summary:
 ```bash
 .venv/bin/python scripts/run_golden_user_smoke_bank.py \
   --bank evals/golden_user_smoke_bank.yaml \
-  --json-output /tmp/pocketsteel-golden-user-smoke-bank-summary.json
+  --json-output /tmp/steel_guitar_rag-golden-user-smoke-bank-summary.json
 ```
 
 Score captured response payloads by gate:
@@ -160,7 +160,7 @@ git status --short
 
 .venv/bin/python scripts/run_golden_user_smoke_bank.py \
   --bank evals/golden_user_smoke_bank.yaml \
-  --json-output /tmp/pocketsteel-golden-user-smoke-bank-summary.json
+  --json-output /tmp/steel_guitar_rag-golden-user-smoke-bank-summary.json
 # loaded 252 prompts across 20 categories
 
 .venv/bin/python -m pytest tests/test_golden_user_smoke_bank.py -q
@@ -222,7 +222,7 @@ Safe-to-stage files:
 Files that must remain parked:
 
 - Existing unrelated dirty backend/runtime/docs/corpus/source/provenance/design/deploy/static files shown by `git status --short`.
-- `/tmp/pocketsteel-golden-user-smoke-bank-summary.json`
+- `/tmp/steel_guitar_rag-golden-user-smoke-bank-summary.json`
 
 ## Human Decision Needed
 

@@ -40,7 +40,7 @@ git revert <bad-commit>
 .venv/bin/pytest -q
 npm run check:js
 STEEL_RAG_REPO_DIR="$HOME/.steel-rag/releases/<short-sha>" \
-STEEL_RAG_DATA_DIR="$HOME/Documents/Pocket Steel" \
+STEEL_RAG_DATA_DIR="$HOME/Documents/Steel Guitar RAG" \
 STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
 deploy/macos/install-private-preview-launchdaemon.sh activate
 ```

@@ -15,13 +15,13 @@ data was opened.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - This handoff.
 
 ## Tests and checks
 
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py`
   - PASS: 184 passed.
@@ -50,7 +50,7 @@ the exact clean-HEAD artifacts are regenerated and browser-smoked.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-1602-20-zero-decision-validation-lines.md`
 

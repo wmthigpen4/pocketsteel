@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import pytest
 
-from pocketsteel.amazing_tablature_model import (
+from steel_guitar_rag.amazing_tablature_model import (
     CANONICAL_FEATURE_NAMES,
     CANONICAL_FEATURE_SCHEMA_VERSION,
     CANONICAL_STYLE_FAMILIES,
@@ -14,7 +14,7 @@ from pocketsteel.amazing_tablature_model import (
     load_sanitized_ranker_artifact,
     model_metadata_payload,
 )
-from pocketsteel.melody_ranker import FEATURE_NAMES
+from steel_guitar_rag.melody_ranker import FEATURE_NAMES
 
 
 MODEL_ID_FIXTURE = "at-shadow-fixture"

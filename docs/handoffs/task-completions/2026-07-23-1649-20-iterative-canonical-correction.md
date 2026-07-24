@@ -24,7 +24,7 @@ materially reconstructed line requires a final tablature-only confirmation.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - This handoff
@@ -68,7 +68,7 @@ committed HEAD.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-1649-20-iterative-canonical-correction.md`

@@ -49,7 +49,7 @@ Intentionally not changed:
 - HEAD commit tested: `8074e6d ui: add answer page brand badge`
 - Protected-preview runtime commit during smoke: `8074e6d`
 - Protected-preview process: `Python` listening on `127.0.0.1:8770`
-- Protected-preview cwd: repo path, `~/Documents/Pocket Steel`
+- Protected-preview cwd: repo path, `~/Documents/Steel Guitar RAG`
 
 Restart command used, from the documented private-preview pattern:
 
@@ -146,7 +146,7 @@ curl -sS -I http://127.0.0.1:8770/brand/steel-guitar-rag-answer-badge-alpha.webm
 curl -sS -I http://127.0.0.1:8770/brand/steel-guitar-rag-answer-badge-fallback-alpha.png
 node --check ui/answer-client.js
 node --check ui/pedal-steel-fretboard.js
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py
 .venv/bin/python -m pytest tests/test_frontend_answer_ui.py tests/test_pedal_steel_fretboard_ui.py -q
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
 .venv/bin/python -m pytest tests/test_api_search.py -q
@@ -158,7 +158,7 @@ Results:
 - `/api/version`: reported `8074e6d`
 - `node --check ui/answer-client.js`: passed
 - `node --check ui/pedal-steel-fretboard.js`: passed
-- `py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py`: passed
+- `py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py`: passed
 - `tests/test_frontend_answer_ui.py tests/test_pedal_steel_fretboard_ui.py`: 49 passed
 - `tests/test_tab_engine.py`: 23 passed
 - `tests/test_api_search.py`: 259 passed

@@ -27,7 +27,7 @@ Intentionally not changed:
 - Branch: `feature/answer-api`
 - Current committed HEAD during QA: `891bf1e`
 - QA tested working-tree Lane 05 files:
-  - `pocketsteel/fretboard_explorer.py`
+  - `steel_guitar_rag/fretboard_explorer.py`
   - `tests/test_fretboard_explorer.py`
   - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 - Note: the Explorer slice files were untracked during QA, so this was a working-tree validation, not a committed-HEAD validation.
@@ -36,9 +36,9 @@ Intentionally not changed:
 
 - `AGENTS.md`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
-- `pocketsteel/fretboard_examples.py` helper functions for note, interval, and pitch resolution
+- `steel_guitar_rag/fretboard_examples.py` helper functions for note, interval, and pitch resolution
 - `git status --short`
 - Recent git log / HEAD
 
@@ -151,7 +151,7 @@ None.
 
 ## Tests and checks run
 
-Run from `/Users/cory/Documents/Pocket Steel`:
+Run from `/Users/cory/Documents/Steel Guitar RAG`:
 
 - `git status --short`
   - Broad unrelated dirty/untracked worktree remains parked.
@@ -159,7 +159,7 @@ Run from `/Users/cory/Documents/Pocket Steel`:
   - `feature/answer-api`
 - `git rev-parse --short HEAD`
   - `891bf1e`
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py`
   - Passed.
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q`
   - Passed: `9 passed`.
@@ -190,7 +190,7 @@ Reasons:
 Rollback:
 
 - If committed, revert the exact Explorer slice files:
-  - `pocketsteel/fretboard_explorer.py`
+  - `steel_guitar_rag/fretboard_explorer.py`
   - `tests/test_fretboard_explorer.py`
   - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 
@@ -210,7 +210,7 @@ For this QA task only:
 
 For the Lane 05 backend slice, based on this QA:
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 
@@ -233,7 +233,7 @@ After commit, Lane 06 may begin UI work against the Explorer payload with the no
 Suggested Lane 01 prompt:
 
 ```text
-Lane 01: Run ExactPathCommit for the E9 Fretboard Explorer backend slice and QA handoff. Stage only pocketsteel/fretboard_explorer.py, tests/test_fretboard_explorer.py, docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md, and docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-qa.md. Run cached diff checks and commit if clean. Leave unrelated dirty files parked.
+Lane 01: Run ExactPathCommit for the E9 Fretboard Explorer backend slice and QA handoff. Stage only steel_guitar_rag/fretboard_explorer.py, tests/test_fretboard_explorer.py, docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md, and docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-qa.md. Run cached diff checks and commit if clean. Leave unrelated dirty files parked.
 ```
 
 ## Commit readiness

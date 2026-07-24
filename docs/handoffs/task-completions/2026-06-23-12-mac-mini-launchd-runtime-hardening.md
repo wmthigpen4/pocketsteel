@@ -179,7 +179,7 @@ Validation checks:
 - `git diff --check`
   - Result: pass.
 - `curl -sS http://127.0.0.1:8770/api/version`
-  - Result: `git_sha` `5f8af79`, branch `feature/answer-api`, `python_module` `pocketsteel.api`, `retrieval_mode` `hybrid_private_first`, `auth_provider` `cloudflare_access`.
+  - Result: `git_sha` `5f8af79`, branch `feature/answer-api`, `python_module` `steel_guitar_rag.api`, `retrieval_mode` `hybrid_private_first`, `auth_provider` `cloudflare_access`.
 - `deploy/macos/install-private-preview-launchdaemon.sh version`
   - Result: same local `/api/version` response from the existing manual runtime.
 

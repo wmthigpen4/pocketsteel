@@ -1,6 +1,6 @@
 # Copyright and Provenance Plan
 
-This is a planning document for The Turnaround. It defines the provenance and copyright review scaffolding only.
+This is a planning document for Steel Guitar RAG. It defines the provenance and copyright review scaffolding only.
 
 ## Current Phase
 

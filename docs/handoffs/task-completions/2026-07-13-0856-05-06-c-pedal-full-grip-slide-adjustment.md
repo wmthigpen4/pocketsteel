@@ -29,8 +29,8 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/tab_engine.py`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
 - `tests/test_frontend_answer_ui.py`
@@ -47,7 +47,7 @@ No files were deleted and no generated artifact was created.
 
 Passed:
 
-- `.venv/bin/python -m py_compile pocketsteel/melody_arranger.py pocketsteel/melody_assistant.py pocketsteel/tab_engine.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/melody_arranger.py steel_guitar_rag/melody_assistant.py steel_guitar_rag/tab_engine.py`
 - `node --check ui/answer-client.js`
 - `node --check ui/melody-score.js`
 - `node --check ui/melody-workbench.js`
@@ -120,8 +120,8 @@ No. The user already approved the user-smoke repair loop. After protected-previe
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/tab_engine.py`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
 - `tests/test_frontend_answer_ui.py`

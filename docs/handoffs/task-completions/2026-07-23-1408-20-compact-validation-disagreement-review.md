@@ -28,8 +28,8 @@ metric, enable the challenger, freeze rules, or open either sealed cohort.
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
@@ -40,9 +40,9 @@ Private generated artifacts remain ignored beneath
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py`
   - passed
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
   - passed
 - `.venv/bin/pytest -q tests/test_amazing_tablature_training.py -k 'machine_validation_scorer' tests/test_amazing_tablature_extraction.py -k 'validation_disagreement or challenger_comparison_submission'`
   - 2 passed, 220 deselected
@@ -119,8 +119,8 @@ No for this slice. The user's four decisions have already been received.
 
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-23-1408-20-compact-validation-disagreement-review.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`

@@ -40,7 +40,7 @@ Intentionally not changed:
   "git_sha": "1d3728a",
   "git_branch": "feature/answer-api",
   "server_started_at": "2026-06-24T01:28:34.063940+00:00",
-  "python_module": "pocketsteel.api",
+  "python_module": "steel_guitar_rag.api",
   "retrieval_mode": "hybrid_private_first",
   "auth_provider": "cloudflare_access"
 }

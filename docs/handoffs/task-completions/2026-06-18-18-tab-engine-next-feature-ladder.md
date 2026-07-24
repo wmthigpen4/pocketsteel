@@ -55,7 +55,7 @@ The tab engine should become a practical teaching layer that can:
 
 The product promise is:
 
-> The Turnaround can show a small, mechanically valid E9 move and teach the player how to use it.
+> Steel Guitar RAG can show a small, mechanically valid E9 move and teach the player how to use it.
 
 It should not promise:
 
@@ -497,9 +497,9 @@ Read:
 - docs/handoffs/task-completions/2026-06-18-18-tab-engine-next-feature-ladder.md
 - docs/handoffs/task-completions/2026-06-18-18-answer-triggered-tab-examples-architecture.md
 - docs/handoffs/task-completions/2026-06-18-05-answer-triggered-tab-examples-implementation-plan.md
-- pocketsteel/tab_engine.py
-- pocketsteel/api.py
-- pocketsteel/answer_intent_classifier.py
+- steel_guitar_rag/tab_engine.py
+- steel_guitar_rag/api.py
+- steel_guitar_rag/answer_intent_classifier.py
 - tests/test_tab_engine.py
 - tests/test_api_contract.py
 - tests/test_api_search.py

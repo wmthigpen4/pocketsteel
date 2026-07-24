@@ -5,9 +5,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pocketsteel.answering import DeterministicAnswerProvider
-from pocketsteel.api import create_app
-from pocketsteel.fretboard_examples import fretboard_payload_for_question, validate_fretboard_payload
+from steel_guitar_rag.answering import DeterministicAnswerProvider
+from steel_guitar_rag.api import create_app
+from steel_guitar_rag.fretboard_examples import fretboard_payload_for_question, validate_fretboard_payload
 
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "fretboard_payload_qa_cases.json"

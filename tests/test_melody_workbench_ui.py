@@ -708,10 +708,10 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'Source links identify the teaching version; they are not automatically transcribed.' in script
 
 
-def test_melody_workbench_uses_explorer_background_without_turnaround_branding() -> None:
+def test_melody_workbench_uses_explorer_background_with_canonical_branding() -> None:
     html = Path("ui/melody-workbench.html").read_text(encoding="utf-8")
 
-    assert "The Turnaround" not in html
+    assert "<title>Melody Studio · Steel Guitar RAG</title>" in html
     assert "steel-guitar-rag-landing-fallback-alpha.png" not in html
     assert "radial-gradient(circle at 52% 0%, rgba(221, 139, 45, 0.28), transparent 35%)" in html
     assert "linear-gradient(180deg, rgba(13, 10, 7, 0.96), #050403 72%)" in html

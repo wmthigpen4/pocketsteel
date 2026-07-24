@@ -14,8 +14,8 @@ Intentionally unchanged: audio/YouTube transcription, keys beyond G/C major, min
 
 ## Files changed
 
-- `pocketsteel/melody_arranger.py` (new)
-- `pocketsteel/melody_assistant.py`
+- `steel_guitar_rag/melody_arranger.py` (new)
+- `steel_guitar_rag/melody_assistant.py`
 - `ui/answer-client.js`
 - `ui/melody-workbench.js`
 - `ui/melody-workbench.html`
@@ -79,8 +79,8 @@ No. The feature plan and protected-preview loop were explicitly approved.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
 - `ui/answer-client.js`
 - `ui/melody-workbench.js`
 - `ui/melody-workbench.html`

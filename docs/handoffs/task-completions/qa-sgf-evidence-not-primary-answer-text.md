@@ -68,7 +68,7 @@ In-process `/api/version` returned `200 OK` with keys:
 - `retrieval_mode`
 - `server_started_at`
 
-Observed payload identified branch `feature/answer-api`, module `pocketsteel.api`, retrieval mode `sgf_only`, auth provider `scaffold`, and git SHA `e353848`. No secrets, paths, tokens, user identity, environment values, or private-source details were exposed.
+Observed payload identified branch `feature/answer-api`, module `steel_guitar_rag.api`, retrieval mode `sgf_only`, auth provider `scaffold`, and git SHA `e353848`. No secrets, paths, tokens, user identity, environment values, or private-source details were exposed.
 
 ## Tests And Checks
 
@@ -110,17 +110,17 @@ Created by this QA task:
 No implementation files were modified by this QA task.
 
 Current dirty worktree includes many unrelated parked files. The SGF backend slice appears to involve these files/hunks:
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/answer_contracts.py`
   - SGF chatter fragment forbidden pattern.
   - Contract/inference additions only where they are directly required by this SGF/source-primary gate.
-- `pocketsteel/answering.py`
+- `steel_guitar_rag/answering.py`
   - Deterministic fallback imports.
   - Source sentence classification for SGF chatter.
   - Answer quality rejection for SGF chatter fragments.
   - Deterministic fallback before returning raw SGF-like text.
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - `GET /api/version` compatibility endpoint and non-secret version payload helpers.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Basic chord/theory, chord-change/progression, chord-quality, and private/placeholder identity guardrail paths.
 - `scripts/run_answer_eval.py`
   - Eval pattern hardening for source-fragment leakage.
@@ -132,10 +132,10 @@ Current dirty worktree includes many unrelated parked files. The SGF backend sli
 QA approves exact-hunk staging for the SGF evidence/backend slice only. Repo Steward should inspect the diff carefully because this worktree contains overlapping parked work.
 
 Approved commit scope:
-- SGF evidence/source-fragment filtering hunks in `pocketsteel/answer_contracts.py`, `pocketsteel/answering.py`, and `scripts/run_answer_eval.py`.
-- Deterministic chord/theory/chord-quality fallback hunks in `pocketsteel/answering.py` and `pocketsteel/curated_answers.py`.
-- Private/placeholder identity guardrail hunks in `pocketsteel/curated_answers.py` and the matching tests.
-- `/api/version` endpoint hunks in `pocketsteel/api.py` and matching tests.
+- SGF evidence/source-fragment filtering hunks in `steel_guitar_rag/answer_contracts.py`, `steel_guitar_rag/answering.py`, and `scripts/run_answer_eval.py`.
+- Deterministic chord/theory/chord-quality fallback hunks in `steel_guitar_rag/answering.py` and `steel_guitar_rag/curated_answers.py`.
+- Private/placeholder identity guardrail hunks in `steel_guitar_rag/curated_answers.py` and the matching tests.
+- `/api/version` endpoint hunks in `steel_guitar_rag/api.py` and matching tests.
 - Matching focused tests in `tests/test_api_search.py`.
 - Lane 05 implementation handoff and this QA handoff.
 
@@ -151,7 +151,7 @@ Files/hunks that must remain parked unless separately approved:
 - `docs/copyright-provenance.md`
 - `docs/corpus-license-policy.md`
 - corpus, Chroma, embeddings, source data, deployment secrets, auth policy, and design assets
-- unrelated changes in `pocketsteel/fretboard_examples.py`, `tests/test_fretboard_examples.py`, `rag_answer.py`, `rag_build_clean_corpus.py`, `rag_chunk_corpus.py`, and `rag_embed_chroma.py`
+- unrelated changes in `steel_guitar_rag/fretboard_examples.py`, `tests/test_fretboard_examples.py`, `rag_answer.py`, `rag_build_clean_corpus.py`, `rag_chunk_corpus.py`, and `rag_embed_chroma.py`
 
 If Repo Steward finds unrelated hunks interleaved inside approved files, use hunk-level staging and stop if the approved scope cannot be isolated cleanly.
 
@@ -193,7 +193,7 @@ Recommended lane: `01 Repo Steward`.
 Exact next prompt:
 
 ```text
-Repo Steward: QA approved the SGF Evidence Is Not Primary Answer Text backend slice in docs/handoffs/task-completions/qa-sgf-evidence-not-primary-answer-text.md. Proceed under auto-approval with exact-hunk staging only. Stage the approved backend/eval hunks in pocketsteel/answer_contracts.py, pocketsteel/answering.py, pocketsteel/api.py, pocketsteel/curated_answers.py, scripts/run_answer_eval.py, tests/test_api_search.py, plus the Lane 05 implementation handoff and QA handoff. Do not stage unrelated parked UI/static/corpus/source/deploy/design files. Run the focused backend checks and git diff --check on the staged diff, then commit the scoped slice if clean. If unrelated hunks cannot be isolated, write a blocker handoff.
+Repo Steward: QA approved the SGF Evidence Is Not Primary Answer Text backend slice in docs/handoffs/task-completions/qa-sgf-evidence-not-primary-answer-text.md. Proceed under auto-approval with exact-hunk staging only. Stage the approved backend/eval hunks in steel_guitar_rag/answer_contracts.py, steel_guitar_rag/answering.py, steel_guitar_rag/api.py, steel_guitar_rag/curated_answers.py, scripts/run_answer_eval.py, tests/test_api_search.py, plus the Lane 05 implementation handoff and QA handoff. Do not stage unrelated parked UI/static/corpus/source/deploy/design files. Run the focused backend checks and git diff --check on the staged diff, then commit the scoped slice if clean. If unrelated hunks cannot be isolated, write a blocker handoff.
 ```
 
 If Repo Steward blocks on interleaved hunks, recommended lane: `05 Backend / RAG Integration`.

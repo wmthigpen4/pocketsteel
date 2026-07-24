@@ -1,3 +1,3 @@
-# The Turnaround MVP Specification
+# Steel Guitar RAG MVP Specification
 
 Build a local personal RAG system over Steel Guitar Forum data.

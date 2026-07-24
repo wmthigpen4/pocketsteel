@@ -24,7 +24,7 @@ This slice is intentionally monophonic and does not claim chord separation, band
 ## Files changed
 
 - `docs/melody-exercise-v0.md`
-- `pocketsteel/melody_assistant.py`
+- `steel_guitar_rag/melody_assistant.py`
 - `ui/melody-score.js`
 - `ui/melody-workbench.js`
 - `ui/melody-workbench.html`
@@ -107,7 +107,7 @@ No before commit/protected automated smoke. After those pass, the user must perf
 ## Safe-to-stage exact file list
 
 - `docs/melody-exercise-v0.md`
-- `pocketsteel/melody_assistant.py`
+- `steel_guitar_rag/melody_assistant.py`
 - `ui/melody-score.js`
 - `ui/melody-workbench.js`
 - `ui/melody-workbench.html`

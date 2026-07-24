@@ -37,10 +37,10 @@ All private contracts, weights, logs, and reports remain ignored beneath `corpus
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_score_sequence.py`
+- `steel_guitar_rag/amazing_tablature_score_sequence.py`
   - added the optional-dependency CTC model, token contract, metrics, grouped calibration, deterministic training, private artifact freeze, baseline comparison, and fail-closed review gate;
   - added in-memory synthetic score rendering for staff, chord, accidental, octave, scan, and layout variation.
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
   - exposed the private trainer through the existing Lane 20 extractor workflow.
 - `scripts/amazing_tablature.py`
   - added `train-discovery-score-sequence-challenger` with private dependency root, seed, and epoch controls.
@@ -62,7 +62,7 @@ Generated private artifacts, never to be staged:
   - PASS: 157 passed.
 - `.venv/bin/python scripts/amazing_tablature.py train-discovery-score-sequence-challenger --help`
   - PASS.
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_score_sequence.py pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_score_sequence.py steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py`
   - PASS.
 - `git diff --check`
   - PASS.
@@ -86,8 +86,8 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_score_sequence.py`
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_score_sequence.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_score_sequence.py`
 - `docs/amazing-tablature-training.md`

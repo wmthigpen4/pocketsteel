@@ -26,7 +26,7 @@ fail-closed pending only those compact preference judgments.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1730-20-corrected-truth-repin.md`
@@ -80,7 +80,7 @@ the 10 new disagreement signatures have not previously been judged.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1730-20-corrected-truth-repin.md`

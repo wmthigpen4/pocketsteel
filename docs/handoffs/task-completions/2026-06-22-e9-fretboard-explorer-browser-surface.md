@@ -8,7 +8,7 @@ Requested: add the first real browser-accessible E9 Fretboard Explorer surface s
 
 Completed:
 - Added a minimal same-origin Explorer browser page at `ui/e9-fretboard-explorer.html`.
-- Added a static browser data fixture generated from `pocketsteel.fretboard_explorer.build_g_explorer_payload()`.
+- Added a static browser data fixture generated from `steel_guitar_rag.fretboard_explorer.build_g_explorer_payload()`.
 - Added a small Explorer controller that filters validated rows and mounts the existing SVG fretboard renderer.
 - Added a landing/app mock entry link: `Explore the E9 Fretboard`.
 - Added focused frontend and component tests.

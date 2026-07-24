@@ -20,8 +20,8 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-music-rules.js`
 - `ui/e9-fretboard-explorer.html`
 - `ui/e9-fretboard-explorer.js`
@@ -31,7 +31,7 @@ Intentionally not changed:
 - `docs/handoffs/task-completions/2026-06-27-1843-05-explorer-octave-awareness.md`
 
 Generated artifact:
-- `ui/e9-fretboard-explorer-data.js` was regenerated from `pocketsteel.fretboard_explorer.build_explorer_payload`.
+- `ui/e9-fretboard-explorer-data.js` was regenerated from `steel_guitar_rag.fretboard_explorer.build_explorer_payload`.
 
 ## What Changed
 
@@ -107,7 +107,7 @@ Tests:
 
 Passed:
 - `curl -sS -I http://127.0.0.1:8770/ui/e9-fretboard-explorer.html | head`
-- `.venv/bin/python -m py_compile pocketsteel/e9_copedents.py pocketsteel/fretboard_explorer.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/e9_copedents.py steel_guitar_rag/fretboard_explorer.py`
 - `node --check ui/e9-music-rules.js`
 - `node --check ui/e9-fretboard-explorer.js`
 - `node --check ui/e9-fretboard-explorer-data.js`
@@ -159,8 +159,8 @@ Yes before future work if adding Peterson/StroboPlus-specific octave-label mappi
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-music-rules.js`
 - `ui/e9-fretboard-explorer.html`
 - `ui/e9-fretboard-explorer.js`

@@ -10,9 +10,9 @@ Intentionally not changed: UI, `/api/answer` schema, auth, deployment, corpus, C
 
 ## Files Changed
 
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Extended major-chord location parsing to accept `How do you play ...` phrasing, including across-fretboard phrasing.
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
   - Extended position language detection to accept `How do you play/make ...`.
   - Added `where do ...` to explicit visual-position language so classifier output matches deterministic answer routing.
 - `tests/test_fretboard_examples.py`
@@ -91,8 +91,8 @@ Safe to commit with exact-hunk staging only.
 
 Do not stage unrelated dirty hunks in:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`

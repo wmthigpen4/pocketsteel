@@ -1,6 +1,6 @@
 # Codex Workflow
 
-The Turnaround uses a human-in-the-loop operating model for Codex work. The goal is to let safe changes move quickly while protecting raw data, scraper behavior, corpus integrity, private materials, and licensing metadata.
+Steel Guitar RAG uses a human-in-the-loop operating model for Codex work. The goal is to let safe changes move quickly while protecting raw data, scraper behavior, corpus integrity, private materials, and licensing metadata.
 
 Codex should classify each request into one of three modes before acting. When the mode is ambiguous, choose the more cautious mode.
 
@@ -89,7 +89,7 @@ Expected behavior:
 Examples:
 
 - Deleting generated corpora, raw scrape folders, SQLite manifests, or Chroma stores.
-- Renaming `pocketsteel`, package modules, script names, data paths, or the repo broadly.
+- Renaming `steel_guitar_rag`, package modules, script names, data paths, or the repo broadly.
 - Changing scrape retries, queue behavior, parsing behavior, output paths, or database writes.
 - Rebuilding `rag-data/electronics/chroma`.
 - Mutating licensing metadata or private transcript handling.
@@ -119,4 +119,6 @@ For RED tasks, "Human decision needed" must be "yes" before action.
 - Keep Electronics-only RAG and eval work scoped to the currently indexed Electronics corpus.
 - Do not add Pedal Steel technique, E9 theory, B+C pedals, copedent, harmonized-scale, tab, private transcript, or licensing evaluations unless those sources are indexed and approved.
 - Do not filter retrieval on copyright or licensing flags until the future review phase is approved.
-- Keep The Turnaround as the user-facing name while preserving `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names for now.
+- Keep Steel Guitar RAG as the user-facing name, use `steel_guitar_rag` for
+  Python packages/imports, and use `steel-guitar-rag` for distribution,
+  repository, package, and URL slugs.

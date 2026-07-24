@@ -38,7 +38,7 @@ Intentionally unchanged:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_runtime.py`
+- `steel_guitar_rag/amazing_tablature_runtime.py`
 - `tests/test_amazing_tablature_runtime.py`
 - `docs/handoffs/task-completions/2026-07-23-2129-05-amazing-tablature-saved-copedent-performance.md`
 
@@ -46,8 +46,8 @@ No files were deleted. Private runtime artifacts remain external and ignored.
 
 ## Tests and checks
 
-- `.venv/bin/python -m ruff check pocketsteel/amazing_tablature_runtime.py tests/test_amazing_tablature_runtime.py` — PASS.
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_runtime.py` — PASS.
+- `.venv/bin/python -m ruff check steel_guitar_rag/amazing_tablature_runtime.py tests/test_amazing_tablature_runtime.py` — PASS.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_runtime.py` — PASS.
 - `.venv/bin/python -m pytest tests/test_amazing_tablature_runtime.py -q` — PASS, 6 tests.
 - Focused runtime/API/saved-copedent/UI suite — PASS, 410 tests.
 - Full repository suite — PASS, 1,464 tests.
@@ -86,7 +86,7 @@ service after local smoke passes.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_runtime.py`
+- `steel_guitar_rag/amazing_tablature_runtime.py`
 - `tests/test_amazing_tablature_runtime.py`
 - `docs/handoffs/task-completions/2026-07-23-2129-05-amazing-tablature-saved-copedent-performance.md`
 

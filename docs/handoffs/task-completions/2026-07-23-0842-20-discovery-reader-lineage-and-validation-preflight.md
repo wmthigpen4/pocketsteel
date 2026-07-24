@@ -65,10 +65,10 @@ training evidence, consume validation review truth, or access sealed test.
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_glyph_decoder.py`
-- `pocketsteel/amazing_tablature_reader_calibration.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_glyph_decoder.py`
+- `steel_guitar_rag/amazing_tablature_reader_calibration.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_reader_calibration.py`
@@ -126,10 +126,10 @@ prohibited unless the fixed independent validation gates pass.
 ## Safe-to-stage exact file list
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_glyph_decoder.py`
-- `pocketsteel/amazing_tablature_reader_calibration.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_glyph_decoder.py`
+- `steel_guitar_rag/amazing_tablature_reader_calibration.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_reader_calibration.py`

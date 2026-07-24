@@ -111,13 +111,13 @@ Full-suite failure classification:
 
 Changed by Lane 05 chord-quality/fretboard routing patch, approved for exact-hunk commit:
 
-- `pocketsteel/basic_chord_answers.py`
+- `steel_guitar_rag/basic_chord_answers.py`
   - Approve only the `maj 7` alias/regex expansion.
   - Approve only learner-facing wording cleanup that removes internal implementation language from major-7, dominant-7, diminished, diminished-7, and augmented answers.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Approve only the `multi_chord_answer_for_question` import and route.
   - Approve only the unsupported chord-quality fallback wording cleanup that explains chord tones plus closest reliable E9 positions.
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Approve only `MultiChordLocationRequest`.
   - Approve only additional minor `show me` request patterns.
   - Approve only `multi_chord_location_request_for_question`, `multi_chord_payload_for_question`, and `multi_chord_answer_for_question`.
@@ -184,7 +184,7 @@ Recommended lane: **01 Repo Steward**.
 Exact next prompt:
 
 ```text
-Repo Steward: QA approved the chord-quality/fretboard routing backend slice in docs/handoffs/task-completions/qa-chord-quality-fretboard-routing-user-smoke-fix.md. Proceed under auto-approval. Stage only the approved exact hunks in pocketsteel/basic_chord_answers.py, pocketsteel/curated_answers.py, pocketsteel/fretboard_examples.py, tests/test_api_search.py, plus the Lane 05 and QA handoff files if handoff policy requires them. Keep all unrelated parked corpus/source/static/UI/root-script/docs files unstaged. Run git diff --check and the focused/required backend tests named in the QA handoff, then commit with a scoped message. If exact-hunk staging cannot isolate the approved slice, write a blocker handoff instead of committing.
+Repo Steward: QA approved the chord-quality/fretboard routing backend slice in docs/handoffs/task-completions/qa-chord-quality-fretboard-routing-user-smoke-fix.md. Proceed under auto-approval. Stage only the approved exact hunks in steel_guitar_rag/basic_chord_answers.py, steel_guitar_rag/curated_answers.py, steel_guitar_rag/fretboard_examples.py, tests/test_api_search.py, plus the Lane 05 and QA handoff files if handoff policy requires them. Keep all unrelated parked corpus/source/static/UI/root-script/docs files unstaged. Run git diff --check and the focused/required backend tests named in the QA handoff, then commit with a scoped message. If exact-hunk staging cannot isolate the approved slice, write a blocker handoff instead of committing.
 ```
 
 If a revision is required, exact Lane 05 prompt:

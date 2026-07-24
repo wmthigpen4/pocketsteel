@@ -12,7 +12,7 @@ No raw image, reviewed annotation, validation truth, sealed-test asset, runtime 
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-2039-20-validation-crop-cache-and-guide-repair.md`
 
@@ -20,7 +20,7 @@ No raw image, reviewed annotation, validation truth, sealed-test asset, runtime 
 
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_extraction.py` — 152 passed.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py tests/test_amazing_tablature_input_parity.py tests/test_amazing_tablature_score_sequence.py tests/test_melody_arranger_decision_fixtures.py tests/test_copedent_transfer.py tests/test_amazing_tablature_sealed_test.py` — 223 passed.
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — passed.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — passed.
 - `git diff --check` — passed before handoff creation; rerun required before commit.
 
 The sealed-test test module uses synthetic unit fixtures only. No private sealed-test mapping, imagery, extraction, or ground truth was opened.
@@ -41,7 +41,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-2039-20-validation-crop-cache-and-guide-repair.md`
 

@@ -24,7 +24,7 @@ No app code, deployment configuration, auth policy, DNS, corpus, embeddings, Chr
 - Expected backend port: `8770`
 - Expected git HEAD: `0ad025f`
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"0ad025f","git_branch":"feature/answer-api","server_started_at":"2026-06-23T18:08:23.651468+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"0ad025f","git_branch":"feature/answer-api","server_started_at":"2026-06-23T18:08:23.651468+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - If version endpoint missing, how version is inferred: not missing locally
 - Whether app root `/` works: yes, but it redirects to `/ui/steel-guitar-rag-mock.html` and drops the query string
 - Whether app root `/` is expected to work: yes as a redirect entrypoint, not as the cache-busted canonical smoke target
@@ -42,7 +42,7 @@ No app code, deployment configuration, auth policy, DNS, corpus, embeddings, Chr
 - Runtime commit reported by `/api/version`: `0ad025f`
 - Launchd supervision status: `system/com.steelguitarrag.private-preview` is running as a LaunchDaemon.
 - LaunchDaemon program: `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh`
-- LaunchDaemon repo env: `STEEL_RAG_REPO_DIR=/Users/cory/Documents/Pocket Steel`
+- LaunchDaemon repo env: `STEEL_RAG_REPO_DIR=/Users/cory/Documents/Steel Guitar RAG`
 - Durable app logs:
   - stdout: `/Users/cory/Library/Logs/steel-guitar-rag/app.out.log`
   - stderr: `/Users/cory/Library/Logs/steel-guitar-rag/app.err.log`
@@ -50,8 +50,8 @@ No app code, deployment configuration, auth policy, DNS, corpus, embeddings, Chr
 - Listener status: `Python` PID `5054` is listening on `127.0.0.1:8770`.
 - Process start: PID `5054` started `Tue Jun 23 11:06:15 2026`.
 - Lane 05 file modification times:
-  - `pocketsteel/answer_intent_classifier.py`: `Jun 23 13:00:25 2026`
-  - `pocketsteel/curated_answers.py`: `Jun 23 13:00:31 2026`
+  - `steel_guitar_rag/answer_intent_classifier.py`: `Jun 23 13:00:25 2026`
+  - `steel_guitar_rag/curated_answers.py`: `Jun 23 13:00:31 2026`
   - `tests/test_api_search.py`: `Jun 23 13:01:07 2026`
 - Cloudflare Tunnel status: `system/com.cloudflare.cloudflared` is running as a LaunchDaemon. Token details were intentionally redacted and not recorded.
 
@@ -145,7 +145,7 @@ Expected vs actual:
 - `lsof -nP -iTCP:8770 -sTCP:LISTEN || true` - Python PID `5054` listening on `127.0.0.1:8770`
 - `screen -ls || true` - no sockets found
 - `ps -p 5054 -o pid,lstart,command`
-- `stat -f '%Sm %N' pocketsteel/answer_intent_classifier.py pocketsteel/curated_answers.py tests/test_api_search.py`
+- `stat -f '%Sm %N' steel_guitar_rag/answer_intent_classifier.py steel_guitar_rag/curated_answers.py tests/test_api_search.py`
 - `launchctl kickstart -k system/com.steelguitarrag.private-preview 2>&1 || true` - denied with `Operation not permitted`
 - Authenticated protected-preview browser smoke for the 15 requested main-app prompts
 - Authenticated protected-preview browser smoke for Explorer route and 5&8 branch UI

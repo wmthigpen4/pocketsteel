@@ -44,7 +44,7 @@ Protected-preview browser behavior passed. The result is a warning, not a clean 
 - Expected backend port: `8770`
 - Expected git HEAD: `670d635`
 - Version endpoint: `/api/version`
-- `/api/version` result: `{"git_sha":"670d635","git_branch":"feature/answer-api","server_started_at":"2026-06-24T16:05:20.617710+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- `/api/version` result: `{"git_sha":"670d635","git_branch":"feature/answer-api","server_started_at":"2026-06-24T16:05:20.617710+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Root URL behavior: `https://app.steelguitarrag.com/?v=670d635` redirects to `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html` and drops the query string
 - `/ui/e9-fretboard-explorer.html` behavior: loads and renders the Explorer through Cloudflare Access
 - API fallback status: not used

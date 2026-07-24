@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This contract defines how ChatGPT Images mockups become Codex-buildable frontend slices for The Turnaround / Steel Guitar RAG without losing the premium visual direction or drifting into untestable pixel-copy work.
+This contract defines how ChatGPT Images mockups become Codex-buildable frontend slices for Steel Guitar RAG / Steel Guitar RAG without losing the premium visual direction or drifting into untestable pixel-copy work.
 
 The mockup is a visual brief. The implementation source of truth remains the repo:
 

@@ -55,7 +55,7 @@ The worktree remains broadly dirty with parked work outside the final readiness 
 
 Runtime-gate note:
 
-- The committed 05e8748 verification handoffs recorded no dirty `pocketsteel/*.py`, `ui/*.js`, `scripts/*.py`, or `tests` paths at the runtime verification point.
+- The committed 05e8748 verification handoffs recorded no dirty `steel_guitar_rag/*.py`, `ui/*.js`, `scripts/*.py`, or `tests` paths at the runtime verification point.
 
 ## Remaining Backlog
 

@@ -11,11 +11,11 @@ Completed the scoped backend fix. This patch does not touch UI, deployment, auth
 
 ## Files Changed
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added practical mechanical repair curated answers for noisy pedal rods and general pedal-steel buzzing.
   - Routed those prompts before SGF quarantine/meta fallback text can become the primary answer.
   - Added narrow gear-advice detection for pedal-rod noise and steel buzz.
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
   - Added deterministic rooted dominant/major seventh chord-quality classification.
   - Kept `G7`, `G dom 7`, `G dominant 7`, `Fmaj7`, `F maj 7`, and `F major 7th` in the steel-guitar/copedent-position domain.
   - Tightened the matcher so unrelated phrases such as `7-day practice plan` still classify as practice prompts.
@@ -61,12 +61,12 @@ After: those classify as `domain=steel_guitar`, `intent=copedent_position`, `ret
 Passed:
 
 ```bash
-git diff --check -- pocketsteel/answer_intent_classifier.py pocketsteel/curated_answers.py tests/test_answer_intent_classifier.py tests/test_api_search.py
+git diff --check -- steel_guitar_rag/answer_intent_classifier.py steel_guitar_rag/curated_answers.py tests/test_answer_intent_classifier.py tests/test_api_search.py
 .venv/bin/python -m pytest tests/test_answer_intent_classifier.py tests/test_api_search.py tests/test_fretboard_examples.py -q
 # 360 passed
 .venv/bin/python -m pytest tests/test_answer_eval.py tests/test_full_answer_quality_eval.py tests/test_api_contract.py -q
 # 68 passed
-.venv/bin/python scripts/run_full_answer_quality_eval.py --output /tmp/pocketsteel-repair-classifier-fix.md --json-output /tmp/pocketsteel-repair-classifier-fix.json
+.venv/bin/python scripts/run_full_answer_quality_eval.py --output /tmp/steel_guitar_rag-repair-classifier-fix.md --json-output /tmp/steel_guitar_rag-repair-classifier-fix.json
 # pass: 153, warn: 33, fail: 109; broad historical quality matrix still has backlog unrelated to this narrow slice.
 ```
 
@@ -122,8 +122,8 @@ Safe to commit, with exact-path staging only.
 
 Safe-to-stage list:
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/repair-fallback-and-chord-classifier-drift-fix.md`

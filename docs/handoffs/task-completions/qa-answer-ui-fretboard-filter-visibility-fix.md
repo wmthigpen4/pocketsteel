@@ -122,19 +122,19 @@ Non-blocking notes:
 
 Generated transient screenshots under `/tmp`:
 
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/01-g-default-recommended.png`
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/02-g-starter.png`
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/03-g-full-chord.png`
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/04-g-full-chord-grip-456.png`
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/10-g-recommended-grip-345-no-match.png`
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/11-g-recovered-recommended-all-grips.png`
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/show-me-the-fretboard.png`
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/what-s-it-mean-for-a-song-to-be-a-swing-or-a-waltz.png`
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/screenshots/what-is-the-capital-of-france.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/01-g-default-recommended.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/02-g-starter.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/03-g-full-chord.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/04-g-full-chord-grip-456.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/10-g-recommended-grip-345-no-match.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/11-g-recovered-recommended-all-grips.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/show-me-the-fretboard.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/what-s-it-mean-for-a-song-to-be-a-swing-or-a-waltz.png`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/screenshots/what-is-the-capital-of-france.png`
 
 Transient browser state:
 
-- `/tmp/pocketsteel-answer-ui-fretboard-filter-visibility-fix/browser-smoke-results.json`
+- `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-visibility-fix/browser-smoke-results.json`
 
 ## Tests And Checks
 

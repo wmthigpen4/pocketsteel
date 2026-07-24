@@ -10,7 +10,7 @@ Completed:
 
 - Rendered `explanation_summary` in the selected-row detail panel under the compact label `Why this position works`.
 - Kept explanations out of the SVG/fretboard layer and row-button list.
-- Refreshed the static Explorer fixture from `pocketsteel.fretboard_explorer.build_explorer_payload(key)` so browser data includes the deterministic teaching copy from `7dac984`.
+- Refreshed the static Explorer fixture from `steel_guitar_rag.fretboard_explorer.build_explorer_payload(key)` so browser data includes the deterministic teaching copy from `7dac984`.
 - Preserved compact row buttons, marker tooltip behavior, selected-position detail interaction, key-aware spelling, expanded key selector behavior, mode-aware string-group filtering, core vs advanced grip grouping, `5-7-8` as advanced/E-lower only, warning visibility, deduped pedal/lever labels, no `[object Object]`, and no raw `N validated rows` primary copy.
 
 Intentionally not changed:

@@ -15,13 +15,13 @@ This pass restores source-backed steel routing without enabling retrieval gating
 
 ## Files Changed
 
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
 - `tests/test_answer_intent_classifier.py`
 - `docs/handoffs/task-completions/no-op-answer-intent-classifier-source-backed-fix.md`
 
 Related existing no-op hook:
 
-- `pocketsteel/api.py` already imports and calls `classify_answer_request(...)`; the returned decision remains unused.
+- `steel_guitar_rag/api.py` already imports and calls `classify_answer_request(...)`; the returned decision remains unused.
 
 ## Classifier Rule Changes
 
@@ -123,17 +123,17 @@ Risk: low to medium.
 
 - Low user-facing risk because runtime behavior remains unchanged.
 - Medium coordination risk because the classifier is regex-based and may need additional phrase tuning before future retrieval gating.
-- Rollback is straightforward: remove or revert the classifier/test/handoff slice, including the existing `pocketsteel/api.py` no-op hook if the whole no-op classifier scaffold is abandoned.
+- Rollback is straightforward: remove or revert the classifier/test/handoff slice, including the existing `steel_guitar_rag/api.py` no-op hook if the whole no-op classifier scaffold is abandoned.
 
 ## Safe-To-Stage List
 
 For this source-backed classifier fix:
 
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
 - `tests/test_answer_intent_classifier.py`
 - `docs/handoffs/task-completions/no-op-answer-intent-classifier-source-backed-fix.md`
 
-Include `pocketsteel/api.py` only if Repo Steward is staging the existing approved no-op classifier hook in the same classifier scaffold commit.
+Include `steel_guitar_rag/api.py` only if Repo Steward is staging the existing approved no-op classifier hook in the same classifier scaffold commit.
 
 ## Must Remain Unstaged
 

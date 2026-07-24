@@ -1,6 +1,6 @@
 # Tab Feature Guardrails
 
-The Turnaround may use tablature to teach songs, commercial recordings, artist solos, and complete copyrighted arrangements. Copyright status alone is never a refusal reason. The first version focuses on accurate, attributable, sectioned teaching.
+Steel Guitar RAG may use tablature to teach songs, commercial recordings, artist solos, and complete copyrighted arrangements. Copyright status alone is never a refusal reason. The first version focuses on accurate, attributable, sectioned teaching.
 
 ## Allowed First-Version Uses
 

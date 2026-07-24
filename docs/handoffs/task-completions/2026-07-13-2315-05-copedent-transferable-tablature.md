@@ -23,15 +23,15 @@ The 51 photographed passages have not been asserted as transcribed training deci
 
 ### Runtime and UI
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/copedent_transfer.py`
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/melody_decision_rules.py`
-- `pocketsteel/melody_models.py`
-- `pocketsteel/melody_ranker.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/copedent_transfer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/melody_decision_rules.py`
+- `steel_guitar_rag/melody_models.py`
+- `steel_guitar_rag/melody_ranker.py`
+- `steel_guitar_rag/tab_engine.py`
 - `ui/answer-client.js`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
@@ -123,15 +123,15 @@ No for implementation, exact-path commit, or normal protected-preview verificati
 
 - `docs/handoffs/task-completions/2026-07-13-2315-05-copedent-transferable-tablature.md`
 - `docs/llm-guidance/melody-copedent-transfer-rules.md`
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/copedent_transfer.py`
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/melody_decision_rules.py`
-- `pocketsteel/melody_models.py`
-- `pocketsteel/melody_ranker.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/copedent_transfer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/melody_decision_rules.py`
+- `steel_guitar_rag/melody_models.py`
+- `steel_guitar_rag/melody_ranker.py`
+- `steel_guitar_rag/tab_engine.py`
 - `scripts/train_melody_decision_ranker.py`
 - `tests/test_api_search.py`
 - `tests/test_copedent_transfer.py`

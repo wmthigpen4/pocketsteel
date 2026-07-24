@@ -35,13 +35,13 @@ The true P1s were caused by three related backend routing gaps:
 
 ## Files Changed
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Runs deterministic curated/fretboard answers before the off-domain guardrail, while preserving unsafe/impossible gating first.
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
   - Adds bedtime-story/castle off-domain detection.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Adds narrow routes for harmonized-scale workout, full-lyrics guardrail, b0b context, diminished missing-context, vague next-step clarifier, E-lower minor sound, E minor pocket, D major A+B, and G A+F.
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Adds targeted fretboard payload routing for the true P1 visual prompts.
   - Replaces user-facing `fretboard payload` wording with `diagram`.
 - `tests/test_answer_intent_classifier.py`
@@ -153,10 +153,10 @@ Safe to commit.
 
 Scoped safe-to-stage files:
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `tests/test_fretboard_examples.py`

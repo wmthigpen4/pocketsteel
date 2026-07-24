@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pocketsteel.amazing_tablature_score_sequence import (
+from steel_guitar_rag.amazing_tablature_score_sequence import (
     GROUP_END_TOKEN,
     MIN_PITCH,
     PITCH_TOKEN_OFFSET,

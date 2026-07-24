@@ -17,8 +17,8 @@ signatures was byte-equivalent to a previously reviewed signature.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-1733-20-cross-model-review-packets.md`
 
 Private evaluation reports and review packets were appended beneath ignored
@@ -65,8 +65,8 @@ cannot decide whether an alternate arrangement is musically acceptable.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-1733-20-cross-model-review-packets.md`
 
 ## Files that must not be staged

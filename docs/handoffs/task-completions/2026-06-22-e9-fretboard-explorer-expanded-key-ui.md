@@ -6,7 +6,7 @@ Requested: expose the validated expanded E9 Fretboard Explorer keys in the brows
 
 Completed:
 
-- Expanded the static Explorer browser fixture from G-only to keyed payloads generated from `pocketsteel.fretboard_explorer.build_explorer_payload(key)`.
+- Expanded the static Explorer browser fixture from G-only to keyed payloads generated from `steel_guitar_rag.fretboard_explorer.build_explorer_payload(key)`.
 - Exposed the Lane 15 QA-covered UI key set: `G`, `C`, `D`, `F`, `Bb`, and `Eb`.
 - Updated the Explorer controller to resolve active payload data from the selected key.
 - Preserved the legacy `window.STEEL_RAG_E9_EXPLORER_PAYLOAD` G fallback for compatibility.

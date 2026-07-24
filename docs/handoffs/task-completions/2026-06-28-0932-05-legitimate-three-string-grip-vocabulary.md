@@ -21,7 +21,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-music-rules.js`
 - `ui/e9-fretboard-explorer.js`
 - `ui/e9-fretboard-explorer.html`
@@ -142,7 +142,7 @@ Smoke checks:
 - `node --check ui/e9-fretboard-explorer-data.js` - pass.
 - `node --check ui/answer-client.js` - pass.
 - `node --check ui/pedal-steel-fretboard.js` - pass.
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py` - pass.
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py` - pass.
 - `.venv/bin/python -m pytest tests/test_explorer_musical_red_team.py -q` - `4 passed`.
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q` - `42 passed`.
 - `.venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q` - `24 passed`.
@@ -152,7 +152,7 @@ Smoke checks:
 
 ## Integration Notes
 
-- `ui/e9-fretboard-explorer-data.js` was regenerated from `pocketsteel.fretboard_explorer.build_explorer_payload(...)`.
+- `ui/e9-fretboard-explorer-data.js` was regenerated from `steel_guitar_rag.fretboard_explorer.build_explorer_payload(...)`.
 - The payload now includes `grip_vocabulary` with `three_string_entries` and `three_string_audit`.
 - The UI now mirrors the shared grip vocabulary tiers in `ui/e9-music-rules.js`.
 - Chord Finder E-lower pocket results require both E-lower pocket vocabulary and a lever-inclusive control scope.
@@ -186,7 +186,7 @@ Future human review needed:
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-music-rules.js`
 - `ui/e9-fretboard-explorer.js`
 - `ui/e9-fretboard-explorer.html`

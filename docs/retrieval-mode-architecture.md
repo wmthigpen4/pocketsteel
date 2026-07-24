@@ -1,6 +1,6 @@
 # Retrieval Mode Architecture
 
-The Turnaround should choose its answer evidence deliberately. Stable steel-guitar facts, current vendor links, historical forum wisdom, future private material, and fallback guardrails are different source lanes with different risk profiles. This document defines the retrieval modes and the intended decision flow before broader behavior changes are implemented.
+Steel Guitar RAG should choose its answer evidence deliberately. Stable steel-guitar facts, current vendor links, historical forum wisdom, future private material, and fallback guardrails are different source lanes with different risk profiles. This document defines the retrieval modes and the intended decision flow before broader behavior changes are implemented.
 
 This is an architecture document only. It does not recommend switching production behavior immediately.
 

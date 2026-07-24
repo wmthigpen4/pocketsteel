@@ -1,6 +1,6 @@
 # Electronics RAG Data
 
-This directory holds generated artifacts for The Turnaround RAG v0, built only from Steel Guitar Forum Electronics posts.
+This directory holds generated artifacts for Steel Guitar RAG RAG v0, built only from Steel Guitar Forum Electronics posts.
 
 Generated files:
 

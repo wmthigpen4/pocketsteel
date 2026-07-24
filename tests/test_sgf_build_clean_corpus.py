@@ -4,7 +4,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from pocketsteel.schema import read_jsonl
+from steel_guitar_rag.schema import read_jsonl
 from scripts.sgf_build_clean_corpus import iter_clean_rows, main
 
 

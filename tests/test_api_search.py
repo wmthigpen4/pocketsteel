@@ -10,15 +10,15 @@ from urllib.parse import urlencode
 
 import pytest
 
-from pocketsteel import chroma_search
-from pocketsteel.answer_contracts import (
+from steel_guitar_rag import chroma_search
+from steel_guitar_rag.answer_contracts import (
     CONTRACTS,
     COPYRIGHT_AWARE_SONG_HELP_POLICY,
     infer_contract_intent,
     normalize_intent,
     validate_answer_against_contract,
 )
-from pocketsteel.answering import (
+from steel_guitar_rag.answering import (
     DeterministicAnswerProvider,
     answer_has_quality_issue,
     fallback_answer_for_category,
@@ -26,40 +26,40 @@ from pocketsteel.answering import (
     final_answer_quality_gate,
     normalize_answer_list_markers,
 )
-from pocketsteel.chroma_search import ChromaSearchIndex
-from pocketsteel.curated_answers import (
+from steel_guitar_rag.chroma_search import ChromaSearchIndex
+from steel_guitar_rag.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
     intent_mode_for_question,
     lookup_curated_answer,
 )
-from pocketsteel.curated_song_references import (
+from steel_guitar_rag.curated_song_references import (
     STEEL_GUITAR_RAG_REFERENCE_PATH,
     load_steel_guitar_rag_reference,
 )
-from pocketsteel.fretboard_examples import DEFAULT_PEDAL_LEVER_LABELS
-from pocketsteel.api import MAX_JSON_BODY_BYTES, RetrievalApi, create_app
-from pocketsteel.amazing_tablature_model import (
+from steel_guitar_rag.fretboard_examples import DEFAULT_PEDAL_LEVER_LABELS
+from steel_guitar_rag.api import MAX_JSON_BODY_BYTES, RetrievalApi, create_app
+from steel_guitar_rag.amazing_tablature_model import (
     CANONICAL_FEATURE_NAMES,
     CANONICAL_FEATURE_SCHEMA_VERSION,
     CANONICAL_STYLE_FAMILIES,
     RuntimeRankerPolicy,
 )
-from pocketsteel.access_control import (
+from steel_guitar_rag.access_control import (
     DEV_ACCESS_ROLE_ENVIRON,
     TRUSTED_AUTH_ROLE_ENVIRON,
     AuthConfigurationError,
 )
-from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
-from pocketsteel.account_usage import AccountUsageRepository, AccountUsageUnavailableError
-from pocketsteel.cloudflare_access import (
+from steel_guitar_rag.answer_usage import InMemoryAnswerRateLimiter
+from steel_guitar_rag.account_usage import AccountUsageRepository, AccountUsageUnavailableError
+from steel_guitar_rag.cloudflare_access import (
     CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE,
     CLOUDFLARE_ACCESS_JWT_ENVIRON,
     CloudflareAccessClaims,
     CloudflareAccessError,
 )
-from pocketsteel.rag_guardrails import INJECTION_WARNING
-from pocketsteel.retrieval_modes import RetrievalMode, RetrievalModeConfig
+from steel_guitar_rag.rag_guardrails import INJECTION_WARNING
+from steel_guitar_rag.retrieval_modes import RetrievalMode, RetrievalModeConfig
 from scripts.serve_answer_smoke import build_app
 from scripts.serve_v2_rerank_smoke import create_v2_api_app
 
@@ -3060,7 +3060,7 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
         assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in highlight["pedals"])
         assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in highlight["levers"])
     assert fretboard["sourceContext"][0]["kind"] == "rule"
-    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.fretboard_examples"
+    assert fretboard["sourceContext"][0]["sourceId"] == "steel_guitar_rag.fretboard_examples"
 
 
 def assert_deterministic_fretboard_sources_are_clean(payload: dict[str, Any]) -> None:
@@ -3069,7 +3069,7 @@ def assert_deterministic_fretboard_sources_are_clean(payload: dict[str, Any]) ->
     assert "fretboard" in payload
     assert "[object Object]" not in payload["answer"]
     assert payload["fretboard"]["sourceContext"][0]["kind"] == "rule"
-    assert payload["fretboard"]["sourceContext"][0]["sourceId"] == "pocketsteel.fretboard_examples"
+    assert payload["fretboard"]["sourceContext"][0]["sourceId"] == "steel_guitar_rag.fretboard_examples"
 
 
 def assert_valid_tab_example_payload(payload: dict[str, Any], expected_id: str) -> None:
@@ -3103,7 +3103,7 @@ def assert_valid_tab_example_fretboard_payload(payload: dict[str, Any]) -> None:
     assert fretboard["type"] == "e9-fretboard-diagram"
     assert fretboard["tuning"] == "E9"
     assert fretboard["sourceContext"][0]["kind"] == "rule"
-    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples"
+    assert fretboard["sourceContext"][0]["sourceId"] == "steel_guitar_rag.answer_tab_examples"
     assert len(fretboard["positions"]) == len(tab_example["events"])
     assert len(fretboard["highlights"]) == len(tab_example["events"])
     for index, (event, position) in enumerate(zip(tab_example["events"], fretboard["positions"]), start=1):
@@ -3138,7 +3138,7 @@ def assert_valid_static_grip_fretboard_payload(payload: dict[str, Any]) -> None:
     assert fretboard["type"] == "e9-fretboard-diagram"
     assert fretboard["tuning"] == "E9"
     assert fretboard["sourceContext"][0]["kind"] == "rule"
-    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples.static_grip"
+    assert fretboard["sourceContext"][0]["sourceId"] == "steel_guitar_rag.answer_tab_examples.static_grip"
     assert len(fretboard["positions"]) == 1
     position = fretboard["positions"][0]
     assert position["id"] == "g-major-456-open-3"
@@ -8263,7 +8263,7 @@ def test_sensitive_demographic_and_current_roster_questions_do_not_speculate() -
     assert_clean_answer_body(roster)
     assert "current roster is not clear from the information here" in roster["answer"]
     assert "official tour credits" in roster["answer"]
-    assert "The Turnaround can help interpret any credits you find" in roster["answer"]
+    assert "Steel Guitar RAG can help interpret any credits you find" in roster["answer"]
     assert "corpus" not in roster["answer"].lower()
     assert "source cards" not in roster["answer"].lower()
     assert "For guitars" not in roster["answer"]

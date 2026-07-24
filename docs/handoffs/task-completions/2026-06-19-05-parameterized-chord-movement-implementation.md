@@ -31,15 +31,15 @@ Intentionally not changed:
 
 ## Files Touched
 
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/answer_tab_examples.py`
   - Added parameterized movement parsing/generation.
-  - Generated structured tab events and rendered/validated them through `pocketsteel.tab_engine.render_tab`.
+  - Generated structured tab events and rendered/validated them through `steel_guitar_rag.tab_engine.render_tab`.
   - Added deterministic provenance metadata:
     - `rightsStatus: original_educational_example`
     - `provenanceType: deterministic_exercise`
     - `sourcePolicy: no_external_song_source`
     - `generator: parameterized_e9_chord_movement_v1`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - For `parameterized_chord_movement` tab payloads, clears `sources` and `warnings`.
   - Always uses the generated movement answer body for parameterized movement examples so the answer prose matches the tab/fretboard payload.
 - `tests/test_tab_engine.py`
@@ -99,7 +99,7 @@ No generated movement tab is attached for:
 
 ## Tests And Checks Run
 
-Run from `/Users/cory/Documents/Pocket Steel`:
+Run from `/Users/cory/Documents/Steel Guitar RAG`:
 
 - `git status --short`
   - Broad unrelated dirty/untracked worktree remains parked.
@@ -107,9 +107,9 @@ Run from `/Users/cory/Documents/Pocket Steel`:
   - Starting HEAD: `8dab461`.
 - `git diff --cached --name-only`
   - Empty before staging.
-- `.venv/bin/python -m py_compile pocketsteel/answer_tab_examples.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/answer_tab_examples.py`
   - Passed during implementation.
-- `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/answer_tab_examples.py pocketsteel/api.py pocketsteel/api_contract.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/answer_tab_examples.py steel_guitar_rag/api.py steel_guitar_rag/api_contract.py`
   - Passed.
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`
   - Passed: `25 passed`.
@@ -140,7 +140,7 @@ Reasons:
 
 Rollback:
 
-- Revert changes in `pocketsteel/answer_tab_examples.py`, the small `pocketsteel/api.py` source/warning clearing branch, and the associated tests.
+- Revert changes in `steel_guitar_rag/answer_tab_examples.py`, the small `steel_guitar_rag/api.py` source/warning clearing branch, and the associated tests.
 
 ## Blockers
 
@@ -148,8 +148,8 @@ None for this slice.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_tab_engine.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-19-05-parameterized-chord-movement-implementation.md`

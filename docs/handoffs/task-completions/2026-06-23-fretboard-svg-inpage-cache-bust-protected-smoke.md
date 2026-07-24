@@ -52,7 +52,7 @@ Intentionally not changed:
 - Protected preview restart evidence:
   - `screen` session: `steel-rag-private-preview`
   - Listener: Python process on `127.0.0.1:8770`
-  - Local `/api/version`: `{"git_sha":"64db66b","git_branch":"feature/answer-api","server_started_at":"2026-06-23T14:55:46.708130+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+  - Local `/api/version`: `{"git_sha":"64db66b","git_branch":"feature/answer-api","server_started_at":"2026-06-23T14:55:46.708130+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 
 ## Direct SVG Result
 

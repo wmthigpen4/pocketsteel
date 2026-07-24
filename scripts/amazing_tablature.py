@@ -9,17 +9,17 @@ import re
 from pathlib import Path
 from typing import Any
 
-from pocketsteel.amazing_tablature_extraction import (
+from steel_guitar_rag.amazing_tablature_extraction import (
     AmazingTablatureExtractor,
     ExtractionWorkflowError,
     serve_review_consoles,
 )
-from pocketsteel.amazing_tablature_training import (
+from steel_guitar_rag.amazing_tablature_training import (
     DEFAULT_PRIVATE_ROOT,
     AmazingTablatureTrainingStore,
     TrainingWorkflowError,
 )
-from pocketsteel.amazing_tablature_sealed_test import (
+from steel_guitar_rag.amazing_tablature_sealed_test import (
     SealedTestCoordinator,
     SealedTestWorkflowError,
 )

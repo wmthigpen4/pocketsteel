@@ -7,7 +7,8 @@
 
 Task mode: GREEN docs-only planning. This plan must not deploy anything, modify DNS, expose Ollama, run scraping, regenerate embeddings, reset Chroma, or modify vector data.
 
-User-facing app name: The Turnaround. Keep `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names.
+User-facing app name: Steel Guitar RAG. Use `steel_guitar_rag` for Python
+packages/imports and `steel-guitar-rag` for distribution and URL slugs.
 
 Current branch when this plan was created: `feature/answer-api`.
 
@@ -302,7 +303,7 @@ Future auth/rate-limit environment should include provider IDs, issuer/audience 
 Use `launchctl` on macOS for both long-running processes:
 
 - `cloudflared` tunnel service.
-- The Turnaround app/API service.
+- Steel Guitar RAG app/API service.
 
 Startup requirements:
 

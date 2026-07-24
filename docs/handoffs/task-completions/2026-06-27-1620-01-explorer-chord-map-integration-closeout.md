@@ -67,7 +67,7 @@ That smoke verified:
 Local `/api/version` before and after the restart attempt reported:
 
 ```json
-{"git_sha":"a6abc61","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
+{"git_sha":"a6abc61","git_branch":"feature/answer-api","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
 ```
 
 `a6abc61` contains the shared music-rules boundary commit `b55a12e` but does not contain `c423e4b`. Non-interactive restart with `sudo -n launchctl kickstart -k system/com.steelguitarrag.private-preview` was blocked because a password is required. The Python listener stayed on `127.0.0.1:8770`.

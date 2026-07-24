@@ -44,9 +44,9 @@ Repo governance/status:
 
 Explorer implementation and tests:
 
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/fretboard_explorer.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `ui/e9-fretboard-explorer.js`
 - `tests/test_fretboard_explorer.py`
 - `tests/test_frontend_answer_ui.py`
@@ -376,7 +376,7 @@ Focused pitch spot-check command:
 
 ```bash
 .venv/bin/python - <<'PY'
-from pocketsteel.fretboard_explorer import resolve_notes, build_explorer_payload, validate_explorer_payload
+from steel_guitar_rag.fretboard_explorer import resolve_notes, build_explorer_payload, validate_explorer_payload
 
 cases = [
     ("string 3 fret 3 open", 3, (3,), ()),

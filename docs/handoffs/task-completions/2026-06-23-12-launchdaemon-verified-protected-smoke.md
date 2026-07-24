@@ -39,7 +39,7 @@ Observed result:
   "git_sha": "c08cc95",
   "git_branch": "feature/answer-api",
   "server_started_at": "2026-06-23T15:34:18.101766+00:00",
-  "python_module": "pocketsteel.api",
+  "python_module": "steel_guitar_rag.api",
   "retrieval_mode": "hybrid_private_first",
   "auth_provider": "cloudflare_access"
 }
@@ -67,8 +67,8 @@ The LaunchDaemon plist exists:
 path = /Library/LaunchDaemons/com.steelguitarrag.private-preview.plist
 type = LaunchDaemon
 state = spawn scheduled
-program = /Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh
-working directory = /Users/cory/Documents/Pocket Steel
+program = /Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh
+working directory = /Users/cory/Documents/Steel Guitar RAG
 stdout path = /Users/cory/Library/Logs/steel-guitar-rag/app.out.log
 stderr path = /Users/cory/Library/Logs/steel-guitar-rag/app.err.log
 username = cory
@@ -115,10 +115,10 @@ app.err.log: 10120 bytes
 
 ```text
 shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
-bash: /Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh: Operation not permitted
+bash: /Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh: Operation not permitted
 ```
 
-This is consistent with a macOS service/privacy/path-access problem for a system LaunchDaemon executing from `~/Documents/Pocket Steel`.
+This is consistent with a macOS service/privacy/path-access problem for a system LaunchDaemon executing from `~/Documents/Steel Guitar RAG`.
 
 ## Cloudflare Tunnel Status
 
@@ -252,7 +252,7 @@ Generated artifacts:
 ## Integration Notes
 
 - The app still works locally only because a manual `screen` process owns port `8770`.
-- The installed LaunchDaemon cannot currently execute the wrapper from `~/Documents/Pocket Steel`.
+- The installed LaunchDaemon cannot currently execute the wrapper from `~/Documents/Steel Guitar RAG`.
 - Do not stop the manual `screen` process until a corrected supervised runtime can bind `127.0.0.1:8770`.
 - The next smoke URL should use `c08cc95` unless `/api/version` changes again after service repair.
 
@@ -311,5 +311,5 @@ This handoff is documentation-only, contains no secrets, and records a blocked p
 Run a focused Lane 12 service-hardening task:
 
 ```text
-Lane 12: Fix the Mac mini app LaunchDaemon startup failure where `/Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh` exits 126 with `Operation not permitted`. Preserve the manual screen process until the LaunchDaemon can bind 127.0.0.1:8770, do not touch DNS/auth/corpus/Chroma/secrets, and write a handoff with the chosen macOS service path or LaunchAgent/LaunchDaemon decision. After fix, rerun protected-preview browser smoke at https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=c08cc95.
+Lane 12: Fix the Mac mini app LaunchDaemon startup failure where `/Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh` exits 126 with `Operation not permitted`. Preserve the manual screen process until the LaunchDaemon can bind 127.0.0.1:8770, do not touch DNS/auth/corpus/Chroma/secrets, and write a handoff with the chosen macOS service path or LaunchAgent/LaunchDaemon decision. After fix, rerun protected-preview browser smoke at https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=c08cc95.
 ```

@@ -44,7 +44,7 @@ Smoke notes:
 - Copyright/provenance guardrail copy rendered.
 - Hanging sign element and fallback/poster paths remained present.
 - Interest form remained present with `action="/api/interest"`.
-- User-facing page text did not include `Pocket Steel`.
+- User-facing page text did not include `Steel Guitar RAG`.
 
 ## Integration Notes
 

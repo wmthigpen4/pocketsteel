@@ -36,9 +36,9 @@
 
 ## Files changed
 - Changed files:
-  - `pocketsteel/api.py`
-  - `pocketsteel/curated_answers.py`
-  - `pocketsteel/answer_contracts.py`
+  - `steel_guitar_rag/api.py`
+  - `steel_guitar_rag/curated_answers.py`
+  - `steel_guitar_rag/answer_contracts.py`
   - `tests/test_api_search.py`
   - `tests/test_full_answer_quality_eval.py`
 - Created files:
@@ -83,15 +83,15 @@
 ## Risk assessment
 - Risk: Low to Medium.
 - Why: the runtime change is a narrow early answer route, but it changes answer behavior before retrieval for a class of gear/gig prompts.
-- Rollback notes: remove the `intent_mode_curated_answer(...)` early return from `pocketsteel/api.py`; the helper/contracts/tests can remain inert or be removed in a follow-up.
+- Rollback notes: remove the `intent_mode_curated_answer(...)` early return from `steel_guitar_rag/api.py`; the helper/contracts/tests can remain inert or be removed in a follow-up.
 
 ## Commit readiness
 - Needs human review first.
 - Reason: this task slice is fully test-green, but the worktree contains many unrelated modified/untracked files from other lanes. Do not stage the whole worktree.
 - Exact safe-to-stage file list for this task after review:
-  - `pocketsteel/api.py`
-  - `pocketsteel/curated_answers.py`
-  - `pocketsteel/answer_contracts.py`
+  - `steel_guitar_rag/api.py`
+  - `steel_guitar_rag/curated_answers.py`
+  - `steel_guitar_rag/answer_contracts.py`
   - `tests/test_api_search.py`
   - `tests/test_full_answer_quality_eval.py`
   - `docs/handoffs/task-completions/2026-06-13-2332-05-answer-intent-mode-contract.md`

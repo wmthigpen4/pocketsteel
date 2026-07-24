@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pocketsteel.retrieval_modes import (
+from steel_guitar_rag.retrieval_modes import (
     DEFAULT_PRIVATE_CHROMA_PATH,
     DEFAULT_PRIVATE_COLLECTION,
     DEFAULT_SGF_V2_CHROMA_PATH,

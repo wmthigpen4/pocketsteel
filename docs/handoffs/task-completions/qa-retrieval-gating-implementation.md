@@ -20,7 +20,7 @@ Product/browser-smoke readiness is still not pass. The 12-prompt smoke still has
 
 ## Implementation Review Findings
 
-- `pocketsteel/api.py` now calls `classify_answer_request(...)` and gates before deterministic routes and before `_search_for_answer(...)`.
+- `steel_guitar_rag/api.py` now calls `classify_answer_request(...)` and gates before deterministic routes and before `_search_for_answer(...)`.
 - `_should_gate_answer_intent(...)` gates:
   - `domain == "unsafe_or_impossible"`
   - `domain == "off_domain" and intent == "small_talk"`
@@ -145,7 +145,7 @@ http://127.0.0.1:8781/api/answer
 
 Generated fallback artifact:
 
-- `/tmp/pocketsteel-qa-retrieval-gating/12-prompt-api-smoke.json`
+- `/tmp/steel_guitar_rag-qa-retrieval-gating/12-prompt-api-smoke.json`
 
 ## 12-Prompt Smoke Results
 
@@ -198,7 +198,7 @@ Reason: the implementation itself is green, but the worktree is broadly dirty, `
 
 Approved for the retrieval-gating slice, after exact-path and hunk review:
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - retrieval-gating hunks only in `tests/test_api_search.py`
 - `docs/handoffs/task-completions/retrieval-gating-implementation.md`
 - `docs/handoffs/task-completions/qa-retrieval-gating-implementation.md`
@@ -232,11 +232,11 @@ Do not stage with the retrieval-gating slice:
   - deployment docs/config/secrets
   - DNS/Cloudflare changes
 - Other parked backend/QA files not directly part of the retrieval gate:
-  - `pocketsteel/answer_contracts.py`
-  - `pocketsteel/curated_answers.py`
-  - `pocketsteel/curated_source_registry.py`
-  - `pocketsteel/fretboard_examples.py`
-  - `pocketsteel/schema.py`
+  - `steel_guitar_rag/answer_contracts.py`
+  - `steel_guitar_rag/curated_answers.py`
+  - `steel_guitar_rag/curated_source_registry.py`
+  - `steel_guitar_rag/fretboard_examples.py`
+  - `steel_guitar_rag/schema.py`
   - root `rag_*` scripts
   - unrelated smoke/eval scripts and tests
 
@@ -254,7 +254,7 @@ Read:
 - docs/handoffs/task-completions/qa-retrieval-gating-implementation.md
 
 Approved scope:
-- pocketsteel/api.py
+- steel_guitar_rag/api.py
 - retrieval-gating hunks only in tests/test_api_search.py
 - docs/handoffs/task-completions/retrieval-gating-implementation.md
 - docs/handoffs/task-completions/qa-retrieval-gating-implementation.md
@@ -312,7 +312,7 @@ Risk: medium.
 
 The retrieval-gating code path itself is small and well-covered, but commit staging is risky because the worktree is broadly dirty and `tests/test_api_search.py` has overlapping edits from prior lanes. Product readiness risk remains high enough to keep outside testers paused until the 6 remaining smoke failures are fixed and resmoked.
 
-Rollback notes: remove the `_should_gate_answer_intent(...)` branch/helper from `pocketsteel/api.py` and the new retrieval-gating test hunks if the gate needs to be backed out. No data-store rollback is involved.
+Rollback notes: remove the `_should_gate_answer_intent(...)` branch/helper from `steel_guitar_rag/api.py` and the new retrieval-gating test hunks if the gate needs to be backed out. No data-store rollback is involved.
 
 ## Suggested Next Step
 

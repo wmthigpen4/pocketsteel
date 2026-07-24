@@ -35,7 +35,7 @@ Intentionally not changed:
 - Expected backend port: `8770`
 - Expected git HEAD: `3081261` or later containing `feat: add e9 explorer home entry`
 - Version endpoint: `/api/version`
-- Version endpoint result: local tunnel target returned `{"git_sha":"3081261","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: local tunnel target returned `{"git_sha":"3081261","git_branch":"feature/answer-api","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Protected browser `/api/version` note: direct navigation to `https://app.steelguitarrag.com/api/version` was blocked by the browser automation client with `net::ERR_BLOCKED_BY_CLIENT`; the runtime version was confirmed from the local tunnel target.
 - Whether app root `/` works: not tested in this task
 - Whether app root `/` is expected to work: not the target for this task
@@ -74,7 +74,7 @@ Observed:
 {
   "git_sha": "3081261",
   "git_branch": "feature/answer-api",
-  "python_module": "pocketsteel.api",
+  "python_module": "steel_guitar_rag.api",
   "retrieval_mode": "hybrid_private_first",
   "auth_provider": "cloudflare_access"
 }

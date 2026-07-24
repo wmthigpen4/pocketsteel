@@ -14,7 +14,7 @@ At least two semantic readers must still agree. No threshold was relaxed, no val
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - this handoff
 
 ## Tests and checks
@@ -37,7 +37,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-0532-20-consensus-reader-pruning.md`
 
 ## Files that must not be staged

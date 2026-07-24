@@ -1,10 +1,10 @@
-# Pocket Steel Tab Engine QA Matrix
+# Steel Guitar RAG Tab Engine QA Matrix
 
 ## Task Summary
 
 Lane: 15 QA / Answer Eval
 
-Requested: build a QA plan and adversarial test matrix for the new deterministic Pocket Steel tab engine while Lane 05 builds the first backend slice.
+Requested: build a QA plan and adversarial test matrix for the new deterministic Steel Guitar RAG tab engine while Lane 05 builds the first backend slice.
 
 Completed:
 - Inspected repo QA/eval structure enough to identify likely future test locations.
@@ -357,5 +357,5 @@ Recommended lane: `05 Backend / RAG Integration`.
 Suggested next prompt:
 
 ```text
-Lane 05: Build the first deterministic Pocket Steel tab-engine slice using docs/handoffs/task-completions/2026-06-18-15-tab-engine-qa-matrix.md as the QA contract. Implement a structured event model, validation before rendering, string-aware pedal/lever annotation checks, fixed-width monospace rendering, and a tiny standard E9 example library. Do not wire into Chroma, SGF retrieval, corpus-private, source-inbox, deployment, DNS, or public UI. Add focused pytest coverage for renderer structure, event alignment, string-aware pedals/levers, grip limits, impossible combinations, and example-library validation.
+Lane 05: Build the first deterministic Steel Guitar RAG tab-engine slice using docs/handoffs/task-completions/2026-06-18-15-tab-engine-qa-matrix.md as the QA contract. Implement a structured event model, validation before rendering, string-aware pedal/lever annotation checks, fixed-width monospace rendering, and a tiny standard E9 example library. Do not wire into Chroma, SGF retrieval, corpus-private, source-inbox, deployment, DNS, or public UI. Add focused pytest coverage for renderer structure, event alignment, string-aware pedals/levers, grip limits, impossible combinations, and example-library validation.
 ```

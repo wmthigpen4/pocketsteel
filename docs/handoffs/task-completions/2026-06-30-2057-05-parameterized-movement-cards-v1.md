@@ -23,8 +23,8 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_tab_engine.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-30-2057-05-parameterized-movement-cards-v1.md`
@@ -94,10 +94,10 @@ Existing regressions preserved:
 
 API smoke against `http://127.0.0.1:8785/api/answer`:
 
-- `Show me a G to C move.`: PASS. Tab example `movement-g-i-iv-v1`, fretboard source `pocketsteel.answer_tab_examples`, sources `[]`, warnings `[]`.
-- `Show me a G to D move.`: PASS. Tab example `movement-g-i-v-v1`, fretboard source `pocketsteel.answer_tab_examples`, sources `[]`, warnings `[]`.
-- `Show me a 1 to 4 move in G.`: PASS. Tab example `movement-g-i-iv-v1`, fretboard source `pocketsteel.answer_tab_examples`, sources `[]`, warnings `[]`.
-- `Show me a 1 to 5 move in G.`: PASS. Tab example `movement-g-i-v-v1`, fretboard source `pocketsteel.answer_tab_examples`, sources `[]`, warnings `[]`.
+- `Show me a G to C move.`: PASS. Tab example `movement-g-i-iv-v1`, fretboard source `steel_guitar_rag.answer_tab_examples`, sources `[]`, warnings `[]`.
+- `Show me a G to D move.`: PASS. Tab example `movement-g-i-v-v1`, fretboard source `steel_guitar_rag.answer_tab_examples`, sources `[]`, warnings `[]`.
+- `Show me a 1 to 4 move in G.`: PASS. Tab example `movement-g-i-iv-v1`, fretboard source `steel_guitar_rag.answer_tab_examples`, sources `[]`, warnings `[]`.
+- `Show me a 1 to 5 move in G.`: PASS. Tab example `movement-g-i-v-v1`, fretboard source `steel_guitar_rag.answer_tab_examples`, sources `[]`, warnings `[]`.
 - `Show me a 1 4 5 1 move in G.`: PASS. Tab example `movement-g-i-iv-v-i-v1`, four matching fretboard positions, sources `[]`, warnings `[]`.
 - `How do I connect no-pedals to A+B positions?`: PASS. Defaults to G, tab example `movement-g-i-iv-v1`, matching fretboard, sources `[]`, warnings `[]`.
 - `Show me a G major grip.`: PASS. Static fretboard payload, no tab.
@@ -117,7 +117,7 @@ Note: the current UI still renders placeholder shells for source-free answers an
 ## Tests And Checks
 
 - `git status --short` - run before work and before closeout.
-- `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/answer_tab_examples.py pocketsteel/api.py pocketsteel/fretboard_examples.py` - PASS.
+- `.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/answer_tab_examples.py steel_guitar_rag/api.py steel_guitar_rag/fretboard_examples.py` - PASS.
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q` - PASS, `26 passed`.
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'tab_example or static_g_location or explicit_g_578 or Steel_King or steel_king' -q` - PASS, `19 passed, 266 deselected`.
 - `.venv/bin/python -m pytest tests/test_api_search.py -q` - PASS, `285 passed`.
@@ -150,7 +150,7 @@ Why:
 
 Rollback:
 
-- Revert the scoped commit containing `pocketsteel/answer_tab_examples.py`, `pocketsteel/api.py`, `tests/test_tab_engine.py`, `tests/test_api_search.py`, and this handoff.
+- Revert the scoped commit containing `steel_guitar_rag/answer_tab_examples.py`, `steel_guitar_rag/api.py`, `tests/test_tab_engine.py`, `tests/test_api_search.py`, and this handoff.
 
 ## Human Decision Needed
 
@@ -160,8 +160,8 @@ Protected-preview restart/smoke is still needed before marking the user-facing r
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_tab_engine.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-30-2057-05-parameterized-movement-cards-v1.md`

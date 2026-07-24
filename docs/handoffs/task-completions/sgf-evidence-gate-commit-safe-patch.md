@@ -9,7 +9,7 @@ Completed:
 - Inspected the current dirty diff and the prior Lane 05 / QA / integration handoffs.
 - Identified the exact helper-scope blocker that prevented Repo Steward from committing the approved SGF evidence gate.
 - Resolved the helper-scope issue by moving the SGF-approved basic chord/theory and chord-change helpers into a small standalone helper module.
-- Repointed `pocketsteel/answering.py` and `pocketsteel/curated_answers.py` to that standalone helper, so the SGF gate no longer depends on dirty `pocketsteel/fretboard_examples.py` helper additions.
+- Repointed `steel_guitar_rag/answering.py` and `steel_guitar_rag/curated_answers.py` to that standalone helper, so the SGF gate no longer depends on dirty `steel_guitar_rag/fretboard_examples.py` helper additions.
 - Preserved the QA-approved answer behavior for source-fragment rejection, basic chord/theory fallback, chord-quality fallback, chord-change fallback, private/placeholder identity guardrail, `/api/version`, and eval coverage.
 
 Intentionally not changed:
@@ -28,15 +28,15 @@ Intentionally not changed:
 
 Repo Steward previously stopped because the QA-approved SGF hunks in:
 
-- `pocketsteel/answering.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/curated_answers.py`
 
 imported and called:
 
 - `basic_chord_theory_answer_for_question`
 - `chord_change_answer_for_question`
 
-Those helper definitions existed only inside dirty `pocketsteel/fretboard_examples.py`. But `pocketsteel/fretboard_examples.py` and `tests/test_fretboard_examples.py` also contain broader parked fretboard-engine work and were explicitly marked as not safe for the SGF evidence commit.
+Those helper definitions existed only inside dirty `steel_guitar_rag/fretboard_examples.py`. But `steel_guitar_rag/fretboard_examples.py` and `tests/test_fretboard_examples.py` also contain broader parked fretboard-engine work and were explicitly marked as not safe for the SGF evidence commit.
 
 That made the approved scope contradictory:
 
@@ -47,7 +47,7 @@ That made the approved scope contradictory:
 
 Added:
 
-- `pocketsteel/basic_chord_answers.py`
+- `steel_guitar_rag/basic_chord_answers.py`
 
 This module contains only the minimal deterministic helpers required by the SGF evidence gate:
 
@@ -57,22 +57,22 @@ This module contains only the minimal deterministic helpers required by the SGF 
 
 Then repointed:
 
-- `pocketsteel/answering.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/curated_answers.py`
 
-to import those two helpers from `pocketsteel.basic_chord_answers`.
+to import those two helpers from `steel_guitar_rag.basic_chord_answers`.
 
-The parked `pocketsteel/fretboard_examples.py` diff still exists in the working tree, but the SGF commit-safe patch no longer depends on staging it.
+The parked `steel_guitar_rag/fretboard_examples.py` diff still exists in the working tree, but the SGF commit-safe patch no longer depends on staging it.
 
 ## Files Changed
 
 Commit-safe SGF slice files:
 
-- `pocketsteel/basic_chord_answers.py` (new)
-- `pocketsteel/answer_contracts.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/basic_chord_answers.py` (new)
+- `steel_guitar_rag/answer_contracts.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
 - `scripts/run_answer_eval.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/sgf-evidence-not-primary-answer-text-implementation.md`
@@ -81,7 +81,7 @@ Commit-safe SGF slice files:
 
 Still dirty but parked / not part of the commit-safe SGF slice:
 
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_fretboard_examples.py`
 - `ui/steel-guitar-rag-mock.html`
 - `deploy/landing/index.html`
@@ -121,7 +121,7 @@ git status --short
 git diff --name-only
 git diff --stat
 git diff --check
-.venv/bin/python -m py_compile pocketsteel/basic_chord_answers.py pocketsteel/answering.py pocketsteel/curated_answers.py
+.venv/bin/python -m py_compile steel_guitar_rag/basic_chord_answers.py steel_guitar_rag/answering.py steel_guitar_rag/curated_answers.py
 .venv/bin/python -m pytest tests/test_api_search.py -k "unknown_person_identity or primary_answer_gate or rootless_chord_quality or major_seventh or chord_change or suspended_chord or basic_chord_definition or smoke_ready_chord_fretboard"
 .venv/bin/python -m pytest tests/test_answer_intent_classifier.py tests/test_answer_eval.py tests/test_api_contract.py tests/test_api_search.py tests/test_full_answer_quality_eval.py
 .venv/bin/python scripts/run_answer_eval.py --help
@@ -152,18 +152,18 @@ Recommended: Lane 15 quick re-check is prudent because code changed materially f
 Expected QA scope:
 
 - Confirm the same SGF-focused prompts still pass.
-- Confirm `pocketsteel/fretboard_examples.py` is no longer required for the SGF commit.
+- Confirm `steel_guitar_rag/fretboard_examples.py` is no longer required for the SGF commit.
 - Confirm full pytest still has only the two unrelated static/UI failures.
 
 ## Exact Files / Hunks Repo Steward Can Stage If Approved
 
 Repo Steward can stage exact SGF hunks in:
 
-- `pocketsteel/basic_chord_answers.py`
-- `pocketsteel/answer_contracts.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/basic_chord_answers.py`
+- `steel_guitar_rag/answer_contracts.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
 - `scripts/run_answer_eval.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/sgf-evidence-not-primary-answer-text-implementation.md`
@@ -172,16 +172,16 @@ Repo Steward can stage exact SGF hunks in:
 
 Important hunk guidance:
 
-- In `pocketsteel/answering.py`, stage the import from `pocketsteel.basic_chord_answers`, the rootless/generic fretboard import already present in clean HEAD scope, SGF chatter filtering, and deterministic fallback loop.
-- In `pocketsteel/curated_answers.py`, stage the import from `pocketsteel.basic_chord_answers`, calls to `basic_chord_theory_answer_for_question` and `chord_change_answer_for_question`, and the private/placeholder identity guardrail.
-- Do not stage the unrelated dirty `pocketsteel/fretboard_examples.py` helper additions. They are no longer required by the SGF patch.
+- In `steel_guitar_rag/answering.py`, stage the import from `steel_guitar_rag.basic_chord_answers`, the rootless/generic fretboard import already present in clean HEAD scope, SGF chatter filtering, and deterministic fallback loop.
+- In `steel_guitar_rag/curated_answers.py`, stage the import from `steel_guitar_rag.basic_chord_answers`, calls to `basic_chord_theory_answer_for_question` and `chord_change_answer_for_question`, and the private/placeholder identity guardrail.
+- Do not stage the unrelated dirty `steel_guitar_rag/fretboard_examples.py` helper additions. They are no longer required by the SGF patch.
 - Do not stage `tests/test_fretboard_examples.py`; the matching SGF behavior is covered in `tests/test_api_search.py`.
 
 ## Files / Hunks That Must Remain Parked
 
 Do not stage unless a separate lane approves them:
 
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_fretboard_examples.py`
 - `ui/steel-guitar-rag-mock.html`
 - `deploy/landing/index.html`
@@ -218,7 +218,7 @@ Why:
 
 Rollback notes:
 
-- If needed, revert the exact SGF commit containing `pocketsteel/basic_chord_answers.py` and the import/call-site changes.
+- If needed, revert the exact SGF commit containing `steel_guitar_rag/basic_chord_answers.py` and the import/call-site changes.
 - Do not use destructive cleanup commands against the dirty worktree.
 
 ## Commit Readiness
@@ -228,7 +228,7 @@ Needs human review first.
 Reason:
 
 - Behavior is preserved and the helper-scope blocker is resolved.
-- Because the code changed materially from the prior QA-approved dirty implementation by introducing `pocketsteel/basic_chord_answers.py`, Lane 15 should do a quick re-check before Repo Steward commits.
+- Because the code changed materially from the prior QA-approved dirty implementation by introducing `steel_guitar_rag/basic_chord_answers.py`, Lane 15 should do a quick re-check before Repo Steward commits.
 
 ## Exact Next Prompt
 
@@ -242,12 +242,12 @@ Re-check the commit-safe SGF Evidence Is Not Primary Answer Text patch.
 Read:
 - docs/handoffs/task-completions/sgf-evidence-gate-commit-safe-patch.md
 - docs/handoffs/task-completions/qa-sgf-evidence-not-primary-answer-text.md
-- git diff -- pocketsteel/basic_chord_answers.py pocketsteel/answer_contracts.py pocketsteel/answering.py pocketsteel/api.py pocketsteel/curated_answers.py scripts/run_answer_eval.py tests/test_api_search.py
+- git diff -- steel_guitar_rag/basic_chord_answers.py steel_guitar_rag/answer_contracts.py steel_guitar_rag/answering.py steel_guitar_rag/api.py steel_guitar_rag/curated_answers.py scripts/run_answer_eval.py tests/test_api_search.py
 
 Verify:
 - The SGF evidence gate behavior is unchanged.
-- The new `pocketsteel/basic_chord_answers.py` resolves the helper-scope blocker.
-- `pocketsteel/fretboard_examples.py` and `tests/test_fretboard_examples.py` are no longer required for this SGF commit.
+- The new `steel_guitar_rag/basic_chord_answers.py` resolves the helper-scope blocker.
+- `steel_guitar_rag/fretboard_examples.py` and `tests/test_fretboard_examples.py` are no longer required for this SGF commit.
 - Focused SGF/API/eval tests pass.
 - Full pytest still has only the unrelated static/UI failures, if rerun.
 
@@ -262,18 +262,18 @@ Lane 01 Repo Steward
 QA approved the commit-safe SGF Evidence Is Not Primary Answer Text patch. Proceed under Repo Steward auto-approval with exact-hunk staging only.
 
 Stage only:
-- pocketsteel/basic_chord_answers.py
-- approved SGF hunks in pocketsteel/answer_contracts.py
-- approved SGF hunks in pocketsteel/answering.py
-- approved /api/version hunks in pocketsteel/api.py
-- approved SGF/private-identity hunks in pocketsteel/curated_answers.py
+- steel_guitar_rag/basic_chord_answers.py
+- approved SGF hunks in steel_guitar_rag/answer_contracts.py
+- approved SGF hunks in steel_guitar_rag/answering.py
+- approved /api/version hunks in steel_guitar_rag/api.py
+- approved SGF/private-identity hunks in steel_guitar_rag/curated_answers.py
 - approved eval-pattern hunks in scripts/run_answer_eval.py
 - approved tests in tests/test_api_search.py
 - docs/handoffs/task-completions/sgf-evidence-not-primary-answer-text-implementation.md
 - docs/handoffs/task-completions/qa-sgf-evidence-not-primary-answer-text.md
 - docs/handoffs/task-completions/sgf-evidence-gate-commit-safe-patch.md
 
-Do not stage pocketsteel/fretboard_examples.py, tests/test_fretboard_examples.py, UI/static/corpus/source-inbox/deploy/design/private/generated files, or unrelated docs.
+Do not stage steel_guitar_rag/fretboard_examples.py, tests/test_fretboard_examples.py, UI/static/corpus/source-inbox/deploy/design/private/generated files, or unrelated docs.
 
 Run staged diff checks and focused backend/eval tests before committing. Stop with a blocker handoff if any unrelated hunk cannot be isolated.
 ```

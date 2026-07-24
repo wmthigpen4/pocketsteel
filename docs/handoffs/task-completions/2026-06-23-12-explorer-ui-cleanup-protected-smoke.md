@@ -78,7 +78,7 @@ Restart path:
 After refresh:
 
 ```json
-{"git_sha":"e1103be","git_branch":"feature/answer-api","server_started_at":"2026-06-23T21:25:20.927452+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
+{"git_sha":"e1103be","git_branch":"feature/answer-api","server_started_at":"2026-06-23T21:25:20.927452+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
 ```
 
 Listener:

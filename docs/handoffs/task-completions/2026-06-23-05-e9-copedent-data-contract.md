@@ -44,7 +44,7 @@ Intentionally not changed:
 
 New module:
 
-- `pocketsteel/e9_copedents.py`
+- `steel_guitar_rag/e9_copedents.py`
 
 Key helpers:
 
@@ -105,12 +105,12 @@ My Copedent:
 
 Created:
 
-- `pocketsteel/e9_copedents.py`
+- `steel_guitar_rag/e9_copedents.py`
 - `docs/handoffs/task-completions/2026-06-23-05-e9-copedent-data-contract.md`
 
 Changed:
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 
 Deleted:
@@ -126,7 +126,7 @@ Generated artifacts:
 Passed:
 
 - `git diff --check`
-- `.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/fretboard_examples.py pocketsteel/fretboard_explorer.py pocketsteel/tab_engine.py pocketsteel/answer_intent_classifier.py pocketsteel/e9_copedents.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/fretboard_explorer.py steel_guitar_rag/tab_engine.py steel_guitar_rag/answer_intent_classifier.py steel_guitar_rag/e9_copedents.py`
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q`
   - `37 passed`
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`
@@ -152,7 +152,7 @@ Low to medium.
 
 Rollback:
 
-- Revert the scoped commit containing `pocketsteel/e9_copedents.py`, `pocketsteel/fretboard_explorer.py`, and `tests/test_fretboard_explorer.py`.
+- Revert the scoped commit containing `steel_guitar_rag/e9_copedents.py`, `steel_guitar_rag/fretboard_explorer.py`, and `tests/test_fretboard_explorer.py`.
 
 ## Blockers
 
@@ -162,8 +162,8 @@ Lane 06 must still render the selector/chart and decide whether static Explorer 
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-23-05-e9-copedent-data-contract.md`
 

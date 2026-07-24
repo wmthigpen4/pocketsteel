@@ -45,14 +45,14 @@ Evidence before fix:
 ## What Changed
 
 Files changed:
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-1302-05-fix-displayed-harmonized-scale-fallback.md`
 
 Implementation details:
-- Added a narrow G harmonized-scale visual recognizer in `pocketsteel/answer_intent_classifier.py`.
+- Added a narrow G harmonized-scale visual recognizer in `steel_guitar_rag/answer_intent_classifier.py`.
 - The recognizer covers:
   - `Show me a G harmonized scale.`
   - `Show me G major harmonized scale on E9.`
@@ -71,7 +71,7 @@ Implementation details:
   - `needs_copedent=true`
   - `retrieval_allowed=false`
   - `allowed_answer_shape=copedent_position`
-- Added the same visual recognizer to `pocketsteel/curated_answers.py` for the legacy `intent_mode_for_question` path.
+- Added the same visual recognizer to `steel_guitar_rag/curated_answers.py` for the legacy `intent_mode_for_question` path.
 - Strengthened the same-origin browser-equivalent API test to assert `FakeSearchIndex.calls == []`, proving the deterministic path wins before retrieval.
 
 ## Prompt Results After Fix
@@ -117,7 +117,7 @@ Run and passed:
 - `git diff --check`
 - `node --check ui/answer-client.js`
 - `node --check ui/pedal-steel-fretboard.js`
-- `.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/curated_answers.py pocketsteel/fretboard_examples.py pocketsteel/fretboard_explorer.py pocketsteel/answer_intent_classifier.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/curated_answers.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/fretboard_explorer.py steel_guitar_rag/answer_intent_classifier.py`
 - `.venv/bin/python -m pytest tests/test_answer_intent_classifier.py -q`
   - `86 passed`
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q`
@@ -186,8 +186,8 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-1302-05-fix-displayed-harmonized-scale-fallback.md`

@@ -177,7 +177,7 @@ Does not require rebuild and re-embedding:
 ## Recommended Phase 3B Implementation Prompt
 
 ```text
-Begin Phase 3B cleaner/classifier for The Turnaround corpus_v2.
+Begin Phase 3B cleaner/classifier for Steel Guitar RAG corpus_v2.
 
 This is YELLOW. Stop after presenting the implementation plan and proposed diff unless explicitly approved to apply it.
 

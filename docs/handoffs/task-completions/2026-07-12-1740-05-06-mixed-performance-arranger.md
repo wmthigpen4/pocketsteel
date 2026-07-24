@@ -11,8 +11,8 @@
 
 ## Files changed
 
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/tab_engine.py`
 - `ui/answer-client.js`
 - `ui/melody-score.js`
 - `ui/melody-workbench.js`

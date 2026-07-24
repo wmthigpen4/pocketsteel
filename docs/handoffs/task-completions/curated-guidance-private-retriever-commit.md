@@ -29,7 +29,7 @@ Intentionally not changed:
 - `scripts/ingest/build_curated_guidance_corpus.py`
 - `scripts/ingest/validate_curated_guidance_corpus.py`
 - `scripts/eval/eval_curated_guidance_retrieval.py`
-- `pocketsteel/curated_guidance_retriever.py`
+- `steel_guitar_rag/curated_guidance_retriever.py`
 - `tests/test_curated_guidance_retriever.py`
 - `docs/handoffs/task-completions/curated-guidance-inventory.md`
 - `docs/handoffs/task-completions/curated-guidance-ingestion-spike.md`
@@ -62,13 +62,13 @@ Broad pre-existing parked work remains unstaged, including:
 git status --short
 git diff --check
 sed -n '1,260p' docs/handoffs/task-completions/curated-guidance-private-retriever-qa.md
-git diff --name-only -- scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py pocketsteel/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py docs/handoffs/task-completions/curated-guidance-inventory.md docs/handoffs/task-completions/curated-guidance-ingestion-spike.md docs/handoffs/task-completions/curated-guidance-qa-retrieval-eval.md docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md docs/handoffs/task-completions/curated-guidance-private-retriever-qa.md
+git diff --name-only -- scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py steel_guitar_rag/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py docs/handoffs/task-completions/curated-guidance-inventory.md docs/handoffs/task-completions/curated-guidance-ingestion-spike.md docs/handoffs/task-completions/curated-guidance-qa-retrieval-eval.md docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md docs/handoffs/task-completions/curated-guidance-private-retriever-qa.md
 .venv/bin/python -m pytest tests/test_curated_guidance_retriever.py -q
-.venv/bin/python -m py_compile pocketsteel/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py
+.venv/bin/python -m py_compile steel_guitar_rag/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py
 .venv/bin/python scripts/eval/eval_curated_guidance_retrieval.py
 git check-ignore -v corpus-private/curated-guidance/normalized/curated-guidance-documents.jsonl corpus-private/reports/curated-guidance-retrieval-eval.md corpus-private/reports/curated-guidance-retrieval-eval.json
 git diff --check
-git add -- scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py pocketsteel/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py docs/handoffs/task-completions/curated-guidance-inventory.md docs/handoffs/task-completions/curated-guidance-ingestion-spike.md docs/handoffs/task-completions/curated-guidance-qa-retrieval-eval.md docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md docs/handoffs/task-completions/curated-guidance-private-retriever-qa.md
+git add -- scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py steel_guitar_rag/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py docs/handoffs/task-completions/curated-guidance-inventory.md docs/handoffs/task-completions/curated-guidance-ingestion-spike.md docs/handoffs/task-completions/curated-guidance-qa-retrieval-eval.md docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md docs/handoffs/task-completions/curated-guidance-private-retriever-qa.md
 git diff --cached --check
 git diff --cached --name-only
 git diff --cached --stat
@@ -112,7 +112,7 @@ Recommended lane: 05 Backend / RAG Integration or 15 QA / Answer Eval, only when
 Suggested prompt:
 
 ```text
-Plan the next curated_guidance integration slice without wiring it into production by default. Read pocketsteel/curated_guidance_retriever.py and the curated guidance handoffs. Preserve ENABLE_CURATED_GUIDANCE_RETRIEVAL default-off behavior, keep private-review gating, do not expose input_path to request/user input, and do not touch corpus-private generated outputs, Chroma/vector stores, embeddings, deployment, auth, DNS, UI, or source-inbox. Stop after a plan unless implementation is explicitly requested.
+Plan the next curated_guidance integration slice without wiring it into production by default. Read steel_guitar_rag/curated_guidance_retriever.py and the curated guidance handoffs. Preserve ENABLE_CURATED_GUIDANCE_RETRIEVAL default-off behavior, keep private-review gating, do not expose input_path to request/user input, and do not touch corpus-private generated outputs, Chroma/vector stores, embeddings, deployment, auth, DNS, UI, or source-inbox. Stop after a plan unless implementation is explicitly requested.
 ```
 
 ## Commit Readiness

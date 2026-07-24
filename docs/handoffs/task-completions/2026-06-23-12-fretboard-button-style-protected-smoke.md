@@ -79,7 +79,7 @@ Restart path:
 After refresh:
 
 ```json
-{"git_sha":"fd342b9","git_branch":"feature/answer-api","server_started_at":"2026-06-23T21:52:52.686704+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
+{"git_sha":"fd342b9","git_branch":"feature/answer-api","server_started_at":"2026-06-23T21:52:52.686704+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
 ```
 
 Listener:

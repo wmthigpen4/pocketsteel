@@ -66,10 +66,10 @@
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_model.py`
-- `pocketsteel/melody_decision_rules.py`
-- `pocketsteel/melody_ranker.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/amazing_tablature_model.py`
+- `steel_guitar_rag/melody_decision_rules.py`
+- `steel_guitar_rag/melody_ranker.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_copedent_transfer.py`
 - `tests/test_melody_arranger_decision_fixtures.py`

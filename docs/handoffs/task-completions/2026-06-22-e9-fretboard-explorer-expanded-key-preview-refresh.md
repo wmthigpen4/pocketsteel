@@ -24,7 +24,7 @@ The protected-preview process was restarted with the documented private-preview 
 - Expected backend port: `8770`
 - Expected git HEAD: `d4b26ad` or later containing the expanded-key Explorer UI
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"d4b26ad","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"d4b26ad","git_branch":"feature/answer-api","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Whether app root `/` works: not tested for this task
 - Whether app root `/` is expected to work: not required for this Explorer route smoke
 - Whether `/ui/steel-guitar-rag-mock.html` works: not tested for this task
@@ -59,7 +59,7 @@ Pass. The private-preview process was restarted in a detached `screen` session:
 
 - Session: `steel-rag-private-preview`
 - Listener: `127.0.0.1:8770`
-- Process module: `pocketsteel.api`
+- Process module: `steel_guitar_rag.api`
 - Auth provider: `cloudflare_access`
 - Retrieval mode: `hybrid_private_first`
 

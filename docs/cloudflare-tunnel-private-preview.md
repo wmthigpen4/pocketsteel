@@ -2,7 +2,8 @@
 
 Task mode: GREEN docs-only planning. This checklist must not deploy anything, change DNS, expose Ollama, expose Chroma, run scraping, regenerate embeddings, reset Chroma, or modify vector data.
 
-User-facing app name: The Turnaround. Keep `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names.
+User-facing app name: Steel Guitar RAG. Use `steel_guitar_rag` for Python
+packages/imports and `steel-guitar-rag` for distribution and URL slugs.
 
 Current branch when this checklist was created: `feature/answer-api`.
 

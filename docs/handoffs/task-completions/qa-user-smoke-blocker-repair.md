@@ -47,7 +47,7 @@ Smoke Target:
 - Expected backend port: 8784
 - Expected git HEAD: 97071e6
 - Version endpoint: http://127.0.0.1:8784/api/version
-- Version endpoint result: {"git_sha":"97071e6","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"scaffold"}
+- Version endpoint result: {"git_sha":"97071e6","git_branch":"feature/answer-api","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"scaffold"}
 - If version endpoint missing, how version is inferred: not needed; endpoint was available
 - Whether app root `/` works: yes, returned HTTP 200 and the UI HTML
 - Whether app root `/` is expected to work: yes for this local smoke server
@@ -153,18 +153,18 @@ Browser-verified on `How do I play a G chord on the E9?`:
 
 ## Screenshots
 
-Transient screenshots were captured under `/tmp/pocketsteel-qa-user-smoke-blocker-repair/`:
+Transient screenshots were captured under `/tmp/steel_guitar_rag-qa-user-smoke-blocker-repair/`:
 
-- `/tmp/pocketsteel-qa-user-smoke-blocker-repair/how-do-i-play-a-g-chord-on-the-e9-final.png`
-- `/tmp/pocketsteel-qa-user-smoke-blocker-repair/show-me-the-fretboard-final.png`
-- `/tmp/pocketsteel-qa-user-smoke-blocker-repair/what-s-it-mean-for-a-song-to-be-a-swing-or-a-waltz-final.png`
-- `/tmp/pocketsteel-qa-user-smoke-blocker-repair/what-is-the-capital-of-france-final.png`
-- `/tmp/pocketsteel-qa-user-smoke-blocker-repair/g-chord-filter-no-match.png`
+- `/tmp/steel_guitar_rag-qa-user-smoke-blocker-repair/how-do-i-play-a-g-chord-on-the-e9-final.png`
+- `/tmp/steel_guitar_rag-qa-user-smoke-blocker-repair/show-me-the-fretboard-final.png`
+- `/tmp/steel_guitar_rag-qa-user-smoke-blocker-repair/what-s-it-mean-for-a-song-to-be-a-swing-or-a-waltz-final.png`
+- `/tmp/steel_guitar_rag-qa-user-smoke-blocker-repair/what-is-the-capital-of-france-final.png`
+- `/tmp/steel_guitar_rag-qa-user-smoke-blocker-repair/g-chord-filter-no-match.png`
 
 Transient machine-readable smoke output:
 
-- `/tmp/pocketsteel-qa-user-smoke-blocker-repair/browser-smoke-results-final.json`
-- `/tmp/pocketsteel-qa-user-smoke-blocker-repair/browser-smoke-results.json`
+- `/tmp/steel_guitar_rag-qa-user-smoke-blocker-repair/browser-smoke-results-final.json`
+- `/tmp/steel_guitar_rag-qa-user-smoke-blocker-repair/browser-smoke-results.json`
 
 ## Tests And Checks
 
@@ -217,9 +217,9 @@ No implementation files were modified by this QA task.
 
 Approved for Repo Steward exact-path or hunk-level staging, assuming the diffs match the corresponding Lane 05/Lane 06 handoffs:
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
@@ -286,9 +286,9 @@ Branch: feature/answer-api
 Commit the QA-approved user-smoke blocker repair slices only.
 
 Approved files:
-- pocketsteel/answer_intent_classifier.py
-- pocketsteel/fretboard_examples.py
-- pocketsteel/curated_answers.py
+- steel_guitar_rag/answer_intent_classifier.py
+- steel_guitar_rag/fretboard_examples.py
+- steel_guitar_rag/curated_answers.py
 - tests/test_answer_intent_classifier.py
 - tests/test_fretboard_examples.py
 - tests/test_api_search.py

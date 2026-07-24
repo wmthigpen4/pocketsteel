@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pocketsteel.amazing_tablature_transition_decoder import (
+from steel_guitar_rag.amazing_tablature_transition_decoder import (
     TRANSITION_FEATURE_SCHEMA_VERSION,
     classify_transition,
     train_transition_decoder,

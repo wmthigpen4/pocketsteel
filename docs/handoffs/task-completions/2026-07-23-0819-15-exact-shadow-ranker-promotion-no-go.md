@@ -227,8 +227,8 @@ separate explicit decision.
 
 Implementation commit:
 
-- `pocketsteel/amazing_tablature_model.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/amazing_tablature_model.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_amazing_tablature_model.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
 - `docs/handoffs/task-completions/2026-07-23-0733-05-shadow-ranker-artifact-loader.md`

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pocketsteel.schema import read_jsonl
+from steel_guitar_rag.schema import read_jsonl
 from scripts.build_clean_corpus import expand_inputs, iter_clean_records
 
 

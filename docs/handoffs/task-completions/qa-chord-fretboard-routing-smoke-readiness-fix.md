@@ -119,11 +119,11 @@ Browser URL:
 - `http://127.0.0.1:8781/ui/steel-guitar-rag-mock.html?access=beta_user&v=qa-chord-fretboard-routing-smoke-readiness-fix`
 
 Smoke artifacts:
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/browser-smoke-results.json`
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/browser-smoke-results-adjusted.json`
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/screenshots/g-chord-on-e9.png`
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/screenshots/show-me-the-fretboard.png`
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/screenshots/d-chord-across-e9.png`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/browser-smoke-results.json`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/browser-smoke-results-adjusted.json`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/screenshots/g-chord-on-e9.png`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/screenshots/show-me-the-fretboard.png`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/screenshots/d-chord-across-e9.png`
 
 The local smoke server was stopped after testing.
 
@@ -192,36 +192,36 @@ Changed by this QA task:
 - `docs/handoffs/task-completions/qa-chord-fretboard-routing-smoke-readiness-fix.md`
 
 Generated artifacts:
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/browser-smoke-results.json`
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/browser-smoke-results-adjusted.json`
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/screenshots/g-chord-on-e9.png`
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/screenshots/show-me-the-fretboard.png`
-- `/tmp/pocketsteel-chord-fretboard-routing-smoke/screenshots/d-chord-across-e9.png`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/browser-smoke-results.json`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/browser-smoke-results-adjusted.json`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/screenshots/g-chord-on-e9.png`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/screenshots/show-me-the-fretboard.png`
+- `/tmp/steel_guitar_rag-chord-fretboard-routing-smoke/screenshots/d-chord-across-e9.png`
 
 Implementation/test files inspected:
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/answer_contracts.py`
 - `tests/test_api_search.py`
 - answer-eval tests and question bank docs
 
 ## Exact files approved for commit
 Approved for this chord/fretboard routing smoke-readiness slice only:
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/chord-fretboard-routing-smoke-readiness-fix.md`
 - `docs/handoffs/task-completions/qa-chord-fretboard-routing-smoke-readiness-fix.md`
 
 ## Hunks needing careful staging
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - parser patterns for `where do I play`, `on the E9`, and `Where the the <root> chords`
   - default payload route for `Show me the fretboard`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - source-free default teacher-first answer for `Show me the fretboard`
 - `tests/test_fretboard_examples.py`
   - smoke-ready prompt variant payload tests
@@ -232,7 +232,7 @@ Approved for this chord/fretboard routing smoke-readiness slice only:
 
 ## Files that should remain parked
 Do not stage these for this slice unless separately approved:
-- `pocketsteel/api.py` version endpoint work from another lane.
+- `steel_guitar_rag/api.py` version endpoint work from another lane.
 - UI files currently dirty in the shared worktree, including `ui/pedal-steel-fretboard.js`, `ui/steel-guitar-rag-mock.html`, and `ui/steel-guitar-rag-landing.html`.
 - `public/`, `ui/brand/`, `Neon Sign/`, raw design assets.
 - `corpus-private/`, `corpus-v2/`, Chroma/vector stores, embeddings, generated reports/data.
@@ -289,8 +289,8 @@ Use:
 - docs/handoffs/task-completions/qa-chord-fretboard-routing-smoke-readiness-fix.md
 
 Approved files:
-- pocketsteel/fretboard_examples.py
-- pocketsteel/curated_answers.py
+- steel_guitar_rag/fretboard_examples.py
+- steel_guitar_rag/curated_answers.py
 - tests/test_fretboard_examples.py
 - tests/test_api_search.py
 - docs/handoffs/task-completions/chord-fretboard-routing-smoke-readiness-fix.md
@@ -300,7 +300,7 @@ Carefully hunk-stage only:
 - parser/default-fretboard route hunks for G-on-E9, where-do-I-play, typo G chords, and Show me the fretboard
 - associated deterministic answer block and focused tests
 
-Do not stage pocketsteel/api.py version endpoint work, UI files, corpus/private/vector/source-inbox/provenance/legal/deploy/design assets, generated reports, or unrelated dirty files.
+Do not stage steel_guitar_rag/api.py version endpoint work, UI files, corpus/private/vector/source-inbox/provenance/legal/deploy/design assets, generated reports, or unrelated dirty files.
 
 After commit, request Lane 12 protected-preview restart/version verification before outside user smoke.
 ```

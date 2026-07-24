@@ -6,7 +6,7 @@ Requested: fix deterministic answer-triggered tab examples so safe tab prompts a
 
 Completed:
 
-- Added a tab-derived fretboard payload builder in `pocketsteel.answer_tab_examples`.
+- Added a tab-derived fretboard payload builder in `steel_guitar_rag.answer_tab_examples`.
 - Wired `/api/answer` to attach that fretboard payload when a validated deterministic tab example is attached and no earlier fretboard exists.
 - Revised the beginner G lick A+B press event to only include strings 5 and 6, the strings actually changed by A+B in the compact partial move.
 - Revised the G-to-C tab example to label the A+B event as a `C partial`.
@@ -23,9 +23,9 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/tab_engine.py`
 - `tests/test_api_search.py`
 - `tests/test_tab_engine.py`
 - `docs/handoffs/task-completions/2026-06-18-05-tab-example-fretboard-payload-and-lick-fix.md`
@@ -46,7 +46,7 @@ The tab-derived fretboard payload:
 
 - uses existing `e9-fretboard-diagram` shape,
 - includes `positions` and `highlights`,
-- uses `sourceContext.sourceId = pocketsteel.answer_tab_examples`,
+- uses `sourceContext.sourceId = steel_guitar_rag.answer_tab_examples`,
 - emits no raw UI geometry,
 - derives frets/strings/pedals/levers from validated tab events.
 
@@ -67,7 +67,7 @@ Blocked/unsupported prompts still do not attach tab/fretboard:
 Run and passed:
 
 - `git diff --check`
-- `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py`
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`
   - `22 passed`
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q`
@@ -106,9 +106,9 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/tab_engine.py`
 - `tests/test_api_search.py`
 - `tests/test_tab_engine.py`
 - `docs/handoffs/task-completions/2026-06-18-05-tab-example-fretboard-payload-and-lick-fix.md`

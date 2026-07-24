@@ -17,7 +17,7 @@ review is repeated or rewritten.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_training.py`
 - This handoff.
 
@@ -29,7 +29,7 @@ display, and derivative-rule publication remain disabled.
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py` — PASS, 36 tests.
-- `git diff --check -- pocketsteel/amazing_tablature_training.py tests/test_amazing_tablature_training.py` — PASS.
+- `git diff --check -- steel_guitar_rag/amazing_tablature_training.py tests/test_amazing_tablature_training.py` — PASS.
 
 ## Integration notes
 
@@ -51,7 +51,7 @@ authorized batches.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-22-1711-20-rights-extension-lineage.md`
 

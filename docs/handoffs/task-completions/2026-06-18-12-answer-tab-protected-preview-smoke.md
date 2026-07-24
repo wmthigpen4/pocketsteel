@@ -126,7 +126,7 @@ STEEL_RAG_RETRIEVAL_DEBUG=false \
 Restart evidence:
 
 - Process listening: `Python` PID `20100` on `127.0.0.1:8770`.
-- Process cwd: `~/Documents/Pocket Steel`.
+- Process cwd: `~/Documents/Steel Guitar RAG`.
 - `/api/version` reported `git_sha: af645c9`, `git_branch: feature/answer-api`, `server_started_at: 2026-06-18T21:32:04.420792+00:00`, `retrieval_mode: hybrid_private_first`, `auth_provider: cloudflare_access`.
 
 ## Local API Smoke Results

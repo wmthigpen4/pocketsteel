@@ -120,7 +120,7 @@ Protected-preview smoke:
 - Expected backend port: `8770`
 - Expected git HEAD: `64f9fff`
 - Version endpoint: `http://127.0.0.1:8770/api/version`
-- Version endpoint result: `{"git_sha":"4040a47","git_branch":"feature/answer-api","server_started_at":"2026-06-26T01:51:23.747502+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"4040a47","git_branch":"feature/answer-api","server_started_at":"2026-06-26T01:51:23.747502+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - If version endpoint missing, how version is inferred: not applicable
 - Whether app root `/` works: not checked for this direct Explorer slice
 - Whether app root `/` is expected to work: yes, but root behavior was not part of this smoke

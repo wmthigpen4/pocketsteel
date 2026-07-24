@@ -9,7 +9,7 @@ Requested: QA the revised Lane 05 teaching-intent specificity fix and verify it 
 Completed:
 - Read `AGENTS.md` guidance from the active prompt context.
 - Reviewed the revised Lane 05 handoff and the prior failed Lane 15 QA handoff.
-- Reviewed the scoped routing and test changes in `pocketsteel/answer_intent_classifier.py`, `pocketsteel/curated_answers.py`, `tests/test_answer_intent_classifier.py`, and `tests/test_api_search.py`.
+- Reviewed the scoped routing and test changes in `steel_guitar_rag/answer_intent_classifier.py`, `steel_guitar_rag/curated_answers.py`, `tests/test_answer_intent_classifier.py`, and `tests/test_api_search.py`.
 - Ran the requested focused checks.
 - Re-ran the prior QA-blocking regression tests.
 - Ran API-fallback smoke for all 12 requested prompts with answer snippets capped to 500 characters in this report.
@@ -135,7 +135,7 @@ Result:
 - Passed: `64 passed`.
 
 ```bash
-.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/answer_intent_classifier.py pocketsteel/curated_answers.py pocketsteel/curated_guidance_retriever.py
+.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/answer_intent_classifier.py steel_guitar_rag/curated_answers.py steel_guitar_rag/curated_guidance_retriever.py
 ```
 
 Result:
@@ -161,9 +161,9 @@ Changed by this QA task:
 - `docs/handoffs/task-completions/2026-06-14-15-teaching-intent-specificity-revision-qa.md`
 
 Reviewed but not modified by this QA task:
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `tests/test_answer_eval.py`
@@ -179,8 +179,8 @@ Generated artifacts:
 
 QA approves exact-path staging for this revised slice:
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-14-05-teaching-intent-specificity-fixes.md`
@@ -220,7 +220,7 @@ Why:
 - The worktree is broadly dirty, so exact-path staging is essential.
 
 Rollback notes:
-- Revert scoped changes in `pocketsteel/answer_intent_classifier.py`, `pocketsteel/curated_answers.py`, `tests/test_answer_intent_classifier.py`, and `tests/test_api_search.py`.
+- Revert scoped changes in `steel_guitar_rag/answer_intent_classifier.py`, `steel_guitar_rag/curated_answers.py`, `tests/test_answer_intent_classifier.py`, and `tests/test_api_search.py`.
 - No corpus, Chroma, UI, auth, deployment, scraper, or private-data rollback is involved.
 
 ## Human Decision Needed

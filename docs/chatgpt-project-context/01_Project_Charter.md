@@ -2,7 +2,7 @@
 
 ## Product Name
 
-The working project identity is Pocket Steel / Steel Guitar RAG. The user-facing app name in repo guidance is The Turnaround. Do not perform a broad rename without explicit approval.
+The working project identity is Steel Guitar RAG / Steel Guitar RAG. The user-facing app name in repo guidance is Steel Guitar RAG. Do not perform a broad rename without explicit approval.
 
 ## Purpose
 

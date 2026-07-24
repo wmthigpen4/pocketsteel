@@ -72,7 +72,7 @@ Result:
   "git_sha": "140a7c1",
   "git_branch": "feature/answer-api",
   "server_started_at": "2026-06-23T15:22:17.830791+00:00",
-  "python_module": "pocketsteel.api",
+  "python_module": "steel_guitar_rag.api",
   "retrieval_mode": "hybrid_private_first",
   "auth_provider": "cloudflare_access"
 }

@@ -16,11 +16,11 @@ Intentionally unchanged: retrieval data/model contents, corpus/vector stores, au
 
 ## Files changed
 
-- `pocketsteel/api.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/melody_import.py`
-- `pocketsteel/runtime_server.py` (new)
-- `pocketsteel/static_files.py` (new)
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/melody_import.py`
+- `steel_guitar_rag/runtime_server.py` (new)
+- `steel_guitar_rag/static_files.py` (new)
 - `scripts/serve_answer_smoke.py`
 - `scripts/serve_v2_rerank_smoke.py`
 - `scripts/build_explorer_static_chunks.py` (new)
@@ -70,11 +70,11 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/api.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/melody_import.py`
-- `pocketsteel/runtime_server.py`
-- `pocketsteel/static_files.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/melody_import.py`
+- `steel_guitar_rag/runtime_server.py`
+- `steel_guitar_rag/static_files.py`
 - `scripts/serve_answer_smoke.py`
 - `scripts/serve_v2_rerank_smoke.py`
 - `scripts/build_explorer_static_chunks.py`

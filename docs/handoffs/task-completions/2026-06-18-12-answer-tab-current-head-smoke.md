@@ -50,7 +50,7 @@ Intentionally not changed:
 - Runtime includes `425e14c`: yes
 - Protected-preview process:
   - Listening on `127.0.0.1:8770`
-  - CWD verified as `/Users/cory/Documents/Pocket Steel`
+  - CWD verified as `/Users/cory/Documents/Steel Guitar RAG`
   - Command used the documented private-preview server script: `scripts/serve_v2_rerank_smoke.py`
 - Local-dev smoke server:
   - Temporarily started on `127.0.0.1:8781`
@@ -150,7 +150,7 @@ Passed:
 - `git diff --check`
 - `node --check ui/answer-client.js`
 - `node --check ui/pedal-steel-fretboard.js`
-- `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py`
 - `.venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q` -> `20 passed`
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q` -> `20 passed`
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q` -> `5 passed`

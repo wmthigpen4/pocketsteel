@@ -29,9 +29,9 @@ jobs:
       - name: Full pytest
         run: pytest -q
       - name: Python lint
-        run: ruff check pocketsteel/cloudflare_access.py pocketsteel/runtime_dependencies.py scripts/check_asset_size_budget.py scripts/check_secret_patterns.py
+        run: ruff check steel_guitar_rag/cloudflare_access.py steel_guitar_rag/runtime_dependencies.py scripts/check_asset_size_budget.py scripts/check_secret_patterns.py
       - name: Python type checks
-        run: mypy pocketsteel/cloudflare_access.py pocketsteel/runtime_dependencies.py
+        run: mypy steel_guitar_rag/cloudflare_access.py steel_guitar_rag/runtime_dependencies.py
       - name: Dependency audit
         run: pip-audit -r requirements/runtime.lock
       - name: Secret and asset budgets

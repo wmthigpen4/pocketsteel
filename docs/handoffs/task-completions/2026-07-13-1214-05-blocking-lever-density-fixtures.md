@@ -20,7 +20,7 @@ Intentionally not changed: candidate generation, pitch validation, texture selec
 
 ## Files changed
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
   - changed melody-only transition instructions to say which abandoned strings to block before the move;
   - separated destination strings into reused strings to repick and new strings to add;
   - left full-grip sustain and semantic `voiceActions` unchanged.
@@ -41,7 +41,7 @@ No files were deleted or generated in protected corpus, private-data, vector, so
   - **383 passed**.
 - `.venv/bin/python -m pytest -q`
   - **971 passed**.
-- `.venv/bin/python -m py_compile pocketsteel/melody_arranger.py tests/test_melody_arranger_decision_fixtures.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/melody_arranger.py tests/test_melody_arranger_decision_fixtures.py`
   - pass.
 - `node --check ui/melody-workbench.js`
   - pass.
@@ -97,7 +97,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
 - `docs/llm-guidance/e9-arranger-decision-rules.md`
 - `docs/handoffs/task-completions/2026-07-13-1214-05-blocking-lever-density-fixtures.md`

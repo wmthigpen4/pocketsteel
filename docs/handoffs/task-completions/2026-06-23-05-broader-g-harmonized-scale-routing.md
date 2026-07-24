@@ -27,12 +27,12 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Added diminished triad support to the existing pitch validator.
   - Added G major harmonized-scale payload builder.
   - Added G natural minor harmonized-scale payload builder.
   - Added named diminished-position payload routing.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added teacher-first source-free answer text for broad G harmonized-scale prompts and named diminished prompts.
   - Kept 5&8-specific routing ahead of broad routing.
   - Kept harmonized-scale workout routing separate.
@@ -46,9 +46,9 @@ Intentionally not changed:
 - `git rev-parse --short HEAD`
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'harmonized_scale or diminished_positions_in_g' -q`
   - Result: `4 passed, 269 deselected`
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_examples.py pocketsteel/curated_answers.py pocketsteel/api.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_examples.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py`
   - Result: passed
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py pocketsteel/fretboard_examples.py pocketsteel/curated_answers.py pocketsteel/api.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py`
   - Result: passed
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q`
   - Result: `30 passed`
@@ -109,8 +109,8 @@ Reason:
 - No retrieval, corpus, UI, or deployment paths were changed.
 
 Rollback notes:
-- Revert the added G harmonized-scale helpers and routing in `pocketsteel/fretboard_examples.py`.
-- Revert the curated answer route in `pocketsteel/curated_answers.py`.
+- Revert the added G harmonized-scale helpers and routing in `steel_guitar_rag/fretboard_examples.py`.
+- Revert the curated answer route in `steel_guitar_rag/curated_answers.py`.
 - Revert the focused tests in `tests/test_api_search.py`.
 
 ## Human Decision Needed
@@ -119,8 +119,8 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-05-broader-g-harmonized-scale-routing.md`
 

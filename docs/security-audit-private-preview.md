@@ -2,7 +2,7 @@
 
 Date: 2026-05-28
 Branch: `feature/answer-api`
-Scope: The Turnaround private-preview readiness before outside testers.
+Scope: Steel Guitar RAG private-preview readiness before outside testers.
 
 Task mode: GREEN audit/report with one small `.gitignore` hardening fix. No deployment, DNS, scraping, embedding, Chroma reset, vector mutation, corpus-v2 switch, or paid/external scanning was performed.
 
@@ -26,17 +26,17 @@ git status --short --branch
 rg --files -g '!*__pycache__*'
 git ls-files
 sed -n '1,240p' .gitignore
-rg -n "answer|session|Access|cloudflare|AUTH|auth|beta_user|admin|rate|429|log|prompt|inject|Ollama|Chroma|private preview|rollback|router|port forwarding" pocketsteel rag_api.py rag_app.py ui deploy docs tests functions README.md pyproject.toml
-sed -n '1,260p' pocketsteel/api.py
-sed -n '1,260p' pocketsteel/access_control.py
-sed -n '1,260p' pocketsteel/cloudflare_access.py
-sed -n '260,620p' pocketsteel/api.py
-sed -n '1,260p' pocketsteel/answer_usage.py
+rg -n "answer|session|Access|cloudflare|AUTH|auth|beta_user|admin|rate|429|log|prompt|inject|Ollama|Chroma|private preview|rollback|router|port forwarding" steel_guitar_rag rag_api.py rag_app.py ui deploy docs tests functions README.md pyproject.toml
+sed -n '1,260p' steel_guitar_rag/api.py
+sed -n '1,260p' steel_guitar_rag/access_control.py
+sed -n '1,260p' steel_guitar_rag/cloudflare_access.py
+sed -n '260,620p' steel_guitar_rag/api.py
+sed -n '1,260p' steel_guitar_rag/answer_usage.py
 sed -n '1,420p' tests/test_api_contract.py
 sed -n '1,280p' tests/test_public_landing_page.py
 sed -n '1,320p' functions/api/interest.js
-sed -n '1,420p' pocketsteel/answering.py
-sed -n '1,260p' pocketsteel/rag_guardrails.py
+sed -n '1,420p' steel_guitar_rag/answering.py
+sed -n '1,260p' steel_guitar_rag/rag_guardrails.py
 sed -n '1,430p' tests/test_api_search.py
 sed -n '430,920p' tests/test_api_search.py
 sed -n '1,360p' tests/test_frontend_answer_ui.py
@@ -81,9 +81,9 @@ Observed behavior:
 
 Evidence:
 
-- `pocketsteel/access_control.py`
-- `pocketsteel/cloudflare_access.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/access_control.py`
+- `steel_guitar_rag/cloudflare_access.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `tests/test_api_contract.py`
 - `docs/api-contract.md`
@@ -166,8 +166,8 @@ Observed behavior:
 
 Evidence:
 
-- `pocketsteel/answer_usage.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_usage.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/api-contract.md`
 
@@ -192,9 +192,9 @@ Observed behavior:
 
 Evidence:
 
-- `pocketsteel/rag_guardrails.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/rag_guardrails.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/answer_contracts.py`
 - `tests/test_api_search.py`
 - `tests/test_frontend_answer_ui.py`
 

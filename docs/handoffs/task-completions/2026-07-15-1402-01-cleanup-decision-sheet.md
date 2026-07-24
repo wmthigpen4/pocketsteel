@@ -112,12 +112,12 @@ That reply authorizes only the following bounded actions:
 
 ```text
 __pycache__/
-pocketsteel/__pycache__/
+steel_guitar_rag/__pycache__/
 tests/__pycache__/
 scripts/__pycache__/
 scripts/ingest/__pycache__/
 .pytest_cache/
-pocketsteel.egg-info/
+steel_guitar_rag.egg-info/
 ui/assets/landing/mockup_search_card.png
 ui/assets/music_staff.png
 ```

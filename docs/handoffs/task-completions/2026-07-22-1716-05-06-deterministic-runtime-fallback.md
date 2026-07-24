@@ -15,8 +15,8 @@ instead of raising.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_model.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/amazing_tablature_model.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
 - `tests/test_copedent_transfer.py`
 - `tests/test_amazing_tablature_training.py`
@@ -58,8 +58,8 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_model.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/amazing_tablature_model.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
 - `tests/test_copedent_transfer.py`
 - `tests/test_amazing_tablature_training.py`

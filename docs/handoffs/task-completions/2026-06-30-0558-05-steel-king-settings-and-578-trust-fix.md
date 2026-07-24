@@ -22,7 +22,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-30-0558-05-steel-king-settings-and-578-trust-fix.md`
 
@@ -115,7 +115,7 @@ Note: the current UI still renders a “No sources returned” placeholder in th
 ## Tests And Checks
 
 - `git status --short` - run before work and before closeout.
-- `.venv/bin/python -m py_compile pocketsteel/curated_answers.py pocketsteel/api.py pocketsteel/fretboard_examples.py pocketsteel/answer_tab_examples.py` - PASS.
+- `.venv/bin/python -m py_compile steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/answer_tab_examples.py` - PASS.
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'Steel_King or steel_king or Fender or amp_hum or static_g_location or explicit_g_578 or tab_example' -q` - PASS, `16 passed, 265 deselected`.
 - `.venv/bin/python -m pytest tests/test_fretboard_examples.py tests/test_tab_engine.py -q` - PASS, `78 passed`.
 - `.venv/bin/python -m pytest tests/test_api_search.py -q` - PASS, `281 passed`.
@@ -142,7 +142,7 @@ Why:
 
 Rollback:
 
-- Revert the scoped commit containing `pocketsteel/curated_answers.py`, `tests/test_api_search.py`, and this handoff.
+- Revert the scoped commit containing `steel_guitar_rag/curated_answers.py`, `tests/test_api_search.py`, and this handoff.
 
 ## Human Decision Needed
 
@@ -150,7 +150,7 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-30-0558-05-steel-king-settings-and-578-trust-fix.md`
 

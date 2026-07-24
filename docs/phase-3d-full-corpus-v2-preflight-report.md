@@ -16,16 +16,16 @@ Input v1 chunks:
 
 Regenerated corpus-v2 outputs:
 
-- `~/Documents/Pocket Steel/corpus-v2/clean_classified_chunks.jsonl`
-- `~/Documents/Pocket Steel/corpus-v2/chunks-v2.jsonl`
-- `~/Documents/Pocket Steel/corpus-v2/reports/phase3b-full-report.md`
-- `~/Documents/Pocket Steel/corpus-v2/reports/phase3c-full-report.md`
-- `~/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight-report.md`
-- `~/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight.json`
+- `~/Documents/Steel Guitar RAG/corpus-v2/clean_classified_chunks.jsonl`
+- `~/Documents/Steel Guitar RAG/corpus-v2/chunks-v2.jsonl`
+- `~/Documents/Steel Guitar RAG/corpus-v2/reports/phase3b-full-report.md`
+- `~/Documents/Steel Guitar RAG/corpus-v2/reports/phase3c-full-report.md`
+- `~/Documents/Steel Guitar RAG/corpus-v2/reports/phase3d-full-preflight-report.md`
+- `~/Documents/Steel Guitar RAG/corpus-v2/reports/phase3d-full-preflight.json`
 
 Planned v2 Chroma path checked by preflight only:
 
-- `~/Documents/Pocket Steel/corpus-v2/vector-stores/chroma`
+- `~/Documents/Steel Guitar RAG/corpus-v2/vector-stores/chroma`
 
 That Chroma path was not created.
 
@@ -159,13 +159,13 @@ These source rows had stable v1 `chunk_id` values and source/thread metadata, bu
 
 | Path | Size |
 | --- | ---: |
-| `~/Documents/Pocket Steel/corpus-v2/` | 5.8G |
-| `~/Documents/Pocket Steel/corpus-v2/clean_classified_chunks.jsonl` | 4.6G |
-| `~/Documents/Pocket Steel/corpus-v2/chunks-v2.jsonl` | 1.1G |
-| `~/Documents/Pocket Steel/corpus-v2/reports/phase3b-full-report.md` | 4.0K |
-| `~/Documents/Pocket Steel/corpus-v2/reports/phase3c-full-report.md` | 4.0K |
-| `~/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight-report.md` | 4.0K |
-| `~/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight.json` | 4.0K |
+| `~/Documents/Steel Guitar RAG/corpus-v2/` | 5.8G |
+| `~/Documents/Steel Guitar RAG/corpus-v2/clean_classified_chunks.jsonl` | 4.6G |
+| `~/Documents/Steel Guitar RAG/corpus-v2/chunks-v2.jsonl` | 1.1G |
+| `~/Documents/Steel Guitar RAG/corpus-v2/reports/phase3b-full-report.md` | 4.0K |
+| `~/Documents/Steel Guitar RAG/corpus-v2/reports/phase3c-full-report.md` | 4.0K |
+| `~/Documents/Steel Guitar RAG/corpus-v2/reports/phase3d-full-preflight-report.md` | 4.0K |
+| `~/Documents/Steel Guitar RAG/corpus-v2/reports/phase3d-full-preflight.json` | 4.0K |
 
 ## Interpretation
 

@@ -5,7 +5,7 @@
 Requested: QA review the isolated private-review `curated_guidance` retriever slice implemented behind `ENABLE_CURATED_GUIDANCE_RETRIEVAL`.
 
 Completed:
-- Reviewed `pocketsteel/curated_guidance_retriever.py` for isolation, feature-flag behavior, private file handling, returned metadata, excerpt limits, and quality filtering.
+- Reviewed `steel_guitar_rag/curated_guidance_retriever.py` for isolation, feature-flag behavior, private file handling, returned metadata, excerpt limits, and quality filtering.
 - Reviewed `tests/test_curated_guidance_retriever.py` for meaningful coverage.
 - Rechecked the ingestion/eval support scripts and prior curated-guidance handoffs.
 - Ran focused retriever tests, compile checks, offline retrieval eval, flag-enabled local smoke, `git diff --check`, `git status --short`, and `git check-ignore`.
@@ -31,7 +31,7 @@ One integration caution:
 
 ## Files Reviewed
 
-- `pocketsteel/curated_guidance_retriever.py`
+- `steel_guitar_rag/curated_guidance_retriever.py`
 - `tests/test_curated_guidance_retriever.py`
 - `scripts/ingest/build_curated_guidance_corpus.py`
 - `scripts/ingest/validate_curated_guidance_corpus.py`
@@ -117,12 +117,12 @@ Suggested future test if this gets wired into production:
 ```bash
 git status --short
 git diff --name-only
-rg -n "curated_guidance|ENABLE_CURATED_GUIDANCE|search_curated_guidance|CuratedGuidance" pocketsteel tests scripts docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md
+rg -n "curated_guidance|ENABLE_CURATED_GUIDANCE|search_curated_guidance|CuratedGuidance" steel_guitar_rag tests scripts docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md
 .venv/bin/python -m pytest tests/test_curated_guidance_retriever.py -q
-.venv/bin/python -m py_compile pocketsteel/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py
+.venv/bin/python -m py_compile steel_guitar_rag/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py scripts/ingest/build_curated_guidance_corpus.py scripts/ingest/validate_curated_guidance_corpus.py scripts/eval/eval_curated_guidance_retrieval.py
 .venv/bin/python scripts/eval/eval_curated_guidance_retrieval.py
 ENABLE_CURATED_GUIDANCE_RETRIEVAL=1 .venv/bin/python - <<'PY'
-from pocketsteel.curated_guidance_retriever import search_curated_guidance
+from steel_guitar_rag.curated_guidance_retriever import search_curated_guidance
 queries = [
     "How do I tune a split on string 6?",
     "What is pick blocking?",
@@ -168,7 +168,7 @@ Previously reviewed ignored outputs also remain under the ignored `corpus-privat
 ## Safe-To-Stage Exact File List
 
 Safe for Repo Steward exact-path staging:
-- `pocketsteel/curated_guidance_retriever.py`
+- `steel_guitar_rag/curated_guidance_retriever.py`
 - `tests/test_curated_guidance_retriever.py`
 - `scripts/ingest/build_curated_guidance_corpus.py`
 - `scripts/ingest/validate_curated_guidance_corpus.py`
@@ -188,7 +188,7 @@ If Repo Steward wants to split commits, a clean split is:
   - `docs/handoffs/task-completions/curated-guidance-ingestion-spike.md`
   - `docs/handoffs/task-completions/curated-guidance-qa-retrieval-eval.md`
 - Private retriever:
-  - `pocketsteel/curated_guidance_retriever.py`
+  - `steel_guitar_rag/curated_guidance_retriever.py`
   - `tests/test_curated_guidance_retriever.py`
   - `docs/handoffs/task-completions/curated-guidance-private-retriever-plan.md`
   - `docs/handoffs/task-completions/curated-guidance-private-retriever-qa.md`
@@ -228,7 +228,7 @@ Residual risk:
 - Future integration must preserve auth/private-review gating and must not expose the `input_path` test seam.
 
 Rollback:
-- Remove `pocketsteel/curated_guidance_retriever.py`, `tests/test_curated_guidance_retriever.py`, and this QA handoff.
+- Remove `steel_guitar_rag/curated_guidance_retriever.py`, `tests/test_curated_guidance_retriever.py`, and this QA handoff.
 - Leave ignored `corpus-private/` outputs uncommitted.
 
 ## Commit Readiness

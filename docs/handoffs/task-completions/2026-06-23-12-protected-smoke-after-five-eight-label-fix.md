@@ -46,7 +46,7 @@ Notable parked categories include README/docs/corpus metadata edits, source-inbo
 - Version endpoint result:
 
 ```json
-{"git_sha": "3a07c8f", "git_branch": "feature/answer-api", "server_started_at": "2026-06-23T16:31:32.019652+00:00", "python_module": "pocketsteel.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}
+{"git_sha": "3a07c8f", "git_branch": "feature/answer-api", "server_started_at": "2026-06-23T16:31:32.019652+00:00", "python_module": "steel_guitar_rag.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}
 ```
 
 - If version endpoint missing, how version is inferred: not applicable

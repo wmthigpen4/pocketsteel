@@ -8,8 +8,8 @@
 
 ## Files changed
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-07-15-1057-05-classic-country-fretboard.md`
@@ -18,7 +18,7 @@
 
 - `.venv/bin/pytest -q tests/test_fretboard_examples.py tests/test_api_search.py -k 'classic_country_move'` — 2 passed, 385 deselected.
 - `.venv/bin/pytest -q tests/test_fretboard_examples.py tests/test_api_search.py` — 387 passed.
-- `.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/fretboard_examples.py` — passed.
+- `.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/fretboard_examples.py` — passed.
 - `git diff --check` — passed.
 - Local desktop browser smoke — passed. The answer rendered `Classic-country pickup in G`, all three position controls, and the interactive pedal-steel fretboard; selecting the second state updated the displayed position. No horizontal overflow was detected.
 - Automated phone-width browser smoke was not run because the available in-app browser session did not expose viewport resizing. Responsive behavior remains a protected-preview/manual-smoke item.
@@ -65,8 +65,8 @@
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/api.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_api_search.py`
 - `tests/test_fretboard_examples.py`
 - `docs/handoffs/task-completions/2026-07-15-1057-05-classic-country-fretboard.md`

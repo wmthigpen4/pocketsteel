@@ -78,9 +78,9 @@ User-facing defect routing from this additional run:
 - `README.md`
 - `docs/handoffs/task-completions/integration-status.md`
 - `docs/handoffs/task-completions/2026-06-23-05-g-harmonized-scale-deterministic-rules.md`
-- `pocketsteel/fretboard_explorer.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_explorer.py`
 - `tests/test_api_search.py`
 - `ui/e9-fretboard-explorer.js` for follow-up scope only
@@ -224,7 +224,7 @@ git diff --check
 Validation checks:
 
 ```bash
-.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py pocketsteel/fretboard_examples.py pocketsteel/curated_answers.py pocketsteel/api.py
+.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py
 # passed
 
 .venv/bin/python -m pytest tests/test_fretboard_explorer.py -q

@@ -10,7 +10,7 @@ Intentionally not changed: raw/private evidence, source facts, review decisions,
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-22-0921-20-discovery-disposition-score-scope.md`
@@ -35,7 +35,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-22-0921-20-discovery-disposition-score-scope.md`

@@ -18,9 +18,9 @@ No validation or sealed-test imagery, annotations, ground truth, or results were
 
 The commits contain only the reviewed Lane 20 implementation and its reproducibility support:
 
-- Decision/ranker source and transfer test: `pocketsteel/amazing_tablature_decisions.py`, `pocketsteel/melody_ranker.py`, `tests/test_copedent_transfer.py`.
-- Extraction/review source and tests: `pocketsteel/amazing_tablature_extraction.py`, `pocketsteel/e9_copedents.py`, `scripts/apple_vision_ocr.swift`, `scripts/apple_vision_tab_ocr.swift`, `tests/test_amazing_tablature_extraction.py`.
-- Challenger/sealed lineage source, CLI, tests, and operating guide: `pocketsteel/amazing_tablature_training.py`, `pocketsteel/amazing_tablature_sealed_test.py`, `scripts/amazing_tablature.py`, `tests/test_amazing_tablature_training.py`, `tests/test_amazing_tablature_sealed_test.py`, `docs/amazing-tablature-training.md`.
+- Decision/ranker source and transfer test: `steel_guitar_rag/amazing_tablature_decisions.py`, `steel_guitar_rag/melody_ranker.py`, `tests/test_copedent_transfer.py`.
+- Extraction/review source and tests: `steel_guitar_rag/amazing_tablature_extraction.py`, `steel_guitar_rag/e9_copedents.py`, `scripts/apple_vision_ocr.swift`, `scripts/apple_vision_tab_ocr.swift`, `tests/test_amazing_tablature_extraction.py`.
+- Challenger/sealed lineage source, CLI, tests, and operating guide: `steel_guitar_rag/amazing_tablature_training.py`, `steel_guitar_rag/amazing_tablature_sealed_test.py`, `scripts/amazing_tablature.py`, `tests/test_amazing_tablature_training.py`, `tests/test_amazing_tablature_sealed_test.py`, `docs/amazing-tablature-training.md`.
 - Reproducible dependency inputs, locks, and checker: `pyproject.toml`, `requirements/README.md`, `requirements/runtime.in`, `requirements/runtime.lock`, `requirements/rag.lock`, `requirements/training.in`, `requirements/training.lock`, `requirements/test.in`, `requirements/test.lock`, `requirements/deployment.lock`, `scripts/check_dependency_locks.py`.
 - This sanitized handoff.
 

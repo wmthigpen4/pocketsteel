@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pocketsteel.answering import final_answer_quality_gate
-from pocketsteel.curated_source_registry import (
+from steel_guitar_rag.answering import final_answer_quality_gate
+from steel_guitar_rag.curated_source_registry import (
     answer_contains_unapproved_url,
     filter_active_sources,
     format_curated_links,
@@ -65,7 +65,7 @@ def test_slide_bar_vendor_source_cards_use_curated_registry_metadata() -> None:
         "Steel Guitar Forum Classifieds / Forum Store",
     ]
     assert all(card["source_system"] == "curated_source_registry" for card in cards)
-    assert all(card["forum_name"] == "Pocket Steel curated source" for card in cards)
+    assert all(card["forum_name"] == "Steel Guitar RAG curated source" for card in cards)
     assert all(card["score"] == 1.0 for card in cards)
     assert all(card["chunk_id"] for card in cards)
     assert all(card["thread_url"].startswith("https://") for card in cards)

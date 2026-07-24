@@ -21,13 +21,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pocketsteel.fretboard_examples import (  # noqa: E402
+from steel_guitar_rag.fretboard_examples import (  # noqa: E402
     e_lower_grip_request_for_question,
     functional_pocket_request_for_question,
     get_e9_major_chord_positions,
     major_chord_location_request_for_question,
 )
-from pocketsteel.curated_source_registry import is_approved_curated_url  # noqa: E402
+from steel_guitar_rag.curated_source_registry import is_approved_curated_url  # noqa: E402
 
 
 DEFAULT_API_URL = "http://127.0.0.1:8783/api/answer"

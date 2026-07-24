@@ -1,6 +1,6 @@
 # Source Ingestion Policy
 
-This policy covers non-SGF source files staged in `source-inbox/` before they are normalized, chunked, embedded, or used by The Turnaround.
+This policy covers non-SGF source files staged in `source-inbox/` before they are normalized, chunked, embedded, or used by Steel Guitar RAG.
 
 The first rule is provenance before ingestion. A file being in `source-inbox/` does not mean it is approved for embeddings, public answers, quotation, redistribution, or product use.
 

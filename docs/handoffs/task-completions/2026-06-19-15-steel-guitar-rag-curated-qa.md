@@ -37,10 +37,10 @@ Task mode: GREEN for QA/handoff.
 - `README.md`
 - `docs/handoffs/task-completions/integration-status.md`
 - `docs/handoffs/task-completions/2026-06-19-1053-05-steel-guitar-rag-curated-reference.md`
-- `pocketsteel/curated_song_references.py`
-- `pocketsteel/resources/curated/steel-guitar-rag-expert-reference.md`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/curated_song_references.py`
+- `steel_guitar_rag/resources/curated/steel-guitar-rag-expert-reference.md`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `tests/test_api_contract.py`
 
@@ -88,7 +88,7 @@ Findings:
 - Source labels/titles are clear.
 - `source_system` is consistently `curated_reference`.
 - External links are preserved for UCSB DAHR, Cundell PDF, SecondHandSongs, and Easy Song.
-- Local curated reference path is preserved as `pocketsteel/resources/curated/steel-guitar-rag-expert-reference.md`.
+- Local curated reference path is preserved as `steel_guitar_rag/resources/curated/steel-guitar-rag-expert-reference.md`.
 - No broken empty source-card titles or URLs were observed in API payloads.
 
 Frontend source-card display was not exercised, so this handoff does not prove browser rendering.
@@ -153,7 +153,7 @@ Non-blocking Lane 05 polish:
 git diff --check
 # passed
 
-.venv/bin/python -m py_compile pocketsteel/curated_song_references.py pocketsteel/curated_answers.py pocketsteel/api.py
+.venv/bin/python -m py_compile steel_guitar_rag/curated_song_references.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py
 # passed
 
 .venv/bin/python -m pytest tests/test_api_search.py -k 'Steel_Guitar_Rag or steel_guitar_rag' -q

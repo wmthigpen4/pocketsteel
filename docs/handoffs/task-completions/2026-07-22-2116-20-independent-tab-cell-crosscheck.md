@@ -21,7 +21,7 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-2116-20-independent-tab-cell-crosscheck.md`
 
@@ -47,7 +47,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-2116-20-independent-tab-cell-crosscheck.md`
 

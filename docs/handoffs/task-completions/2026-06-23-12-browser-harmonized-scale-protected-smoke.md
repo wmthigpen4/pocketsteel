@@ -24,7 +24,7 @@ No app code, deployment configuration, auth policy, DNS, corpus, embeddings, Chr
 - Expected backend port: `8770`
 - Expected git HEAD: `db6ae81`
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"db6ae81","git_branch":"feature/answer-api","server_started_at":"2026-06-23T17:49:17.912185+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"db6ae81","git_branch":"feature/answer-api","server_started_at":"2026-06-23T17:49:17.912185+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - If version endpoint missing, how version is inferred: not missing locally; browser navigation to `https://app.steelguitarrag.com/api/version` was blocked by the browser client, so the runtime version is proven by local `/api/version`, the launchd wrapper `version` command, and listener/process evidence.
 - Whether app root `/` works: yes, but it redirects to `/ui/steel-guitar-rag-mock.html` and drops the query string
 - Whether app root `/` is expected to work: yes as a redirect entrypoint, not as the cache-busted canonical smoke target
@@ -42,7 +42,7 @@ No app code, deployment configuration, auth policy, DNS, corpus, embeddings, Chr
 - Runtime commit reported by `/api/version`: `db6ae81`
 - Launchd supervision status: `system/com.steelguitarrag.private-preview` is running as a LaunchDaemon.
 - LaunchDaemon program: `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh`
-- LaunchDaemon repo env: `STEEL_RAG_REPO_DIR=/Users/cory/Documents/Pocket Steel`
+- LaunchDaemon repo env: `STEEL_RAG_REPO_DIR=/Users/cory/Documents/Steel Guitar RAG`
 - Durable app logs:
   - stdout: `/Users/cory/Library/Logs/steel-guitar-rag/app.out.log`
   - stderr: `/Users/cory/Library/Logs/steel-guitar-rag/app.err.log`

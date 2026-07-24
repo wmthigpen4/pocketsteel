@@ -109,7 +109,7 @@ bytes_equal= True
 Runtime version after deploy:
 
 ```json
-{"git_sha": "e293212", "git_branch": "feature/answer-api", "python_module": "pocketsteel.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}
+{"git_sha": "e293212", "git_branch": "feature/answer-api", "python_module": "steel_guitar_rag.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}
 ```
 
 Local origin route:

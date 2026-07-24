@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pocketsteel.chroma_search import ChromaSearchIndex
+from steel_guitar_rag.chroma_search import ChromaSearchIndex
 from scripts.run_answer_eval import load_question_bank
 
 

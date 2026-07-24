@@ -22,7 +22,7 @@ As a separate private diagnostic, the configured independent tablature token rea
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
   - Adds the pure, narrow split-middle-grip geometry merger.
   - Adds a discovery-only evaluator with inference digested before reviewed truth is joined.
   - Records development and opened-shadow count and row-proposal regressions independently.
@@ -42,8 +42,8 @@ The rejected broad-rule report and private token-reader caches remain ignored di
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py` — PASS.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py` — PASS.
 - Focused split-grip tests — PASS, 3 tests.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_extraction.py` — PASS, 145 tests.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py tests/test_amazing_tablature_sealed_test.py tests/test_amazing_tablature_input_parity.py` — PASS, 38 tests using repository fixtures only.
@@ -70,7 +70,7 @@ No. Do not request another human audit yet.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1521-20-anchored-tab-row-geometry-challenger.md`

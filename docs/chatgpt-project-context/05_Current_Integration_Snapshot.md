@@ -24,7 +24,7 @@
 
 Committed tab-engine work includes:
 
-- deterministic `pocketsteel/tab_engine.py`,
+- deterministic `steel_guitar_rag/tab_engine.py`,
 - `POST /api/tab/render`,
 - fixed-width tab rendering,
 - validation for string/fret/control issues,

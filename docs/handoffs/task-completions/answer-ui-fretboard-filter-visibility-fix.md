@@ -149,7 +149,7 @@ Results:
 
 No new screenshots were captured in this Lane 06 patch.
 
-The preceding QA handoff includes transient screenshot paths under `/tmp/pocketsteel-answer-ui-fretboard-filter-smoke/` that demonstrated the failure. A fresh Lane 15 browser smoke should capture the fixed state.
+The preceding QA handoff includes transient screenshot paths under `/tmp/steel_guitar_rag-answer-ui-fretboard-filter-smoke/` that demonstrated the failure. A fresh Lane 15 browser smoke should capture the fixed state.
 
 ## Risks
 

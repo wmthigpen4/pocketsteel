@@ -8,12 +8,12 @@ from typing import Any
 
 import pytest
 
-from pocketsteel.amazing_tablature_extraction import (
+from steel_guitar_rag.amazing_tablature_extraction import (
     EXTRACTION_SCHEMA_VERSION,
     EXTRACTOR_VERSION,
     KNOWLEDGE_SCHEMA_VERSION,
 )
-from pocketsteel.amazing_tablature_sealed_test import SealedTestCoordinator, SealedTestWorkflowError
+from steel_guitar_rag.amazing_tablature_sealed_test import SealedTestCoordinator, SealedTestWorkflowError
 
 
 RIGHTS_DIGEST = "a" * 64
@@ -47,7 +47,7 @@ def test_sealed_evaluation_rejects_a_concurrent_runner(
     def busy_lock(*_args: object) -> None:
         raise BlockingIOError
 
-    monkeypatch.setattr("pocketsteel.amazing_tablature_sealed_test.fcntl.flock", busy_lock)
+    monkeypatch.setattr("steel_guitar_rag.amazing_tablature_sealed_test.fcntl.flock", busy_lock)
     with pytest.raises(SealedTestWorkflowError, match="already has a sealed evaluation in progress"):
         coordinator.run("freeze-concurrent")
 

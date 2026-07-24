@@ -51,10 +51,10 @@ Candidate review files:
 - `rag_build_forum.py`
 - `rag_forums.json`
 - `docs/rag-forum-builds.md`
-- `pocketsteel/sample_search.py`
+- `steel_guitar_rag/sample_search.py`
 
 Recommended action: park this lane until the project decides whether these
-root-level tools are current, obsolete duplicates of newer `pocketsteel/` and
+root-level tools are current, obsolete duplicates of newer `steel_guitar_rag/` and
 `scripts/phase3_*` modules, or archive candidates. Do not run embedding or
 Chroma-reset workflows while reviewing this lane.
 
@@ -136,7 +136,7 @@ Park until ownership is clear:
 
 - `rag_build_forum.py`
 - `rag_forums.json`
-- `pocketsteel/sample_search.py`
+- `steel_guitar_rag/sample_search.py`
 
 Recommended action: inspect for overlap with committed retrieval/API modules.
 If obsolete, leave unstaged and later move to archive only with explicit
@@ -178,7 +178,7 @@ Park until the user chooses the lane:
 
 - root RAG build/chunk/embed scripts
 - forum build scripts and config
-- `pocketsteel/sample_search.py`
+- `steel_guitar_rag/sample_search.py`
 - Phase 3 embed-v2 Chroma creation tooling
 
 ## What Should Never Be Committed

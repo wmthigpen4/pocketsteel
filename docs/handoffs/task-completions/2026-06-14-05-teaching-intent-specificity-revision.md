@@ -124,7 +124,7 @@ Result:
 - `64 passed`
 
 ```bash
-.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/answer_intent_classifier.py pocketsteel/curated_answers.py pocketsteel/curated_guidance_retriever.py
+.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/answer_intent_classifier.py steel_guitar_rag/curated_answers.py steel_guitar_rag/curated_guidance_retriever.py
 ```
 
 Result:
@@ -149,7 +149,7 @@ Why:
 - The broader worktree remains dirty, so exact-path staging is still required.
 
 Rollback:
-- Revert scoped changes in `pocketsteel/answer_intent_classifier.py`, `pocketsteel/curated_answers.py`, `tests/test_answer_intent_classifier.py`, and `tests/test_api_search.py`.
+- Revert scoped changes in `steel_guitar_rag/answer_intent_classifier.py`, `steel_guitar_rag/curated_answers.py`, `tests/test_answer_intent_classifier.py`, and `tests/test_api_search.py`.
 - No UI, auth, deployment, Chroma, embeddings, scraper, or private data rollback is needed.
 
 ## Human Decision Needed
@@ -165,8 +165,8 @@ Yes before:
 ## Safe-To-Stage Exact File List
 
 For this revised slice, pending Lane 15 approval:
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-14-05-teaching-intent-specificity-fixes.md`

@@ -18,7 +18,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-fretboard-explorer-data.js`
 - `ui/e9-fretboard-explorer.html`
 - `tests/test_fretboard_explorer.py`
@@ -108,7 +108,7 @@ Passed:
 - `node --check ui/e9-fretboard-explorer.js`
 - `node --check ui/answer-client.js`
 - `node --check ui/pedal-steel-fretboard.js`
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py`
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q` (`43 passed`)
 - `.venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q` (`24 passed`)
 - `.venv/bin/python -m pytest tests/test_pedal_steel_fretboard_ui.py -q` (`37 passed`)
@@ -141,7 +141,7 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-fretboard-explorer-data.js`
 - `ui/e9-fretboard-explorer.html`
 - `tests/test_fretboard_explorer.py`

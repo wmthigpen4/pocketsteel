@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pocketsteel.access_control import (
+from steel_guitar_rag.access_control import (
     ACCESS_ROLES,
     ANSWER_AUTH_MODE_ENV,
     AUTH_PROVIDER_ENV,
@@ -14,14 +14,14 @@ from pocketsteel.access_control import (
     can_call_live_answer,
     normalize_access_role,
 )
-from pocketsteel.answer_usage import (
+from steel_guitar_rag.answer_usage import (
     RATE_LIMIT_ENABLED_ENV,
     RATE_LIMIT_MAX_REQUESTS_ENV,
     RATE_LIMIT_WINDOW_SECONDS_ENV,
 )
-from pocketsteel.answering import VALID_MODES
-from pocketsteel.lesson_studio import build_lesson
-from pocketsteel.cloudflare_access import (
+from steel_guitar_rag.answering import VALID_MODES
+from steel_guitar_rag.lesson_studio import build_lesson
+from steel_guitar_rag.cloudflare_access import (
     BETA_USER_EMAILS_ENV,
     ADMIN_EMAILS_ENV,
     CLOUDFLARE_ACCESS_AUD_ENV,

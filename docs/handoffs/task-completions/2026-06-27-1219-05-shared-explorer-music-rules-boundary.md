@@ -17,8 +17,8 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-fretboard-explorer.js`
 - `ui/e9-fretboard-explorer-data.js`
 - `tests/test_fretboard_explorer.py`
@@ -26,7 +26,7 @@ Intentionally not changed:
 - `docs/handoffs/task-completions/2026-06-27-1219-05-shared-explorer-music-rules-boundary.md`
 
 Generated artifacts:
-- `ui/e9-fretboard-explorer-data.js` was regenerated from `pocketsteel.fretboard_explorer.build_explorer_payload(...)`.
+- `ui/e9-fretboard-explorer-data.js` was regenerated from `steel_guitar_rag.fretboard_explorer.build_explorer_payload(...)`.
 
 Deleted files:
 - None.
@@ -84,7 +84,7 @@ Naming behavior:
 - `node --check ui/e9-fretboard-explorer-data.js`
 - `node --check ui/answer-client.js`
 - `node --check ui/pedal-steel-fretboard.js`
-- `.venv/bin/python -m py_compile pocketsteel/e9_copedents.py pocketsteel/fretboard_explorer.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/e9_copedents.py steel_guitar_rag/fretboard_explorer.py`
 - `.venv/bin/python -m pytest tests/test_explorer_musical_red_team.py tests/test_fretboard_explorer.py -q` - 42 passed
 - `.venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q` - 24 passed
 - `.venv/bin/python -m pytest tests/test_pedal_steel_fretboard_ui.py tests/test_api_contract.py -q` - 39 passed
@@ -163,8 +163,8 @@ Human/Lane 12 action needed: restart protected preview and smoke the committed c
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-fretboard-explorer.js`
 - `ui/e9-fretboard-explorer-data.js`
 - `tests/test_fretboard_explorer.py`

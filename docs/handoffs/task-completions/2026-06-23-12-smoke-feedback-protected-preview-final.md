@@ -98,7 +98,7 @@ After refresh:
   "git_sha": "1c0bbd6",
   "git_branch": "feature/answer-api",
   "server_started_at": "2026-06-23T19:54:06.883215+00:00",
-  "python_module": "pocketsteel.api",
+  "python_module": "steel_guitar_rag.api",
   "retrieval_mode": "hybrid_private_first",
   "auth_provider": "cloudflare_access"
 }
@@ -117,7 +117,7 @@ LaunchDaemon:
 - PID: `94266`
 - Runs: `26`
 - Program: `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh`
-- Repo env: `STEEL_RAG_REPO_DIR=/Users/cory/Documents/Pocket Steel`
+- Repo env: `STEEL_RAG_REPO_DIR=/Users/cory/Documents/Steel Guitar RAG`
 - Host/port env: `STEEL_RAG_HOST=127.0.0.1`, `STEEL_RAG_PORT=8770`
 - Logs:
   - `/Users/cory/Library/Logs/steel-guitar-rag/app.out.log`

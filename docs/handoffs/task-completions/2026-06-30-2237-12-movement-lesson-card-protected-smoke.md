@@ -39,7 +39,7 @@ Intentionally not changed:
 - Expected repo/runtime HEAD: `a2f3b81`
 - Required app-code commit: `29bfd24`
 - Version endpoint: `/api/version`
-- Version endpoint result: local origin returned `{"git_sha":"a2f3b81","git_branch":"feature/answer-api","server_started_at":"2026-07-01T05:35:31.777264+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: local origin returned `{"git_sha":"a2f3b81","git_branch":"feature/answer-api","server_started_at":"2026-07-01T05:35:31.777264+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Whether app root `/` works: not rechecked in this failed smoke; standing behavior is redirect to `/ui/steel-guitar-rag-mock.html` while dropping query strings
 - Whether app root `/` is expected to work: yes as a redirect, not as the exact cache-busted target
 - Whether `/ui/steel-guitar-rag-mock.html` works: yes
@@ -150,7 +150,7 @@ Generated artifacts:
 - `git rev-parse --short HEAD` - `a2f3b81`.
 - `git log --oneline -8` - confirmed `a2f3b81` after `29bfd24`.
 - `git merge-base --is-ancestor 29bfd24 HEAD` - PASS, current HEAD contains required app-code commit.
-- `git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests` - no dirty runtime-affecting files.
+- `git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests` - no dirty runtime-affecting files.
 - `curl -sS http://127.0.0.1:8770/api/version` before restart - stale `e449180`.
 - `lsof -nP -iTCP:8770 -sTCP:LISTEN` before restart - PID `47454`.
 - `launchctl print system/com.steelguitarrag.private-preview` - state `running`.

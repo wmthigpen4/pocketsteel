@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON
-from pocketsteel.api import create_app
-from pocketsteel.answer_intent_classifier import (
+from steel_guitar_rag.access_control import DEV_ACCESS_ROLE_ENVIRON
+from steel_guitar_rag.api import create_app
+from steel_guitar_rag.answer_intent_classifier import (
     ALLOWED_ANSWER_SHAPES,
     ALLOWED_DOMAINS,
     ALLOWED_INTENTS,
@@ -16,7 +16,7 @@ from pocketsteel.answer_intent_classifier import (
     classify_answer_intent,
     classify_answer_request,
 )
-from pocketsteel.chroma_search import SearchResponse
+from steel_guitar_rag.chroma_search import SearchResponse
 
 
 def assert_contract_shape(decision: dict[str, object]) -> None:
@@ -804,7 +804,7 @@ def test_api_answer_calls_classifier_without_exposing_public_metadata(monkeypatc
         calls.append((question, mode))
         return classify_answer_request(question, mode)
 
-    monkeypatch.setattr("pocketsteel.api.classify_answer_request", spy_classifier)
+    monkeypatch.setattr("steel_guitar_rag.api.classify_answer_request", spy_classifier)
 
     app = create_app(_NoResultSearchIndex(), answer_auth_mode="local_dev", auth_provider="scaffold")
     body = json.dumps({"question": "What do players say about wound 6th strings on E9?", "mode": "ask"}).encode(

@@ -2,7 +2,7 @@
 
 ## 1. Visual goal
 
-Pedal steel tab examples should feel like quiet teaching inserts inside Pocket Steel answer pages: useful, readable, and clearly part of the current black/cream/brass brand, without becoming a showpiece.
+Pedal steel tab examples should feel like quiet teaching inserts inside Steel Guitar RAG answer pages: useful, readable, and clearly part of the current black/cream/brass brand, without becoming a showpiece.
 
 The tab card should support the answer, not overtake it. Use a calm dark surface, cream text, restrained brass accents, and enough spacing to make older steel-guitar readers comfortable. Avoid neon-heavy treatments, animated flourishes, or decorative instrument imagery in this slice.
 
@@ -138,7 +138,7 @@ Suggested Lane 06 implementation prompt:
 
 ### Task summary
 
-- What was requested: Create visual design guidance for rendering pedal steel tab examples inside Pocket Steel answer pages.
+- What was requested: Create visual design guidance for rendering pedal steel tab examples inside Steel Guitar RAG answer pages.
 - What was completed: Created this Lane 19 handoff with visual, layout, typography, tab block, validation badge, mobile, accessibility, avoidance, future sync, and Lane 06 handoff guidance.
 - What was intentionally not changed: No UI code, image assets, frontend files, corpus data, scraping, Chroma, embeddings, DNS, deployment, staging, or commits.
 
@@ -156,7 +156,7 @@ Suggested Lane 06 implementation prompt:
   - `git status --short`
   - `sed -n '1,220p' docs/process/codex-completion-protocol.md`
   - `test -f docs/fretboard-visual-design-directions.md && sed -n '1,220p' docs/fretboard-visual-design-directions.md || true`
-- Results: Confirmed the worktree had many unrelated dirty/untracked files before this task. Confirmed completion protocol and reused existing Pocket Steel visual guidance context.
+- Results: Confirmed the worktree had many unrelated dirty/untracked files before this task. Confirmed completion protocol and reused existing Steel Guitar RAG visual guidance context.
 - Tests skipped and why: No automated tests were run because this is a documentation-only visual handoff.
 
 ### Integration notes

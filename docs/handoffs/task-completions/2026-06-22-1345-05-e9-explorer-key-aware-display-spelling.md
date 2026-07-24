@@ -24,7 +24,7 @@ Intentionally not changed:
 
 Files in this scoped commit set:
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-qa.md`
@@ -64,7 +64,7 @@ Run from repo root:
 
 - `git status --short`
   - Broad unrelated dirty/untracked worktree remains parked.
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py`
   - Passed.
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q`
   - Passed: `11 passed`.
@@ -72,7 +72,7 @@ Run from repo root:
   - Passed: `786 passed`.
 - `git diff --check`
   - Passed.
-- `git diff --no-index --check -- /dev/null pocketsteel/fretboard_explorer.py`
+- `git diff --no-index --check -- /dev/null steel_guitar_rag/fretboard_explorer.py`
   - No whitespace errors; exit code `1` is expected for `/dev/null` comparison.
 - `git diff --no-index --check -- /dev/null tests/test_fretboard_explorer.py`
   - No whitespace errors; exit code `1` is expected for `/dev/null` comparison.
@@ -106,7 +106,7 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-qa.md`

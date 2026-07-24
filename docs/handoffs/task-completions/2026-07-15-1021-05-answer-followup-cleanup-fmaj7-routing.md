@@ -15,8 +15,8 @@
 
 ## Files changed
 
-- `pocketsteel/basic_chord_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/basic_chord_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_api_search.py` (one exact regression hunk only)
 - `ui/steel-guitar-rag-mock.html` (answer follow-up removal hunks only)
 - `tests/test_frontend_answer_ui.py` (answer follow-up regression hunks only)
@@ -84,8 +84,8 @@ Results:
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/basic_chord_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/basic_chord_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - Exact regression hunk in `tests/test_api_search.py`
 - Exact answer-follow-up hunks in `ui/steel-guitar-rag-mock.html`
 - Exact answer-follow-up regression hunks in `tests/test_frontend_answer_ui.py`

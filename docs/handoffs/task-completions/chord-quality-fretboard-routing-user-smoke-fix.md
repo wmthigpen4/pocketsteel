@@ -40,9 +40,9 @@ The existing direct-answer-first slice handled some chord-quality questions, but
 
 ## Files Changed
 
-- `pocketsteel/basic_chord_answers.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/basic_chord_answers.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/chord-quality-fretboard-routing-user-smoke-fix.md`
 
@@ -260,7 +260,7 @@ API fallback result against patched working tree, not browser smoke:
 - Risk: medium.
 - Reason: shared answer routing was touched, but the change is narrow and covered by focused and required backend/eval suites.
 - Main operational risk is not code behavior but preview freshness: protected-preview browser smoke could not authenticate, and the running local backend is still committed `658c069`, not this uncommitted patch.
-- Rollback: revert the changes in `pocketsteel/basic_chord_answers.py`, `pocketsteel/curated_answers.py`, `pocketsteel/fretboard_examples.py`, and `tests/test_api_search.py`.
+- Rollback: revert the changes in `steel_guitar_rag/basic_chord_answers.py`, `steel_guitar_rag/curated_answers.py`, `steel_guitar_rag/fretboard_examples.py`, and `tests/test_api_search.py`.
 
 ## Commit Readiness
 
@@ -274,9 +274,9 @@ Reasons:
 
 If QA accepts API fallback plus focused/backend green results, exact safe-to-stage file list:
 
-- `pocketsteel/basic_chord_answers.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/basic_chord_answers.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/chord-quality-fretboard-routing-user-smoke-fix.md`
 
@@ -322,5 +322,5 @@ Review the chord-quality fretboard routing user-smoke fix in docs/handoffs/task-
 Lane 01 Repo Steward, after QA approval:
 
 ```text
-Exact-stage only the scoped chord-quality fretboard routing patch: pocketsteel/basic_chord_answers.py, pocketsteel/curated_answers.py, pocketsteel/fretboard_examples.py, tests/test_api_search.py, and docs/handoffs/task-completions/chord-quality-fretboard-routing-user-smoke-fix.md. Do not stage parked docs/static/source/design/corpus/deploy files. Run git diff --cached --check and the focused/required backend tests before committing.
+Exact-stage only the scoped chord-quality fretboard routing patch: steel_guitar_rag/basic_chord_answers.py, steel_guitar_rag/curated_answers.py, steel_guitar_rag/fretboard_examples.py, tests/test_api_search.py, and docs/handoffs/task-completions/chord-quality-fretboard-routing-user-smoke-fix.md. Do not stage parked docs/static/source/design/corpus/deploy files. Run git diff --cached --check and the focused/required backend tests before committing.
 ```

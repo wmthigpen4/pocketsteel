@@ -40,8 +40,8 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
@@ -58,7 +58,7 @@ Deleted files: none.
 
 - `.venv/bin/pytest -q tests/test_amazing_tablature_training.py tests/test_amazing_tablature_extraction.py` — 164 passed
 - `.venv/bin/pytest -q` — 1,345 passed
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py` — passed
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py` — passed
 - `git diff --check` — passed
 - Local HTTP checks for both regenerated validation consoles — passed; both served the expert-override code
 - `score-validation-line-audits at-1fa9630a173af769` — completed with a pending/fail-closed receipt; both submissions pending and sealed access false
@@ -91,8 +91,8 @@ No product decision is needed now. The two current validation audits must be com
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`

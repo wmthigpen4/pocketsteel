@@ -29,7 +29,7 @@ The stronger reader improved main tab-event capture from 34 to 721 and main alig
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`: ignores a connector-tail suppression rectangle when the tail begins below the crop.
+- `steel_guitar_rag/amazing_tablature_extraction.py`: ignores a connector-tail suppression rectangle when the tail begins below the crop.
 - `tests/test_amazing_tablature_extraction.py`: regression test for the short-crop geometry case.
 - `docs/handoffs/task-completions/2026-07-22-1010-20-canonical-validation-extraction.md`: this handoff.
 
@@ -57,7 +57,7 @@ No immediate decision and no review request. Machine-side reduction of the valid
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1010-20-canonical-validation-extraction.md`
 

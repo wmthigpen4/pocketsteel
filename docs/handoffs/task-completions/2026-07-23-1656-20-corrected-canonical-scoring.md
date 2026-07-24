@@ -40,8 +40,8 @@ solution with the same pitches.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - This handoff
 
@@ -93,8 +93,8 @@ are regenerated from the committed HEAD.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `docs/handoffs/task-completions/2026-07-23-1656-20-corrected-canonical-scoring.md`
 

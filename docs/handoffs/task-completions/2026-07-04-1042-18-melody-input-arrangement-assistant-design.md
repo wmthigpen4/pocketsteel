@@ -345,10 +345,10 @@ Lane 15 QA smoke:
 
 Lane 05:
 
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/tab_engine.py` only if event rendering needs a small extension.
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/tab_engine.py` only if event rendering needs a small extension.
 - `tests/test_melody_assistant.py`
 - `tests/test_api_contract.py`
 - `tests/test_api_search.py`
@@ -369,7 +369,7 @@ Lane 15:
 
 The smallest safe implementation slice is backend contract and validation only, behind a disabled or narrow explicit route:
 
-1. Add `pocketsteel/melody_assistant.py` with parser, rights classifier, blocker, and event contract.
+1. Add `steel_guitar_rag/melody_assistant.py` with parser, rights classifier, blocker, and event contract.
 2. Support only 2-8 note/degree fragments in major keys.
 3. Generate only `plain_placement` for G and C first, or even fixtures only if broader planning is not ready.
 4. Return structured `melody_exercise` without exposing it in the main UI by default.

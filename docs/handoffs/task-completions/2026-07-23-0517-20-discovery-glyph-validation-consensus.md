@@ -32,9 +32,9 @@ The exact glyph decoder and challenger must be rebuilt after this code is commit
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_glyph_decoder.py`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_glyph_decoder.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
@@ -48,7 +48,7 @@ Generated private artifacts beneath `corpus-private/melody-decisions/` were not 
   - 7 passed
 - `.venv/bin/pytest -q`
   - 1,400 passed
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_glyph_decoder.py pocketsteel/amazing_tablature_training.py pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_glyph_decoder.py steel_guitar_rag/amazing_tablature_training.py steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py`
   - passed
 - `git diff --check`
   - passed
@@ -71,9 +71,9 @@ No for this engineering slice. Human validation is required later only if automa
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_glyph_decoder.py`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_glyph_decoder.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`

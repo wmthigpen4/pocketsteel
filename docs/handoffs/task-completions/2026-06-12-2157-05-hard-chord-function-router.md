@@ -11,8 +11,8 @@
 
 ## Files changed
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
-  - `pocketsteel/curated_answers.py`
+  - `steel_guitar_rag/fretboard_examples.py`
+  - `steel_guitar_rag/curated_answers.py`
   - `tests/test_fretboard_examples.py`
   - `tests/test_api_search.py`
 - Created files:
@@ -77,7 +77,7 @@
   - It does not touch Chroma, embeddings, scraping, auth, deployment, or frontend rendering.
   - Focused and full test suites passed.
 - Rollback notes:
-  - Revert the changes in `pocketsteel/fretboard_examples.py`, `pocketsteel/curated_answers.py`, `tests/test_fretboard_examples.py`, and `tests/test_api_search.py` if this router causes unexpected over-routing.
+  - Revert the changes in `steel_guitar_rag/fretboard_examples.py`, `steel_guitar_rag/curated_answers.py`, `tests/test_fretboard_examples.py`, and `tests/test_api_search.py` if this router causes unexpected over-routing.
 
 ## Commit readiness
 Safe to commit

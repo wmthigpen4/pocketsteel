@@ -9,7 +9,7 @@ Phrase labels remain catalog/form metadata only. Manual and non-catalog long inp
 ## Files changed
 
 - `docs/melody-exercise-v0.md`
-- `pocketsteel/melody_assistant.py`
+- `steel_guitar_rag/melody_assistant.py`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
 - `tests/test_melody_assistant.py`
@@ -74,7 +74,7 @@ No. The user explicitly requested one continuous score and tab.
 ## Safe-to-stage exact file list
 
 - `docs/melody-exercise-v0.md`
-- `pocketsteel/melody_assistant.py`
+- `steel_guitar_rag/melody_assistant.py`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
 - `tests/test_melody_assistant.py`

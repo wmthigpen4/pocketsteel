@@ -32,7 +32,7 @@ any `--apply` pass.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-23-1453-20-parallel-validation-recapture.md`
@@ -42,9 +42,9 @@ artifact, runtime file, or sealed-test artifact was changed.
 
 ## Tests and checks
 
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
   - PASS.
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py -k 'parallel_validation_reader_calls or validation_score_only_consensus_is_independent or validation_machine_count_consensus'`
   - PASS: 3 passed, 177 deselected.
@@ -86,7 +86,7 @@ Continue the full dry pass. Apply only exact machine-preflight passes, if any.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-23-1453-20-parallel-validation-recapture.md`

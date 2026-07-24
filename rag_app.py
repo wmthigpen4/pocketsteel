@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Streamlit app for The Turnaround Electronics RAG v0."""
+"""Streamlit app for Steel Guitar RAG Electronics RAG v0."""
 
 from __future__ import annotations
 

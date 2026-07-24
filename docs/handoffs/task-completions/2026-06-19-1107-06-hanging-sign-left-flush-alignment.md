@@ -25,7 +25,7 @@ Read before changes:
 
 - `AGENTS.md`: lane task workflow, exact-path staging, no broad staging, no protected path changes.
 - `agents.md`: same operating-model content as `AGENTS.md`.
-- `README.md`: user-facing app name is The Turnaround, but current Steel Guitar RAG naming must not be broadly renamed without explicit approval.
+- `README.md`: user-facing app name is Steel Guitar RAG, but current Steel Guitar RAG naming must not be broadly renamed without explicit approval.
 - `docs/handoffs/task-completions/integration-status.md`: broad dirty worktree remains parked; exact-path/hunk staging required.
 
 Missing files requested by the prompt:

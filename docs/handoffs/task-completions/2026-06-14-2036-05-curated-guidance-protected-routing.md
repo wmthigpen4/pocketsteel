@@ -28,7 +28,7 @@ Intentionally not changed:
 ## Files Changed
 
 Changed:
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 
 Created:
@@ -112,7 +112,7 @@ Result:
 - `81 passed`
 
 ```bash
-.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/curated_guidance_retriever.py
+.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/curated_guidance_retriever.py
 ```
 
 Result:
@@ -179,7 +179,7 @@ Why:
 - Source-card and answer-body exposure are intentionally not implemented.
 
 Rollback:
-- Revert the `pocketsteel/api.py` changes and the focused test additions in `tests/test_api_search.py`.
+- Revert the `steel_guitar_rag/api.py` changes and the focused test additions in `tests/test_api_search.py`.
 - No corpus-private, Chroma, embeddings, UI, auth, or deployment rollback is needed.
 
 ## Human Decision Needed
@@ -194,7 +194,7 @@ Yes, before:
 ## Safe-To-Stage Exact File List
 
 For this implementation slice:
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
 

@@ -48,9 +48,9 @@ Intentionally not completed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_validation.py`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_validation.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_validation.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
@@ -61,9 +61,9 @@ Private ignored validation reports and recapture receipts remain beneath
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_validation.py pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py tests/test_amazing_tablature_validation.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_validation.py steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py tests/test_amazing_tablature_validation.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
   - PASS.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_validation.py pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py tests/test_amazing_tablature_validation.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_validation.py steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py tests/test_amazing_tablature_validation.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_validation.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
   - PASS: 228 passed.
@@ -113,9 +113,9 @@ for rereview or infer equivalence.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_validation.py`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_validation.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_validation.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`

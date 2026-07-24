@@ -84,8 +84,8 @@ Reachability:
 
 Browser artifact:
 
-- JSON: `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/teacher-first-browser-smoke.json`
-- Screenshots: `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/`
+- JSON: `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/teacher-first-browser-smoke.json`
+- Screenshots: `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/`
 
 Note: an initial browser pass was discarded because it captured loading/placeholder state before final answer/source rendering completed. The reported pass below is the rerun with explicit waits for loaded answer and source-card state.
 
@@ -97,21 +97,21 @@ Totals:
 
 | # | Prompt | Result | Sources | Fretboard | `[object Object]` | Weak warning | Raw fragment | Screenshot |
 |---:|---|---|---|---|---|---|---|---|
-| 1 | What are common uses for the E9 9th string? | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/01-what-are-common-uses-for-the-e9-9th-string.png` |
-| 2 | Why would a player prefer a wound 6th string? | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/02-why-would-a-player-prefer-a-wound-6th-string.png` |
-| 3 | What do players say about using the 6th string lower? | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/03-what-do-players-say-about-using-the-6th-string-lower.png` |
-| 4 | How do players approach diminished chords on E9? | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/04-how-do-players-approach-diminished-chords-on-e9.png` |
-| 5 | What are common Fender Steel King settings? | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/05-what-are-common-fender-steel-king-settings.png` |
-| 6 | How do players diagnose hum that changes when touching the changer? | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/06-how-do-players-diagnose-hum-that-changes-when-touching-the-changer.png` |
-| 7 | Where are my G chord positions? | PASS | suppressed | shown: `G MAJOR POSITIONS ON E9` | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/07-where-are-my-g-chord-positions.png` |
-| 8 | Show me C positions on E9. | PASS | suppressed | shown: `C MAJOR POSITIONS ON E9` | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/08-show-me-c-positions-on-e9.png` |
-| 9 | What is the capital of France? | PASS | suppressed | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/09-what-is-the-capital-of-france.png` |
-| 10 | Write me a Python script to scrape Instagram. | PASS | suppressed | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/10-write-me-a-python-script-to-scrape-instagram.png` |
-| 11 | Explain B+C pedals. | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/11-explain-b-c-pedals.png` |
-| 12 | Build a 7-day practice plan for blocking. | PASS | suppressed | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/12-build-a-7-day-practice-plan-for-blocking.png` |
-| 13 | How do I play a G-minor chord? | PASS | suppressed | shown: `G MINOR POSITIONS ON E9` | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/13-how-do-i-play-a-g-minor-chord.png` |
-| 14 | How do I play a 1-4-5-1 turnaround? | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/14-how-do-i-play-a-1-4-5-1-turnaround.png` |
-| 15 | What’s it mean for a song to be a swing or a waltz? | PASS | shown | suppressed | no | no | no | `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/15-what-s-it-mean-for-a-song-to-be-a-swing-or-a-waltz.png` |
+| 1 | What are common uses for the E9 9th string? | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/01-what-are-common-uses-for-the-e9-9th-string.png` |
+| 2 | Why would a player prefer a wound 6th string? | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/02-why-would-a-player-prefer-a-wound-6th-string.png` |
+| 3 | What do players say about using the 6th string lower? | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/03-what-do-players-say-about-using-the-6th-string-lower.png` |
+| 4 | How do players approach diminished chords on E9? | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/04-how-do-players-approach-diminished-chords-on-e9.png` |
+| 5 | What are common Fender Steel King settings? | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/05-what-are-common-fender-steel-king-settings.png` |
+| 6 | How do players diagnose hum that changes when touching the changer? | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/06-how-do-players-diagnose-hum-that-changes-when-touching-the-changer.png` |
+| 7 | Where are my G chord positions? | PASS | suppressed | shown: `G MAJOR POSITIONS ON E9` | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/07-where-are-my-g-chord-positions.png` |
+| 8 | Show me C positions on E9. | PASS | suppressed | shown: `C MAJOR POSITIONS ON E9` | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/08-show-me-c-positions-on-e9.png` |
+| 9 | What is the capital of France? | PASS | suppressed | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/09-what-is-the-capital-of-france.png` |
+| 10 | Write me a Python script to scrape Instagram. | PASS | suppressed | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/10-write-me-a-python-script-to-scrape-instagram.png` |
+| 11 | Explain B+C pedals. | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/11-explain-b-c-pedals.png` |
+| 12 | Build a 7-day practice plan for blocking. | PASS | suppressed | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/12-build-a-7-day-practice-plan-for-blocking.png` |
+| 13 | How do I play a G-minor chord? | PASS | suppressed | shown: `G MINOR POSITIONS ON E9` | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/13-how-do-i-play-a-g-minor-chord.png` |
+| 14 | How do I play a 1-4-5-1 turnaround? | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/14-how-do-i-play-a-1-4-5-1-turnaround.png` |
+| 15 | What’s it mean for a song to be a swing or a waltz? | PASS | shown | suppressed | no | no | no | `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/15-what-s-it-mean-for-a-song-to-be-a-swing-or-a-waltz.png` |
 
 ## Test Commands And Results
 
@@ -185,8 +185,8 @@ Residual note: source cards for source-backed teacher-first answers can still co
 
 Changed by Lane 05 teacher-first slice:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 
@@ -202,15 +202,15 @@ Deleted files: none.
 
 Generated artifacts:
 
-- `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/teacher-first-browser-smoke.json`
-- `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/screenshots/*.png`
+- `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/teacher-first-browser-smoke.json`
+- `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/screenshots/*.png`
 
 ## Exact Files Approved For Commit
 
 Approved only as narrowly hunk-staged changes:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/teacher-first-answer-composer.md`
@@ -218,12 +218,12 @@ Approved only as narrowly hunk-staged changes:
 
 ## Exact Hunks Needing Careful Staging
 
-`pocketsteel/fretboard_examples.py`:
+`steel_guitar_rag/fretboard_examples.py`:
 
 - Stage only the hyphenated minor-chord parsing/routing support needed for `How do I play a G-minor chord?`.
 - Do not stage unrelated fretboard engine/catalog/UI-support hunks from other lanes.
 
-`pocketsteel/curated_answers.py`:
+`steel_guitar_rag/curated_answers.py`:
 
 - Stage only the `lookup_curated_answer(...)` calls for:
   - `teacher_first_turnaround_answer(...)`
@@ -262,7 +262,7 @@ Do not stage for this teacher-first commit:
 - provenance/legal metadata dumps
 - deployment/DNS/Cloudflare/`.wrangler` files
 - generated reports
-- `/tmp/pocketsteel-teacher-first-browser-smoke-rerun/`
+- `/tmp/steel_guitar_rag-teacher-first-browser-smoke-rerun/`
 - unrelated docs, scripts, tests, API files, corpus tooling, and root RAG/build scripts
 - `docs/handoffs/task-completions/integration-status.md` unless a separate docs-only coordination task explicitly approves it
 
@@ -321,8 +321,8 @@ Read:
 Do not deploy, change DNS, touch Chroma/vector stores, regenerate embeddings, run scraping, stage generated/private/corpus/source-inbox/provenance/design/deploy files, or use git add .
 
 Hunk-stage only the teacher-first answer composer slice:
-- pocketsteel/fretboard_examples.py: hyphenated minor-chord parsing/routing support for "How do I play a G-minor chord?"
-- pocketsteel/curated_answers.py: lookup_curated_answer calls and definitions for teacher_first_turnaround_answer and teacher_first_swing_waltz_answer
+- steel_guitar_rag/fretboard_examples.py: hyphenated minor-chord parsing/routing support for "How do I play a G-minor chord?"
+- steel_guitar_rag/curated_answers.py: lookup_curated_answer calls and definitions for teacher_first_turnaround_answer and teacher_first_swing_waltz_answer
 - tests/test_fretboard_examples.py: test_hyphenated_minor_chord_questions_route_to_minor_positions
 - tests/test_api_search.py: test_teacher_first_screenshot_prompt_regressions_are_synthesized
 - docs/handoffs/task-completions/teacher-first-answer-composer.md

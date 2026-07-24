@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pocketsteel.answer_contracts import (
+from steel_guitar_rag.answer_contracts import (
     CONTRACTS,
     contract_for_intent,
     infer_contract_intent,

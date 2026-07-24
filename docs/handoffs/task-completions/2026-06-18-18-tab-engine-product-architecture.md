@@ -1,16 +1,16 @@
-# Pocket Steel Tab Engine Product Architecture
+# Steel Guitar RAG Tab Engine Product Architecture
 
 ## Task Summary
 
-- What was requested: define the product architecture and feature ladder for the Pocket Steel tab engine so future backend, UX, QA, and RAG lanes can build from a structured deterministic plan.
+- What was requested: define the product architecture and feature ladder for the Steel Guitar RAG tab engine so future backend, UX, QA, and RAG lanes can build from a structured deterministic plan.
 - What was completed: created this Lane 18 product/architecture handoff covering product thesis, feature ladder, tab-producing input types, backend architecture, data model concepts, guardrails, MVP cut, v2/v3 roadmap, RAG integration, SVG fretboard sync, risks, acceptance criteria, and recommended engineering slices.
 - What was intentionally not changed: no app code, backend implementation, UI, prompts, `/api/answer`, SGF retrieval, Chroma/vector stores, embeddings, corpus data, source-inbox data, deployment, auth, staging, or commits were changed.
 
 ## Product Thesis
 
-Pocket Steel tab should become a teaching and validation engine, not a prompt-only ASCII tab generator.
+Steel Guitar RAG tab should become a teaching and validation engine, not a prompt-only ASCII tab generator.
 
-The product differentiator is not "the model can print lines with fret numbers." The differentiator is that The Turnaround can reason from a copedent, resolve playable positions, plan a small musical idea, render readable tab, validate that the tab is possible, explain why it works, and synchronize it with the SVG fretboard.
+The product differentiator is not "the model can print lines with fret numbers." The differentiator is that Steel Guitar RAG can reason from a copedent, resolve playable positions, plan a small musical idea, render readable tab, validate that the tab is possible, explain why it works, and synchronize it with the SVG fretboard.
 
 The tab engine should answer like a steel-guitar teacher:
 

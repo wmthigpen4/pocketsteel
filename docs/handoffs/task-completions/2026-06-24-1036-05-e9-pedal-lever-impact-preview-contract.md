@@ -18,7 +18,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-24-1036-05-e9-pedal-lever-impact-preview-contract.md`
 
@@ -103,7 +103,7 @@ For the validated G-major `ii` row on strings `4-5-6` with `B+C`:
 ## Tests And Checks
 
 Passed:
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py`
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q`
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q`
 - `git diff --check`
@@ -132,7 +132,7 @@ Why:
 - The main compatibility risk is that UI code may ignore the new fields until Lane 06 wires them.
 
 Rollback:
-- Revert the `control_impact_preview` and `control_impacts` additions in `pocketsteel/fretboard_explorer.py`.
+- Revert the `control_impact_preview` and `control_impacts` additions in `steel_guitar_rag/fretboard_explorer.py`.
 - Revert the new focused tests in `tests/test_fretboard_explorer.py`.
 
 ## Human Decision Needed
@@ -141,7 +141,7 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-24-1036-05-e9-pedal-lever-impact-preview-contract.md`
 
@@ -171,7 +171,7 @@ Lane 01 Repo Steward exact-path commit, then Lane 06 UI implementation.
 Lane 01 Repo Steward:
 Run ExactPathCommit for docs/handoffs/task-completions/2026-06-24-1036-05-e9-pedal-lever-impact-preview-contract.md.
 Commit only:
-- pocketsteel/fretboard_explorer.py
+- steel_guitar_rag/fretboard_explorer.py
 - tests/test_fretboard_explorer.py
 - docs/handoffs/task-completions/2026-06-24-1036-05-e9-pedal-lever-impact-preview-contract.md
 Use commit message:

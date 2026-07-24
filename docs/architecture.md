@@ -1,4 +1,4 @@
-# The Turnaround — Current Architecture
+# Steel Guitar RAG — Current Architecture
 
 Last verified: 2026-07-13
 

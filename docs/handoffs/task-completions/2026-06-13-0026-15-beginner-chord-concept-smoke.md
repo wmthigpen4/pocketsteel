@@ -50,13 +50,13 @@ All direct checks returned HTTP 200 and no `[object Object]`. Product behavior s
 ```bash
 .venv/bin/python scripts/run_exploratory_answer_smoke.py \
   --base-url http://127.0.0.1:8783 \
-  --output /tmp/pocketsteel-beginner-chord-concept-smoke.md \
-  --json-output /tmp/pocketsteel-beginner-chord-concept-smoke.json
+  --output /tmp/steel_guitar_rag-beginner-chord-concept-smoke.md \
+  --json-output /tmp/steel_guitar_rag-beginner-chord-concept-smoke.json
 ```
 
 - Output artifacts:
-  - `/tmp/pocketsteel-beginner-chord-concept-smoke.md`
-  - `/tmp/pocketsteel-beginner-chord-concept-smoke.json`
+  - `/tmp/steel_guitar_rag-beginner-chord-concept-smoke.md`
+  - `/tmp/steel_guitar_rag-beginner-chord-concept-smoke.json`
 - Note: outputs were written to `/tmp` to avoid touching `corpus-private` or `corpus-v2`.
 
 ## Smoke Totals
@@ -126,8 +126,8 @@ All direct checks returned HTTP 200 and no `[object Object]`. Product behavior s
 - Deleted files:
   - None.
 - Generated artifacts:
-  - `/tmp/pocketsteel-beginner-chord-concept-smoke.md`
-  - `/tmp/pocketsteel-beginner-chord-concept-smoke.json`
+  - `/tmp/steel_guitar_rag-beginner-chord-concept-smoke.md`
+  - `/tmp/steel_guitar_rag-beginner-chord-concept-smoke.json`
 
 ## Integration Notes
 - This is a real product failure, not an environment/setup issue. The local API was reachable.

@@ -44,7 +44,7 @@
 - `scripts/check_dependency_locks.py`
 - `scripts/check_secret_patterns.py`
 - `functions/api/interest.js`
-- `pocketsteel/cloudflare_access.py`
+- `steel_guitar_rag/cloudflare_access.py`
 - `docs/handoffs/task-completions/2026-07-13-1630-01-reproducible-quality-baseline.md`
 
 No files were deleted. Temporary clean virtual environments and compiler logs
@@ -121,7 +121,7 @@ No. This is within the approved automated-quality remediation loop.
 - `scripts/check_dependency_locks.py`
 - `scripts/check_secret_patterns.py`
 - `functions/api/interest.js`
-- `pocketsteel/cloudflare_access.py`
+- `steel_guitar_rag/cloudflare_access.py`
 - `docs/handoffs/task-completions/2026-07-13-1630-01-reproducible-quality-baseline.md`
 
 ## Files That Must Not Be Staged

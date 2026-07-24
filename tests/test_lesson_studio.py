@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from pocketsteel.lesson_curriculum import CONCEPTS, VALID_KEYS, curriculum_count, mechanics_for
-from pocketsteel.lesson_studio import LessonStudioError, build_lesson, build_lesson_response, lesson_catalog
+from steel_guitar_rag.lesson_curriculum import CONCEPTS, VALID_KEYS, curriculum_count, mechanics_for
+from steel_guitar_rag.lesson_studio import LessonStudioError, build_lesson, build_lesson_response, lesson_catalog
 
 
 def test_reviewed_catalog_has_five_deep_paths_and_no_progress_claim() -> None:

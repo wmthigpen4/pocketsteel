@@ -1,9 +1,10 @@
-# The Turnaround
+# Steel Guitar RAG
 
-The Turnaround is a local, source-grounded RAG pipeline for Steel Guitar Forum knowledge.
+Steel Guitar RAG is a local, source-grounded RAG pipeline for Steel Guitar Forum knowledge.
 
-The user-facing app name is The Turnaround. Internal technical names such as
-`pocketsteel`, `pocket-steel`, and `pocket_steel` are intentionally preserved for now.
+The user-facing app name is Steel Guitar RAG. The canonical Python namespace is
+`steel_guitar_rag`; distribution, repository, package, and URL slugs use
+`steel-guitar-rag`.
 
 ## Current Application And Operations
 
@@ -122,7 +123,7 @@ python scripts/build_vector_index.py \
 Ask a source-grounded question:
 
 ```bash
-python scripts/ask_pocket_steel.py \
+python scripts/ask_steel_guitar_rag.py \
   --index-dir data/indexes/sgf \
   --question "What are common uses for the E9 9th string?"
 ```
@@ -144,7 +145,7 @@ python scripts/build_vector_index.py \
   --output-dir data/indexes/sgf-hashing \
   --backend hashing
 
-python scripts/ask_pocket_steel.py \
+python scripts/ask_steel_guitar_rag.py \
   --index-dir data/indexes/sgf-hashing \
   --question "What are common uses for the E9 9th string?"
 ```

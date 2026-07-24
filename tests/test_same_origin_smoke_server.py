@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON
+from steel_guitar_rag.access_control import DEV_ACCESS_ROLE_ENVIRON
 from scripts.serve_answer_smoke import build_app, create_smoke_api_app
 
 

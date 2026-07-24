@@ -13,7 +13,7 @@
 
 ## Files changed
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
 - Exact regression hunk in `tests/test_api_search.py`
 - This handoff.
 
@@ -74,7 +74,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
 - Exact classic-country regression hunk in `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-07-15-1041-05-classic-country-move-answer.md`
 

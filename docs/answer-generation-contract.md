@@ -1,6 +1,6 @@
 # Answer Generation Contract
 
-This contract defines how The Turnaround decides whether an answer may be generated from deterministic music logic, private profile data, curated rules, or SGF retrieval. It exists to prevent deterministic music questions from falling through to forum fragments.
+This contract defines how Steel Guitar RAG decides whether an answer may be generated from deterministic music logic, private profile data, curated rules, or SGF retrieval. It exists to prevent deterministic music questions from falling through to forum fragments.
 
 The key product rule is simple:
 
@@ -8,7 +8,7 @@ Plain chord-location questions are deterministic music-logic questions. They mus
 
 ## Current Flow Diagnosis
 
-The current `/api/answer` path in `pocketsteel/api.py` retrieves SGF/private sources before most answer-route decisions:
+The current `/api/answer` path in `steel_guitar_rag/api.py` retrieves SGF/private sources before most answer-route decisions:
 
 1. Parse the answer request.
 2. Run `_search_for_answer(...)` using the configured retrieval mode.
@@ -31,10 +31,10 @@ The intended architecture is intent-first:
 
 Current branch inspection notes:
 
-- `pocketsteel/api.py` still calls `_search_for_answer(...)` before `infer_contract_intent(...)`, `lookup_curated_answer(...)`, and `fretboard_payload_for_question(...)`.
-- `pocketsteel/curated_answers.py` can build deterministic chord-position prose through `visual_fretboard_curated_answer(...)`, but that route is reached after retrieval has already run.
-- `pocketsteel/fretboard_examples.py` now has a contract-shaped fretboard payload and deterministic major-position helpers, but `major_chord_location_request_for_question(...)` does not yet cover every mandatory phrase shape in this contract, including `where all can I play`, `where can I find`, `how do I make`, and `where is A major on E9`.
-- `pocketsteel/answer_contracts.py` still uses broad `copedent_fretboard` inference for chord/fret/E9 terms; it does not yet express a separate pre-retrieval `deterministic_chord_position` authority.
+- `steel_guitar_rag/api.py` still calls `_search_for_answer(...)` before `infer_contract_intent(...)`, `lookup_curated_answer(...)`, and `fretboard_payload_for_question(...)`.
+- `steel_guitar_rag/curated_answers.py` can build deterministic chord-position prose through `visual_fretboard_curated_answer(...)`, but that route is reached after retrieval has already run.
+- `steel_guitar_rag/fretboard_examples.py` now has a contract-shaped fretboard payload and deterministic major-position helpers, but `major_chord_location_request_for_question(...)` does not yet cover every mandatory phrase shape in this contract, including `where all can I play`, `where can I find`, `how do I make`, and `where is A major on E9`.
+- `steel_guitar_rag/answer_contracts.py` still uses broad `copedent_fretboard` inference for chord/fret/E9 terms; it does not yet express a separate pre-retrieval `deterministic_chord_position` authority.
 - `scripts/run_full_answer_quality_eval.py` already checks wrong-key leakage and source-fragment chord answers, but the next QA pass needs response-payload assertions for `response.fretboard`, source suppression, and retrieval-not-called behavior.
 
 ## Retrieval Policy Terms
@@ -225,10 +225,10 @@ On standard E9, A major is available at the 5th fret no pedals, 8th fret with A 
 Smallest safe backend sequence:
 
 1. Add an `answer_intents` module or extend `answer_contracts.py` with a strict pre-retrieval intent classifier.
-2. In `pocketsteel/api.py`, classify immediately after `parse_answer_request(...)` and before `_search_for_answer(...)`.
+2. In `steel_guitar_rag/api.py`, classify immediately after `parse_answer_request(...)` and before `_search_for_answer(...)`.
 3. If intent is `deterministic_chord_position`, call the deterministic chord-position route immediately and skip SGF/private retrieval.
-4. Expand `pocketsteel/fretboard_examples.major_chord_location_request_for_question(...)` or move it behind the new classifier so it covers all mandatory phrase variants.
-5. Build answer text and `response.fretboard` from `pocketsteel.fretboard_examples` or a narrow successor music-logic module.
+4. Expand `steel_guitar_rag/fretboard_examples.major_chord_location_request_for_question(...)` or move it behind the new classifier so it covers all mandatory phrase variants.
+5. Build answer text and `response.fretboard` from `steel_guitar_rag.fretboard_examples` or a narrow successor music-logic module.
 6. Clear top-level `sources` for deterministic chord answers and preserve rule provenance in `fretboard.sourceContext`.
 7. Add an intent-aware final gate after answer assembly; deterministic failures return deterministic fallback, not RAG fallback.
 8. Keep current v2/private retrieval config unchanged for non-deterministic intents.
@@ -325,10 +325,10 @@ Plain major chord-location questions are `deterministic_chord_position`. They mu
 
 ## Exact Backend Implementation Recommendations
 
-- In `pocketsteel/api.py`, insert pre-retrieval classification immediately after request parsing.
+- In `steel_guitar_rag/api.py`, insert pre-retrieval classification immediately after request parsing.
 - Add a structured intent result with at least: `name`, `retrieval_policy`, `source_card_policy`, `visual_payload`, `requested_root`, `normalized_root`, and `chord_quality`.
 - Implement `deterministic_chord_position` as a terminal pre-retrieval route.
-- Reuse `pocketsteel.fretboard_examples` for E9 major-position math, but expand phrase parsing for the mandatory examples.
+- Reuse `steel_guitar_rag.fretboard_examples` for E9 major-position math, but expand phrase parsing for the mandatory examples.
 - Keep deterministic top-level `sources` empty.
 - Put deterministic provenance in `response.fretboard.sourceContext`.
 - Add a deterministic answer gate that checks answer text, source cards, and `response.fretboard.positions`.
@@ -346,11 +346,11 @@ Plain major chord-location questions are `deterministic_chord_position`. They mu
 
 ## Files Read
 
-- `pocketsteel/api.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/answer_contracts.py`
 - `scripts/run_full_answer_quality_eval.py`
 - `tests/fixtures/user_question_bank.json`
 - `tests/test_full_answer_quality_eval.py`

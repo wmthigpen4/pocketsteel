@@ -24,10 +24,10 @@ HEAD before commit: `af645c9`.
 
 ## Files Changed
 
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/answer_tab_examples.py`
   - Added deterministic `answer_body` text to safe registry examples.
   - Added `answer_body_for_tab_example(...)`.
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Replaces generic fallback answer text only when a validated `tab_example` exists and the answer body matches known generic fallback markers.
 - `tests/test_tab_engine.py`
   - Verifies selector payloads map back to deterministic answer prose.
@@ -100,7 +100,7 @@ Verified safe prompts:
 git diff --check
 # passed
 
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py
 # passed
 
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
@@ -143,8 +143,8 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_tab_engine.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-18-05-tab-example-answer-body-fix.md`

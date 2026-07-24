@@ -194,7 +194,7 @@ Result: `114 passed`.
 ## Recommended Phase 3C Chunker-V2 Prompt
 
 ```text
-Begin Phase 3C chunker-v2 planning for The Turnaround corpus-v2.
+Begin Phase 3C chunker-v2 planning for Steel Guitar RAG corpus-v2.
 
 This is YELLOW. Stop after presenting the implementation plan and proposed diff unless explicitly approved to apply it.
 

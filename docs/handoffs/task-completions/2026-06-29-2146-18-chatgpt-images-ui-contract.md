@@ -9,7 +9,7 @@ The docs-only contract was created successfully, but the repo already had substa
 ## Task Summary
 
 Requested:
-- Create a design-implementation contract for turning ChatGPT Images mockups into Codex-buildable UI for the Steel Guitar RAG / Pocket Steel frontend.
+- Create a design-implementation contract for turning ChatGPT Images mockups into Codex-buildable UI for the Steel Guitar RAG / Steel Guitar RAG frontend.
 - Cover mockup interpretation, design tokens, component chunks, asset handling, responsive behavior, browser screenshot smoke, and acceptance criteria.
 - Inspect existing UI/docs and avoid runtime UI implementation.
 

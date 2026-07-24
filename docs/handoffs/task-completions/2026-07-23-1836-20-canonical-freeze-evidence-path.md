@@ -19,7 +19,7 @@ evaluations continue to require complete extraction review and acceptance.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_training.py`
 - This handoff
 
@@ -52,7 +52,7 @@ and freeze workflow.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1836-20-canonical-freeze-evidence-path.md`
 

@@ -59,7 +59,7 @@ Result:
 ```
 
 Browser screenshot:
-- `/tmp/pocketsteel-d-chord-fix-browser-smoke/screenshots/d-chord-across-fretboard.png`
+- `/tmp/steel_guitar_rag-d-chord-fix-browser-smoke/screenshots/d-chord-across-fretboard.png`
 
 ## Smoke result
 Local current-worktree server:
@@ -104,8 +104,8 @@ Browser URL:
   - Classification: adjacent answer-quality specificity issue, not a D-fix regression.
 
 Raw smoke artifacts:
-- `/tmp/pocketsteel-d-chord-fix-browser-smoke/browser-smoke-results-stable.json`
-- `/tmp/pocketsteel-d-chord-fix-browser-smoke/screenshots/d-chord-across-fretboard.png`
+- `/tmp/steel_guitar_rag-d-chord-fix-browser-smoke/browser-smoke-results-stable.json`
+- `/tmp/steel_guitar_rag-d-chord-fix-browser-smoke/screenshots/d-chord-across-fretboard.png`
 
 ## Tests and checks
 Commands run:
@@ -157,16 +157,16 @@ Changed by this QA task:
 - `docs/handoffs/task-completions/qa-d-chord-across-fretboard-answer-fix.md`
 
 Generated artifacts:
-- `/tmp/pocketsteel-d-chord-fix-browser-smoke/browser-smoke-results.json`
-- `/tmp/pocketsteel-d-chord-fix-browser-smoke/browser-smoke-results-stable.json`
-- `/tmp/pocketsteel-d-chord-fix-browser-smoke/screenshots/d-chord-across-fretboard.png`
+- `/tmp/steel_guitar_rag-d-chord-fix-browser-smoke/browser-smoke-results.json`
+- `/tmp/steel_guitar_rag-d-chord-fix-browser-smoke/browser-smoke-results-stable.json`
+- `/tmp/steel_guitar_rag-d-chord-fix-browser-smoke/screenshots/d-chord-across-fretboard.png`
 
 Implementation/test files inspected as the D-fix scope:
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 
 Pre-existing/parked dirty files observed in the shared worktree include broad backend, UI, corpus/provenance, docs, source-inbox, and design-asset paths. This QA task did not touch them.
 
@@ -174,16 +174,16 @@ Pre-existing/parked dirty files observed in the shared worktree include broad ba
 QA does not recommend a broad commit until the human/Repo Steward decides how to handle the adjacent 7-day practice-plan smoke failure.
 
 If Repo Steward chooses to split the D-fix despite the adjacent smoke issue, the exact likely D-fix files are:
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/d-chord-across-fretboard-answer-fix.md`
 - `docs/handoffs/task-completions/qa-d-chord-across-fretboard-answer-fix.md`
 
 Hunks needing careful staging:
-- `pocketsteel/fretboard_examples.py`: major-chord prompt patterns supporting D/across-fretboard/position phrasing and generated D major alternate positions.
-- `pocketsteel/curated_answers.py`: deterministic major-position answer enrichment for across-the-fretboard alternates.
+- `steel_guitar_rag/fretboard_examples.py`: major-chord prompt patterns supporting D/across-fretboard/position phrasing and generated D major alternate positions.
+- `steel_guitar_rag/curated_answers.py`: deterministic major-position answer enrichment for across-the-fretboard alternates.
 - `tests/test_fretboard_examples.py`: D major across-fretboard payload facts.
 - `tests/test_api_search.py`: D across-fretboard answer/source/fretboard regression assertions.
 
@@ -245,8 +245,8 @@ Review and hunk-stage only the D chord across-fretboard answer fix.
 Use the QA handoff docs/handoffs/task-completions/qa-d-chord-across-fretboard-answer-fix.md.
 
 Candidate files:
-- pocketsteel/fretboard_examples.py
-- pocketsteel/curated_answers.py
+- steel_guitar_rag/fretboard_examples.py
+- steel_guitar_rag/curated_answers.py
 - tests/test_fretboard_examples.py
 - tests/test_api_search.py
 - docs/handoffs/task-completions/d-chord-across-fretboard-answer-fix.md

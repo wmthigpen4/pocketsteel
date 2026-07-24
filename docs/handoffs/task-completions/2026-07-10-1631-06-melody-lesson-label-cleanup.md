@@ -27,7 +27,7 @@ Intentionally not changed: the shared tab engine's support for real lyric rows, 
 
 ## Files changed
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
 - `tests/test_melody_assistant.py`
@@ -95,7 +95,7 @@ No. These changes directly resolve observed user-smoke defects.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
 - `tests/test_melody_assistant.py`

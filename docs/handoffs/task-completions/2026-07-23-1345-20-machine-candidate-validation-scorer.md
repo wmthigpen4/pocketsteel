@@ -27,16 +27,16 @@ weight, runtime flag, or source image was modified.
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1345-20-machine-candidate-validation-scorer.md`
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py`
   - Passed.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
   - Passed.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py::test_machine_validation_scorer_uses_only_complete_tab_consensus`
   - Passed: 1 test.
@@ -81,7 +81,7 @@ exact canonical challenger.
 
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-23-1345-20-machine-candidate-validation-scorer.md`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 

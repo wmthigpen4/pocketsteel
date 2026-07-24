@@ -41,7 +41,7 @@
   - Added the `5&8 branch positions` harmony option.
   - Bumped Explorer data/controller cache-busts to `g-five-eight-ui-20260623`.
 - `ui/e9-fretboard-explorer-data.js`
-  - Regenerated static browser fixture from `pocketsteel.fretboard_explorer.build_explorer_payload(key)`.
+  - Regenerated static browser fixture from `steel_guitar_rag.fretboard_explorer.build_explorer_payload(key)`.
   - Includes the validated G major `five_eight_branch` rows for string group `5-8`.
 - `tests/test_frontend_answer_ui.py`
   - Added assertions for the new harmony option, refreshed cache-busts, G payload branch rows, `5-8` filtering, and visible-label guardrails.

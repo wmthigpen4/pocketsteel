@@ -27,9 +27,9 @@ Intentionally not changed:
 
 Committed in backend baseline `12eef1d`:
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/tab_engine.py`
 - `tests/test_api_search.py`
 - `tests/test_tab_engine.py`
 - `docs/handoffs/task-completions/2026-06-18-05-tab-example-fretboard-payload-and-lick-fix.md`
@@ -65,7 +65,7 @@ Frontend:
 Passed:
 
 - `git diff --check`
-- `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py`
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q` -> `22 passed`
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q` -> `5 passed`
 - `.venv/bin/python -m pytest tests/test_api_search.py -q` -> `257 passed`

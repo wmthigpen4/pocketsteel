@@ -32,8 +32,8 @@ Intentionally not changed:
 - `README.md`
 - `docs/handoffs/task-completions/integration-status.md`
 - `docs/handoffs/task-completions/2026-06-23-05-broader-g-harmonized-scale-routing.md`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 
 Notes:
@@ -48,8 +48,8 @@ No implementation files were changed by QA.
 ## Dirty Files Reviewed
 
 Expected active Lane 05 slice:
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-05-broader-g-harmonized-scale-routing.md`
 
@@ -130,7 +130,7 @@ Regression behavior: **passed**
   - Result: no staged files.
 - `git diff --check`
   - Result: passed.
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py pocketsteel/fretboard_examples.py pocketsteel/curated_answers.py pocketsteel/api.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py`
   - Result: passed.
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q`
   - Result: `30 passed`.
@@ -179,8 +179,8 @@ No.
 
 If Repo Steward proceeds, stage only:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-05-broader-g-harmonized-scale-routing.md`
 - `docs/handoffs/task-completions/2026-06-23-15-broader-g-harmonized-scale-routing-qa.md`

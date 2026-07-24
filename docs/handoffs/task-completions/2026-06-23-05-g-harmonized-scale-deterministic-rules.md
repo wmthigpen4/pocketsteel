@@ -26,9 +26,9 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/fretboard_explorer.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_explorer.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-05-g-harmonized-scale-deterministic-rules.md`
@@ -38,7 +38,7 @@ Intentionally not changed:
 - `git status --short`
 - `git diff --name-only`
 - `git diff --cached --name-only`
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py pocketsteel/fretboard_examples.py pocketsteel/curated_answers.py pocketsteel/api.py pocketsteel/answer_tab_examples.py pocketsteel/tab_engine.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py steel_guitar_rag/tab_engine.py`
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q` - 30 passed
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'harmonized or static_g or tab_example' -q` - 16 passed, 254 deselected
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q` - 25 passed
@@ -76,9 +76,9 @@ Potential product follow-up: decide whether Lane 06 should expose `five_eight_br
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_explorer.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_explorer.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-05-g-harmonized-scale-deterministic-rules.md`

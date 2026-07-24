@@ -2,13 +2,13 @@
 
 ## Task Summary
 
-Requested QA recheck of the SGF Evidence Is Not Primary Answer Text backend patch after Lane 05 extracted the deterministic basic chord/theory helpers into `pocketsteel/basic_chord_answers.py`.
+Requested QA recheck of the SGF Evidence Is Not Primary Answer Text backend patch after Lane 05 extracted the deterministic basic chord/theory helpers into `steel_guitar_rag/basic_chord_answers.py`.
 
 Completed:
 - Reviewed the repo protocol, current integration status, prior SGF implementation/QA handoffs, commit-safe patch handoff, answer contract/rubric/teacher-first guidance, backend answer files, eval runner, API tests, git status, and current diffs.
 - Verified the new helper module preserves the previously approved SGF evidence-gate behavior.
-- Verified `pocketsteel/answering.py` and `pocketsteel/curated_answers.py` now import SGF-approved basic theory/chord-change helpers from `pocketsteel.basic_chord_answers`.
-- Verified the SGF slice no longer needs the dirty helper additions in `pocketsteel/fretboard_examples.py` or `tests/test_fretboard_examples.py`.
+- Verified `steel_guitar_rag/answering.py` and `steel_guitar_rag/curated_answers.py` now import SGF-approved basic theory/chord-change helpers from `steel_guitar_rag.basic_chord_answers`.
+- Verified the SGF slice no longer needs the dirty helper additions in `steel_guitar_rag/fretboard_examples.py` or `tests/test_fretboard_examples.py`.
 - Re-ran compile checks, focused SGF/API tests, broader answer/API tests, prompt-level in-process checks, `run_answer_eval.py --help`, and full pytest.
 
 Intentionally not changed:
@@ -21,16 +21,16 @@ Intentionally not changed:
 
 **Pass.**
 
-QA approves exact-hunk commit of the commit-safe SGF evidence gate patch, including the new helper module `pocketsteel/basic_chord_answers.py`.
+QA approves exact-hunk commit of the commit-safe SGF evidence gate patch, including the new helper module `steel_guitar_rag/basic_chord_answers.py`.
 
-The helper extraction is approved. It resolves the previous commit blocker because the SGF slice no longer depends on staging dirty `pocketsteel/fretboard_examples.py` or `tests/test_fretboard_examples.py`. The new helper module imports only utility functions that already exist in clean HEAD:
+The helper extraction is approved. It resolves the previous commit blocker because the SGF slice no longer depends on staging dirty `steel_guitar_rag/fretboard_examples.py` or `tests/test_fretboard_examples.py`. The new helper module imports only utility functions that already exist in clean HEAD:
 - `minor_triad_spelling_for_answer`
 - `normalize_chord_words_in_text`
 - `normalize_key`
 - `normalize_requested_root`
 - `transpose`
 
-Those clean-HEAD utility definitions were verified with `git show HEAD:pocketsteel/fretboard_examples.py`.
+Those clean-HEAD utility definitions were verified with `git show HEAD:steel_guitar_rag/fretboard_examples.py`.
 
 ## Focused Behavior Results
 
@@ -80,8 +80,8 @@ Commands run:
 ```bash
 git status --short
 git diff --check
-git show HEAD:pocketsteel/fretboard_examples.py | rg -n "def (minor_triad_spelling_for_answer|normalize_chord_words_in_text|normalize_key|normalize_requested_root|transpose)"
-.venv/bin/python -m py_compile pocketsteel/basic_chord_answers.py pocketsteel/answering.py pocketsteel/curated_answers.py pocketsteel/answer_contracts.py pocketsteel/api.py scripts/run_answer_eval.py
+git show HEAD:steel_guitar_rag/fretboard_examples.py | rg -n "def (minor_triad_spelling_for_answer|normalize_chord_words_in_text|normalize_key|normalize_requested_root|transpose)"
+.venv/bin/python -m py_compile steel_guitar_rag/basic_chord_answers.py steel_guitar_rag/answering.py steel_guitar_rag/curated_answers.py steel_guitar_rag/answer_contracts.py steel_guitar_rag/api.py scripts/run_answer_eval.py
 .venv/bin/python -m pytest tests/test_api_search.py -k "unknown_person_identity or primary_answer_gate or rootless_chord_quality or major_seventh or chord_change or suspended_chord or basic_chord_definition or smoke_ready_chord_fretboard"
 .venv/bin/python scripts/run_answer_eval.py --help
 .venv/bin/python -m pytest tests/test_answer_intent_classifier.py
@@ -93,7 +93,7 @@ git diff --check
 
 Results:
 - `git diff --check`: passed.
-- Clean-HEAD utility check: required utility functions exist in committed `pocketsteel/fretboard_examples.py`.
+- Clean-HEAD utility check: required utility functions exist in committed `steel_guitar_rag/fretboard_examples.py`.
 - `py_compile`: passed.
 - Focused SGF/API selection: `8 passed, 200 deselected`.
 - `scripts/run_answer_eval.py --help`: passed.
@@ -124,18 +124,18 @@ No implementation files were modified by this QA task.
 QA approves exact-hunk staging for the SGF evidence gate patch only.
 
 Approved files/hunks:
-- `pocketsteel/basic_chord_answers.py`
+- `steel_guitar_rag/basic_chord_answers.py`
   - New standalone helper module for deterministic basic chord/theory and chord-change answers.
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/answer_contracts.py`
   - SGF/source-fragment forbidden pattern additions and directly related contract/inference hunks required by this SGF gate.
-- `pocketsteel/answering.py`
-  - Import of `basic_chord_theory_answer_for_question` and `chord_change_answer_for_question` from `pocketsteel.basic_chord_answers`.
+- `steel_guitar_rag/answering.py`
+  - Import of `basic_chord_theory_answer_for_question` and `chord_change_answer_for_question` from `steel_guitar_rag.basic_chord_answers`.
   - SGF chatter classification/rejection for fragments such as `which someone else is probably playing` and `I may be learning`.
   - Deterministic fallback loop that tries rootless quality, basic chord/theory, chord-change/progression, and generic chord concept answers before weak fallback text.
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - `GET /api/version` endpoint and non-secret runtime identity payload helpers.
-- `pocketsteel/curated_answers.py`
-  - Import of helpers from `pocketsteel.basic_chord_answers`.
+- `steel_guitar_rag/curated_answers.py`
+  - Import of helpers from `steel_guitar_rag.basic_chord_answers`.
   - Basic theory/chord-change curated answer routing.
   - Private/placeholder unknown-identity guardrail routing.
 - `scripts/run_answer_eval.py`
@@ -152,7 +152,7 @@ Repo Steward should still use exact-hunk staging because approved files may cont
 ## Must Remain Parked
 
 Do not stage for this SGF backend commit unless a separate lane explicitly approves:
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_fretboard_examples.py`
 - `ui/steel-guitar-rag-mock.html`
 - `deploy/landing/index.html`
@@ -171,9 +171,9 @@ Do not stage for this SGF backend commit unless a separate lane explicitly appro
 ## Integration Notes
 
 The previous helper-scope contradiction is resolved:
-- Before: approved `answering.py` / `curated_answers.py` hunks depended on helper definitions living only in dirty `pocketsteel/fretboard_examples.py`.
-- Now: helper definitions live in `pocketsteel/basic_chord_answers.py`, which is in the approved commit scope.
-- The new helper module depends only on utility functions that exist in clean HEAD, so dirty `pocketsteel/fretboard_examples.py` hunks are not required for this backend commit.
+- Before: approved `answering.py` / `curated_answers.py` hunks depended on helper definitions living only in dirty `steel_guitar_rag/fretboard_examples.py`.
+- Now: helper definitions live in `steel_guitar_rag/basic_chord_answers.py`, which is in the approved commit scope.
+- The new helper module depends only on utility functions that exist in clean HEAD, so dirty `steel_guitar_rag/fretboard_examples.py` hunks are not required for this backend commit.
 
 Retrieval gating remains intact in the prompt sweep and answer/API tests:
 - Off-domain prompt returned a source-free guardrail.
@@ -195,7 +195,7 @@ Why:
 - Full pytest remains red, but only for unrelated static/UI failures.
 
 Rollback:
-- Revert the exact SGF evidence gate commit if needed, including `pocketsteel/basic_chord_answers.py` and the import/call-site changes.
+- Revert the exact SGF evidence gate commit if needed, including `steel_guitar_rag/basic_chord_answers.py` and the import/call-site changes.
 - Do not use destructive cleanup commands against parked work.
 
 ## Commit Readiness
@@ -217,11 +217,11 @@ Branch: feature/answer-api
 QA approved the commit-safe SGF Evidence Gate patch in docs/handoffs/task-completions/qa-sgf-evidence-gate-commit-safe-patch.md. Proceed under Repo Steward auto-approval with exact-hunk staging only.
 
 Stage only the approved SGF backend/eval/documentation scope:
-- pocketsteel/basic_chord_answers.py
-- exact approved hunks in pocketsteel/answer_contracts.py
-- exact approved hunks in pocketsteel/answering.py
-- exact approved hunks in pocketsteel/api.py
-- exact approved hunks in pocketsteel/curated_answers.py
+- steel_guitar_rag/basic_chord_answers.py
+- exact approved hunks in steel_guitar_rag/answer_contracts.py
+- exact approved hunks in steel_guitar_rag/answering.py
+- exact approved hunks in steel_guitar_rag/api.py
+- exact approved hunks in steel_guitar_rag/curated_answers.py
 - exact approved hunks in scripts/run_answer_eval.py
 - exact approved hunks in tests/test_api_search.py
 - docs/handoffs/task-completions/sgf-evidence-not-primary-answer-text-implementation.md
@@ -229,7 +229,7 @@ Stage only the approved SGF backend/eval/documentation scope:
 - docs/handoffs/task-completions/sgf-evidence-gate-commit-safe-patch.md
 - docs/handoffs/task-completions/qa-sgf-evidence-gate-commit-safe-patch.md
 
-Do not stage pocketsteel/fretboard_examples.py, tests/test_fretboard_examples.py, UI/static files, corpus/source/provenance files, deployment/design assets, generated reports, or unrelated docs.
+Do not stage steel_guitar_rag/fretboard_examples.py, tests/test_fretboard_examples.py, UI/static files, corpus/source/provenance files, deployment/design assets, generated reports, or unrelated docs.
 
 Run git diff --cached --check, py_compile for touched Python files, focused SGF/API tests, and the backend/eval gate. If the staged diff is clean and tests pass, commit the scoped SGF backend slice. If exact hunks cannot be isolated safely, write a blocker handoff instead.
 ```

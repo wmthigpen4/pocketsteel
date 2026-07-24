@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pocketsteel.fretboard_explorer import (
+from steel_guitar_rag.fretboard_explorer import (
     E9_OPEN_STRINGS,
     ExplorerCandidate,
     THREE_STRING_GRIP_VOCABULARY,
@@ -25,7 +25,7 @@ from pocketsteel.fretboard_explorer import (
     validate_explorer_candidate,
     validate_explorer_payload,
 )
-from pocketsteel.e9_copedents import (
+from steel_guitar_rag.e9_copedents import (
     CUSTOM_LKV_COPEDENT_ID,
     DAY_COPEDENT_ID,
     DEFAULT_COPEDENT_ID,
@@ -33,7 +33,7 @@ from pocketsteel.e9_copedents import (
     scientific_pitch_for_value,
     selected_copedent_payload,
 )
-from pocketsteel.fretboard_examples import absolute_pitch_for_string
+from steel_guitar_rag.fretboard_examples import absolute_pitch_for_string
 
 
 REQUIRED_ROW_KEYS = {

@@ -15,8 +15,8 @@
 
 ## Files changed
 
-- `pocketsteel/copedent_transfer.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/copedent_transfer.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_copedent_transfer.py`
 - This implementation handoff and the accompanying Lane 15 QA handoff.
 - Deleted files: none.
@@ -48,8 +48,8 @@
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/copedent_transfer.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/copedent_transfer.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_copedent_transfer.py`
 - `docs/handoffs/task-completions/2026-07-14-2100-05-melody-saved-pedal-tab-labels.md`
 - `docs/handoffs/task-completions/2026-07-14-2100-15-melody-saved-pedal-tab-labels-qa.md`

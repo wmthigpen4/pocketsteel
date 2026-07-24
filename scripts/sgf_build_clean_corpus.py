@@ -13,7 +13,7 @@ from typing import Any, Iterable, Mapping
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pocketsteel.schema import clean_sgf_post_text, stringify_metadata
+from steel_guitar_rag.schema import clean_sgf_post_text, stringify_metadata
 from rag_common import forum_input_glob, project_path
 
 

@@ -73,7 +73,7 @@ Observed after restart:
 {
   "git_sha": "9562e90",
   "git_branch": "feature/answer-api",
-  "python_module": "pocketsteel.api",
+  "python_module": "steel_guitar_rag.api",
   "retrieval_mode": "hybrid_private_first",
   "auth_provider": "cloudflare_access"
 }

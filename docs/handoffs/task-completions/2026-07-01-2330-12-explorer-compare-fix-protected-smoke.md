@@ -144,7 +144,7 @@ Ran:
 - `git branch --show-current`
 - `git rev-parse --short HEAD`
 - `git log --oneline -8`
-- `git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests`
+- `git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests`
 - `git diff --cached --name-only`
 - `curl -sS http://127.0.0.1:8770/api/version`
 - `lsof -nP -iTCP:8770 -sTCP:LISTEN`

@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 
-from pocketsteel.access_control import AnswerAccessDecision
-from pocketsteel.account_copedents import (
+from steel_guitar_rag.access_control import AnswerAccessDecision
+from steel_guitar_rag.account_copedents import (
     COMMON_ENTITLEMENTS,
     CUSTOM_ENTITLEMENTS,
     AccountCopedentRepository,

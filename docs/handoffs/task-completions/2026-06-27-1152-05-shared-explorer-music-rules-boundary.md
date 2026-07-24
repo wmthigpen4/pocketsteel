@@ -139,7 +139,7 @@ Remaining UI-only logic stays in `ui/e9-fretboard-explorer.js`:
 - row-card/detail rendering.
 - interaction state.
 
-Backend Explorer row generation remains in `pocketsteel/fretboard_explorer.py`. This slice does not yet make Python and browser share one generated artifact or one source file. It creates the smallest browser-side shared boundary for current UI/future answer-tab sync without a broad rewrite.
+Backend Explorer row generation remains in `steel_guitar_rag/fretboard_explorer.py`. This slice does not yet make Python and browser share one generated artifact or one source file. It creates the smallest browser-side shared boundary for current UI/future answer-tab sync without a broad rewrite.
 
 ## Risks / Blockers
 

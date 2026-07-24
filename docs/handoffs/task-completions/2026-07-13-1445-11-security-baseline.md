@@ -19,12 +19,12 @@
 
 ## Files changed
 
-- `pocketsteel/access_control.py`
-- `pocketsteel/cloudflare_access.py`
-- `pocketsteel/api.py`
-- `pocketsteel/answer_usage.py`
-- `pocketsteel/rag_guardrails.py`
-- `pocketsteel/answering.py`
+- `steel_guitar_rag/access_control.py`
+- `steel_guitar_rag/cloudflare_access.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answer_usage.py`
+- `steel_guitar_rag/rag_guardrails.py`
+- `steel_guitar_rag/answering.py`
 - `pyproject.toml`
 - `tests/test_cloudflare_access.py` (new)
 - `tests/test_api_search.py`
@@ -97,12 +97,12 @@ No files were deleted. No generated artifacts are part of the commit scope.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/access_control.py`
-- `pocketsteel/cloudflare_access.py`
-- `pocketsteel/api.py`
-- `pocketsteel/answer_usage.py`
-- `pocketsteel/rag_guardrails.py`
-- `pocketsteel/answering.py`
+- `steel_guitar_rag/access_control.py`
+- `steel_guitar_rag/cloudflare_access.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answer_usage.py`
+- `steel_guitar_rag/rag_guardrails.py`
+- `steel_guitar_rag/answering.py`
 - `pyproject.toml`
 - `tests/test_cloudflare_access.py`
 - `tests/test_api_search.py`

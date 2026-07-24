@@ -1,6 +1,6 @@
 # Current Commands
 
-This is the current local command reference for The Turnaround. These commands do not perform live scraping. Commands that rebuild corpus outputs or vector indexes should be treated as YELLOW or RED according to `AGENTS.md`.
+This is the current local command reference for Steel Guitar RAG. These commands do not perform live scraping. Commands that rebuild corpus outputs or vector indexes should be treated as YELLOW or RED according to `AGENTS.md`.
 
 ## Verified Reproducible Baseline
 
@@ -191,7 +191,7 @@ python3 scripts/build_vector_index.py \
 Ask a source-grounded question:
 
 ```bash
-python3 scripts/ask_pocket_steel.py \
+python3 scripts/ask_steel_guitar_rag.py \
   --index-dir data/indexes/sgf-hashing \
   --question "What are common uses for the E9 9th string?"
 ```
@@ -290,5 +290,5 @@ python3 scripts/prepare_copyright_review_queue.py \
 - Any live scraper command.
 - Any command that deletes raw files, generated corpora, SQLite databases, or vector stores.
 - `rag_embed_chroma.py --reset` or any other vector index rebuild.
-- Broad renames of `pocketsteel`, `pocket-steel`, or `pocket_steel`.
+- Broad renames of `steel_guitar_rag`, `steel-guitar-rag`, or `steel_guitar_rag`.
 - Commands that mutate private transcripts, paid transcripts, licensing metadata, auth, payments, or access control.

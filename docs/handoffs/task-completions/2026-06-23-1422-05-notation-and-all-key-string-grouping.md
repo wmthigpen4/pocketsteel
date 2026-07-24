@@ -20,11 +20,11 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/music_text.py` - new shared accidental text normalizer.
-- `pocketsteel/fretboard_examples.py` - normalized symbols/spelled accidentals, accepted double accidentals in note lookup, expanded chord root parsing, added string-grouping major-position route.
-- `pocketsteel/answer_intent_classifier.py` - normalized accidentals before classification, narrowed source-backed precedence for visual-position prompts, added `string grouping` as a visual object.
-- `pocketsteel/curated_answers.py` - normalized accidentals in curated routing, added direct string-grouping answer prose, fixed D-sharp lick route after normalization.
-- `pocketsteel/fretboard_explorer.py` - normalized Unicode Explorer keys, fixed flat-key slugs, added `display_harmony_type` grouping metadata.
+- `steel_guitar_rag/music_text.py` - new shared accidental text normalizer.
+- `steel_guitar_rag/fretboard_examples.py` - normalized symbols/spelled accidentals, accepted double accidentals in note lookup, expanded chord root parsing, added string-grouping major-position route.
+- `steel_guitar_rag/answer_intent_classifier.py` - normalized accidentals before classification, narrowed source-backed precedence for visual-position prompts, added `string grouping` as a visual object.
+- `steel_guitar_rag/curated_answers.py` - normalized accidentals in curated routing, added direct string-grouping answer prose, fixed D-sharp lick route after normalization.
+- `steel_guitar_rag/fretboard_explorer.py` - normalized Unicode Explorer keys, fixed flat-key slugs, added `display_harmony_type` grouping metadata.
 - `tests/test_api_search.py` - API regressions for A-flat/A♭/Ab string grouping and C♯.
 - `tests/test_answer_intent_classifier.py` - classifier regressions for A-flat/A♭ and C♯ visual routing.
 - `tests/test_fretboard_explorer.py` - Explorer all-supported-key validation, Unicode key normalization, 5&8 display grouping metadata.
@@ -85,7 +85,7 @@ Manual payload checks:
 ## Tests And Checks
 
 Passed:
-- `.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/curated_answers.py pocketsteel/fretboard_examples.py pocketsteel/fretboard_explorer.py pocketsteel/answer_intent_classifier.py pocketsteel/music_text.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/curated_answers.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/fretboard_explorer.py steel_guitar_rag/answer_intent_classifier.py steel_guitar_rag/music_text.py`
 - `.venv/bin/python -m pytest tests/test_answer_intent_classifier.py -q` -> `86 passed`
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q` -> `5 passed`
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'flat or sharp or accidental or string_grouping or harmonized or diminished or tab_example' -q` -> `24 passed, 254 deselected`
@@ -130,11 +130,11 @@ Human/product decision still needed:
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/music_text.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/music_text.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_api_search.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_fretboard_explorer.py`

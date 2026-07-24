@@ -53,7 +53,7 @@ From the repository root, the user must run this documented activation command a
 
 ```bash
 STEEL_RAG_REPO_DIR="$HOME/.steel-rag/releases/4b443c7" \
-STEEL_RAG_DATA_DIR="$HOME/Documents/Pocket Steel" \
+STEEL_RAG_DATA_DIR="$HOME/Documents/Steel Guitar RAG" \
 STEEL_RAG_EXPECTED_GIT_SHA="4b443c79a01f9a615b2cef36763e9d94c4dd3ab1" \
 deploy/macos/install-private-preview-launchdaemon.sh activate
 ```

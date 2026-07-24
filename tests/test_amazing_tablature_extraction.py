@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
-from pocketsteel.amazing_tablature_extraction import (
+from steel_guitar_rag.amazing_tablature_extraction import (
     DECISION_DERIVATION_VERSION,
     FEEDBACK_CORRECTION_PLAN_SCHEMA_VERSION,
     EXTRACTOR_VERSION,
@@ -163,21 +163,21 @@ from pocketsteel.amazing_tablature_extraction import (
     make_review_http_server,
     score_tab_pitch_relationship_findings,
 )
-from pocketsteel.amazing_tablature_training import _profile_digest as training_profile_digest
-from pocketsteel.amazing_tablature_transition_decoder import (
+from steel_guitar_rag.amazing_tablature_training import _profile_digest as training_profile_digest
+from steel_guitar_rag.amazing_tablature_transition_decoder import (
     train_transition_decoder,
     transition_feature_signature,
 )
-from pocketsteel.amazing_tablature_reader_calibration import (
+from steel_guitar_rag.amazing_tablature_reader_calibration import (
     reader_state_signature,
     train_reader_calibration,
 )
-from pocketsteel.amazing_tablature_decisions import (
+from steel_guitar_rag.amazing_tablature_decisions import (
     _candidate,
     _voice_preserving_alternatives,
     derive_decision_annotations,
 )
-from pocketsteel.e9_copedents import e9_copedent_profile_digest, get_e9_copedent_profile
+from steel_guitar_rag.e9_copedents import e9_copedent_profile_digest, get_e9_copedent_profile
 
 
 def _synthetic_tab() -> Image.Image:
@@ -2832,7 +2832,7 @@ def test_validation_deterministic_score_consensus_requires_all_source_counts(
         {"scoreEventId": "s2", "pitchValue": 62, "rest": False},
     ]
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction."
+        "steel_guitar_rag.amazing_tablature_extraction."
         "_validation_machine_score_from_existing_omr",
         lambda *_args, **_kwargs: (
             score_events,
@@ -2844,11 +2844,11 @@ def test_validation_deterministic_score_consensus_requires_all_source_counts(
         ),
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._ordered_score_attacks",
+        "steel_guitar_rag.amazing_tablature_extraction._ordered_score_attacks",
         lambda *_args, **_kwargs: [{}, {}],
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        "steel_guitar_rag.amazing_tablature_extraction._audiveris_notehead_columns",
         lambda *_args, **_kwargs: {
             "detectorVersion": "heads-v1",
             "columnCount": 2,
@@ -2857,7 +2857,7 @@ def test_validation_deterministic_score_consensus_requires_all_source_counts(
         },
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction."
+        "steel_guitar_rag.amazing_tablature_extraction."
         "_score_projection_component_hybrid",
         lambda *_args, **_kwargs: {
             "detectorVersion": "hybrid-v1",
@@ -2886,7 +2886,7 @@ def test_validation_deterministic_score_consensus_requires_all_source_counts(
     }
 
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        "steel_guitar_rag.amazing_tablature_extraction._audiveris_notehead_columns",
         lambda *_args, **_kwargs: {
             "detectorVersion": "heads-v1",
             "columnCount": 2,
@@ -3371,7 +3371,7 @@ def test_source_first_system_key_signature_accepts_explicit_or_proven_zero(
     omr_path = tmp_path / "first-system.omr"
     omr_path.write_bytes(b"fixture")
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        "steel_guitar_rag.amazing_tablature_extraction._parse_audiveris_head_graph",
         lambda _path, _system_id: {
             "keySignature": {
                 "fifths": 3,
@@ -3391,7 +3391,7 @@ def test_source_first_system_key_signature_accepts_explicit_or_proven_zero(
     assert explicit["source"] == "explicit_first_system_key_signature"
 
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        "steel_guitar_rag.amazing_tablature_extraction._parse_audiveris_head_graph",
         lambda _path, _system_id: {
             "keySignature": None,
             "clef": {"confidence": 0.84},
@@ -3414,7 +3414,7 @@ def test_source_first_system_key_signature_rejects_ambiguous_absence(
     omr_path = tmp_path / "first-system.omr"
     omr_path.write_bytes(b"fixture")
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        "steel_guitar_rag.amazing_tablature_extraction._parse_audiveris_head_graph",
         lambda _path, _system_id: {
             "keySignature": None,
             "clef": {"confidence": 0.9},
@@ -4789,11 +4789,11 @@ def test_audiveris_cache_is_keyed_by_exact_score_crop(
         return type("Result", (), {"returncode": 0, "stderr": ""})()
 
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction.subprocess.run",
+        "steel_guitar_rag.amazing_tablature_extraction.subprocess.run",
         fake_run,
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._parse_musicxml",
+        "steel_guitar_rag.amazing_tablature_extraction._parse_musicxml",
         lambda _path, system_id: {"scoreSystemId": system_id},
     )
     reader = AudiverisReader(binary)
@@ -5636,7 +5636,7 @@ def test_score_omr_derivative_ignores_connector_tail_below_crop(
     target = tmp_path / "prepared" / "short-score.png"
     Image.new("RGB", (120, 100), "white").save(source)
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._detect_score_staff_lines",
+        "steel_guitar_rag.amazing_tablature_extraction._detect_score_staff_lines",
         lambda _gray: (80, 90, 100, 110, 120),
     )
     grid = GridDetection(
@@ -5824,7 +5824,7 @@ def test_source_score_semantic_repair_requires_source_only_corroboration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        "steel_guitar_rag.amazing_tablature_extraction._audiveris_notehead_columns",
         lambda _path: {
             "columnCount": 2,
             "relationColumnCount": 2,
@@ -5833,7 +5833,7 @@ def test_source_score_semantic_repair_requires_source_only_corroboration(
         },
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._score_projection_component_hybrid",
+        "steel_guitar_rag.amazing_tablature_extraction._score_projection_component_hybrid",
         lambda _image, _noteheads: {
             "fusedAttackCount": 2,
             "fusionApplied": False,
@@ -5842,7 +5842,7 @@ def test_source_score_semantic_repair_requires_source_only_corroboration(
         },
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        "steel_guitar_rag.amazing_tablature_extraction._parse_audiveris_head_graph",
         lambda _path, _system_id: {
             "scoreEvents": [
                 {
@@ -5904,7 +5904,7 @@ def test_source_score_semantic_repair_constrains_incomplete_chord_relations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        "steel_guitar_rag.amazing_tablature_extraction._audiveris_notehead_columns",
         lambda _path: {
             "columnCount": 2,
             "relationColumnCount": 2,
@@ -5913,7 +5913,7 @@ def test_source_score_semantic_repair_constrains_incomplete_chord_relations(
         },
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._score_projection_component_hybrid",
+        "steel_guitar_rag.amazing_tablature_extraction._score_projection_component_hybrid",
         lambda _image, _noteheads: {
             "fusedAttackCount": 2,
             "fusionApplied": False,
@@ -5954,7 +5954,7 @@ def test_source_score_semantic_repair_constrains_incomplete_chord_relations(
         }
 
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        "steel_guitar_rag.amazing_tablature_extraction._parse_audiveris_head_graph",
         lambda _path, _system_id: {
             "scoreEvents": [
                 head_event("head-1", 60, 100.0, 100.0),
@@ -6406,11 +6406,11 @@ def test_future_projection_shadow_captures_before_review_and_scores_later(
         json.dumps({"cases": []}), encoding="utf-8"
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        "steel_guitar_rag.amazing_tablature_extraction._audiveris_notehead_columns",
         lambda _path: {"columnCount": 2, "columns": [{"x": 10}, {"x": 20}]},
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._score_projection_component_hybrid",
+        "steel_guitar_rag.amazing_tablature_extraction._score_projection_component_hybrid",
         lambda _path, _prediction: {
             "projectionAttackCount": 2,
             "componentAttackCount": 3,
@@ -6422,7 +6422,7 @@ def test_future_projection_shadow_captures_before_review_and_scores_later(
         },
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._score_projection_fusion",
+        "steel_guitar_rag.amazing_tablature_extraction._score_projection_fusion",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
             AssertionError("future shadow must not run projection outside the hybrid")
         ),
@@ -7338,7 +7338,7 @@ def test_event_localization_review_is_isolated_compact_and_submittable(
     extractor = AmazingTablatureExtractor(private, repo_root=tmp_path)
     extractor.tab_system_vision = _StubLocalizer()
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._tab_event_candidates",
+        "steel_guitar_rag.amazing_tablature_extraction._tab_event_candidates",
         lambda _gray, _grid: [
             {"x": 319, "candidateStrings": [5]},
             {"x": 1495, "candidateStrings": [4]},
@@ -9875,14 +9875,14 @@ def test_unreviewed_refresh_preserves_feedback_pages_and_scopes_next_packet(
 
     monkeypatch.setattr(extractor, "_build_score_repair_candidate", fake_score_repair)
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._score_audit_equivalence_gates",
+        "steel_guitar_rag.amazing_tablature_extraction._score_audit_equivalence_gates",
         lambda record: {
             str(system["scoreSystemId"]): {"readyForHumanReview": True}
             for system in record.get("scoreSystems") or []
         },
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._combined_score_tab_columns",
+        "steel_guitar_rag.amazing_tablature_extraction._combined_score_tab_columns",
         lambda score, tab: {
             "scoreAttackCount": 1,
             "tabAttackCount": 1,
@@ -9893,11 +9893,11 @@ def test_unreviewed_refresh_preserves_feedback_pages_and_scopes_next_packet(
         },
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._provisional_joint_review_blockers",
+        "steel_guitar_rag.amazing_tablature_extraction._provisional_joint_review_blockers",
         lambda comparison, key_signature_known: [],
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction._hard_review_blockers",
+        "steel_guitar_rag.amazing_tablature_extraction._hard_review_blockers",
         lambda record: [],
     )
     immutable_digest = _sha256_json(

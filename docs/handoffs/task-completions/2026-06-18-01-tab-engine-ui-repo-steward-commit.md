@@ -44,7 +44,7 @@ find docs/handoffs/task-completions -maxdepth 1 -type f | sort | tail -70
 git diff --stat
 git diff --name-only
 git diff --check
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
 .venv/bin/python -m pytest tests/test_api_contract.py -q
 .venv/bin/python -m pytest tests/test_api_search.py -q

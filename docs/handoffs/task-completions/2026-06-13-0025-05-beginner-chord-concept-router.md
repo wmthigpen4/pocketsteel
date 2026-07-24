@@ -69,8 +69,8 @@
 
 ## Files changed
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
-  - `pocketsteel/curated_answers.py`
+  - `steel_guitar_rag/fretboard_examples.py`
+  - `steel_guitar_rag/curated_answers.py`
   - `scripts/run_full_answer_quality_eval.py`
   - `scripts/run_exploratory_answer_smoke.py`
   - `tests/test_fretboard_examples.py`
@@ -131,8 +131,8 @@
   - `What is the vi chord in G?`
 
 ## Safe-to-stage file list
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `scripts/run_full_answer_quality_eval.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
@@ -158,7 +158,7 @@
 - Low because the runtime change is scoped to deterministic parser/answer helpers and existing payload builders.
 - Medium only for commit coordination because one touched QA smoke-runner file is currently untracked and pre-existing from another lane.
 - Rollback notes:
-  - Revert the chord-concept helper additions in `pocketsteel/fretboard_examples.py`, the curated import/route in `pocketsteel/curated_answers.py`, and the associated tests/eval heuristic updates.
+  - Revert the chord-concept helper additions in `steel_guitar_rag/fretboard_examples.py`, the curated import/route in `steel_guitar_rag/curated_answers.py`, and the associated tests/eval heuristic updates.
 
 ## Commit readiness
 Needs human review first

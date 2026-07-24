@@ -36,10 +36,10 @@ There was also existing dirty-suite drift unrelated to this smoke bug: contract 
 
 Changed implementation/test files:
 
-- `pocketsteel/answer_contracts.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_contracts.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
 - `scripts/run_answer_eval.py`
 - `tests/test_api_search.py`
 
@@ -175,7 +175,7 @@ Why:
 
 Rollback notes:
 
-- Revert the hunks in `pocketsteel/answer_contracts.py`, `pocketsteel/answering.py`, `pocketsteel/api.py`, `pocketsteel/curated_answers.py`, `scripts/run_answer_eval.py`, and `tests/test_api_search.py` if this answer-quality slice needs to be parked.
+- Revert the hunks in `steel_guitar_rag/answer_contracts.py`, `steel_guitar_rag/answering.py`, `steel_guitar_rag/api.py`, `steel_guitar_rag/curated_answers.py`, `scripts/run_answer_eval.py`, and `tests/test_api_search.py` if this answer-quality slice needs to be parked.
 - Do not use destructive git commands; preserve unrelated dirty work.
 
 ## Commit Readiness
@@ -186,10 +186,10 @@ Reason: full pytest failed with two unrelated dirty frontend/static failures, an
 
 Safe-to-stage candidate list after QA/Repo Steward review:
 
-- `pocketsteel/answer_contracts.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_contracts.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
 - `scripts/run_answer_eval.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/sgf-evidence-not-primary-answer-text-implementation.md`
@@ -220,7 +220,7 @@ Review the SGF Evidence Is Not Primary Answer Text backend slice and isolate exa
 Read:
 - docs/handoffs/task-completions/sgf-evidence-not-primary-answer-text-implementation.md
 - git status --short
-- git diff -- pocketsteel/answer_contracts.py pocketsteel/answering.py pocketsteel/api.py pocketsteel/curated_answers.py scripts/run_answer_eval.py tests/test_api_search.py
+- git diff -- steel_guitar_rag/answer_contracts.py steel_guitar_rag/answering.py steel_guitar_rag/api.py steel_guitar_rag/curated_answers.py scripts/run_answer_eval.py tests/test_api_search.py
 
 Do not stage UI/static/corpus/deploy/source-inbox/private/generated files.
 

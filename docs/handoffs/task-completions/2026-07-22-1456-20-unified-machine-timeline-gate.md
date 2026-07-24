@@ -24,7 +24,7 @@ The single passing opened-shadow line is `input-0033`, score system `score-syste
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
   - Adds a unified machine score/tab timeline with explicit attack, tie-continuation, and held-state semantics.
   - Blocks review on mismatched score/tab attacks, blank rows, invalid steel actions, unmatched events, or failed scientific-pitch containment.
   - Treats a printed tie as sustain evidence; a tie does not create an extra picked tablature column unless an actual machine-tab movement exists.
@@ -46,10 +46,10 @@ No current page record, corrected record, review decision, training ledger, chal
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_extraction.py` — PASS.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py tests/test_amazing_tablature_sealed_test.py tests/test_amazing_tablature_input_parity.py` — PASS, 38 tests using repository fixtures only.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py` — PASS.
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py` — PASS.
 - `git diff --check` — PASS.
 - Discovery-only machine timeline replay — PASS; report digest `d8db35e15dcfde73dbcdf5dd759618b55cb41ddc6f38381e1e21c4497fc37b1d`.
 
@@ -74,7 +74,7 @@ No. Do not request another human audit yet.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1456-20-unified-machine-timeline-gate.md`

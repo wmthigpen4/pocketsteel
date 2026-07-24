@@ -7,7 +7,7 @@
 # Files changed
 
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
+  - `steel_guitar_rag/fretboard_examples.py`
 - Created files:
   - `tests/fixtures/fretboard_payload_qa_cases.json`
   - `tests/test_fretboard_payload_qa.py`
@@ -55,7 +55,7 @@
   - Unsupported full-solo tab requests do not emit an invented arbitrary fret/string map.
 - Schema/API/component/data contract changes:
   - No schema change.
-  - `pocketsteel/fretboard_examples.py` now treats the exact phrases `Show me G major with A+B.` and `Show me G major with A+F.` as deterministic G major known-position triggers so the QA cases validate the API response boundary, not just the helper function.
+  - `steel_guitar_rag/fretboard_examples.py` now treats the exact phrases `Show me G major with A+B.` and `Show me G major with A+F.` as deterministic G major known-position triggers so the QA cases validate the API response boundary, not just the helper function.
 - Assumptions:
   - The Lane 05 known-position library remains the source of truth for MVP E9 facts.
   - It is acceptable for the control-specific G prompts to return the full G major positions payload, as the fixture requires inclusion/exclusion of the relevant position facts rather than single-position-only output.
@@ -77,4 +77,4 @@ Needs human review first
 # Suggested next step
 
 - Lane: 05 Backend / RAG Integration
-- Recommended prompt: "Review the Lane 15 fretboard payload QA fixtures and decide whether control-specific prompts like `Show me G major with A+B` should return the full G major positions payload or a single-position focused payload. If single-position output is desired, implement it deterministically in `pocketsteel/fretboard_examples.py` without touching UI rendering, corpus data, Chroma, embeddings, scraping, auth, or deployment, then update the Lane 15 fixture expectations."
+- Recommended prompt: "Review the Lane 15 fretboard payload QA fixtures and decide whether control-specific prompts like `Show me G major with A+B` should return the full G major positions payload or a single-position focused payload. If single-position output is desired, implement it deterministically in `steel_guitar_rag/fretboard_examples.py` without touching UI rendering, corpus data, Chroma, embeddings, scraping, auth, or deployment, then update the Lane 15 fixture expectations."

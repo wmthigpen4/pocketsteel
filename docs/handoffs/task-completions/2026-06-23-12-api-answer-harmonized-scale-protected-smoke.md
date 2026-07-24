@@ -70,7 +70,7 @@ stderr = /Users/cory/Library/Logs/steel-guitar-rag/app.err.log
 The LaunchDaemon environment points at:
 
 ```text
-STEEL_RAG_REPO_DIR=/Users/cory/Documents/Pocket Steel
+STEEL_RAG_REPO_DIR=/Users/cory/Documents/Steel Guitar RAG
 STEEL_RAG_ENV_FILE=/Users/cory/.steel-rag/env/private-preview.env
 STEEL_RAG_HOST=127.0.0.1
 STEEL_RAG_PORT=8770
@@ -109,7 +109,7 @@ No tunnel token values or token-bearing arguments were printed.
 Local `/api/version`:
 
 ```json
-{"git_sha": "7da25e8", "git_branch": "feature/answer-api", "server_started_at": "2026-06-23T17:07:29.716275+00:00", "python_module": "pocketsteel.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}
+{"git_sha": "7da25e8", "git_branch": "feature/answer-api", "server_started_at": "2026-06-23T17:07:29.716275+00:00", "python_module": "steel_guitar_rag.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}
 ```
 
 `deploy/macos/install-private-preview-launchdaemon.sh version` also returned `7da25e8`.

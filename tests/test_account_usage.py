@@ -7,8 +7,8 @@ import sqlite3
 
 import pytest
 
-from pocketsteel.account_copedents import AccountIdentity
-from pocketsteel.account_usage import (
+from steel_guitar_rag.account_copedents import AccountIdentity
+from steel_guitar_rag.account_usage import (
     ACCOUNT_USAGE_DB_PATH_ENV,
     AccountUsageConfigurationError,
     AccountUsageRepository,

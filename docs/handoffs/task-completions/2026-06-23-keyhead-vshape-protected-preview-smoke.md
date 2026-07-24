@@ -36,7 +36,7 @@ Important warning:
 - Expected backend port: `8770`
 - Expected git HEAD: SVG commit or later; current runtime HEAD observed as `b5fd09a`
 - Version endpoint: `/api/version`
-- Version endpoint result: local loopback returned `git_sha: b5fd09a`, branch `feature/answer-api`, module `pocketsteel.api`, retrieval mode `hybrid_private_first`, auth provider `cloudflare_access`
+- Version endpoint result: local loopback returned `git_sha: b5fd09a`, branch `feature/answer-api`, module `steel_guitar_rag.api`, retrieval mode `hybrid_private_first`, auth provider `cloudflare_access`
 - If version endpoint missing, how version is inferred: not missing locally
 - Whether app root `/` works: not tested for this task
 - Whether app root `/` is expected to work: not required for this task

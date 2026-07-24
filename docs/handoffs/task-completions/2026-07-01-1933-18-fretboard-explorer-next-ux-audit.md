@@ -99,10 +99,10 @@ Frontend and tests:
 
 Backend contracts:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/fretboard_explorer.py`
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_explorer.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/tab_engine.py`
 
 ## Current Fretboard Explorer Modes
 
@@ -348,10 +348,10 @@ Possibly touched:
 
 Should not be touched:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/fretboard_explorer.py`
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_explorer.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/tab_engine.py`
 - corpus/source/scraping/Chroma/auth/deployment files.
 
 ### Test Plan

@@ -34,7 +34,7 @@ The protected-preview expanded-key Explorer UI is ready for the next product sli
 
 - Expanded-key UI commit: `d4b26ad fix: expose expanded e9 explorer keys`
 - Protected-preview cache-bust refresh: `7fc3846 fix: refresh e9 explorer expanded key cache-bust`
-- Local protected-preview backend `/api/version` result: `{"git_sha": "7fc3846", "git_branch": "feature/answer-api", "server_started_at": "2026-06-23T13:31:36.041115+00:00", "python_module": "pocketsteel.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}`
+- Local protected-preview backend `/api/version` result: `{"git_sha": "7fc3846", "git_branch": "feature/answer-api", "server_started_at": "2026-06-23T13:31:36.041115+00:00", "python_module": "steel_guitar_rag.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}`
 
 Direct in-app browser navigation to `https://app.steelguitarrag.com/api/version` was blocked by the browser client with `net::ERR_BLOCKED_BY_CLIENT`; version was verified through the protected-preview local backend on `127.0.0.1:8770`.
 

@@ -1,6 +1,6 @@
 # Answer Guardrails
 
-The Turnaround treats retrieved forum text as evidence, not as text to copy into an answer. The final answer path uses a last-pass lint and fallback layer before `/api/answer` returns content to the UI.
+Steel Guitar RAG treats retrieved forum text as evidence, not as text to copy into an answer. The final answer path uses a last-pass lint and fallback layer before `/api/answer` returns content to the UI.
 
 ## Final Lint
 
@@ -29,4 +29,4 @@ The fallback layer uses named categories so weak retrieval does not become raw s
 
 ## Maintenance Notes
 
-Add new blocked phrases only when they represent a class of user-facing failure, not one isolated typo. Prefer adding stable rules to `pocketsteel/steel_rules.py` for E9/theory facts, and use answer contracts for intent-level expectations.
+Add new blocked phrases only when they represent a class of user-facing failure, not one isolated typo. Prefer adding stable rules to `steel_guitar_rag/steel_rules.py` for E9/theory facts, and use answer contracts for intent-level expectations.

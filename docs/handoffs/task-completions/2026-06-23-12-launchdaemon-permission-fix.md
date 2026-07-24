@@ -2,7 +2,7 @@
 
 ## Task Summary
 
-- Requested: diagnose and fix the Mac mini app LaunchDaemon startup failure where launchd exits `126` with `Operation not permitted` while executing `~/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh`.
+- Requested: diagnose and fix the Mac mini app LaunchDaemon startup failure where launchd exits `126` with `Operation not permitted` while executing `~/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh`.
 - Completed: inspected repo governance, launchd template/scripts, current runtime state, file mode/ownership/xattrs, parent directory permissions, durable logs, rendered plist output, and current port ownership. Updated the LaunchDaemon template and installer so the installed service executes a root-owned wrapper copy from `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh` instead of executing directly from `~/Documents`.
 - Intentionally not changed: did not modify app behavior, Cloudflare Access, DNS, auth settings, tunnel token values, Cloudflare account config, corpus, embeddings, Chroma, scraper output, source data, private env files, or the live manual `screen` process.
 
@@ -17,7 +17,7 @@ sudo: a password is required
 sudo-noninteractive-unavailable
 ```
 
-The currently loaded LaunchDaemon still points to the old `~/Documents/Pocket Steel/...` wrapper path until the operator runs the privileged install/unload/load commands below.
+The currently loaded LaunchDaemon still points to the old `~/Documents/Steel Guitar RAG/...` wrapper path until the operator runs the privileged install/unload/load commands below.
 
 ## Branch And Head State
 
@@ -27,19 +27,19 @@ The currently loaded LaunchDaemon still points to the old `~/Documents/Pocket St
 
 ## Root Cause / Best-Supported Diagnosis
 
-The failure is best explained by macOS launchd/TCC/path restrictions around a system LaunchDaemon executing from `~/Documents` and using `~/Documents/Pocket Steel` as its working directory.
+The failure is best explained by macOS launchd/TCC/path restrictions around a system LaunchDaemon executing from `~/Documents` and using `~/Documents/Steel Guitar RAG` as its working directory.
 
 Evidence:
 
 - Current LaunchDaemon state: `spawn scheduled`
 - Current LaunchDaemon `last exit code`: `126`
-- Current loaded program: `/Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh`
-- Current loaded working directory: `/Users/cory/Documents/Pocket Steel`
+- Current loaded program: `/Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh`
+- Current loaded working directory: `/Users/cory/Documents/Steel Guitar RAG`
 - Log output repeats:
 
 ```text
 shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
-bash: /Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh: Operation not permitted
+bash: /Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh: Operation not permitted
 ```
 
 Additional file/path observations:
@@ -50,7 +50,7 @@ deploy/macos/run-private-preview-app.sh owner/group: cory staff
 xattr: com.apple.provenance
 /Users/cory mode: drwxr-x---
 /Users/cory/Documents mode: drwx------
-/Users/cory/Documents/Pocket Steel mode: drwxr-xr-x
+/Users/cory/Documents/Steel Guitar RAG mode: drwxr-xr-x
 ```
 
 This does not look like a plain chmod problem. The script is executable, and the parent `Documents` path is the likely launchd-sensitive location.
@@ -115,14 +115,14 @@ Rendered service fields now include:
 ```text
 ProgramArguments[0] = /usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh
 WorkingDirectory = /usr/local/libexec/steel-guitar-rag
-STEEL_RAG_REPO_DIR = /Users/cory/Documents/Pocket Steel
+STEEL_RAG_REPO_DIR = /Users/cory/Documents/Steel Guitar RAG
 STEEL_RAG_ENV_FILE = /Users/cory/.steel-rag/env/private-preview.env
 STEEL_RAG_LOG_DIR = /Users/cory/Library/Logs/steel-guitar-rag
 STEEL_RAG_HOST = 127.0.0.1
 STEEL_RAG_PORT = 8770
 ```
 
-The rendered plist still points the app wrapper at the current repo checkout through `STEEL_RAG_REPO_DIR`. If launchd can execute the installed wrapper but still cannot `cd` into `~/Documents/Pocket Steel`, the remaining issue is the runtime checkout location. The runbook now documents reinstalling with an operator-approved runtime path outside TCC-sensitive folders, such as:
+The rendered plist still points the app wrapper at the current repo checkout through `STEEL_RAG_REPO_DIR`. If launchd can execute the installed wrapper but still cannot `cd` into `~/Documents/Steel Guitar RAG`, the remaining issue is the runtime checkout location. The runbook now documents reinstalling with an operator-approved runtime path outside TCC-sensitive folders, such as:
 
 ```bash
 STEEL_RAG_REPO_DIR=/Users/cory/steel-guitar-rag-runtime \
@@ -138,8 +138,8 @@ The live LaunchDaemon has not been updated yet. Current loaded state still shows
 ```text
 path = /Library/LaunchDaemons/com.steelguitarrag.private-preview.plist
 state = spawn scheduled
-program = /Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh
-working directory = /Users/cory/Documents/Pocket Steel
+program = /Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh
+working directory = /Users/cory/Documents/Steel Guitar RAG
 runs = 129
 last exit code = 126
 ```
@@ -167,7 +167,7 @@ launchctl print system/com.steelguitarrag.private-preview
 lsof -nP -iTCP:8770 -sTCP:LISTEN
 ls -la deploy/macos/run-private-preview-app.sh
 xattr -l deploy/macos/run-private-preview-app.sh
-stat -f '%Sp %Su %Sg %N' /Users/cory /Users/cory/Documents '/Users/cory/Documents/Pocket Steel' '/Users/cory/Documents/Pocket Steel/deploy' '/Users/cory/Documents/Pocket Steel/deploy/macos' '/Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh'
+stat -f '%Sp %Su %Sg %N' /Users/cory /Users/cory/Documents '/Users/cory/Documents/Steel Guitar RAG' '/Users/cory/Documents/Steel Guitar RAG/deploy' '/Users/cory/Documents/Steel Guitar RAG/deploy/macos' '/Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh'
 tail -n 80 /Users/cory/Library/Logs/steel-guitar-rag/app.err.log
 tail -n 80 /Users/cory/Library/Logs/steel-guitar-rag/app.out.log
 bash -n deploy/macos/run-private-preview-app.sh deploy/macos/install-private-preview-launchdaemon.sh

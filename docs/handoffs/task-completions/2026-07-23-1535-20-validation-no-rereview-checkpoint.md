@@ -57,8 +57,8 @@ Intentionally not completed:
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - This handoff.
@@ -68,9 +68,9 @@ Private ignored receipts and reports remain beneath
 
 ## Tests and checks
 
-- `.venv/bin/ruff check docs/amazing-tablature-training.md pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/ruff check docs/amazing-tablature-training.md steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
   - PASS.
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_validation.py tests/test_amazing_tablature_training.py tests/test_amazing_tablature_extraction.py`
   - PASS: 228 passed.
@@ -136,8 +136,8 @@ that all already reviewed evidence is carried forward.
 ## Safe-to-stage exact file list
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1535-20-validation-no-rereview-checkpoint.md`

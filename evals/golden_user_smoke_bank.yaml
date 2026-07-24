@@ -1732,7 +1732,7 @@ prompts:
   notes: disambiguates product name, tune title, and steel-guitar topic
 - id: gus-130
   category: Steel Guitar Rag song/app-name questions
-  prompt: Why is this app called The Turnaround?
+  prompt: Why is this app called Steel Guitar RAG?
   expected_intent: app_or_song_disambiguation
   direct_answer_required: true
   requires_fretboard: false
@@ -1744,7 +1744,7 @@ prompts:
   notes: disambiguates product name, tune title, and steel-guitar topic
 - id: gus-131
   category: Steel Guitar Rag song/app-name questions
-  prompt: Is The Turnaround the same as Steel Guitar RAG?
+  prompt: Is Steel Guitar RAG the same as Steel Guitar RAG?
   expected_intent: app_or_song_disambiguation
   direct_answer_required: true
   requires_fretboard: false
@@ -1756,7 +1756,7 @@ prompts:
   notes: disambiguates product name, tune title, and steel-guitar topic
 - id: gus-132
   category: Steel Guitar Rag song/app-name questions
-  prompt: How do I use The Turnaround to learn E9?
+  prompt: How do I use Steel Guitar RAG to learn E9?
   expected_intent: app_or_song_disambiguation
   direct_answer_required: true
   requires_fretboard: false

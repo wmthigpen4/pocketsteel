@@ -209,7 +209,7 @@ Good Repo Steward behavior:
 - Weak-source warnings and raw source fragments belong in answer-composer/browser-smoke QA, not every task.
 - Do not include stale checklist items just because they appeared in earlier prompts.
 - Do not refer to the user by personal name in prompts, handoffs, UI text, docs, source notes, or smoke reports. Use "the user," "you," or neutral phrasing.
-- If local filesystem paths expose a personal username, prefer path-neutral forms such as `~/Documents/Pocket Steel` in documentation and handoffs where executable precision is not required.
+- If local filesystem paths expose a personal username, prefer path-neutral forms such as `~/Documents/Steel Guitar RAG` in documentation and handoffs where executable precision is not required.
 
 ## User Smoke Bug Autopilot
 

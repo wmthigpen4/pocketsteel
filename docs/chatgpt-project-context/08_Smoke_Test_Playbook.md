@@ -122,7 +122,7 @@ Run the checks relevant to the touched surface:
 git diff --check
 node --check ui/answer-client.js
 node --check ui/pedal-steel-fretboard.js
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
 .venv/bin/python -m pytest tests/test_api_contract.py -q
 .venv/bin/python -m pytest tests/test_api_search.py -q

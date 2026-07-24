@@ -9,7 +9,7 @@ Completed:
 - Changed the Explorer entry visible label to `Explore Fretboard`, with accessible/title text `Explore the E9 virtual fretboard`.
 - Preserved the existing backstage/settings button as the separate `Go Backstage` / `Get a Backstage Pass` flow.
 - Kept the old large Explorer feature card removed.
-- Regenerated the static Explorer browser fixture from `pocketsteel.fretboard_explorer.build_explorer_payload(key)` for every backend-supported Explorer spelling.
+- Regenerated the static Explorer browser fixture from `steel_guitar_rag.fretboard_explorer.build_explorer_payload(key)` for every backend-supported Explorer spelling.
 - Exposed backend-supported key spellings in the Explorer key selector: `C`, `C#`, `Db`, `D`, `D#`, `Eb`, `E`, `F`, `F#`, `Gb`, `G`, `G#`, `Ab`, `A`, `A#`, `Bb`, `B`.
 - Added short learner-facing helper copy explaining that enharmonic spellings appear separately when both are validated.
 - Preserved G behavior, G natural-minor display spelling, 5&8 branch grouping, `5-8` selection, multi-select string-group behavior, glossary/help text, and no raw `five_eight_branch` learner-facing output.

@@ -133,7 +133,7 @@ set +a
 PYTHONPATH=. \
 STEEL_RAG_AUTH_PROVIDER=cloudflare_access \
 STEEL_RAG_ANSWER_AUTH_MODE=production \
-STEEL_RAG_CHROMA_PATH="~/Documents/Pocket Steel/corpus-v2/vector-stores/chroma" \
+STEEL_RAG_CHROMA_PATH="~/Documents/Steel Guitar RAG/corpus-v2/vector-stores/chroma" \
 STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified_v2" \
 .venv/bin/python scripts/serve_v2_rerank_smoke.py \
   --host 127.0.0.1 \
@@ -175,7 +175,7 @@ STEEL_RAG_ADMIN_EMAILS=<comma-separated admin emails>
 V2 Chroma:
 
 ```text
-STEEL_RAG_CHROMA_PATH=~/Documents/Pocket Steel/corpus-v2/vector-stores/chroma
+STEEL_RAG_CHROMA_PATH=~/Documents/Steel Guitar RAG/corpus-v2/vector-stores/chroma
 STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified_v2
 ```
 

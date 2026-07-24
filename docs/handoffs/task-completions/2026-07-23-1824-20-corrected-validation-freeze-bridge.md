@@ -24,7 +24,7 @@ mechanical validity.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - This handoff
@@ -67,7 +67,7 @@ after the fixed validation gates pass.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1824-20-corrected-validation-freeze-bridge.md`

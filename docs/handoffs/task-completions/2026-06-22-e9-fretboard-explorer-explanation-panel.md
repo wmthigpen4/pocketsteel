@@ -30,7 +30,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-explanation-panel.md`
 
@@ -71,7 +71,7 @@ Required boundary language is included in generated explanations:
 
 ## RAG / Corpus Boundary
 
-The explanation layer does not query RAG, source cards, SGF/forum data, corpus files, Chroma/vector stores, embeddings, private transcripts, or the harmony markdown. It explains only rows already generated and validated by `pocketsteel.fretboard_explorer`.
+The explanation layer does not query RAG, source cards, SGF/forum data, corpus files, Chroma/vector stores, embeddings, private transcripts, or the harmony markdown. It explains only rows already generated and validated by `steel_guitar_rag.fretboard_explorer`.
 
 The harmony guidance markdown remains guidance material only, not runtime truth.
 
@@ -102,7 +102,7 @@ Why:
 
 Rollback:
 
-- Revert `pocketsteel/fretboard_explorer.py` and `tests/test_fretboard_explorer.py` changes from this commit.
+- Revert `steel_guitar_rag/fretboard_explorer.py` and `tests/test_fretboard_explorer.py` changes from this commit.
 
 ## Human Decision Needed
 
@@ -112,7 +112,7 @@ Future product decision: Lane 06 should decide where and how to expose `explanat
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-explanation-panel.md`
 

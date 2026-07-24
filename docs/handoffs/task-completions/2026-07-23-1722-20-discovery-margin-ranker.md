@@ -24,8 +24,8 @@ to be committed first so a successor artifact can pin a clean exact HEAD.
 
 ## Files changed
 
-- `pocketsteel/melody_ranker.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/melody_ranker.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1722-20-discovery-margin-ranker.md`
@@ -73,8 +73,8 @@ remain blocked unless all fixed gates pass.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_ranker.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/melody_ranker.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1722-20-discovery-margin-ranker.md`

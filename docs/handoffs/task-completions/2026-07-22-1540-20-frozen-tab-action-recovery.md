@@ -24,7 +24,7 @@ The rule remains a non-promoted challenger. The evidence proves that the narrow 
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
   - Adds immutable selection of the one regression-passed row-geometry contract.
   - Adds independent token/action replay pinned to the reader, copedent, geometry selection, archived machine record, and source derivative.
   - Digests action inference before reviewed truth is joined.
@@ -49,8 +49,8 @@ No literal source material is included in this handoff. Private selections, repo
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py` — PASS.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py` — PASS.
 - Focused geometry/action tests — PASS, 3 tests.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_extraction.py` — PASS, 146 tests.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py tests/test_amazing_tablature_sealed_test.py tests/test_amazing_tablature_input_parity.py` — PASS, 38 tests using repository fixtures only.
@@ -77,7 +77,7 @@ No. Do not request another human audit.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1540-20-frozen-tab-action-recovery.md`

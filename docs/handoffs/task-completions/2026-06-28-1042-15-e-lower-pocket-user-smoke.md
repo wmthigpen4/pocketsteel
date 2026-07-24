@@ -48,7 +48,7 @@ Intentionally not changed:
 - Expected backend port: `8770`
 - Expected git HEAD: `c7018dc`, containing `67f6823`
 - Version endpoint: `http://127.0.0.1:8770/api/version`; protected browser endpoint `https://app.steelguitarrag.com/api/version`
-- Version endpoint result: local returned `{"git_sha": "a6abc61", "git_branch": "feature/answer-api", "server_started_at": "2026-06-27T17:30:30.410070+00:00", "python_module": "pocketsteel.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}`; protected browser endpoint was blocked with `net::ERR_BLOCKED_BY_CLIENT`
+- Version endpoint result: local returned `{"git_sha": "a6abc61", "git_branch": "feature/answer-api", "server_started_at": "2026-06-27T17:30:30.410070+00:00", "python_module": "steel_guitar_rag.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}`; protected browser endpoint was blocked with `net::ERR_BLOCKED_BY_CLIENT`
 - If version endpoint missing, how version is inferred: static/browser behavior inferred from the exact protected URL plus loaded Explorer script `e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628`
 - Whether app root `/` works: yes, root redirects to `/ui/steel-guitar-rag-mock.html`
 - Whether app root `/` is expected to work: yes for the app shell; not valid for exact cache-busted Explorer smoke

@@ -29,8 +29,8 @@ Turnaround and general major/minor chord teaching prompts had a related gap: the
 ## Files Changed
 
 Changed:
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 
@@ -79,7 +79,7 @@ Result:
 - Passed.
 
 ```bash
-.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/curated_guidance_retriever.py pocketsteel/curated_answers.py pocketsteel/answer_intent_classifier.py
+.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/curated_guidance_retriever.py steel_guitar_rag/curated_answers.py steel_guitar_rag/answer_intent_classifier.py
 ```
 
 Result:
@@ -127,7 +127,7 @@ Why:
 - Tests cover both positive observed smoke prompts and existing classifier contracts.
 
 Rollback:
-- Revert the changes in `pocketsteel/answer_intent_classifier.py`, `pocketsteel/curated_answers.py`, `tests/test_answer_intent_classifier.py`, and `tests/test_api_search.py`.
+- Revert the changes in `steel_guitar_rag/answer_intent_classifier.py`, `steel_guitar_rag/curated_answers.py`, `tests/test_answer_intent_classifier.py`, and `tests/test_api_search.py`.
 - No corpus, Chroma, UI, auth, deployment, or private-data rollback is needed.
 
 ## Human Decision Needed
@@ -143,8 +143,8 @@ Yes before:
 ## Safe-To-Stage Exact File List
 
 For this slice only:
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-14-05-teaching-intent-specificity-fixes.md`

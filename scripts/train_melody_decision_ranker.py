@@ -7,7 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
-from pocketsteel.melody_ranker import train_pairwise_ranker
+from steel_guitar_rag.melody_ranker import train_pairwise_ranker
 
 
 DEFAULT_INPUT = Path("corpus-private/melody-decisions/reviewed-decisions.jsonl")

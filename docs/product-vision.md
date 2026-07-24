@@ -1,3 +1,3 @@
-# The Turnaround — Product Vision
+# Steel Guitar RAG — Product Vision
 
-The Turnaround is a living steel guitar companion.
+Steel Guitar RAG is a living steel guitar companion.

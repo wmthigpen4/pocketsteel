@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from pocketsteel.runtime_dependencies import (
+from steel_guitar_rag.runtime_dependencies import (
     BoundedDependencyRunner,
     DependencyRunnerBusy,
     DependencyTimeout,

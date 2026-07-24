@@ -8,14 +8,14 @@ Intentionally not changed: answer policy, arranger ranking, copedent logic, corp
 
 ## Files changed
 
-- `pocketsteel/api.py`: retains public `create_app`, `build_arg_parser`, and `main` compatibility while delegating CLI bootstrap.
-- `pocketsteel/api_cli.py`: new bounded process/CLI bootstrap boundary.
-- `pocketsteel/curated_answers.py`: imports and re-exports stable curated contracts/reference facts.
-- `pocketsteel/curated_contracts.py`: new curated-answer value object and compact fact boundary.
-- `pocketsteel/fretboard_examples.py`: imports and re-exports fretboard constants/request contracts.
-- `pocketsteel/fretboard_contracts.py`: new stable fretboard request/constant boundary.
-- `pocketsteel/melody_arranger.py`: imports and re-exports Melody value objects and supported-mode contracts.
-- `pocketsteel/melody_models.py`: new Melody request/path value-object boundary.
+- `steel_guitar_rag/api.py`: retains public `create_app`, `build_arg_parser`, and `main` compatibility while delegating CLI bootstrap.
+- `steel_guitar_rag/api_cli.py`: new bounded process/CLI bootstrap boundary.
+- `steel_guitar_rag/curated_answers.py`: imports and re-exports stable curated contracts/reference facts.
+- `steel_guitar_rag/curated_contracts.py`: new curated-answer value object and compact fact boundary.
+- `steel_guitar_rag/fretboard_examples.py`: imports and re-exports fretboard constants/request contracts.
+- `steel_guitar_rag/fretboard_contracts.py`: new stable fretboard request/constant boundary.
+- `steel_guitar_rag/melody_arranger.py`: imports and re-exports Melody value objects and supported-mode contracts.
+- `steel_guitar_rag/melody_models.py`: new Melody request/path value-object boundary.
 - `ui/pedal-steel-fretboard.js`: rendering/interaction logic remains here; CSS is externalized.
 - `ui/pedal-steel-fretboard-styles.js`: new UMD/CommonJS-compatible style boundary.
 - `ui/e9-fretboard-explorer.js`: state and behavior remain here; immutable UI configuration is externalized.
@@ -95,14 +95,14 @@ No.
 ## Safe-to-stage exact file list
 
 - `package.json`
-- `pocketsteel/api.py`
-- `pocketsteel/api_cli.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/curated_contracts.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/fretboard_contracts.py`
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_models.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_cli.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/curated_contracts.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_contracts.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_models.py`
 - `ui/pedal-steel-fretboard.js`
 - `ui/pedal-steel-fretboard-styles.js`
 - `ui/e9-fretboard-explorer.js`

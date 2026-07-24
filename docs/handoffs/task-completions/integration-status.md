@@ -72,7 +72,7 @@ Status: **MELODY STUDIO HEADER CONSISTENCY READY FOR USER SMOKE — Melody Studi
 - Long phrases continue through the existing `sectionNumber` contract.
 - Original exercises suppress recording identity and source UI.
 - Deterministic scope remains E9 in G/C major.
-- Melody Studio contains no `The Turnaround` copy and now uses the same image-free amber/dark gradient background as E9 Fretboard Explorer.
+- Melody Studio contains no `Steel Guitar RAG` copy and now uses the same image-free amber/dark gradient background as E9 Fretboard Explorer.
 
 Canonical contract: `docs/melody-exercise-v0.md`.
 Implementation handoff: `docs/handoffs/task-completions/2026-07-10-1341-06-melody-studio-ux-rescue.md`.

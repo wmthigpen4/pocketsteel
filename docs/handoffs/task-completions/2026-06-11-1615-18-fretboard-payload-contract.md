@@ -19,16 +19,16 @@
 # Tests And Checks
 
 - `rg -n "response\\.fretboard|fretboard|positions|pedal-steel-fretboard|VirtualFretboard|Fretboard" . -g '!data/**' -g '!sgf-output/**' -g '!*.sqlite' -g '!node_modules/**'`
-  - Passed for inspection. Found existing conventions in `pocketsteel/fretboard_examples.py`, `pocketsteel/api_contract.py`, `ui/answer-client.js`, `tests/test_fretboard_examples.py`, and `tests/test_frontend_answer_ui.py`.
+  - Passed for inspection. Found existing conventions in `steel_guitar_rag/fretboard_examples.py`, `steel_guitar_rag/api_contract.py`, `ui/answer-client.js`, `tests/test_fretboard_examples.py`, and `tests/test_frontend_answer_ui.py`.
 - `find docs -maxdepth 3 -type d | sort`
   - Passed for inspection. Confirmed `docs/handoffs/task-completions/` exists and `docs/architecture/` does not exist because `docs/architecture.md` is a file.
 - `git status --short`
   - Passed for inspection. Confirmed the worktree already contained many unrelated dirty and untracked files; this task only added the two docs listed above.
-- `sed -n '1,220p' pocketsteel/fretboard_examples.py`
+- `sed -n '1,220p' steel_guitar_rag/fretboard_examples.py`
   - Passed for inspection.
-- `sed -n '220,380p' pocketsteel/fretboard_examples.py`
+- `sed -n '220,380p' steel_guitar_rag/fretboard_examples.py`
   - Passed for inspection.
-- `sed -n '1,130p' pocketsteel/api_contract.py`
+- `sed -n '1,130p' steel_guitar_rag/api_contract.py`
   - Passed for inspection.
 - `sed -n '250,360p' ui/answer-client.js`
   - Passed for inspection.
@@ -36,7 +36,7 @@
   - Passed for inspection.
 - `sed -n '1,190p' tests/test_fretboard_examples.py`
   - Passed for inspection.
-- `rg -n "E-raise/F|E-lower|6-lower|2/9-lower|vertical/Bb|A\\+F|A\\+B|G\\+|G-|D--|D-|copedent" docs pocketsteel tests ui -g '!data/**'`
+- `rg -n "E-raise/F|E-lower|6-lower|2/9-lower|vertical/Bb|A\\+F|A\\+B|G\\+|G-|D--|D-|copedent" docs steel_guitar_rag tests ui -g '!data/**'`
   - Passed for inspection.
 - `sed -n '1,120p' docs/api-contract.md`
   - Passed for inspection.

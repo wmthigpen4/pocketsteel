@@ -19,9 +19,9 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/answer_tab_examples.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `tests/test_tab_engine.py`
@@ -88,7 +88,7 @@ Observed results:
 ## Tests And Checks
 
 Passed:
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_examples.py pocketsteel/curated_answers.py pocketsteel/api.py pocketsteel/answer_tab_examples.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_examples.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py`
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q` -> `25 passed`
 - `.venv/bin/python -m pytest tests/test_fretboard_examples.py -q` -> `53 passed`
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'fretboard or tab_example or static_g_location or explicit_g_578 or e_lower' -q` -> `46 passed, 234 deselected`
@@ -126,9 +126,9 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/answer_tab_examples.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `tests/test_tab_engine.py`

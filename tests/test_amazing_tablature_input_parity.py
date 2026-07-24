@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pocketsteel.amazing_tablature_input_parity import (
+from steel_guitar_rag.amazing_tablature_input_parity import (
     INPUT_MODALITIES,
     structured_input_parity_report,
 )

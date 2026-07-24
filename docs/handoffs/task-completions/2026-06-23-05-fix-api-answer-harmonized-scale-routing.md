@@ -27,7 +27,7 @@ The missing test coverage was an API-level production-auth regression for the br
 
 ## Files Changed
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Capture `git_sha`, `git_branch`, and `server_started_at` once during `RetrievalApi` initialization.
   - `/api/version` now reports the loaded app/process identity consistently for the life of the process.
 
@@ -79,7 +79,7 @@ Passed:
 .venv/bin/python -m pytest tests/test_api_search.py -k 'api_version or harmonized or diminished or static_g or tab_example' -q
 # 23 passed, 252 deselected
 
-.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/curated_answers.py pocketsteel/fretboard_examples.py pocketsteel/fretboard_explorer.py
+.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/curated_answers.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/fretboard_explorer.py
 
 .venv/bin/python -m pytest tests/test_api_contract.py -q
 # 5 passed
@@ -108,7 +108,7 @@ Risk: low.
 
 The runtime change only stabilizes `/api/version` identity fields at app initialization. It does not change `/api/answer` response schema or routing behavior.
 
-Rollback: revert the small `pocketsteel/api.py` initialization/version diff and the associated tests.
+Rollback: revert the small `steel_guitar_rag/api.py` initialization/version diff and the associated tests.
 
 ## Human Decision Needed
 
@@ -118,7 +118,7 @@ Operational decision: Lane 12 should restart protected preview and rerun the pro
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-05-fix-api-answer-harmonized-scale-routing.md`
 

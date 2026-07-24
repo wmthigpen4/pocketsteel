@@ -157,7 +157,7 @@ Result: `125 passed`.
 ## Recommended Phase 3D Embed-V2 Planning Prompt
 
 ```text
-Begin Phase 3D embed-v2 planning for The Turnaround corpus-v2.
+Begin Phase 3D embed-v2 planning for Steel Guitar RAG corpus-v2.
 
 This is YELLOW/RED-adjacent and must stop after a plan unless explicitly approved to create a new vector store.
 

@@ -1,4 +1,4 @@
-# The Turnaround — Development Phases
+# Steel Guitar RAG — Development Phases
 
 ## Phase 0 — Corpus Stabilization
 

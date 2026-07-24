@@ -12,7 +12,7 @@ No OCR, semantic extraction, annotations, ground truth, challenger training, emb
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
   - Added source-profile revision/digest pinning, private split generation, guarded content units, structural image metadata, sealed test storage, partition enforcement, source verification, batch lifecycle, authoritative-batch filtering, and historical-model eligibility.
 - `scripts/amazing_tablature.py`
   - Added `partition`, `supersede-batch`, and `verify-intake` commands.
@@ -29,15 +29,15 @@ No OCR, semantic extraction, annotations, ground truth, challenger training, emb
 
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py` — 10 passed.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py tests/test_copedent_transfer.py tests/test_melody_arranger_decision_fixtures.py` — 32 passed.
-- `.venv/bin/python -m ruff check pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py` — passed.
-- `.venv/bin/python -m compileall -q pocketsteel scripts/amazing_tablature.py` — passed.
+- `.venv/bin/python -m ruff check steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py` — passed.
+- `.venv/bin/python -m compileall -q steel_guitar_rag scripts/amazing_tablature.py` — passed.
 - `.venv/bin/python -m pip check` — passed.
 - `git diff --check` — passed before this handoff; rerun required before commit.
 - Private intake verification — 278/278 hashes matched after partitioning; zero changed inputs.
 - Private split verification — 278 unique inputs and hashes; all inspected anchors in discovery; both provisional source documents represented in every partition; normal annotation queue contains discovery only; sealed directory mode `0700`; sealed manifest mode `0600`.
 - Deliberate training attempt — stopped with no validated training decisions, confirming the superseded batch is excluded.
 - Full `pytest -q` — did not complete because the process was externally killed after passing approximately 46% of the suite. The last reached UI test passed independently (`1 passed`). This is classified as cumulative test-process resource exhaustion, not an assertion failure.
-- Targeted mypy — not green because of pre-existing broad `object` conversion errors in `pocketsteel/melody_ranker.py` and existing CLI result-type inference. No new typed contract was introduced.
+- Targeted mypy — not green because of pre-existing broad `object` conversion errors in `steel_guitar_rag/melody_ranker.py` and existing CLI result-type inference. No new typed contract was introduced.
 
 ## Integration notes
 
@@ -67,7 +67,7 @@ Yes, before semantic extraction or rule refinement:
 
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-16-1923-20-full-collection-sealed-split.md`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `pyproject.toml`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`

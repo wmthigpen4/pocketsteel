@@ -47,7 +47,7 @@ Additional probe results:
 - Vendor/accessory prompts: classify as `steel_guitar` with `retrieval_allowed=true`.
 - Practical gear prompts: classify as `steel_guitar` with `retrieval_allowed=true`.
 - Obvious position/fretboard prompts: still classify with `needs_fretboard=true`.
-- `/api/answer` hook: pass. `pocketsteel/api.py` imports `classify_answer_request` and calls it after `parse_answer_request(...)`:
+- `/api/answer` hook: pass. `steel_guitar_rag/api.py` imports `classify_answer_request` and calls it after `parse_answer_request(...)`:
   - `_answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)`
 - `/api/answer` public response shape: pass. Existing classifier test verifies the public response contains only `answer`, `mode`, `sources`, `warnings`, and `sections`, with no `intent`, `intent_mode`, `answer_intent`, or `retrieval_allowed`.
 - Retrieval gating: not enabled. The classifier decision remains assigned to `_answer_intent_decision` and is not used for branching.
@@ -75,8 +75,8 @@ Additional probe results:
 
 ## Files that should be included in the commit if approved
 Recommended narrow safe-to-stage list:
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_answer_intent_classifier.py`
 - `docs/handoffs/task-completions/no-op-answer-intent-classifier-fix.md`
 - `docs/handoffs/task-completions/no-op-answer-intent-classifier-drift-fix.md`
@@ -121,8 +121,8 @@ Read:
 - docs/handoffs/task-completions/qa-no-op-answer-intent-classifier-source-backed-fix.md
 
 Stage narrowly:
-- pocketsteel/answer_intent_classifier.py
-- pocketsteel/api.py
+- steel_guitar_rag/answer_intent_classifier.py
+- steel_guitar_rag/api.py
 - tests/test_answer_intent_classifier.py
 - docs/handoffs/task-completions/no-op-answer-intent-classifier-fix.md
 - docs/handoffs/task-completions/no-op-answer-intent-classifier-drift-fix.md

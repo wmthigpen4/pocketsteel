@@ -4,7 +4,7 @@ Task mode: GREEN evaluation tooling. This plan and harness do not run live SGF s
 
 ## Purpose
 
-Prepare a repeatable v1 vs v2 retrieval comparison for The Turnaround after Phase 3 v2 embeddings finish. The eval should compare the existing v1 Chroma index with the new v2 Chroma index using the same question bank, topK, and reporting format.
+Prepare a repeatable v1 vs v2 retrieval comparison for Steel Guitar RAG after Phase 3 v2 embeddings finish. The eval should compare the existing v1 Chroma index with the new v2 Chroma index using the same question bank, topK, and reporting format.
 
 ## Inputs
 

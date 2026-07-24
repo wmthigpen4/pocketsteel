@@ -5,7 +5,7 @@ This is durable product context for future Codex/LLM lanes. Read it before chang
 ## Product Identity
 
 - The app/product workstream is Steel Guitar RAG.
-- The current repo-level naming instruction says the user-facing app name is The Turnaround. Existing UI/docs/handoffs still use Steel Guitar RAG heavily. Do not do a broad rename without explicit user approval.
+- The current repo-level naming instruction says the user-facing app name is Steel Guitar RAG. Existing UI/docs/handoffs still use Steel Guitar RAG heavily. Do not do a broad rename without explicit user approval.
 - The product is a steel-guitar learning/search assistant, not a generic chatbot.
 - The answer principle is: strings, frets, pedals, levers, grips, intervals, copedents, and player-practical context first; generic guitar theory last or never.
 
@@ -48,7 +48,7 @@ Do not ingest or embed new source layers without provenance review and explicit 
 
 ## Current User Copedent Facts
 
-These facts are represented in `pocketsteel/user_copedent.py` and should be treated as private/user-specific unless an authorized private/profile answer is being generated.
+These facts are represented in `steel_guitar_rag/user_copedent.py` and should be treated as private/user-specific unless an authorized private/profile answer is being generated.
 
 - Instrument label: Emmons Lashley LeGrande E9.
 - 10-string E9 open tuning:

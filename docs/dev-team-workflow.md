@@ -1,11 +1,12 @@
 # Developer Team Workflow
 
-The Turnaround uses a conservative, human-in-the-loop workflow. The goal is to keep daily development moving while protecting scraper behavior, raw corpus data, private materials, paid transcripts, licensing metadata, generated indexes, and credentials.
+Steel Guitar RAG uses a conservative, human-in-the-loop workflow. The goal is to keep daily development moving while protecting scraper behavior, raw corpus data, private materials, paid transcripts, licensing metadata, generated indexes, and credentials.
 
 ## Names
 
-- User-facing app name: The Turnaround.
-- Internal technical names that should remain unchanged unless explicitly approved: `pocketsteel`, `pocket-steel`, and `pocket_steel`.
+- User-facing app name: Steel Guitar RAG.
+- Python package/import namespace: `steel_guitar_rag`.
+- Distribution, repository, package, and URL slug: `steel-guitar-rag`.
 
 ## Task Classification
 

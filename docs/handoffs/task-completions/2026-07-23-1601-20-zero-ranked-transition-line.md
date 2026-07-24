@@ -13,13 +13,13 @@ decision exactly once.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - This handoff.
 
 ## Tests and checks
 
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
   - PASS: 228 passed.
@@ -44,7 +44,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-1601-20-zero-ranked-transition-line.md`
 

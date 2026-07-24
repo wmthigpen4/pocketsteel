@@ -24,12 +24,12 @@ Lane 05 Backend / RAG Integration: backend answer routing, deterministic fretboa
 
 ## Files Changed
 
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Added `normalize_chord_intent_text(...)` and `chord_context_pattern()`.
   - Routed major/minor/multi/unsupported/fretboard parsing through the normalized text path.
   - Expanded major/minor chord-position regex coverage.
   - Updated minor-position answer prefix wording.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added learner-facing major triad spellings.
   - Added D#/Eb major explanation and major chord-tone sentence for major position answers.
 - `tests/test_api_search.py`
@@ -121,7 +121,7 @@ Temporary local WSGI API fallback with fake SGF sources passed these prompts:
 Commands run:
 
 - `git status --short`
-  - Result: broad parked dirty/untracked files remain outside this slice; no pre-existing dirty `pocketsteel/*.py` or `tests` runtime files at task start.
+  - Result: broad parked dirty/untracked files remain outside this slice; no pre-existing dirty `steel_guitar_rag/*.py` or `tests` runtime files at task start.
 - `.venv/bin/python -m pytest tests/test_api_search.py -k "natural_language or minor_show_requests or rooted_dominant or major_seventh_play or multi_target or smoke_ready_chord"`
   - Result: `7 passed, 213 deselected`.
 - `.venv/bin/python -m pytest tests/test_fretboard_examples.py tests/test_api_contract.py tests/test_api_search.py tests/test_answer_eval.py tests/test_full_answer_quality_eval.py tests/test_answer_intent_classifier.py`
@@ -156,15 +156,15 @@ Why:
 - Full pytest failures are known unrelated static/UI issues documented in integration status.
 
 Rollback notes:
-- Revert the scoped changes in `pocketsteel/fretboard_examples.py`, `pocketsteel/curated_answers.py`, and the two test files to restore prior literal parser behavior.
+- Revert the scoped changes in `steel_guitar_rag/fretboard_examples.py`, `steel_guitar_rag/curated_answers.py`, and the two test files to restore prior literal parser behavior.
 
 ## Commit Readiness
 
 Safe to commit for the scoped backend/test/handoff files.
 
 Safe-to-stage list:
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `tests/test_fretboard_examples.py`
 - `docs/handoffs/task-completions/natural-language-chord-intent-user-smoke-fix.md`

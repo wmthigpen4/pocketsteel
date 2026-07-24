@@ -20,12 +20,12 @@ Intentionally not changed: auth policy, Cloudflare policy, DNS, scraping, corpus
 
 ## Files changed
 
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/melody_import.py`
-- `pocketsteel/resources/public_domain_songs/amazing_grace_new_britain.json`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/melody_import.py`
+- `steel_guitar_rag/resources/public_domain_songs/amazing_grace_new_britain.json`
 - `ui/answer-client.js`
 - `ui/melody-score.js`
 - `ui/melody-workbench.html`
@@ -43,7 +43,7 @@ No files were deleted. The VexFlow bundle and license are the only generated/ven
 
 ## Tests and checks
 
-- `python3 -m py_compile pocketsteel/api.py pocketsteel/api_contract.py pocketsteel/melody_arranger.py pocketsteel/melody_assistant.py pocketsteel/melody_import.py` — pass.
+- `python3 -m py_compile steel_guitar_rag/api.py steel_guitar_rag/api_contract.py steel_guitar_rag/melody_arranger.py steel_guitar_rag/melody_assistant.py steel_guitar_rag/melody_import.py` — pass.
 - `node --check ui/answer-client.js` — pass.
 - `node --check ui/melody-score.js` — pass.
 - `node --check ui/melody-workbench.js` — pass.
@@ -95,12 +95,12 @@ No for implementation and protected-preview smoke. Yes before public release: le
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/melody_import.py`
-- `pocketsteel/resources/public_domain_songs/amazing_grace_new_britain.json`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/melody_import.py`
+- `steel_guitar_rag/resources/public_domain_songs/amazing_grace_new_britain.json`
 - `ui/answer-client.js`
 - `ui/melody-score.js`
 - `ui/melody-workbench.html`

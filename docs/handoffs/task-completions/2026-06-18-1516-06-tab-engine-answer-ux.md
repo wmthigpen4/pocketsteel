@@ -6,7 +6,7 @@ Lane: 06 UX/UI Design.
 
 Requested a UX plan for deterministic pedal steel tab output on the answer page while Lane 05 builds the backend tab engine. This is a parallel planning task only. No backend logic, answer routing, tab generation, Chroma, corpus, scraping, auth, deployment, or production runtime behavior was changed.
 
-The user prompt refers to "Pocket Steel" tab output. Repo guidance says current user-facing app naming is still in transition and not to perform broad renames. This plan therefore focuses on the answer-page UX and uses neutral component names; final user-facing copy should follow the product naming decision active at implementation time.
+The user prompt refers to "Steel Guitar RAG" tab output. Repo guidance says current user-facing app naming is still in transition and not to perform broad renames. This plan therefore focuses on the answer-page UX and uses neutral component names; final user-facing copy should follow the product naming decision active at implementation time.
 
 ## Files And Components Inspected
 

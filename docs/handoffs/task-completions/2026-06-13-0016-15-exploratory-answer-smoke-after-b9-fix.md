@@ -40,13 +40,13 @@ STEEL_RAG_RETRIEVAL_MODE=hybrid_private_first STEEL_RAG_ENABLE_PRIVATE_SOURCES=t
 ```bash
 .venv/bin/python scripts/run_exploratory_answer_smoke.py \
   --base-url http://127.0.0.1:8783 \
-  --output /tmp/pocketsteel-exploratory-answer-smoke-after-b9-fix.md \
-  --json-output /tmp/pocketsteel-exploratory-answer-smoke-after-b9-fix.json
+  --output /tmp/steel_guitar_rag-exploratory-answer-smoke-after-b9-fix.md \
+  --json-output /tmp/steel_guitar_rag-exploratory-answer-smoke-after-b9-fix.json
 ```
 
 - Output artifacts:
-  - `/tmp/pocketsteel-exploratory-answer-smoke-after-b9-fix.md`
-  - `/tmp/pocketsteel-exploratory-answer-smoke-after-b9-fix.json`
+  - `/tmp/steel_guitar_rag-exploratory-answer-smoke-after-b9-fix.md`
+  - `/tmp/steel_guitar_rag-exploratory-answer-smoke-after-b9-fix.json`
 - Note: outputs were written to `/tmp` to avoid touching `corpus-private` or `corpus-v2`.
 
 ## Smoke Results
@@ -78,8 +78,8 @@ These are warning-level quality signals, not blockers for the B9/E-lower regress
 - Deleted files:
   - None.
 - Generated artifacts:
-  - `/tmp/pocketsteel-exploratory-answer-smoke-after-b9-fix.md`
-  - `/tmp/pocketsteel-exploratory-answer-smoke-after-b9-fix.json`
+  - `/tmp/steel_guitar_rag-exploratory-answer-smoke-after-b9-fix.md`
+  - `/tmp/steel_guitar_rag-exploratory-answer-smoke-after-b9-fix.json`
 
 ## Integration Notes
 - The previous hard blocker is cleared: the B9/E-lower diagnostic answer now returns a deterministic top-level fretboard payload.

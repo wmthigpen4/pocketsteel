@@ -2,7 +2,10 @@
 
 This repo uses a human-in-the-loop workflow. Codex must classify every task before acting. For a new feature, the user approves the feature scope once; that approval authorizes the normal end-to-end Autopilot loop through implementation, tests, exact-path commits, protected-preview update, automated smoke, and the user-smoke handoff. Ask again only when the work expands beyond the approved scope or reaches an unapproved RED action.
 
-The current repo instruction is that the user-facing app name is **The Turnaround**. Many current product docs, UI files, tests, and handoffs still refer to **Steel Guitar RAG**. Do not perform a broad rename in either direction without explicit approval. Keep `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names unless the user explicitly approves a rename.
+The canonical user-facing app name is **Steel Guitar RAG**. Use
+`steel_guitar_rag` for Python packages and imports, and use
+`steel-guitar-rag` for distribution, repository, package, and URL slugs.
+Do not introduce alternate or legacy product names.
 
 ## Project Purpose
 
@@ -364,7 +367,7 @@ Good Repo Steward behavior:
 - Weak-source warnings and raw source fragments belong in answer-composer/browser-smoke QA, not every task.
 - Do not include stale checklist items just because they appeared in earlier prompts.
 - Do not refer to the user by personal name in prompts, handoffs, UI text, docs, source notes, or smoke reports. Use "the user," "you," or neutral phrasing.
-- If local filesystem paths expose a personal username, prefer path-neutral forms such as `~/Documents/Pocket Steel` in documentation and handoffs where executable precision is not required.
+- If local filesystem paths expose a personal username, prefer path-neutral forms such as `~/Documents/Steel Guitar RAG` in documentation and handoffs where executable precision is not required.
 
 ## User Smoke Bug Autopilot
 
@@ -552,7 +555,7 @@ Additional rules:
 - Commit only scoped, test-green, exact-path changes.
 - Keep unrelated dirty worktree files parked.
 - Never stage generated/private/corpus/vector/design/deploy artifacts unless the user explicitly approves that exact lane and exact paths.
-- Backend answer changes and QA tooling often overlap in `pocketsteel/curated_answers.py`, `pocketsteel/answer_contracts.py`, `pocketsteel/fretboard_examples.py`, `tests/test_api_search.py`, `scripts/run_exploratory_answer_smoke.py`, and `scripts/run_product_red_team_smoke.py`. Inspect diffs carefully and patch-stage when needed.
+- Backend answer changes and QA tooling often overlap in `steel_guitar_rag/curated_answers.py`, `steel_guitar_rag/answer_contracts.py`, `steel_guitar_rag/fretboard_examples.py`, `tests/test_api_search.py`, `scripts/run_exploratory_answer_smoke.py`, and `scripts/run_product_red_team_smoke.py`. Inspect diffs carefully and patch-stage when needed.
 - UI copy and UI rendering often overlap in `ui/steel-guitar-rag-mock.html` and `tests/test_frontend_answer_ui.py`. Do not mix UI-copy commits with backend/RAG commits.
 
 ## Test Expectations

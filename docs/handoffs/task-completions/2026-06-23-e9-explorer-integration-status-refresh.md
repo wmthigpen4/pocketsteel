@@ -35,7 +35,7 @@ Intentionally not changed:
 
 ## Current E9 Explorer Status
 
-- Deterministic backend row generation exists in `pocketsteel/fretboard_explorer.py`.
+- Deterministic backend row generation exists in `steel_guitar_rag/fretboard_explorer.py`.
 - Expanded backend key support is implemented.
 - Browser UI exposes the QA-covered keys: `G`, `C`, `D`, `F`, `Bb`, `Eb`.
 - Key-aware display spelling is implemented.

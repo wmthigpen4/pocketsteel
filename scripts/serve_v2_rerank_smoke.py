@@ -11,9 +11,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pocketsteel.api import create_app
-from pocketsteel.chroma_search import ChromaSearchIndex
-from pocketsteel.runtime_server import serve_runtime
+from steel_guitar_rag.api import create_app
+from steel_guitar_rag.chroma_search import ChromaSearchIndex
+from steel_guitar_rag.runtime_server import serve_runtime
 from scripts.run_retrieval_ab_eval import RerankConfig
 from scripts.run_v2_rerank_answer_eval import RerankedSearchIndex
 from scripts.serve_answer_smoke import (

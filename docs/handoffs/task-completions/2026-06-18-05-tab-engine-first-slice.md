@@ -2,11 +2,11 @@
 
 ## Task Summary
 
-Requested: build the first deterministic Pocket Steel tab engine slice for The Turnaround, guided by the tab-engine/task prompt and the repo protocol.
+Requested: build the first deterministic Steel Guitar RAG tab engine slice for Steel Guitar RAG, guided by the tab-engine/task prompt and the repo protocol.
 
 Completed:
 
-- Added a small rules-layer tab module at `pocketsteel/tab_engine.py`.
+- Added a small rules-layer tab module at `steel_guitar_rag/tab_engine.py`.
 - Added structured dataclasses for copedent profile, pedal/lever effects, tab notes, tab events, validation issues, and render results.
 - Added the default 10-string E9 profile:
   - Open strings: 1 F#, 2 D#, 3 G#, 4 E, 5 B, 6 G#, 7 F#, 8 E, 9 D, 10 B.
@@ -35,14 +35,14 @@ Notes:
 
 Changed:
 
-- `pocketsteel/api.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/tab_engine.py`
 - `tests/test_tab_engine.py`
 - `docs/handoffs/task-completions/2026-06-18-05-tab-engine-first-slice.md`
 
 Created:
 
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/tab_engine.py`
 - `tests/test_tab_engine.py`
 - `docs/handoffs/task-completions/2026-06-18-05-tab-engine-first-slice.md`
 
@@ -102,7 +102,7 @@ Run:
 git status --short
 find . -maxdepth 4 \( -name 'steel_rules_engine.txt' -o -name 'steel_tab_rules.txt' \) -print
 rg --files | rg '(^|/)(steel_.*rules|.*tab.*rules|tab_engine|api\.py|test_.*api|copedent|fretboard_examples|AGENTS\.md)$'
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
 .venv/bin/python -m pytest tests/test_api_contract.py -q
 .venv/bin/python -m pytest tests/test_api_search.py -q
@@ -140,13 +140,13 @@ Risk: Low to medium.
 Why:
 
 - The tab engine itself is isolated.
-- The only existing runtime file touched is `pocketsteel/api.py`, where a new route was added before `/api/answer`.
+- The only existing runtime file touched is `steel_guitar_rag/api.py`, where a new route was added before `/api/answer`.
 - Focused API tests passed, which lowers risk of answer/search regression.
 - Full-suite failure prevents commit readiness, even though failures appear unrelated.
 
 Rollback notes:
 
-- Revert only `pocketsteel/tab_engine.py`, `tests/test_tab_engine.py`, and the `/api/tab/render` import/route in `pocketsteel/api.py`.
+- Revert only `steel_guitar_rag/tab_engine.py`, `tests/test_tab_engine.py`, and the `/api/tab/render` import/route in `steel_guitar_rag/api.py`.
 
 ## Human Decision Needed
 
@@ -160,8 +160,8 @@ Decision:
 
 If the unrelated full-suite blockers are accepted/resolved and QA approves this slice, safe-to-stage files are:
 
-- `pocketsteel/api.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/tab_engine.py`
 - `tests/test_tab_engine.py`
 - `docs/handoffs/task-completions/2026-06-18-05-tab-engine-first-slice.md`
 

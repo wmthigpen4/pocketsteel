@@ -54,7 +54,7 @@ Generated artifacts:
 
 ### Backend Fretboard Payloads And Rules
 
-`pocketsteel/fretboard_examples.py` already contains the core answer-card fretboard engine:
+`steel_guitar_rag/fretboard_examples.py` already contains the core answer-card fretboard engine:
 
 - `FretboardPosition` with stable ids, root/quality, position kind, fret, strings, grip, pedals/levers, family, tier, notes, intervals, voicing metadata, caveats, and teaching copy.
 - `to_position_payload()` emits rich payload fields including `chordTones`, `lowestSoundingNote`, `lowestChordToneRole`, `voicingType`, `inversionLabel`, `intervalsLowToHigh`, `isRootPosition`, `isInversion`, `isPartialVoicing`, `whyUseIt`, `whenToUse`, `soundCharacter`, `movementUse`, `resolutionUse`, `explanationShort`, and `explanationLong`.
@@ -77,7 +77,7 @@ Important conclusion: the backend already has enough position metadata for a beg
 
 ### Static Grip And Movement Support
 
-`pocketsteel/answer_tab_examples.py` already distinguishes static fretboard answers from movement/tab answers:
+`steel_guitar_rag/answer_tab_examples.py` already distinguishes static fretboard answers from movement/tab answers:
 
 - `static_fretboard_payload_for_question()` supports static grip prompts such as `Show me a G major grip.` and `Show me a 4-5-6 grip.`
 - Static grips return fretboard payloads without tab payloads.
@@ -97,7 +97,7 @@ Measured examples:
 
 ### Tab Events
 
-`pocketsteel/tab_engine.py` already provides:
+`steel_guitar_rag/tab_engine.py` already provides:
 
 - `TabNote`, `TabEvent`, `TabValidationIssue`, and `TabRenderResult`.
 - String-aware pedal/lever validation.
@@ -109,7 +109,7 @@ This is sufficient for movement cards later. It should not be pulled into static
 
 ### Copedent And Control Data
 
-`pocketsteel/e9_copedents.py` already provides:
+`steel_guitar_rag/e9_copedents.py` already provides:
 
 - Emmons E9, Day E9, Custom E9 with LKV, and disabled My Copedent profile concepts.
 - 10-string open notes and pitch values.
@@ -120,7 +120,7 @@ This supports future control-aware teaching copy, but the next answer-card slice
 
 ### Explorer Backend
 
-`pocketsteel/fretboard_explorer.py` already supports a much broader deterministic Explorer surface:
+`steel_guitar_rag/fretboard_explorer.py` already supports a much broader deterministic Explorer surface:
 
 - `build_explorer_payload("G")` currently emits 150 positions.
 - Payload includes `type`, `version`, `instrument`, `query`, `positions`, `legend`, `filters`, `grip_vocabulary`, `selected_copedent`, `copedent_profile`, and `control_impact_preview`.
@@ -431,9 +431,9 @@ Possibly touched only if needed:
 
 Not expected for v1:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - backend API files
 - Explorer workbench files
 - assets
@@ -520,13 +520,13 @@ Write a Lane 06 handoff with screenshots, checks, risks, safe-to-stage files, an
 - `docs/fretboard-payload-contract.md`
 - `docs/e9-fretboard-position-engine.md`
 - `docs/steel-guitar-rag-fretboard-product-concept.md`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/fretboard_explorer.py`
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/tab_engine.py`
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_explorer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/tab_engine.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
 - `ui/answer-client.js`
 - `ui/pedal-steel-fretboard.js`
 - `ui/e9-fretboard-explorer.js`
@@ -549,9 +549,9 @@ git log -10 --oneline
 git diff --name-only
 git diff --cached --name-only
 .venv/bin/python - <<'PY'
-from pocketsteel.fretboard_examples import get_fretboard_examples, fretboard_payload_for_question
-from pocketsteel.answer_tab_examples import tab_example_payload_for_question, static_fretboard_payload_for_question, fretboard_payload_for_tab_example
-from pocketsteel.fretboard_explorer import build_explorer_payload
+from steel_guitar_rag.fretboard_examples import get_fretboard_examples, fretboard_payload_for_question
+from steel_guitar_rag.answer_tab_examples import tab_example_payload_for_question, static_fretboard_payload_for_question, fretboard_payload_for_tab_example
+from steel_guitar_rag.fretboard_explorer import build_explorer_payload
 # read-only payload inspection
 PY
 ```

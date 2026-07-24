@@ -39,7 +39,7 @@ The landing-page slice is complete and integration status records the private-pr
 
 The tab path currently has:
 
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/tab_engine.py`
   - `TabEvent` and `TabNote` structured events.
   - Default 10-string E9 profile.
   - String-aware A/B/C/E/F/V/G/D control validation.
@@ -47,7 +47,7 @@ The tab path currently has:
   - One to three notes per event.
   - One fret per multi-note event until slants exist.
   - Fixed-width rendered tab generated from events.
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/answer_tab_examples.py`
   - deterministic answer-tab selection for safe prompts,
   - static fretboard-first examples for static grips,
   - `tab_example` payloads for movement/lick/control examples,
@@ -416,7 +416,7 @@ Required labeling:
 - `sourcePolicy`: `no_external_song_source`
 - `generator`: `parameterized_e9_chord_movement_v1`
 - fretboard `sourceContext.kind`: `rule`
-- fretboard `sourceContext.sourceId`: implementation module id, likely `pocketsteel.answer_tab_examples`
+- fretboard `sourceContext.sourceId`: implementation module id, likely `steel_guitar_rag.answer_tab_examples`
 
 Required behavior:
 
@@ -476,9 +476,9 @@ Safe fallback:
 
 Recommended Lane 05 target:
 
-- Extend `pocketsteel.answer_tab_examples` or add a small helper module for parameterized movement generation.
+- Extend `steel_guitar_rag.answer_tab_examples` or add a small helper module for parameterized movement generation.
 - Keep output behind existing answer-tab routing behavior and current `tab_example` key.
-- Generate structured `TabEvent` objects, then render/validate through `pocketsteel.tab_engine`.
+- Generate structured `TabEvent` objects, then render/validate through `steel_guitar_rag.tab_engine`.
 - Add deterministic parsing for major key plus `I-IV`, `I-V`, `I-IV-V-I`.
 - Start with a small fixture-backed key set if necessary. Expand to all 12 major roots only after pitch/position fixtures prove correctness.
 - Keep static grip/chord requests fretboard-first.
@@ -505,10 +505,10 @@ Task: Implement deterministic parameterized E9 chord-movement examples.
 Read:
 - AGENTS.md
 - docs/handoffs/task-completions/2026-06-19-18-parameterized-chord-movement-contract.md
-- pocketsteel/tab_engine.py
-- pocketsteel/answer_tab_examples.py
-- pocketsteel/api.py
-- pocketsteel/api_contract.py
+- steel_guitar_rag/tab_engine.py
+- steel_guitar_rag/answer_tab_examples.py
+- steel_guitar_rag/api.py
+- steel_guitar_rag/api_contract.py
 - tests/test_tab_engine.py
 - tests/test_api_contract.py
 - tests/test_api_search.py
@@ -519,7 +519,7 @@ Implement a narrow deterministic v2 movement generator for standard 10-string E9
 Requirements:
 - Use current `tab_example` response key.
 - Generate structured `TabEvent`/`TabNote` data first.
-- Render and validate via `pocketsteel.tab_engine`.
+- Render and validate via `steel_guitar_rag.tab_engine`.
 - Attach derived fretboard payload from the same event list.
 - Keep static chord/grip answers fretboard-first.
 - Label outputs as deterministic/original educational examples.

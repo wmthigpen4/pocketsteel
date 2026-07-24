@@ -56,7 +56,7 @@ The arranger cannot yet receive an honest validation score because machine extra
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1108-20-discovery-derived-validation-reader-hardening.md`
 
@@ -66,8 +66,8 @@ Private generated validation and discovery replay artifacts remain ignored and m
 
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_extraction.py -k 'empty_high_recall or movement_chain_cell or low_confidence_tab_cell'` — 3 passed.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_extraction.py -k 'tab_cell_crop or empty_high_recall or movement_chain_cell'` — 3 passed.
-- `.venv/bin/ruff format pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — 2 files formatted.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — passed.
+- `.venv/bin/ruff format steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — 2 files formatted.
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — passed.
 - Main validation extraction — 28/28 processed, 0 failures, exact challenger pin retained.
 - Licks validation extraction — 3/3 processed, 0 failures, exact challenger pin retained.
 - `.venv/bin/python scripts/amazing_tablature.py shadow-test-discovery at-1fa9630a173af769 --max-review-lines 12` — 1,060 decisions, 954 exact source agreements, 956 expert-acceptable, 16 reviewed preferences accounted once, 4 exact lines/7 current disagreements suppressed from rereview, 0 selected review lines, `validationAccessed=false`, `sealedTestAccessed=false`.
@@ -89,7 +89,7 @@ No decision is needed for this completed hardening slice. Human line-level valid
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1108-20-discovery-derived-validation-reader-hardening.md`
 

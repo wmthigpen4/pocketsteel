@@ -18,7 +18,7 @@ Intentionally not changed: corpus ingestion, scraping, embeddings, Chroma/vector
 - Backend: optional Melody Exercise API contract/routing, deterministic E9 G/C placement, shared event validation, song/solo teaching routing, and updated curated guidance.
 - Frontend: feature-gated Melody/Arrangement form, stepper, attribution/accuracy/section UI, synchronized event identifiers, fixed-width tab, and empty-source handling.
 - QA/deployment: evaluator local-auth header, regression tests, frontend cache-buster, and protected-preview feature enablement.
-- Created: `pocketsteel/melody_assistant.py`, `tests/test_melody_assistant.py`, `docs/melody-exercise-v0.md`.
+- Created: `steel_guitar_rag/melody_assistant.py`, `tests/test_melody_assistant.py`, `docs/melody-exercise-v0.md`.
 - Deleted: none.
 - Generated artifact explicitly approved for replacement: `docs/answer-eval-report.md`.
 
@@ -111,16 +111,16 @@ No. The user approved the full feature loop through protected-preview smoke. A g
 - `docs/process/codex-completion-protocol.md`
 - `docs/progression-guide-v0.md`
 - `docs/tab-feature-guardrails.md`
-- `pocketsteel/answer_contracts.py`
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/curated_song_references.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/progression_guide.py`
-- `pocketsteel/resources/curated/steel-guitar-rag-expert-reference.md`
+- `steel_guitar_rag/answer_contracts.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/curated_song_references.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/progression_guide.py`
+- `steel_guitar_rag/resources/curated/steel-guitar-rag-expert-reference.md`
 - `scripts/run_answer_eval.py`
 - `tests/test_answer_contract_schemas.py`
 - `tests/test_answer_eval.py`

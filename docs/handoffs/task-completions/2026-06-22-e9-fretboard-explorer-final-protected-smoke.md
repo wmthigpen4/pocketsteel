@@ -47,7 +47,7 @@ The refreshed protected-preview Explorer surface now serves the `e9-explorer-use
 - Local protected-preview `/api/version`:
 
 ```json
-{"git_sha":"c1bea83","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
+{"git_sha":"c1bea83","git_branch":"feature/answer-api","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
 ```
 
 - Direct browser navigation to `https://app.steelguitarrag.com/api/version` was blocked by the browser client with `net::ERR_BLOCKED_BY_CLIENT`.

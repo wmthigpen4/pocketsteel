@@ -126,17 +126,17 @@ Full pytest was not rerun for this task. Latest integration status still reports
 ## Current Dirty Scope Relevant To This Blocker
 
 The current worktree still contains dirty runtime/test hunks that are directly relevant to closing this blocker:
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
   - Adds pre-retrieval/retrieval-disabled routing for sensitive personal attributes, specific biographical facts, style/how-to prompts, and safety-adjacent impaired-playing prompts.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Adds source-free curated answers for specific biography guardrails, sensitive personal attributes, rock/how-to, and safety-adjacent impaired playing.
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Keeps the relevant curated intents source-free so deterministic/guardrail answers do not display unrelated source cards.
 - `tests/test_answer_intent_classifier.py`
   - Adds classifier coverage that the relevant user-smoke question types disable retrieval and do not request fretboard payloads.
 - `tests/test_api_search.py`
   - Adds API regression coverage for private/sensitive, style/how-to, and safety-adjacent prompts so noisy SGF fragments cannot pass.
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Keeps concept-only chord prompts from attaching fretboard payloads.
 - `tests/test_fretboard_examples.py`
   - Updates concept-prompt expectations to deterministic answers without fretboard payloads.
@@ -146,22 +146,22 @@ These hunks are relevant to this blocker and are QA-approved for exact-hunk stag
 ## Exact Files/Hunks Approved If Ready For Commit
 
 Approved for exact-hunk staging:
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
   - `_mentions_sensitive_personal_attribute`
   - `_mentions_specific_biography_fact`
   - `_mentions_style_how_to`
   - `_mentions_safety_adjacent_playing`
   - early decisions that return retrieval-disabled guardrail/practice-plan shapes for those prompts
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - new `IntentMode` values for `factual_biography`, `sensitive_personal_attribute`, `style_how_to`, and `safety_adjacent`
   - `intent_mode_for_question(...)` routing for those modes
   - source-free curated answers for those modes
   - helper predicates for sensitive attribute, specific biography fact, style/how-to, and safety-adjacent playing
   - `mentions_sensitive_demographic_question(...)` delegation to the broader sensitive-attribute predicate
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - `_curated_answer_should_be_source_free(...)`
   - source suppression for source-free curated intents
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - `chord_concept_payload_for_question(...)` returning `None` for concept-only theory prompts
 - `tests/test_answer_intent_classifier.py`
   - non-position coverage for the new prompt families
@@ -239,10 +239,10 @@ Branch: feature/answer-api
 QA approved the predictable-question/raw-SGF-fragment closure in docs/handoffs/task-completions/qa-predictable-question-raw-sgf-fragment-closure.md. Proceed under auto-approval with exact-hunk staging only.
 
 Stage only the approved hunks in:
-- pocketsteel/answer_intent_classifier.py
-- pocketsteel/api.py
-- pocketsteel/curated_answers.py
-- pocketsteel/fretboard_examples.py
+- steel_guitar_rag/answer_intent_classifier.py
+- steel_guitar_rag/api.py
+- steel_guitar_rag/curated_answers.py
+- steel_guitar_rag/fretboard_examples.py
 - tests/test_answer_intent_classifier.py
 - tests/test_api_search.py
 - tests/test_fretboard_examples.py

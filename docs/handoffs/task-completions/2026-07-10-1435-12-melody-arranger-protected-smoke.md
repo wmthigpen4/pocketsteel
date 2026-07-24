@@ -31,7 +31,7 @@ No implementation files changed during this final smoke.
 - Recommended Harmony rendered seven two-note events and a matching multi-string tab.
 - Route selection visibly updated the pressed route, active event, active tab label, selected fretboard event, and explanation.
 - Literal `S4: 3 2F 7` previewed as `G4 G4 B4` and rendered exactly as string 4, frets 3/2F/7.
-- No `[object Object]`, no `The Turnaround`, and no image background.
+- No `[object Object]`, no `Steel Guitar RAG`, and no image background.
 
 ## Smoke Target
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import pocketsteel.melody_arranger as melody_arranger
+import steel_guitar_rag.melody_arranger as melody_arranger
 
-from pocketsteel.copedent_transfer import (
+from steel_guitar_rag.copedent_transfer import (
     absolute_pitch_for_profile,
     control_tab_label,
     custom_e9_profile_from_payload,
@@ -13,7 +13,7 @@ from pocketsteel.copedent_transfer import (
     tab_profile_for_e9,
     transfer_controls,
 )
-from pocketsteel.e9_copedents import (
+from steel_guitar_rag.e9_copedents import (
     DAY_E9,
     EMMONS_E9,
     CUSTOM_LKV_E9,
@@ -23,12 +23,12 @@ from pocketsteel.e9_copedents import (
     SOURCE_ABC_DEFG_E9,
     get_e9_copedent_profile,
 )
-from pocketsteel.melody_assistant import melody_exercise_response
-from pocketsteel.melody_decision_rules import MODEL_VERSION, rule_contract_payload
-from pocketsteel.melody_ranker import score_candidate, train_pairwise_ranker
-from pocketsteel.answer_tab_examples import tab_example_payload_for_question
-from pocketsteel.fretboard_examples import fretboard_payload_for_question
-from pocketsteel.tab_engine import TabEvent, TabNote, render_tab
+from steel_guitar_rag.melody_assistant import melody_exercise_response
+from steel_guitar_rag.melody_decision_rules import MODEL_VERSION, rule_contract_payload
+from steel_guitar_rag.melody_ranker import score_candidate, train_pairwise_ranker
+from steel_guitar_rag.answer_tab_examples import tab_example_payload_for_question
+from steel_guitar_rag.fretboard_examples import fretboard_payload_for_question
+from steel_guitar_rag.tab_engine import TabEvent, TabNote, render_tab
 
 
 OPEN_STRINGS = [

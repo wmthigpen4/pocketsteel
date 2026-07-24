@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
-from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON
-from pocketsteel.api import create_app
-from pocketsteel.cloudflare_access import CLOUDFLARE_ACCESS_JWT_ENVIRON
-from pocketsteel.retrieval_modes import RetrievalMode, RetrievalModeConfig
+from steel_guitar_rag.access_control import DEV_ACCESS_ROLE_ENVIRON
+from steel_guitar_rag.api import create_app
+from steel_guitar_rag.cloudflare_access import CLOUDFLARE_ACCESS_JWT_ENVIRON
+from steel_guitar_rag.retrieval_modes import RetrievalMode, RetrievalModeConfig
 from tests.test_api_search import FakeCloudflareVerifier
 import pytest
 

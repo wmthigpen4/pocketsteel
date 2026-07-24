@@ -18,7 +18,7 @@ The licks validation canary remains at revision 1 with zero validation-machine r
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
   - Added structural capture-issue classification so pitch disagreements are not mislabeled as blank reader output.
   - Added fail-closed validation machine remediation with visual event geometry, guided tab-state reading, string-origin calibration, copedent validation, score-pitch containment, immutable private revisions, and no-review publication behavior.
   - Added numbered guided tab-state crops and guide-aware local vision parsing.
@@ -36,7 +36,7 @@ Generated private artifacts were written only beneath ignored `corpus-private/me
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py` — PASS, 137 tests.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_training.py` — PASS, 35 tests.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_sealed_test.py tests/test_amazing_tablature_input_parity.py` — PASS, 3 tests using test fixtures only; no private sealed cohort was opened.
@@ -62,7 +62,7 @@ No. Do not request more human review yet.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1343-20-validation-remediation-discovery-replay.md`

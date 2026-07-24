@@ -16,8 +16,8 @@ The fix keeps sources as supporting evidence when retrieval-backed answers are u
 
 ## Files Changed
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/teacher-first-answer-composer.md`
@@ -130,8 +130,8 @@ No public `/api/answer` response schema changes were made.
 
 ## Safe-To-Stage List
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/teacher-first-answer-composer.md`

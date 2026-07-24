@@ -36,7 +36,7 @@ Intentionally not changed:
 - Expected repo HEAD: `e449180`
 - Required app-code commit: `254752a`
 - Version endpoint: `/api/version`
-- Version endpoint result: local origin returned `{"git_sha":"e449180","git_branch":"feature/answer-api","server_started_at":"2026-07-01T04:13:03.378070+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: local origin returned `{"git_sha":"e449180","git_branch":"feature/answer-api","server_started_at":"2026-07-01T04:13:03.378070+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Protected browser `/api/version` caveat: direct browser navigation to `https://app.steelguitarrag.com/api/version` was blocked by the browser environment with `net::ERR_BLOCKED_BY_CLIENT`; local origin version proof plus authenticated protected browser smoke were recorded
 - Whether app root `/` works: yes, but it redirects to `/ui/steel-guitar-rag-mock.html`
 - Whether app root `/` is expected to work: yes as a redirect, not as the exact cache-busted target
@@ -125,7 +125,7 @@ Generated artifacts:
 - `git rev-parse --short HEAD` - `e449180`.
 - `git log --oneline -5` - confirmed `e449180` after `254752a`.
 - `git merge-base --is-ancestor 254752a HEAD` - PASS, runtime HEAD contains required app-code commit.
-- `git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests` - no dirty runtime-affecting files.
+- `git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests` - no dirty runtime-affecting files.
 - `curl -sS http://127.0.0.1:8770/api/version` before restart - stale `e37f00e`.
 - `lsof -nP -iTCP:8770 -sTCP:LISTEN` before restart - PID `10945`.
 - `launchctl print system/com.steelguitarrag.private-preview` - state `running`.

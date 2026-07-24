@@ -26,7 +26,7 @@ No validation correction was applied in this implementation slice. Validation re
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-0232-20-validation-count-and-localization-consensus-v7.md`
 
@@ -34,11 +34,11 @@ No source image, reviewed discovery record, validation page record, training rec
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py` — pass.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py` — pass.
 - Focused validation count/localization/score-consensus tests — 3 passed.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py` — 163 passed.
 - `.venv/bin/pytest -q` — 1,390 passed.
-- `git diff --check -- pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — pass.
+- `git diff --check -- steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — pass.
 
 Skipped in this implementation checkpoint:
 
@@ -69,7 +69,7 @@ The already approved goal authorizes the clean commit, exact challenger rebuild,
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-0232-20-validation-count-and-localization-consensus-v7.md`
 

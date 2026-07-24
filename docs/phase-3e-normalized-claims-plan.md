@@ -1,6 +1,6 @@
 # Phase 3E Normalized Claims Plan
 
-Scope: define a future normalized-claim layer for The Turnaround. This layer is separate from corpus-v2 evidence chunks and must not replace source-faithful retrieval chunks.
+Scope: define a future normalized-claim layer for Steel Guitar RAG. This layer is separate from corpus-v2 evidence chunks and must not replace source-faithful retrieval chunks.
 
 Task mode: GREEN for this planning document. Implementing claim extraction, writing claim artifacts, changing retrieval, or changing answer behavior requires explicit approval.
 

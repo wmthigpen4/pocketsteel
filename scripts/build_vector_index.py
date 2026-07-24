@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a small local vector index from The Turnaround chunks."""
+"""Build a small local vector index from Steel Guitar RAG chunks."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from pocketsteel.retrieval import hashing_embed_texts, normalize_matrix
-from pocketsteel.schema import read_jsonl, write_jsonl
+from steel_guitar_rag.retrieval import hashing_embed_texts, normalize_matrix
+from steel_guitar_rag.schema import read_jsonl, write_jsonl
 
 
 def embed_sentence_transformers(texts: list[str], model_name: str, batch_size: int) -> np.ndarray:

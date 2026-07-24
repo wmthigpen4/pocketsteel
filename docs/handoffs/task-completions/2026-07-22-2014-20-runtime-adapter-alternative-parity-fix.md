@@ -8,7 +8,7 @@ No validation or sealed-test data was opened. The failed rebuild created no mode
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_decisions.py`
+- `steel_guitar_rag/amazing_tablature_decisions.py`
 - `docs/handoffs/task-completions/2026-07-22-2014-20-runtime-adapter-alternative-parity-fix.md`
 
 ## Tests and checks
@@ -30,7 +30,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_decisions.py`
+- `steel_guitar_rag/amazing_tablature_decisions.py`
 - `docs/handoffs/task-completions/2026-07-22-2014-20-runtime-adapter-alternative-parity-fix.md`
 
 ## Files that must not be staged

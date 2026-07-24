@@ -28,10 +28,10 @@ Read and checked:
 - `docs/handoffs/task-completions/retrieval-gating-implementation.md`
 - `docs/handoffs/task-completions/qa-retrieval-gating-implementation.md`
 - `docs/handoffs/task-completions/six-smoke-failures-answer-quality-fix.md`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/answer_contracts.py`
 - `tests/test_api_search.py`
 
 ## Verification Summary
@@ -83,7 +83,7 @@ Reachability:
 
 Smoke artifact:
 
-- `/tmp/pocketsteel-qa-six-smoke-12-prompt-api-smoke.json`
+- `/tmp/steel_guitar_rag-qa-six-smoke-12-prompt-api-smoke.json`
 
 Totals:
 
@@ -182,17 +182,17 @@ Residual risk: the smoke used API fallback rather than browser DOM screenshots. 
 
 Approved only as narrowly staged hunks:
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - teacher-first diminished chord route
   - teacher-first Fender Steel King settings route/recognizer
   - teacher-first B+C pedals route/recognizer
   - symmetric hum/changer diagnostic matcher, if present in this file's relevant hunk
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - deterministic parser expansion for `Where are my <root> chord positions?`
   - deterministic parser expansion for `Show me <root> positions on E9.`
-- `pocketsteel/answering.py`
+- `steel_guitar_rag/answering.py`
   - symmetric hum/changer diagnostic matcher
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/answer_contracts.py`
   - symmetric hum/changer diagnostic matcher
 - `tests/test_api_search.py`
   - `test_remaining_retrieval_gating_smoke_failures_get_teacher_first_answers`
@@ -260,10 +260,10 @@ Branch: feature/answer-api
 Do not deploy, change DNS, touch Chroma, regenerate embeddings, run scraping, or stage unrelated parked work.
 
 Hunk-stage only the approved six-smoke-failure answer-quality fix:
-- pocketsteel/curated_answers.py: teacher-first diminished, Fender Steel King, B+C pedals, and related recognizer hunks
-- pocketsteel/fretboard_examples.py: parser expansion for "Where are my <root> chord positions?" and "Show me <root> positions on E9."
-- pocketsteel/answering.py: hum/changer diagnostic matcher hunk
-- pocketsteel/answer_contracts.py: hum/changer diagnostic matcher hunk
+- steel_guitar_rag/curated_answers.py: teacher-first diminished, Fender Steel King, B+C pedals, and related recognizer hunks
+- steel_guitar_rag/fretboard_examples.py: parser expansion for "Where are my <root> chord positions?" and "Show me <root> positions on E9."
+- steel_guitar_rag/answering.py: hum/changer diagnostic matcher hunk
+- steel_guitar_rag/answer_contracts.py: hum/changer diagnostic matcher hunk
 - tests/test_api_search.py: focused six-smoke-failure regression tests and minimal required helpers only
 - docs/handoffs/task-completions/six-smoke-failures-answer-quality-fix.md
 - docs/handoffs/task-completions/qa-six-smoke-failures-answer-quality-fix.md

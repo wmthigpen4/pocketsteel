@@ -2,7 +2,7 @@
 
 This document extends `docs/llm-guidance/answer-contract.md`, `docs/llm-guidance/eval-rubric.md`, and `docs/llm-guidance/product-memory.md`.
 
-The core product decision is simple: The Turnaround must answer like a steel-guitar teacher first. Source retrieval is evidence. It is not the user-facing lesson.
+The core product decision is simple: Steel Guitar RAG must answer like a steel-guitar teacher first. Source retrieval is evidence. It is not the user-facing lesson.
 
 ## Product Rule
 

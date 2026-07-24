@@ -1,6 +1,6 @@
 # RAG Evaluation
 
-This directory contains lightweight evaluation scaffolding for The Turnaround.
+This directory contains lightweight evaluation scaffolding for Steel Guitar RAG.
 
 Current scope: Steel Guitar Forum Electronics forum only.
 

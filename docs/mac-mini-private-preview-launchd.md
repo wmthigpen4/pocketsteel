@@ -34,7 +34,7 @@ The app service is designed as a system LaunchDaemon:
   - `~/Library/Logs/steel-guitar-rag/app.out.log`
   - `~/Library/Logs/steel-guitar-rag/app.err.log`
 
-The repo-managed wrapper is copied to `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh` during `install`. The LaunchDaemon runs that installed copy instead of executing directly from `~/Documents/Pocket Steel`; this avoids macOS launchd/TCC failures seen when a system daemon tries to execute a program or use a working directory under `~/Documents`.
+The repo-managed wrapper is copied to `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh` during `install`. The LaunchDaemon runs that installed copy instead of executing directly from `~/Documents/Steel Guitar RAG`; this avoids macOS launchd/TCC failures seen when a system daemon tries to execute a program or use a working directory under `~/Documents`.
 
 The service wrapper reads `~/.steel-rag/env/private-preview.env` at runtime. That file must stay outside the repo and must not be pasted into handoffs, issues, prompts, shell history, or screenshots.
 
@@ -78,7 +78,7 @@ Activate a clean detached release after reviewed code changes:
 
 ```bash
 STEEL_RAG_REPO_DIR="$HOME/.steel-rag/releases/<short-sha>" \
-STEEL_RAG_DATA_DIR="$HOME/Documents/Pocket Steel" \
+STEEL_RAG_DATA_DIR="$HOME/Documents/Steel Guitar RAG" \
 STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
 deploy/macos/install-private-preview-launchdaemon.sh activate
 ```
@@ -92,7 +92,7 @@ Restart the same installed release only with the exact release and SHA:
 
 ```bash
 STEEL_RAG_REPO_DIR="$HOME/.steel-rag/releases/<short-sha>" \
-STEEL_RAG_DATA_DIR="$HOME/Documents/Pocket Steel" \
+STEEL_RAG_DATA_DIR="$HOME/Documents/Steel Guitar RAG" \
 STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
 deploy/macos/install-private-preview-launchdaemon.sh restart
 ```
@@ -113,7 +113,7 @@ The installer intentionally keeps privileged actions explicit. It uses `sudo` on
 
 It also uses `sudo` to install the non-secret wrapper copy under `/usr/local/libexec/steel-guitar-rag`.
 
-If launchd can execute the installed wrapper but the wrapper later fails to `cd` into `~/Documents/Pocket Steel`, the remaining issue is the runtime checkout location rather than the wrapper. In that case, move or create an operator-approved runtime checkout outside TCC-sensitive folders, then reinstall with:
+If launchd can execute the installed wrapper but the wrapper later fails to `cd` into `~/Documents/Steel Guitar RAG`, the remaining issue is the runtime checkout location rather than the wrapper. In that case, move or create an operator-approved runtime checkout outside TCC-sensitive folders, then reinstall with:
 
 ```bash
 STEEL_RAG_REPO_DIR=/Users/cory/steel-guitar-rag-runtime \
@@ -145,7 +145,7 @@ deploy/macos/install-private-preview-launchdaemon.sh version
 Expected shape:
 
 ```json
-{"git_sha":"<current-head>","git_branch":"feature/answer-api","python_module":"pocketsteel.api","auth_provider":"cloudflare_access"}
+{"git_sha":"<current-head>","git_branch":"feature/answer-api","python_module":"steel_guitar_rag.api","auth_provider":"cloudflare_access"}
 ```
 
 If `/api/version` does not report the expected commit, do not terminate the

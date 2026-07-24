@@ -9,7 +9,7 @@ Completed:
 - Inspected repo state on branch `feature/answer-api`.
 - Confirmed backend tab engine commit `686fd3c feat: add deterministic tab engine slice` is in history.
 - Confirmed current HEAD is later: `07f9b9d feat: render tab examples on answer page`.
-- Inspected `/api/tab/render` route shape in `pocketsteel/api.py`.
+- Inspected `/api/tab/render` route shape in `steel_guitar_rag/api.py`.
 - Inspected `tests/test_tab_engine.py` payload examples and answer-page tab UI wiring tests.
 - Created this deployment/smoke checklist only.
 
@@ -36,8 +36,8 @@ Task classification:
   - `0bd0780 test: add tab engine ui QA coverage`
   - `07f9b9d feat: render tab examples on answer page`
 - The backend tab engine files from `686fd3c` are committed:
-  - `pocketsteel/tab_engine.py`
-  - `/api/tab/render` route in `pocketsteel/api.py`
+  - `steel_guitar_rag/tab_engine.py`
+  - `/api/tab/render` route in `steel_guitar_rag/api.py`
   - `tests/test_tab_engine.py`
 - The answer-page tab UI is also now present in current HEAD, but the worktree still has dirty runtime-affecting UI/test files. Do not use the current dirty worktree for protected-preview restart until Lane 06 either commits the intended UI changes or parks them.
 - Expected private preview route remains:
@@ -46,7 +46,7 @@ Task classification:
   - local backend: `http://127.0.0.1:8770`
   - auth provider: Cloudflare Access
 - The tab render endpoint is served by the same Mac mini app process. It does not use Chroma or Ollama directly.
-- `/api/tab/render` currently does not perform per-route app auth in `pocketsteel/api.py`; protected-preview safety depends on:
+- `/api/tab/render` currently does not perform per-route app auth in `steel_guitar_rag/api.py`; protected-preview safety depends on:
   - Cloudflare Access protecting `app.steelguitarrag.com`
   - the local app binding only to `127.0.0.1`
   - no router port forwarding to the app
@@ -60,10 +60,10 @@ git status --short
 git rev-parse --short HEAD
 git log --oneline -5
 git diff --check
-git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests
+git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests
 ```
 
-Stop if dirty runtime-affecting files are present in `pocketsteel/*.py`, `ui/*.js`, `scripts/*.py`, or `tests`, unless the current task explicitly says to verify that dirty Lane 06 state.
+Stop if dirty runtime-affecting files are present in `steel_guitar_rag/*.py`, `ui/*.js`, `scripts/*.py`, or `tests`, unless the current task explicitly says to verify that dirty Lane 06 state.
 
 Focused checks for the committed tab engine and answer-page tab UI:
 
@@ -463,9 +463,9 @@ First verify:
 - git rev-parse --short HEAD
 - git log --oneline -5
 - git diff --check
-- git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests
+- git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests
 
-Stop before restart if dirty runtime-affecting files are present in pocketsteel/*.py, ui/*.js, scripts/*.py, or tests.
+Stop before restart if dirty runtime-affecting files are present in steel_guitar_rag/*.py, ui/*.js, scripts/*.py, or tests.
 
 Run:
 - .venv/bin/python -m pytest tests/test_tab_engine.py -q
@@ -519,10 +519,10 @@ git status --short
 git rev-parse --short HEAD
 git log --oneline -8
 git branch --show-current
-rg -n "tab/render|tab_engine|render_tab|Tab" pocketsteel tests scripts docs/current-commands.md docs/private-preview-operations.md docs/self-hosted-deployment-plan.md docs/cloudflare-tunnel-private-preview.md
+rg -n "tab/render|tab_engine|render_tab|Tab" steel_guitar_rag tests scripts docs/current-commands.md docs/private-preview-operations.md docs/self-hosted-deployment-plan.md docs/cloudflare-tunnel-private-preview.md
 sed -n '1,260p' tests/test_tab_engine.py
-sed -n '1,260p' pocketsteel/tab_engine.py
-sed -n '230,270p' pocketsteel/api.py
+sed -n '1,260p' steel_guitar_rag/tab_engine.py
+sed -n '230,270p' steel_guitar_rag/api.py
 sed -n '260,360p' tests/test_tab_engine.py
 sed -n '1,260p' docs/current-commands.md
 sed -n '1,520p' docs/private-preview-operations.md
@@ -584,7 +584,7 @@ If the user later asks for an exact-path docs commit:
 
 ## Files That Must Not Be Staged
 
-- `pocketsteel/*.py`
+- `steel_guitar_rag/*.py`
 - `ui/*.js`
 - `ui/steel-guitar-rag-mock.html`
 - `tests`

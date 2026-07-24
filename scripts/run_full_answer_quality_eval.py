@@ -22,15 +22,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pocketsteel.access_control import DEV_ACCESS_ROLE_HEADER
-from pocketsteel.answer_contracts import normalize_intent
-from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
-from pocketsteel.api import create_app
-from pocketsteel.answering import question_mentions_private_profile
-from pocketsteel.chroma_search import ChromaSearchIndex
-from pocketsteel.fretboard_examples import get_e9_major_chord_positions, major_chord_location_request_for_question
-from pocketsteel.private_source_search import PrivateSourceSearchIndex
-from pocketsteel.retrieval_modes import (
+from steel_guitar_rag.access_control import DEV_ACCESS_ROLE_HEADER
+from steel_guitar_rag.answer_contracts import normalize_intent
+from steel_guitar_rag.answer_usage import InMemoryAnswerRateLimiter
+from steel_guitar_rag.api import create_app
+from steel_guitar_rag.answering import question_mentions_private_profile
+from steel_guitar_rag.chroma_search import ChromaSearchIndex
+from steel_guitar_rag.fretboard_examples import get_e9_major_chord_positions, major_chord_location_request_for_question
+from steel_guitar_rag.private_source_search import PrivateSourceSearchIndex
+from steel_guitar_rag.retrieval_modes import (
     DEFAULT_PRIVATE_CHROMA_PATH,
     DEFAULT_PRIVATE_COLLECTION,
     DEFAULT_SGF_V2_CHROMA_PATH,

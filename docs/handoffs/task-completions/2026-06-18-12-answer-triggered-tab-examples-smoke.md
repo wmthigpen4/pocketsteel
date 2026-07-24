@@ -37,7 +37,7 @@ Task classification:
 - Backend deterministic tab engine exists in committed history at `686fd3c`.
 - Answer-page tab rendering exists in committed history before this handoff.
 - Lane 05 answer-triggered deterministic tab examples are still in progress in the working tree at inspection.
-- Current in-progress answer-triggered code adds `pocketsteel/answer_tab_examples.py` and wires helper calls into `/api/answer`, but that code is not committed and must not be staged by Lane 12.
+- Current in-progress answer-triggered code adds `steel_guitar_rag/answer_tab_examples.py` and wires helper calls into `/api/answer`, but that code is not committed and must not be staged by Lane 12.
 - The in-progress answer payload key is currently `tab_example` with `rendered_tab`; the committed frontend normalizer inspected in `ui/answer-client.js` reads `tabs[]` or top-level `tab`. Post-Lane-05 smoke must verify the final backend/frontend contract is aligned.
 - Protected-preview app should remain Mac-hosted through Cloudflare Access and Cloudflare Tunnel:
 
@@ -47,13 +47,13 @@ Internet -> Cloudflare Access -> Cloudflare Tunnel -> Mac mini app on 127.0.0.1:
 
 - Ollama and Chroma must remain local-only.
 - `/api/tab/render` is a deterministic helper route and does not directly use Chroma or Ollama.
-- `/api/tab/render` does not currently enforce per-route app auth in `pocketsteel/api.py`; public hostname protection depends on Cloudflare Access covering `app.steelguitarrag.com` and the app binding only to `127.0.0.1`.
+- `/api/tab/render` does not currently enforce per-route app auth in `steel_guitar_rag/api.py`; public hostname protection depends on Cloudflare Access covering `app.steelguitarrag.com` and the app binding only to `127.0.0.1`.
 
 Do not run protected-preview smoke from a dirty runtime worktree unless the task explicitly asks to smoke that dirty state. At inspection, dirty runtime-affecting paths included:
 
 - `ui/steel-guitar-rag-mock.html`
 - `tests/test_frontend_answer_ui.py`
-- `pocketsteel/answer_tab_examples.py` as untracked in-progress Lane 05 work
+- `steel_guitar_rag/answer_tab_examples.py` as untracked in-progress Lane 05 work
 
 ## 2. Local Server Startup Commands From Repo Inspection
 
@@ -64,7 +64,7 @@ git status --short
 git rev-parse --short HEAD
 git log --oneline -5
 git diff --check
-git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests
+git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests
 ```
 
 Stop if dirty runtime-affecting files are present unless the task explicitly says to test that dirty state.
@@ -498,7 +498,7 @@ Known unrelated full-suite failures from the task context:
 Current worktree caveats at inspection:
 
 - Dirty runtime-affecting files are present.
-- `pocketsteel/answer_tab_examples.py` is untracked in-progress Lane 05 work.
+- `steel_guitar_rag/answer_tab_examples.py` is untracked in-progress Lane 05 work.
 - `ui/steel-guitar-rag-mock.html` and `tests/test_frontend_answer_ui.py` are dirty.
 - `ui/brand/` contains dirty/untracked visual assets and is a protected visual-design path.
 - Many unrelated docs, corpus metadata, source-inbox, generated, and design files remain dirty/untracked.
@@ -558,7 +558,7 @@ First verify:
 - git rev-parse --short HEAD
 - git log --oneline -5
 - git diff --check
-- git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests
+- git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests
 
 Stop before restart if dirty runtime-affecting files are present.
 
@@ -625,22 +625,22 @@ git branch --show-current
 git rev-parse --short HEAD
 git log --oneline -10
 test -e docs/handoffs/task-completions/2026-06-18-12-answer-triggered-tab-examples-smoke.md && echo EXISTS || echo MISSING
-rg -n "tab_examples|answer_tab|tabs|/api/tab/render|serve_v2_rerank|serve_answer_smoke|api/answer" pocketsteel ui tests docs/current-commands.md docs/private-preview-operations.md docs/handoffs/task-completions/2026-06-18-12-tab-engine-deploy-smoke-plan.md
-sed -n '230,270p' pocketsteel/api.py
+rg -n "tab_examples|answer_tab|tabs|/api/tab/render|serve_v2_rerank|serve_answer_smoke|api/answer" steel_guitar_rag ui tests docs/current-commands.md docs/private-preview-operations.md docs/handoffs/task-completions/2026-06-18-12-tab-engine-deploy-smoke-plan.md
+sed -n '230,270p' steel_guitar_rag/api.py
 sed -n '260,335p' tests/test_tab_engine.py
 sed -n '1,260p' docs/current-commands.md
 sed -n '1,260p' docs/private-preview-operations.md
 sed -n '1,260p' docs/handoffs/task-completions/2026-06-18-12-tab-engine-deploy-smoke-plan.md
-sed -n '1,260p' pocketsteel/answer_tab_examples.py
-git diff -- pocketsteel/api.py ui/answer-client.js ui/steel-guitar-rag-mock.html tests/test_frontend_answer_ui.py
+sed -n '1,260p' steel_guitar_rag/answer_tab_examples.py
+git diff -- steel_guitar_rag/api.py ui/answer-client.js ui/steel-guitar-rag-mock.html tests/test_frontend_answer_ui.py
 git show --stat --oneline 54a28c7
 git show --stat --oneline 7834c67
-git diff -- pocketsteel/api.py
-rg -n "tab_example|tabs|rendered_tab|tabText|tab_text|tab_example_payload" pocketsteel tests ui/answer-client.js ui/steel-guitar-rag-mock.html
-sed -n '120,172p' pocketsteel/api_contract.py
-rg -n "devAccessHeaders|X-|Steel|access" ui/answer-client.js pocketsteel/access_control.py tests/test_api_search.py
+git diff -- steel_guitar_rag/api.py
+rg -n "tab_example|tabs|rendered_tab|tabText|tab_text|tab_example_payload" steel_guitar_rag tests ui/answer-client.js ui/steel-guitar-rag-mock.html
+sed -n '120,172p' steel_guitar_rag/api_contract.py
+rg -n "devAccessHeaders|X-|Steel|access" ui/answer-client.js steel_guitar_rag/access_control.py tests/test_api_search.py
 sed -n '1,120p' ui/answer-client.js
-sed -n '200,250p' pocketsteel/access_control.py
+sed -n '200,250p' steel_guitar_rag/access_control.py
 ```
 
 Finish checks:
@@ -688,8 +688,8 @@ Yes before actual protected-preview smoke if runtime files remain dirty: decide 
 
 ## Files That Must Not Be Staged
 
-- `pocketsteel/*.py`
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/*.py`
+- `steel_guitar_rag/answer_tab_examples.py`
 - `ui/*.js`
 - `ui/steel-guitar-rag-mock.html`
 - `tests`

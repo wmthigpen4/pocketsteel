@@ -4,7 +4,7 @@
 
 Last updated: 2026-06-01
 
-This checkpoint records the current working state for The Turnaround / Steel Guitar RAG private preview. It is documentation only and does not switch runtime behavior, mutate Chroma, run embeddings, deploy, or change DNS.
+This checkpoint records the current working state for Steel Guitar RAG / Steel Guitar RAG private preview. It is documentation only and does not switch runtime behavior, mutate Chroma, run embeddings, deploy, or change DNS.
 
 ## Private Preview Status
 

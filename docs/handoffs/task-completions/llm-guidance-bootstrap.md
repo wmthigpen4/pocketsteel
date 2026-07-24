@@ -2,7 +2,7 @@
 
 ## Task summary
 
-- What was requested: create a permanent shared guidance layer for future Codex/LLM lanes working on Steel Guitar RAG / The Turnaround.
+- What was requested: create a permanent shared guidance layer for future Codex/LLM lanes working on Steel Guitar RAG / Steel Guitar RAG.
 - What was completed: read current repo instructions, answer contract docs, answer guardrails, answer-routing code, structured user copedent code, answer UI references, eval tests, product red-team tests, and recent handoffs; then created guidance docs for answer contracts, eval rubric, product memory, and known failures. Updated `AGENTS.md` to point future lanes at the guidance layer and clarify lane workflow, handoffs, safe staging, testing, and safety expectations.
 - What was intentionally not changed: no implementation code, tests, Chroma/vector stores, embeddings, corpus-private, corpus-v2, source-inbox raw/provenance data, scraping, deployment, DNS, `.wrangler`, public/brand/design assets, or generated reports were modified.
 
@@ -49,16 +49,16 @@
   - `find docs -maxdepth 3 -type f \( -name '*answer*' -o -name '*contract*' -o -name '*eval*' -o -name '*guidance*' \) | sort`
   - `sed -n '1,260p' docs/answer-generation-contract.md`
   - `sed -n '1,260p' docs/answer-guardrails.md`
-  - `sed -n '1,260p' pocketsteel/curated_answers.py`
-  - `sed -n '1,260p' pocketsteel/answer_contracts.py`
+  - `sed -n '1,260p' steel_guitar_rag/curated_answers.py`
+  - `sed -n '1,260p' steel_guitar_rag/answer_contracts.py`
   - `rg -n "fretboard|source|Object|warning|answer" ui/answer-client.js ui/steel-guitar-rag-mock.html | head -160`
   - `sed -n '1,220p' tests/test_api_search.py`
   - `sed -n '1,240p' tests/test_exploratory_answer_smoke.py`
   - `sed -n '1,220p' tests/test_product_red_team_smoke.py`
   - `sed -n '1,220p' docs/private-answer-hybrid-plan.md`
-  - `sed -n '1,240p' pocketsteel/user_copedent.py`
+  - `sed -n '1,240p' steel_guitar_rag/user_copedent.py`
   - `find docs/llm-guidance -maxdepth 2 -type f -print`
-  - `rg -n "User E9|copedent|private profile|Open tuning|Common grips" pocketsteel tests docs | head -120`
+  - `rg -n "User E9|copedent|private profile|Open tuning|Common grips" steel_guitar_rag tests docs | head -120`
 - Results:
   - Read-only inspection completed.
 - Final checks:
@@ -71,7 +71,7 @@
 
 ## Repo uncertainty
 
-- Naming uncertainty remains: the existing repo instruction says the user-facing app name is The Turnaround, while the requested product memory and many current repo artifacts say Steel Guitar RAG. The guidance preserves both and warns against broad rename work without explicit approval.
+- Naming uncertainty remains: the existing repo instruction says the user-facing app name is Steel Guitar RAG, while the requested product memory and many current repo artifacts say Steel Guitar RAG. The guidance preserves both and warns against broad rename work without explicit approval.
 - Some guidance is based on uncommitted handoffs and dirty worktree state. Future lanes should inspect current code and current `git status` before relying on any snapshot.
 - `docs/llm-guidance/` did not previously exist in the inspected tree.
 

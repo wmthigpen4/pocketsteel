@@ -31,7 +31,7 @@ Intentionally not changed:
 
 ## Current E9 Explorer Status
 
-- Deterministic Explorer backend exists in `pocketsteel/fretboard_explorer.py`.
+- Deterministic Explorer backend exists in `steel_guitar_rag/fretboard_explorer.py`.
 - Backend Explorer logic is independent from RAG/corpus retrieval and uses pitch validation for musical truth.
 - Initial G-focused MVP rows were implemented and tested.
 - Learner-facing display fields were added and consumed by the UI.

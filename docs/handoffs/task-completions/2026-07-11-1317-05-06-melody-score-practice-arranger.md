@@ -15,7 +15,7 @@ Intentionally not changed: auth, payment, DNS, Cloudflare Access/Tunnel policy, 
 ## Files changed
 
 - `docs/melody-exercise-v0.md`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `ui/melody-score.js`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`
@@ -32,7 +32,7 @@ Deleted files: none. Generated artifacts: none.
 - `node --check ui/melody-score.js` — pass.
 - `node --check ui/melody-workbench.js` — pass.
 - `node --check ui/pedal-steel-fretboard.js` — pass.
-- `.venv/bin/python -m py_compile pocketsteel/melody_arranger.py pocketsteel/melody_assistant.py pocketsteel/api.py` — pass.
+- `.venv/bin/python -m py_compile steel_guitar_rag/melody_arranger.py steel_guitar_rag/melody_assistant.py steel_guitar_rag/api.py` — pass.
 - Focused melody/API checks: `32 passed, 289 deselected`.
 - Relevant combined Melody/API/same-origin/frontend suite after the cache assertion fix: equivalent component suites green; the first combined run found only the intentionally changed asset-version assertion, which was updated and rerun.
 - Focused final Melody and same-origin suite: `37 passed`.
@@ -94,7 +94,7 @@ No. Proceed through exact-path commit and protected-preview smoke. User smoke be
 ## Safe-to-stage exact file list
 
 - `docs/melody-exercise-v0.md`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `ui/melody-score.js`
 - `ui/melody-workbench.html`
 - `ui/melody-workbench.js`

@@ -25,7 +25,7 @@ TRACKS = (
         "meter": 3,
         "bar_seconds": 2.1,
         "transpose": 0,
-        "score_path": "pocketsteel/resources/public_domain_songs/amazing_grace_new_britain.json",
+        "score_path": "steel_guitar_rag/resources/public_domain_songs/amazing_grace_new_britain.json",
         "chords": ("G", "G", "D7", "G", "G", "G", "D7", "G", "G", "G", "G", "C", "G", "G", "D7", "G"),
     },
     {
@@ -69,7 +69,7 @@ def load_score(track: dict[str, object]) -> dict[str, object]:
         payload = json.loads((REPO_ROOT / str(track["score_path"])).read_text(encoding="utf-8"))
         return dict(payload["score"])
     songbook = json.loads(
-        (REPO_ROOT / "pocketsteel/resources/public_domain_songs/starter_songbook_v1.json").read_text(encoding="utf-8")
+        (REPO_ROOT / "steel_guitar_rag/resources/public_domain_songs/starter_songbook_v1.json").read_text(encoding="utf-8")
     )
     song = next(item for item in songbook["songs"] if item["source"]["catalogId"] == track["songbook_id"])
     return dict(song["score"])

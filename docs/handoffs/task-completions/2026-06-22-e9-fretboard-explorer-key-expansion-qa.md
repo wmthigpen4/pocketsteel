@@ -49,7 +49,7 @@ Read or inspected:
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-qa.md`
 - `docs/handoffs/task-completions/2026-06-22-1345-05-e9-explorer-key-aware-display-spelling.md`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 
 Missing files from requested governance list:
@@ -75,7 +75,7 @@ Protected paths and unrelated dirty files constrained the work. Broad unrelated 
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-qa.md`
 - `docs/handoffs/task-completions/2026-06-22-1345-05-e9-explorer-key-aware-display-spelling.md`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 
 ## Files Changed
@@ -224,7 +224,7 @@ git rev-parse --short HEAD
 .venv/bin/python -m pytest -q
 .venv/bin/python - <<'PY'
 from collections import Counter
-from pocketsteel.fretboard_explorer import build_explorer_payload, validate_explorer_payload
+from steel_guitar_rag.fretboard_explorer import build_explorer_payload, validate_explorer_payload
 keys = ['G','C','D','F','Bb','Eb','C#','F#']
 for key in keys:
     payload = build_explorer_payload(key)

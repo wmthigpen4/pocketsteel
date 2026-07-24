@@ -1,9 +1,10 @@
-# The Turnaround
+# Steel Guitar RAG
 
-The Turnaround is a steel-guitar-specific retrieval and reasoning system built from decades of scattered steel guitar knowledge.
+Steel Guitar RAG is a steel-guitar-specific retrieval and reasoning system built from decades of scattered steel guitar knowledge.
 
-The user-facing app name is The Turnaround. Internal technical names such as
-`pocketsteel`, `pocket-steel`, and `pocket_steel` are intentionally preserved for now.
+The user-facing app name is Steel Guitar RAG. The canonical Python namespace is
+`steel_guitar_rag`; distribution, repository, package, and URL slugs use
+`steel-guitar-rag`.
 
 ## Policy Scaffolding
 

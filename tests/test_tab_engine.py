@@ -6,16 +6,16 @@ from typing import Any
 
 import pytest
 
-from pocketsteel.api import create_app
-from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON
-from pocketsteel.answer_tab_examples import (
+from steel_guitar_rag.api import create_app
+from steel_guitar_rag.access_control import DEV_ACCESS_ROLE_ENVIRON
+from steel_guitar_rag.answer_tab_examples import (
     answer_body_for_tab_example,
     fretboard_payload_for_tab_example,
     static_answer_body_for_question,
     static_fretboard_payload_for_question,
     tab_example_payload_for_question,
 )
-from pocketsteel.tab_engine import (
+from steel_guitar_rag.tab_engine import (
     TabEvent,
     TabNote,
     default_e9_copedent_profile,
@@ -349,7 +349,7 @@ def test_static_g_major_grip_uses_fretboard_without_tab_payload() -> None:
 
     fretboard = static_fretboard_payload_for_question("Show me a G major grip.")
     assert fretboard is not None
-    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples.static_grip"
+    assert fretboard["sourceContext"][0]["sourceId"] == "steel_guitar_rag.answer_tab_examples.static_grip"
     assert fretboard["positions"][0]["positionKind"] == "full_chord_position"
     assert fretboard["positions"][0]["family"] == "open_no_pedals"
     assert fretboard["positions"][0]["strings"] == [4, 5, 6]
@@ -494,7 +494,7 @@ def test_answer_tab_example_selector_omits_payload_when_validation_fails(monkeyp
         tab = ""
         metadata = {"profile": "default_e9", "event_count": 0}
 
-    monkeypatch.setattr("pocketsteel.answer_tab_examples.render_example", lambda name: BrokenRenderResult())
+    monkeypatch.setattr("steel_guitar_rag.answer_tab_examples.render_example", lambda name: BrokenRenderResult())
 
     assert tab_example_payload_for_question("Show me a G major grip.") is None
 

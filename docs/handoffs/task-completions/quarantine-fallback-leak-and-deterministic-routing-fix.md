@@ -26,11 +26,11 @@ Intentionally not changed:
 
 Implementation:
 
-- `pocketsteel/api.py`
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/basic_chord_answers.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/basic_chord_answers.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 
 Tests:
 
@@ -140,7 +140,7 @@ After: return short source-free recovery responses and do not retrieve or attach
 Commands run:
 
 ```bash
-git diff --check -- pocketsteel/api.py pocketsteel/answer_intent_classifier.py pocketsteel/basic_chord_answers.py pocketsteel/curated_answers.py pocketsteel/fretboard_examples.py tests/test_api_search.py tests/test_answer_intent_classifier.py
+git diff --check -- steel_guitar_rag/api.py steel_guitar_rag/answer_intent_classifier.py steel_guitar_rag/basic_chord_answers.py steel_guitar_rag/curated_answers.py steel_guitar_rag/fretboard_examples.py tests/test_api_search.py tests/test_answer_intent_classifier.py
 .venv/bin/python -m pytest tests/test_answer_intent_classifier.py tests/test_api_search.py tests/test_fretboard_examples.py -q
 .venv/bin/python -m pytest tests/test_answer_eval.py tests/test_full_answer_quality_eval.py tests/test_api_contract.py -q
 .venv/bin/python scripts/run_answer_eval.py

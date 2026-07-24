@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from pocketsteel.copedent_transfer import absolute_pitch_for_profile
-from pocketsteel.e9_copedents import CANONICAL_NOTES, NOTE_TO_SEMITONE, get_e9_copedent_profile
-from pocketsteel.song_practice import (
+from steel_guitar_rag.copedent_transfer import absolute_pitch_for_profile
+from steel_guitar_rag.e9_copedents import CANONICAL_NOTES, NOTE_TO_SEMITONE, get_e9_copedent_profile
+from steel_guitar_rag.song_practice import (
     ENABLE_SONG_PRACTICE_ENV,
     SongPracticeError,
     arrange_song_practice,

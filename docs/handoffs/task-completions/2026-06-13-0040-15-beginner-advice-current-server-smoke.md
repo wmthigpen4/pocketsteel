@@ -33,7 +33,7 @@ STEEL_RAG_RETRIEVAL_MODE=hybrid_private_first STEEL_RAG_ENABLE_PRIVATE_SOURCES=t
 - `curl -sS -i http://127.0.0.1:8783/api/answer | head -20 || true` returned `HTTP/1.0 405 Method Not Allowed`, which is acceptable for GET `/api/answer` and confirms the API was reachable.
 
 ## Direct POST Results
-- Direct-check artifact: `/tmp/pocketsteel-current-server-direct-checks.json`
+- Direct-check artifact: `/tmp/steel_guitar_rag-current-server-direct-checks.json`
 - Result: `16/16` release-blocker prompts passed with no hard findings.
 
 | Prompt | Outcome | Notes |
@@ -61,13 +61,13 @@ STEEL_RAG_RETRIEVAL_MODE=hybrid_private_first STEEL_RAG_ENABLE_PRIVATE_SOURCES=t
 ```bash
 .venv/bin/python scripts/run_exploratory_answer_smoke.py \
   --base-url http://127.0.0.1:8783 \
-  --output /tmp/pocketsteel-beginner-advice-current-server-smoke.md \
-  --json-output /tmp/pocketsteel-beginner-advice-current-server-smoke.json
+  --output /tmp/steel_guitar_rag-beginner-advice-current-server-smoke.md \
+  --json-output /tmp/steel_guitar_rag-beginner-advice-current-server-smoke.json
 ```
 
 - Output artifacts:
-  - `/tmp/pocketsteel-beginner-advice-current-server-smoke.md`
-  - `/tmp/pocketsteel-beginner-advice-current-server-smoke.json`
+  - `/tmp/steel_guitar_rag-beginner-advice-current-server-smoke.md`
+  - `/tmp/steel_guitar_rag-beginner-advice-current-server-smoke.json`
 - Note: outputs were written to `/tmp` to avoid touching `corpus-private` or `corpus-v2`.
 
 ## Smoke Totals
@@ -105,9 +105,9 @@ These are warning-level quality signals and did not block the beginner/advice/B9
 - Deleted files:
   - None.
 - Generated artifacts:
-  - `/tmp/pocketsteel-current-server-direct-checks.json`
-  - `/tmp/pocketsteel-beginner-advice-current-server-smoke.md`
-  - `/tmp/pocketsteel-beginner-advice-current-server-smoke.json`
+  - `/tmp/steel_guitar_rag-current-server-direct-checks.json`
+  - `/tmp/steel_guitar_rag-beginner-advice-current-server-smoke.md`
+  - `/tmp/steel_guitar_rag-beginner-advice-current-server-smoke.json`
 
 ## Integration Notes
 - Restarting the server from the current worktree cleared the prior pre-fix/current-server concern.

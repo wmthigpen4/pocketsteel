@@ -12,7 +12,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pocketsteel.schema import (  # noqa: E402
+from steel_guitar_rag.schema import (  # noqa: E402
     FIELD_ALIASES,
     TEXT_ALIASES,
     clean_sgf_post_text,

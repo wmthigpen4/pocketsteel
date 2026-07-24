@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from pocketsteel.amazing_tablature_extraction import ExtractionWorkflowError
-from pocketsteel.lane15_review_drafts import (
+from steel_guitar_rag.amazing_tablature_extraction import ExtractionWorkflowError
+from steel_guitar_rag.lane15_review_drafts import (
     harden_review_console,
     load_review_draft,
     make_durable_review_http_server,

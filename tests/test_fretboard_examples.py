@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pocketsteel.fretboard_examples import (
+from steel_guitar_rag.fretboard_examples import (
     CANONICAL_LEVER_LABELS,
     CANONICAL_PEDAL_LABELS,
     COMMON_E9_VISUAL_GRIPS,
@@ -1003,7 +1003,7 @@ def test_e_lower_5_7_8_at_third_fret_is_not_misclassified_as_b9() -> None:
     assert b9_payload is not None
     assert b9_payload["title"] == "5-7-8 E-lower B9 check"
     assert b9_payload["sourceContext"][0]["kind"] == "rule"
-    assert b9_payload["sourceContext"][0]["sourceId"] == "pocketsteel.fretboard_examples"
+    assert b9_payload["sourceContext"][0]["sourceId"] == "steel_guitar_rag.fretboard_examples"
     assert len(b9_payload["positions"]) == 1
     b9_position = b9_payload["positions"][0]
     assert b9_position["id"] == "b9-check-e-lower-5-7-8-3"

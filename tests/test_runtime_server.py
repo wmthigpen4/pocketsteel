@@ -5,8 +5,8 @@ import threading
 import urllib.request
 from typing import Any
 
-from pocketsteel.answering import DEFAULT_OLLAMA_TIMEOUT_SECONDS, OllamaAnswerProvider
-from pocketsteel.runtime_server import create_runtime_server
+from steel_guitar_rag.answering import DEFAULT_OLLAMA_TIMEOUT_SECONDS, OllamaAnswerProvider
+from steel_guitar_rag.runtime_server import create_runtime_server
 
 
 def _response(start_response: Any, payload: dict[str, Any]) -> list[bytes]:

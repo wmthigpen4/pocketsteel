@@ -29,9 +29,9 @@ remains disabled.
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_reader_calibration.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_reader_calibration.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_reader_calibration.py`
 - `tests/test_amazing_tablature_training.py`
@@ -43,9 +43,9 @@ changed.
 
 ## Tests and checks
 
-- `./.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_reader_calibration.py pocketsteel/amazing_tablature_training.py`
+- `./.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_reader_calibration.py steel_guitar_rag/amazing_tablature_training.py`
   - Passed.
-- `./.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_reader_calibration.py pocketsteel/amazing_tablature_training.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_reader_calibration.py tests/test_amazing_tablature_training.py`
+- `./.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_reader_calibration.py steel_guitar_rag/amazing_tablature_training.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_reader_calibration.py tests/test_amazing_tablature_training.py`
   - Passed.
 - `./.venv/bin/pytest -q tests/test_amazing_tablature_reader_calibration.py tests/test_amazing_tablature_training.py tests/test_amazing_tablature_extraction.py -k 'reader_calibration or contact_sheet_consensus'`
   - Superseded by the broader focused run below.
@@ -66,7 +66,7 @@ intentionally ineligible and must be rebuilt from discovery before another
 machine-only validation comparison.
 
 Commit preparation briefly stopped because another active Codex task modified
-`pocketsteel/amazing_tablature_extraction.py` and
+`steel_guitar_rag/amazing_tablature_extraction.py` and
 `tests/test_amazing_tablature_extraction.py` after the full suite passed and
 while this task was staging. The staging created by this task was removed, the
 other task stopped changing the files, and the policy was reconciled: an exact
@@ -100,9 +100,9 @@ discovery calibration and deterministic validation.
 
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-23-1312-20-discovery-reader-pair-calibration.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_reader_calibration.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_reader_calibration.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_reader_calibration.py`
 - `tests/test_amazing_tablature_training.py`

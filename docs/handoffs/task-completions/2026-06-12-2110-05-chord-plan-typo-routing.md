@@ -7,7 +7,7 @@
 
 ## Files Changed
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
+  - `steel_guitar_rag/fretboard_examples.py`
   - `scripts/run_full_answer_quality_eval.py`
   - `tests/fixtures/user_question_bank.json`
   - `tests/test_answer_eval.py`

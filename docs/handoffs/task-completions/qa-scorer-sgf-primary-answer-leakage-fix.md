@@ -78,8 +78,8 @@ Available full answer-quality eval rerun:
 
 ```bash
 .venv/bin/python scripts/run_full_answer_quality_eval.py \
-  --output /tmp/pocketsteel-sgf-primary-scorer-full-eval.md \
-  --json-output /tmp/pocketsteel-sgf-primary-scorer-full-eval.json
+  --output /tmp/steel_guitar_rag-sgf-primary-scorer-full-eval.md \
+  --json-output /tmp/steel_guitar_rag-sgf-primary-scorer-full-eval.json
 ```
 
 Result:
@@ -89,7 +89,7 @@ Result:
 - Warn: `31`
 - Fail: `134`
 - Private source behavior correct: `true`
-- Output artifacts: `/tmp/pocketsteel-sgf-primary-scorer-full-eval.md`, `/tmp/pocketsteel-sgf-primary-scorer-full-eval.json`
+- Output artifacts: `/tmp/steel_guitar_rag-sgf-primary-scorer-full-eval.md`, `/tmp/steel_guitar_rag-sgf-primary-scorer-full-eval.json`
 
 Important distinction: the previous 546-question broad matrix appears in repo as generated handoff/report artifacts, not as a standalone reusable script. I therefore reran the available persistent full answer-quality eval path and wrote outputs to `/tmp`.
 
@@ -142,8 +142,8 @@ Safe-to-stage files for this QA slice:
 Files that must remain parked:
 
 - Existing unrelated dirty files shown by `git status --short`, including corpus/source/provenance/design/deploy/static/UI/runtime changes not part of this scorer slice.
-- `/tmp/pocketsteel-sgf-primary-scorer-full-eval.md`
-- `/tmp/pocketsteel-sgf-primary-scorer-full-eval.json`
+- `/tmp/steel_guitar_rag-sgf-primary-scorer-full-eval.md`
+- `/tmp/steel_guitar_rag-sgf-primary-scorer-full-eval.json`
 
 ## Human Decision Needed
 

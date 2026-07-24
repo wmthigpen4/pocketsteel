@@ -49,13 +49,13 @@ Both direct checks returned HTTP 200 and were classified as hard product failure
 ```bash
 .venv/bin/python scripts/run_exploratory_answer_smoke.py \
   --base-url http://127.0.0.1:8783 \
-  --output /tmp/pocketsteel-advice-mode-answer-smoke.md \
-  --json-output /tmp/pocketsteel-advice-mode-answer-smoke.json
+  --output /tmp/steel_guitar_rag-advice-mode-answer-smoke.md \
+  --json-output /tmp/steel_guitar_rag-advice-mode-answer-smoke.json
 ```
 
 - Output artifacts:
-  - `/tmp/pocketsteel-advice-mode-answer-smoke.md`
-  - `/tmp/pocketsteel-advice-mode-answer-smoke.json`
+  - `/tmp/steel_guitar_rag-advice-mode-answer-smoke.md`
+  - `/tmp/steel_guitar_rag-advice-mode-answer-smoke.json`
 - Note: outputs were written to `/tmp` to avoid touching `corpus-private` or `corpus-v2`.
 
 ## Smoke Totals
@@ -147,8 +147,8 @@ Both direct checks returned HTTP 200 and were classified as hard product failure
 - Deleted files:
   - None.
 - Generated artifacts:
-  - `/tmp/pocketsteel-advice-mode-answer-smoke.md`
-  - `/tmp/pocketsteel-advice-mode-answer-smoke.json`
+  - `/tmp/steel_guitar_rag-advice-mode-answer-smoke.md`
+  - `/tmp/steel_guitar_rag-advice-mode-answer-smoke.json`
 
 ## Integration Notes
 - This is a real product failure, not an environment/setup issue. The local API was reachable.

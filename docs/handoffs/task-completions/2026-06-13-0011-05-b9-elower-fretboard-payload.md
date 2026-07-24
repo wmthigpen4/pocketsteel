@@ -20,7 +20,7 @@
 
 ## Files changed
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
+  - `steel_guitar_rag/fretboard_examples.py`
   - `tests/test_fretboard_examples.py`
   - `tests/test_api_search.py`
 - Created files:
@@ -48,7 +48,7 @@
     - grip: `5-7-8`
     - function: `B9 check`
     - notes: string 5 = `D`, string 7 = `A`, string 8 = `F#`
-  - `response.fretboard.sourceContext`: rule source `pocketsteel.fretboard_examples`
+  - `response.fretboard.sourceContext`: rule source `steel_guitar_rag.fretboard_examples`
 
 ## Tests and checks
 - Command:
@@ -107,7 +107,7 @@
     - `fretboard_title=5-7-8 E-lower B9 check`
     - `position_count=1`
     - `positions=[('b9-check-e-lower-5-7-8-3', 'D', 'major', 3, '5-7-8', 'B9 check')]`
-    - `sourceContext=[{'kind': 'rule', 'label': 'Pitch-validated E9 copedent rule', 'sourceId': 'pocketsteel.fretboard_examples'}]`
+    - `sourceContext=[{'kind': 'rule', 'label': 'Pitch-validated E9 copedent rule', 'sourceId': 'steel_guitar_rag.fretboard_examples'}]`
   - The temporary `8784` server was stopped after verification.
 
 ## Integration notes
@@ -118,7 +118,7 @@
 - The existing answer still mentions that the same 5-7-8 E-lower grip spells B major at frets 0, 12, and 24, but the visual card stays focused on the failed B9 diagnostic claim.
 
 ## Safe-to-stage file list
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-13-0011-05-b9-elower-fretboard-payload.md`

@@ -6,12 +6,12 @@ The contract lets the answer layer describe musical intent while the UI owns fre
 
 ## Current Repo Conventions
 
-Existing answer responses may already include `payload["fretboard"]` from `pocketsteel/api.py`.
+Existing answer responses may already include `payload["fretboard"]` from `steel_guitar_rag/api.py`.
 
 Current lightweight shapes found in the repo:
 
-- `pocketsteel/fretboard_examples.py`: returns `title`, `description`, and `highlights`.
-- `pocketsteel/api_contract.py`: defines `FretboardPayload` with `title`, optional `description`, and `highlights`.
+- `steel_guitar_rag/fretboard_examples.py`: returns `title`, `description`, and `highlights`.
+- `steel_guitar_rag/api_contract.py`: defines `FretboardPayload` with `title`, optional `description`, and `highlights`.
 - `ui/answer-client.js`: normalizes `title`, `description`, `maxFret`, `stringCount`, `tuningLabels`, and `highlights`.
 - `tests/test_fretboard_examples.py`: validates stable IDs such as `g-open-3`, `g-af-6`, and `g-ab-10`.
 - `tests/test_frontend_answer_ui.py`: mocks response-level `fretboard` payloads.
@@ -714,7 +714,7 @@ Important MVP convention: `A+F` is fret `6` for this G example, and `A+B` is fre
     {
       "kind": "rule",
       "label": "MVP deterministic E9 major-position rule",
-      "sourceId": "pocketsteel.fretboard_examples.major_positions"
+      "sourceId": "steel_guitar_rag.fretboard_examples.major_positions"
     }
   ]
 }

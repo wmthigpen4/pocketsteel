@@ -4,7 +4,7 @@ This is the canonical product and implementation contract for Melody Exercise v0
 
 ## Product Rule
 
-The Turnaround may teach artist solos, commercial recordings, named songs, and complete copyrighted arrangements. Copyright status alone is never a refusal reason.
+Steel Guitar RAG may teach artist solos, commercial recordings, named songs, and complete copyrighted arrangements. Copyright status alone is never a refusal reason.
 
 The accuracy boundary remains strict:
 

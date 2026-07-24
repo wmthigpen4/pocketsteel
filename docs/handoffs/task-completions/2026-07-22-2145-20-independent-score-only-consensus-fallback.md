@@ -36,13 +36,13 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-2145-20-independent-score-only-consensus-fallback.md`
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — pass.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py` — pass.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py` — **161 passed**.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_input_parity.py tests/test_amazing_tablature_score_sequence.py tests/test_amazing_tablature_sealed_test.py tests/test_amazing_tablature_training.py` — **207 passed**.
 - `git diff --check` — pass.
@@ -72,7 +72,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-2145-20-independent-score-only-consensus-fallback.md`
 

@@ -4,7 +4,7 @@
 
 Implementation commit `deac899` contains the approved lesson-header cleanup: no practice kicker, no exact/confidence/section metadata line, and all available arrangement routes in one visible row.
 
-Local browser smoke and all tests passed. The protected preview restarted and `/api/version` reports `deac899`, but the protected lesson-build request returned HTTP 500 because an unrelated, uncommitted edit appeared in `pocketsteel/melody_arranger.py` during the restart/smoke window. The running process lazily imported the arranger while that separate edit was incomplete and raised `NameError: name 're' is not defined` from `_forced_pitch`.
+Local browser smoke and all tests passed. The protected preview restarted and `/api/version` reports `deac899`, but the protected lesson-build request returned HTTP 500 because an unrelated, uncommitted edit appeared in `steel_guitar_rag/melody_arranger.py` during the restart/smoke window. The running process lazily imported the arranger while that separate edit was incomplete and raised `NameError: name 're' is not defined` from `_forced_pitch`.
 
 The file now contains approximately 135 lines of unrelated arranger work, including vocal-steel routing and structured timing/import fields. Restarting again would load that uncommitted feature work into protected preview, so the safe autopilot stop condition applies. The overlapping file was not edited, staged, reverted, reset, cleaned, or committed by this task.
 
@@ -49,7 +49,7 @@ Deleted files: none. Generated artifacts: none.
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
 - Who should test this URL: Codex only after the overlap is resolved
 - Do not test these URLs: the current protected Melody Studio URL should not be given to the user for smoke while lesson builds return 500
-- Known caveats: current worktree `pocketsteel/melody_arranger.py` is unrelated dirty runtime code and cannot safely be loaded or reverted by this task.
+- Known caveats: current worktree `steel_guitar_rag/melody_arranger.py` is unrelated dirty runtime code and cannot safely be loaded or reverted by this task.
 
 ## Integration notes
 
@@ -61,7 +61,7 @@ High for another restart while the arranger file is dirty, because it would depl
 
 ## Human decision needed
 
-Yes. Finish or reconcile the separate `pocketsteel/melody_arranger.py` work, then resume this task for protected-preview restart and smoke. No decision about the lesson-header design is needed.
+Yes. Finish or reconcile the separate `steel_guitar_rag/melody_arranger.py` work, then resume this task for protected-preview restart and smoke. No decision about the lesson-header design is needed.
 
 ## Safe-to-stage exact file list
 
@@ -70,7 +70,7 @@ Yes. Finish or reconcile the separate `pocketsteel/melody_arranger.py` work, the
 
 ## Files that must not be staged
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - all other unrelated dirty and untracked corpus, source-inbox, private-data, brand/design, public asset, deployment, generated-report, and parked documentation paths.
 
 ## Recommended next lane

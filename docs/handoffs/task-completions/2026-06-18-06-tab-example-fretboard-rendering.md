@@ -108,7 +108,7 @@ Repo Steward follow-up after backend commit `12eef1d`:
   - `257 passed`
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q`
   - `5 passed`
-- `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py`
   - passed
 - `.venv/bin/python -m pytest -q`
   - `756 passed, 2 failed`
@@ -147,8 +147,8 @@ No.
 
 Do not stage unrelated parked work, including:
 
-- `pocketsteel/api.py`
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answer_tab_examples.py`
 - landing/sign assets and cache-bust changes,
 - corpus/source files,
 - Chroma/vector data,

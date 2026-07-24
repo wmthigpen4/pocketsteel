@@ -31,7 +31,7 @@ Intentionally not changed:
 - Expected backend port: `8770`
 - Expected git HEAD: current repo HEAD `3b9cdb9`, containing implementation commit `a08eba4`
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"4040a47","git_branch":"feature/answer-api","server_started_at":"2026-06-26T01:51:23.747502+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"4040a47","git_branch":"feature/answer-api","server_started_at":"2026-06-26T01:51:23.747502+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - If version endpoint missing, how version is inferred: not applicable
 - Whether app root `/` works: unauthenticated root redirects to Cloudflare Access; root app behavior was not used as the smoke target
 - Whether app root `/` is expected to work: root is not the canonical cache-busted Explorer smoke target

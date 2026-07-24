@@ -17,7 +17,7 @@ The implementation intentionally does **not** gate all `off_domain/unknown` clas
 
 ## Files Changed
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/retrieval-gating-implementation.md`
 
@@ -25,7 +25,7 @@ Note: `tests/test_api_search.py` already had broad uncommitted edits from earlie
 
 ## Exact Gating Behavior Implemented
 
-In `pocketsteel/api.py`:
+In `steel_guitar_rag/api.py`:
 
 - Added `_answer_intent_guardrail_answer(...)`.
 - Added `_should_gate_answer_intent(...)`.
@@ -61,10 +61,10 @@ Retrieval is skipped in `RetrievalApi.__call__` before `_search_for_answer(...)`
 
 Relevant implementation:
 
-- `pocketsteel/api.py:87` adds guardrail answer copy.
-- `pocketsteel/api.py:101` adds gate predicate.
-- `pocketsteel/api.py:220` calls `classify_answer_request(...)`.
-- `pocketsteel/api.py:222` returns a guardrail payload before search when the predicate passes.
+- `steel_guitar_rag/api.py:87` adds guardrail answer copy.
+- `steel_guitar_rag/api.py:101` adds gate predicate.
+- `steel_guitar_rag/api.py:220` calls `classify_answer_request(...)`.
+- `steel_guitar_rag/api.py:222` returns a guardrail payload before search when the predicate passes.
 
 ## Source Cards And Fretboard Suppression
 
@@ -163,7 +163,7 @@ Results:
 ## Risks
 
 - The current classifier still returns `off_domain/unknown` for some ambiguous prompts that existing steel routes answer well. This implementation intentionally does not gate that default. A future classifier refinement can reduce ambiguity, but the runtime gate should remain conservative until QA approves broader behavior.
-- Existing curated `scope_guardrail` behavior remains in place. The new classifier gate runs earlier for explicit off-domain/unsafe classes, so guardrail copy now comes from `pocketsteel/api.py` for those cases.
+- Existing curated `scope_guardrail` behavior remains in place. The new classifier gate runs earlier for explicit off-domain/unsafe classes, so guardrail copy now comes from `steel_guitar_rag/api.py` for those cases.
 - The worktree remains dirty from multiple lanes. Repo Steward must stage exact hunks only.
 
 ## What Was Not Touched
@@ -194,8 +194,8 @@ Read:
 - docs/handoffs/task-completions/retrieval-gating-implementation-plan.md
 - docs/handoffs/task-completions/qa-retrieval-gating-plan-review.md
 - docs/handoffs/task-completions/retrieval-gating-implementation.md
-- pocketsteel/api.py
-- pocketsteel/answer_intent_classifier.py
+- steel_guitar_rag/api.py
+- steel_guitar_rag/answer_intent_classifier.py
 - tests/test_api_search.py
 - tests/answer_eval/question_bank.jsonl
 
@@ -231,7 +231,7 @@ Yes. This slice is ready for Lane 15 QA.
 
 For this lane, the intended safe-to-stage scope is:
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - the retrieval-gating test hunks in `tests/test_api_search.py`
 - `docs/handoffs/task-completions/retrieval-gating-implementation.md`
 

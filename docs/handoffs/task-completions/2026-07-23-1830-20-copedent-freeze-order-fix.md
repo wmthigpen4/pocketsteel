@@ -12,7 +12,7 @@ or sealed-test state changed.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - This handoff
 
 ## Tests and checks
@@ -39,7 +39,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1830-20-copedent-freeze-order-fix.md`
 
 ## Files that must not be staged

@@ -16,10 +16,10 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/api.py`
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answer_contracts.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/default-teaching-mode-user-smoke-fix.md`

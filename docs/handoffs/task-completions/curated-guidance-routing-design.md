@@ -27,7 +27,7 @@ Do not blend curated guidance into anonymous/public answers. Do not promote it a
 Committed slice:
 
 - Commit: `f959769 curated guidance private retriever`
-- Retriever: `pocketsteel/curated_guidance_retriever.py`
+- Retriever: `steel_guitar_rag/curated_guidance_retriever.py`
 - Feature flag: `ENABLE_CURATED_GUIDANCE_RETRIEVAL`
 - Default state: disabled.
 - Input path: `corpus-private/curated-guidance/normalized/curated-guidance-documents.jsonl`
@@ -623,9 +623,9 @@ Commands run:
   - Passed. Returned `1`, confirming this handoff did not exist before the task.
 - `git show --stat --oneline f959769 --`
   - Passed. Confirmed the committed curated-guidance private retriever slice and related files.
-- `sed -n '1,280p' pocketsteel/curated_guidance_retriever.py`
+- `sed -n '1,280p' steel_guitar_rag/curated_guidance_retriever.py`
   - Passed for read-only retriever inspection.
-- `sed -n '280,430p' pocketsteel/curated_guidance_retriever.py`
+- `sed -n '280,430p' steel_guitar_rag/curated_guidance_retriever.py`
   - Passed for read-only retriever inspection.
 - `sed -n '1,260p' docs/llm-guidance/answer-contract.md`
   - Passed for answer contract context.

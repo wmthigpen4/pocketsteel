@@ -25,7 +25,7 @@ Intentionally unchanged: corpus, retrieval ranking, Chroma/vector stores, scrapi
 
 Created:
 
-- `pocketsteel/lesson_studio.py`
+- `steel_guitar_rag/lesson_studio.py`
 - `ui/lesson-workbench.html`
 - `ui/lesson-workbench.js`
 - `tests/test_lesson_studio.py`
@@ -34,8 +34,8 @@ Created:
 
 Modified:
 
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
 - `ui/steel-guitar-rag-mock.html`
 - `ui/e9-fretboard-explorer.html`
 - `ui/melody-workbench.html`
@@ -109,7 +109,7 @@ Generated artifacts: none.
 
 - Lesson checkboxes are deliberately session-only and use no storage.
 - The endpoint uses the existing answer authorization boundary without changing auth policy.
-- The protected-preview service must be restarted after the implementation commit because `pocketsteel/api.py` changed.
+- The protected-preview service must be restarted after the implementation commit because `steel_guitar_rag/api.py` changed.
 - Protected smoke should test the home page, Lessons catalog, one reviewed lesson, one custom lesson, one Explorer handoff, Melody availability, root redirect, and `/api/version`.
 
 ## Risk assessment
@@ -124,9 +124,9 @@ No. The approved feature scope is implemented and test-green. User smoke should 
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/lesson_studio.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/lesson_studio.py`
 - `ui/steel-guitar-rag-mock.html`
 - `ui/e9-fretboard-explorer.html`
 - `ui/melody-workbench.html`

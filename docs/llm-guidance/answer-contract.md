@@ -1,6 +1,6 @@
 # Answer Contract Guidance
 
-This document is permanent guidance for future Codex/LLM lanes working on The Turnaround / Steel Guitar RAG answer behavior. Read it before changing `/api/answer`, answer contracts, curated answer routes, retrieval behavior, fretboard payloads, answer UI rendering, or answer evals.
+This document is permanent guidance for future Codex/LLM lanes working on Steel Guitar RAG / Steel Guitar RAG answer behavior. Read it before changing `/api/answer`, answer contracts, curated answer routes, retrieval behavior, fretboard payloads, answer UI rendering, or answer evals.
 
 ## Contract Shape
 

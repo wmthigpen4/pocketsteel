@@ -22,7 +22,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/progression_guide.py`
+- `steel_guitar_rag/progression_guide.py`
   - Added a conservative simple-song progression matcher.
   - Added direct answer wording that calls the default route an original deterministic practice route, not a transcription or source-backed arrangement.
 - `tests/test_progression_guide.py`
@@ -96,7 +96,7 @@ Run:
 - `git status --short`
 - `git branch --show-current`
 - `git rev-parse --short HEAD`
-- `.venv/bin/python -m py_compile pocketsteel/progression_guide.py pocketsteel/api.py` - passed.
+- `.venv/bin/python -m py_compile steel_guitar_rag/progression_guide.py steel_guitar_rag/api.py` - passed.
 - `.venv/bin/python -m pytest tests/test_progression_guide.py -q` - `7 passed`.
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'progression or tab_example or static_g_location or copyright or transcribe or steel_king or 578' -q` - `29 passed, 261 deselected`.
 - `.venv/bin/python -m pytest tests/test_api_search.py -q` - `290 passed`.
@@ -120,13 +120,13 @@ Risk: low to medium.
 
 Why:
 
-- The code change is a small parser/default-route addition in `pocketsteel/progression_guide.py`.
+- The code change is a small parser/default-route addition in `steel_guitar_rag/progression_guide.py`.
 - Full pytest and local browser smoke passed.
 - The change touches answer routing, so protected-preview runtime smoke is still required before user smoke.
 
 Rollback:
 
-- Revert the parser helper and its call in `pocketsteel/progression_guide.py`, plus the two focused tests.
+- Revert the parser helper and its call in `steel_guitar_rag/progression_guide.py`, plus the two focused tests.
 
 ## Human Decision Needed
 
@@ -134,7 +134,7 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/progression_guide.py`
+- `steel_guitar_rag/progression_guide.py`
 - `tests/test_progression_guide.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-07-04-1009-05-progression-guide-simple-song-fix.md`

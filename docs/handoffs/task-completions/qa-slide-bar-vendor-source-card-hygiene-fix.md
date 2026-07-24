@@ -11,7 +11,7 @@ Requested: QA the clean-HEAD `slide_bar_vendor_source_cards` / curated-source-re
 Completed:
 
 - Read the requested repo guidance, integration handoffs, Lane 05 hygiene handoff, current `/api/answer` implementation, curated-source-registry helper, source-card path, and tests touched by the fix.
-- Verified `pocketsteel.api` imports cleanly with `slide_bar_vendor_source_cards` defined in `pocketsteel.curated_source_registry`.
+- Verified `steel_guitar_rag.api` imports cleanly with `slide_bar_vendor_source_cards` defined in `steel_guitar_rag.curated_source_registry`.
 - Verified `slide_bar_vendor_source_cards()` returns stable curated registry source-card metadata in the expected order.
 - Verified slide-bar/vendor answer tests return curated registry source cards instead of stale SGF source cards.
 - Verified retrieval gating and answer-quality regression tests remain green.
@@ -31,7 +31,7 @@ QA approves the narrow slide-bar vendor source-card hygiene fix for Repo Steward
 
 ## Verification Notes
 
-- Clean-HEAD source-card dependency is fixed: `pocketsteel.api` imports successfully, and `slide_bar_vendor_source_cards` is available from `pocketsteel.curated_source_registry`.
+- Clean-HEAD source-card dependency is fixed: `steel_guitar_rag.api` imports successfully, and `slide_bar_vendor_source_cards` is available from `steel_guitar_rag.curated_source_registry`.
 - Helper returns 4 curated registry cards in stable order:
   - `Steel Guitar Shopper`
   - `BJS Steel Guitar Bars`
@@ -51,7 +51,7 @@ QA approves the narrow slide-bar vendor source-card hygiene fix for Repo Steward
 
 Changed by the Lane 05 hygiene fix:
 
-- `pocketsteel/curated_source_registry.py`
+- `steel_guitar_rag/curated_source_registry.py`
 - `tests/test_curated_source_registry.py`
 
 Created by the Lane 05 hygiene fix:
@@ -74,7 +74,7 @@ git status --short
 
 Result: broad dirty worktree. Relevant hygiene files are:
 
-- `M pocketsteel/curated_source_registry.py`
+- `M steel_guitar_rag/curated_source_registry.py`
 - `M tests/test_curated_source_registry.py`
 - `?? docs/handoffs/task-completions/slide-bar-vendor-source-card-hygiene-fix.md`
 - `?? docs/handoffs/task-completions/qa-slide-bar-vendor-source-card-hygiene-fix.md`
@@ -93,8 +93,8 @@ Result: `9 passed, 185 deselected in 0.08s`.
 
 ```bash
 .venv/bin/python - <<'PY'
-import pocketsteel.api
-from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards
+import steel_guitar_rag.api
+from steel_guitar_rag.curated_source_registry import slide_bar_vendor_source_cards
 cards = slide_bar_vendor_source_cards()
 print('api import ok')
 print(len(cards), [card['thread_title'] for card in cards[:4]])
@@ -146,14 +146,14 @@ Result: passed.
 
 Approved for a narrow Repo Steward commit:
 
-- `pocketsteel/curated_source_registry.py`
+- `steel_guitar_rag/curated_source_registry.py`
 - `tests/test_curated_source_registry.py`
 - `docs/handoffs/task-completions/slide-bar-vendor-source-card-hygiene-fix.md`
 - `docs/handoffs/task-completions/qa-slide-bar-vendor-source-card-hygiene-fix.md`
 
 ## Exact Hunks That Need Careful Staging
 
-`pocketsteel/curated_source_registry.py`:
+`steel_guitar_rag/curated_source_registry.py`:
 
 - Stage only the new `slide_bar_vendor_source_cards()` helper colocated with `slide_bar_vendor_bullets()`.
 
@@ -240,7 +240,7 @@ Read:
 Do not deploy, change DNS, touch Chroma/vector stores, regenerate embeddings, run scraping, stage generated/private/corpus/source-inbox/provenance/design/deploy files, or use git add .
 
 Hunk-stage only:
-- pocketsteel/curated_source_registry.py: new slide_bar_vendor_source_cards() helper
+- steel_guitar_rag/curated_source_registry.py: new slide_bar_vendor_source_cards() helper
 - tests/test_curated_source_registry.py: import plus test_slide_bar_vendor_source_cards_use_curated_registry_metadata
 - docs/handoffs/task-completions/slide-bar-vendor-source-card-hygiene-fix.md
 - docs/handoffs/task-completions/qa-slide-bar-vendor-source-card-hygiene-fix.md

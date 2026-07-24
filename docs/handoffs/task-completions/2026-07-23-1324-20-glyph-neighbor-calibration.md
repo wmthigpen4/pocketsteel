@@ -19,7 +19,7 @@ artifact. Validation labels and sealed-test data were not used for selection.
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_glyph_decoder.py`
+- `steel_guitar_rag/amazing_tablature_glyph_decoder.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1324-20-glyph-neighbor-calibration.md`
 
@@ -28,9 +28,9 @@ embeddings, vector stores, runtime flags, or deployment files were changed.
 
 ## Tests and checks
 
-- `./.venv/bin/python -m py_compile pocketsteel/amazing_tablature_glyph_decoder.py`
+- `./.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_glyph_decoder.py`
   - Passed.
-- `./.venv/bin/ruff check pocketsteel/amazing_tablature_glyph_decoder.py tests/test_amazing_tablature_training.py`
+- `./.venv/bin/ruff check steel_guitar_rag/amazing_tablature_glyph_decoder.py tests/test_amazing_tablature_training.py`
   - Passed.
 - `./.venv/bin/pytest -q tests/test_amazing_tablature_training.py -k 'glyph'`
   - Passed: 2 tests.
@@ -70,7 +70,7 @@ No. Continue the approved automatic discovery-to-validation shadow loop.
 
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-23-1324-20-glyph-neighbor-calibration.md`
-- `pocketsteel/amazing_tablature_glyph_decoder.py`
+- `steel_guitar_rag/amazing_tablature_glyph_decoder.py`
 - `tests/test_amazing_tablature_training.py`
 
 ## Files that must not be staged

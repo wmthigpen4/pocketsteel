@@ -39,7 +39,7 @@ Intentionally not changed:
 - Expected repo/runtime HEAD: `5988431`
 - Required cache-bust commit: `681705c`
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"5988431","git_branch":"feature/answer-api","server_started_at":"2026-07-01T06:34:23.251068+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"5988431","git_branch":"feature/answer-api","server_started_at":"2026-07-01T06:34:23.251068+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Loaded answer-client.js URL: `https://app.steelguitarrag.com/ui/answer-client.js?v=movement-lesson-card-29bfd24`
 - Stale answer-client.js URL status: `answer-client.js?v=e9-explorer-home-entry-20260623` was not loaded
 - Whether app root `/` works: yes, as a redirect to `/ui/steel-guitar-rag-mock.html`
@@ -151,7 +151,7 @@ Generated artifacts:
 - `git rev-parse --short HEAD` - `5988431` before the docs-only smoke commit.
 - `git log --oneline -8` - confirmed `5988431`, `681705c`, `6202c18`, `a2f3b81`, and `29bfd24`.
 - `git merge-base --is-ancestor 681705c HEAD` - PASS, current HEAD contains required cache-bust commit.
-- `git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests` - no dirty runtime-affecting files.
+- `git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests` - no dirty runtime-affecting files.
 - `curl -sS http://127.0.0.1:8770/api/version` before restart - stale `a2f3b81`.
 - `lsof -nP -iTCP:8770 -sTCP:LISTEN` before restart - PID `72790`.
 - `launchctl print system/com.steelguitarrag.private-preview` - state `running`.

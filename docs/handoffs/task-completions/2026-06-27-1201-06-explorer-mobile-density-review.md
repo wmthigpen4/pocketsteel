@@ -105,7 +105,7 @@ Protected-preview smoke:
 - PASS for the cache-busted static Explorer URL.
 - Exact protected URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-mobile-density-84844bb`
 - Cloudflare Access login result: succeeded; the page loaded directly and did not show the Access login screen.
-- Local `/api/version`: `{"git_sha":"4040a47","git_branch":"feature/answer-api","server_started_at":"2026-06-26T01:51:23.747502+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Local `/api/version`: `{"git_sha":"4040a47","git_branch":"feature/answer-api","server_started_at":"2026-06-26T01:51:23.747502+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Version caveat: `/api/version` still reports runtime SHA `4040a47`; this smoke verifies the protected static/browser behavior at the cache-busted Explorer URL, not a Python runtime restart to this UI commit.
 - Desktop protected smoke: result rail rendered as `display:flex`, `overflow-x:auto`; `33` single-grip cards were present; rail height was about `115px`; fretboard started around `921px` down; no `[object Object]`; no console warnings/errors.
 - Mobile protected smoke at roughly `390x844`: no page-level horizontal overflow; result rail rendered as `display:flex`, `overflow-x:auto`; `33` single-grip cards were present; rail height was about `190px`; result block height was about `256px`; fretboard started around `1803px` down; no `[object Object]`; no console warnings/errors.

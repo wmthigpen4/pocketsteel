@@ -42,7 +42,7 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - This handoff.
 
@@ -51,9 +51,9 @@ Private ignored dry-run reports remain beneath
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
   - PASS.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py tests/test_amazing_tablature_extraction.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py`
   - PASS: 182 passed.
@@ -112,7 +112,7 @@ for complete, genuinely ambiguous cases.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-23-1522-20-score-supported-validation-repair.md`
 

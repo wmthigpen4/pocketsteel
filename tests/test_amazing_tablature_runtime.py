@@ -3,15 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 
-import pocketsteel.amazing_tablature_runtime as runtime
-from pocketsteel.amazing_tablature_model import (
+import steel_guitar_rag.amazing_tablature_runtime as runtime
+from steel_guitar_rag.amazing_tablature_model import (
     CANONICAL_FEATURE_NAMES,
     CANONICAL_FEATURE_SCHEMA_VERSION,
     CANONICAL_STYLE_FAMILIES,
     MODEL_SCHEMA_VERSION,
     RuntimeRankerPolicy,
 )
-from pocketsteel.amazing_tablature_runtime import (
+from steel_guitar_rag.amazing_tablature_runtime import (
     ENABLE_PRIVATE_BETA_ENV,
     PRIVATE_MODEL_ID_ENV,
     PRIVATE_MODEL_PATH_ENV,
@@ -20,9 +20,9 @@ from pocketsteel.amazing_tablature_runtime import (
     private_beta_model_metadata,
     sanitized_runtime_artifact,
 )
-from pocketsteel.e9_copedents import EMMONS_E9
-from pocketsteel.melody_assistant import melody_exercise_response
-from pocketsteel.melody_arranger import (
+from steel_guitar_rag.e9_copedents import EMMONS_E9
+from steel_guitar_rag.melody_assistant import melody_exercise_response
+from steel_guitar_rag.melody_arranger import (
     _phrase_boundaries,
     _runtime_learned_penalty,
     choose_mixed_path,

@@ -16,7 +16,7 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
   - added `source-head-count-constrained-grouping-v1`;
   - advanced the source semantic repair lineage to `source-score-semantic-repair-v2`;
   - records before/after attack counts and complete source-only diagnostics;
@@ -97,7 +97,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1551-20-source-head-count-constrained-grouping.md`
 

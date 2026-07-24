@@ -128,7 +128,7 @@ git status --short
 Result: ran; broad pre-existing dirty/untracked worktree remains.
 
 ```bash
-python3 -m py_compile pocketsteel/fretboard_examples.py pocketsteel/curated_answers.py
+python3 -m py_compile steel_guitar_rag/fretboard_examples.py steel_guitar_rag/curated_answers.py
 ```
 
 Result: passed.
@@ -190,9 +190,9 @@ Safe to commit after Repo Steward hunk-level review.
 
 Safe-to-stage file list for this slice:
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`

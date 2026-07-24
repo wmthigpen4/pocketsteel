@@ -38,9 +38,9 @@ Intentionally not changed:
 - `AGENTS.md`
 - `docs/handoffs/task-completions/integration-status.md`
 - `docs/handoffs/task-completions/2026-06-27-1110-18-fretboard-musical-product-audit.md`
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/fretboard_explorer.py`
-- `pocketsteel/user_copedent.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/fretboard_explorer.py`
+- `steel_guitar_rag/user_copedent.py`
 - `ui/e9-fretboard-explorer.js`
 - `ui/e9-fretboard-explorer-data.js`
 - `tests/test_fretboard_explorer.py`
@@ -339,7 +339,7 @@ QA/browser smoke:
 
 ### Recommended Lane 05 Slice
 
-Implement a normalized copedent-control contract in `pocketsteel/e9_copedents.py`.
+Implement a normalized copedent-control contract in `steel_guitar_rag/e9_copedents.py`.
 
 Exact scope:
 

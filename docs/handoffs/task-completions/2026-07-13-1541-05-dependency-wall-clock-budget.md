@@ -14,8 +14,8 @@ Intentionally unchanged: retrieval ranking, source data, vector/Chroma state, pr
 
 ## Files changed
 
-- `pocketsteel/runtime_dependencies.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/runtime_dependencies.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_runtime_dependencies.py`
 - `tests/test_api_search.py`
 - This handoff
@@ -72,8 +72,8 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/runtime_dependencies.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/runtime_dependencies.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_runtime_dependencies.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-07-13-1541-05-dependency-wall-clock-budget.md`

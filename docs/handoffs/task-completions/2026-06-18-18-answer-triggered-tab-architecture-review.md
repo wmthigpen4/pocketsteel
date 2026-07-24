@@ -100,7 +100,7 @@ The primary architecture handoff is accepted for v1 with the two future clarific
 Lane 05 can proceed with a feature-flagged, deterministic registry-backed `tabExample`/`tab_example` attachment as long as:
 
 - examples come from structured events,
-- rendered tab comes from `pocketsteel.tab_engine`,
+- rendered tab comes from `steel_guitar_rag.tab_engine`,
 - invalid events are omitted from normal answers,
 - unsafe/copyrighted categories do not attach tab,
 - the response shape is optional and backward-compatible,
@@ -221,9 +221,9 @@ Future decisions:
 ## Files That Must Not Be Staged
 
 - Any pre-existing dirty files outside the safe-to-stage path above.
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/answer_tab_examples.py`
 - `tests/test_api_contract.py`
 - `tests/test_tab_engine.py`
 - `ui/steel-guitar-rag-mock.html`

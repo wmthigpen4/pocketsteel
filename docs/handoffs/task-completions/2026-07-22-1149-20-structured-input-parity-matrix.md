@@ -27,8 +27,8 @@ The current pending validation report is `e1e65361a3633d545a7b9ce2168a90fffbc6a8
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_input_parity.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_input_parity.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_input_parity.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-22-1149-20-structured-input-parity-matrix.md`
@@ -66,8 +66,8 @@ No. The existing main and licks validation audits still need to be completed and
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_input_parity.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_input_parity.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_input_parity.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-22-1149-20-structured-input-parity-matrix.md`

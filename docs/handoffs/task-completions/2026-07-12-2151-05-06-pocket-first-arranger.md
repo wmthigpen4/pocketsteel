@@ -13,9 +13,9 @@
 
 ## Files changed
 
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/tab_engine.py`
 - `ui/answer-client.js`
 - `ui/melody-score.js`
 - `ui/melody-workbench.js`
@@ -32,7 +32,7 @@ No files were deleted. No generated artifacts were added.
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/melody_arranger.py pocketsteel/melody_assistant.py pocketsteel/tab_engine.py` — passed.
+- `.venv/bin/python -m py_compile steel_guitar_rag/melody_arranger.py steel_guitar_rag/melody_assistant.py steel_guitar_rag/tab_engine.py` — passed.
 - `node --check ui/answer-client.js` — passed.
 - `node --check ui/melody-score.js` — passed.
 - `node --check ui/melody-workbench.js` — passed.
@@ -97,9 +97,9 @@ Observed results:
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/tab_engine.py`
 - `ui/answer-client.js`
 - `ui/melody-score.js`
 - `ui/melody-workbench.js`

@@ -1,6 +1,6 @@
 import copy
 
-from pocketsteel.amazing_tablature_reader_calibration import (
+from steel_guitar_rag.amazing_tablature_reader_calibration import (
     BLANK_READER_STATE,
     calibrated_pair_state,
     calibrated_state_is_eligible,

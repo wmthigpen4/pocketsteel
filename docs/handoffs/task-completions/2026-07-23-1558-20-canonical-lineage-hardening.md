@@ -24,14 +24,14 @@ sealed test was opened.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_training.py`
 - This handoff.
 
 ## Tests and checks
 
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py tests/test_amazing_tablature_training.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_training.py tests/test_amazing_tablature_extraction.py`
   - PASS: 228 passed.
@@ -59,8 +59,8 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `tests/test_amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1558-20-canonical-lineage-hardening.md`
 

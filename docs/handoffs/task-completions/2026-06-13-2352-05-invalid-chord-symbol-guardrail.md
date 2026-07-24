@@ -74,8 +74,8 @@
 
 ## Files changed
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
-  - `pocketsteel/curated_answers.py`
+  - `steel_guitar_rag/fretboard_examples.py`
+  - `steel_guitar_rag/curated_answers.py`
   - `tests/test_fretboard_examples.py`
   - `tests/test_api_search.py`
 - Created files:
@@ -114,8 +114,8 @@
 - Needs human review first.
 - Reason: implementation is test-green, but the worktree contains many unrelated dirty files from other lanes. Do not stage broadly.
 - Exact safe-to-stage file list for this task after review:
-  - `pocketsteel/fretboard_examples.py`
-  - `pocketsteel/curated_answers.py`
+  - `steel_guitar_rag/fretboard_examples.py`
+  - `steel_guitar_rag/curated_answers.py`
   - `tests/test_fretboard_examples.py`
   - `tests/test_api_search.py`
   - `docs/handoffs/task-completions/2026-06-13-2352-05-invalid-chord-symbol-guardrail.md`

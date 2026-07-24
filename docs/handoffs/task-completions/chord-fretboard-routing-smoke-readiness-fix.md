@@ -33,10 +33,10 @@ When those missed, `/api/answer` continued to retrieval/source-backed fallback a
 
 ## Files Changed
 
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Added parser patterns for `where do I play`, `on the E9`, and `where the the <root> chords`.
   - Added a deterministic default payload for `Show me the fretboard`, using a standard E9/G-major reference map.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added a source-free default teacher-first answer for `Show me the fretboard`.
 - `tests/test_fretboard_examples.py`
   - Added rules-layer tests for the smoke prompt variants and default fretboard payload.
@@ -187,8 +187,8 @@ Safe to commit after Repo Steward hunk-level review.
 
 Safe-to-stage file list for this slice:
 
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/chord-fretboard-routing-smoke-readiness-fix.md`

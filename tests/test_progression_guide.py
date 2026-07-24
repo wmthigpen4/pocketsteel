@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from pocketsteel.fretboard_examples import validate_fretboard_payload
-from pocketsteel.progression_guide import progression_guide_for_question
+from steel_guitar_rag.fretboard_examples import validate_fretboard_payload
+from steel_guitar_rag.progression_guide import progression_guide_for_question
 
 
 def _guide(question: str) -> dict[str, Any]:

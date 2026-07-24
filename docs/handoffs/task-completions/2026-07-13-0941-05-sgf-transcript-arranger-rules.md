@@ -30,7 +30,7 @@ Accepted concepts and their evidence gate are recorded in `docs/llm-guidance/e9-
 
 ## Files changed
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
   - canonicalized generated single-note lever states to `E` and `F`;
   - added context-aware transition ranking that retains an established non-C lever posture;
   - preserved the existing strong C-pedal exception tier.
@@ -52,7 +52,7 @@ No files were deleted or generated in corpus, private-data, vector, or design pa
   - **340 passed**.
 - `.venv/bin/python -m pytest -q`
   - exit status **0**; full collection contains **958 tests**.
-- `.venv/bin/python -m py_compile pocketsteel/melody_arranger.py tests/test_melody_assistant.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/melody_arranger.py tests/test_melody_assistant.py`
   - pass.
 - `git diff --check` on tracked scoped files
   - pass.
@@ -114,7 +114,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_melody_assistant.py`
 - `docs/llm-guidance/e9-arranger-decision-rules.md`
 - `docs/handoffs/task-completions/2026-07-13-0941-05-sgf-transcript-arranger-rules.md`

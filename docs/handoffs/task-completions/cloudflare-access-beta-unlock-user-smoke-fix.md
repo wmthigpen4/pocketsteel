@@ -8,8 +8,8 @@
 ## Files changed
 - Changed files:
   - `docs/api-contract.md`
-  - `pocketsteel/access_control.py`
-  - `pocketsteel/cloudflare_access.py`
+  - `steel_guitar_rag/access_control.py`
+  - `steel_guitar_rag/cloudflare_access.py`
   - `tests/test_api_search.py`
   - `tests/test_frontend_answer_ui.py`
   - `ui/answer-client.js`
@@ -90,7 +90,7 @@ Smoke Target:
 ## Risk assessment
 - Risk: Medium.
 - Why: this touches production auth/session behavior, but it does not weaken the boundary because the cookie value is still treated as a Cloudflare Access JWT and validated with the same verifier and allowlists. It does not trust plain email, group, role, or dev mock headers.
-- Rollback notes: revert the scoped changes in `pocketsteel/access_control.py`, `pocketsteel/cloudflare_access.py`, `ui/answer-client.js`, the matching tests, and `docs/api-contract.md` to return to header-only Cloudflare Access validation.
+- Rollback notes: revert the scoped changes in `steel_guitar_rag/access_control.py`, `steel_guitar_rag/cloudflare_access.py`, `ui/answer-client.js`, the matching tests, and `docs/api-contract.md` to return to header-only Cloudflare Access validation.
 
 ## Commit readiness
 Needs human review first

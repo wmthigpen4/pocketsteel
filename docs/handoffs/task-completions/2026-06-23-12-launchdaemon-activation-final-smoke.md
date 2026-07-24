@@ -55,8 +55,8 @@ The loaded system service is still stale:
 ```text
 path = /Library/LaunchDaemons/com.steelguitarrag.private-preview.plist
 state = spawn scheduled
-program = /Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh
-working directory = /Users/cory/Documents/Pocket Steel
+program = /Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh
+working directory = /Users/cory/Documents/Steel Guitar RAG
 runs = 154
 last exit code = 126
 ```
@@ -64,15 +64,15 @@ last exit code = 126
 The installed system plist also still points at the old repo path:
 
 ```text
-ProgramArguments[0] = /Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh
-WorkingDirectory = /Users/cory/Documents/Pocket Steel
+ProgramArguments[0] = /Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh
+WorkingDirectory = /Users/cory/Documents/Steel Guitar RAG
 ```
 
 The app stderr log still repeats the original failure:
 
 ```text
 shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
-bash: /Users/cory/Documents/Pocket Steel/deploy/macos/run-private-preview-app.sh: Operation not permitted
+bash: /Users/cory/Documents/Steel Guitar RAG/deploy/macos/run-private-preview-app.sh: Operation not permitted
 ```
 
 ## Manual Runtime Status
@@ -96,7 +96,7 @@ This process was intentionally not stopped because the LaunchDaemon has not been
 Local `/api/version` is reachable, but this is from the manual screen runtime, not launchd:
 
 ```json
-{"git_sha":"4c40cef","git_branch":"feature/answer-api","server_started_at":"2026-06-23T15:52:26.257888+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
+{"git_sha":"4c40cef","git_branch":"feature/answer-api","server_started_at":"2026-06-23T15:52:26.257888+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
 ```
 
 ## Cloudflare Tunnel Status

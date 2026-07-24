@@ -6,7 +6,7 @@ Requested: reconcile, verify, and commit the completed deterministic tab-engine 
 
 Completed:
 - Inspected the active Lane 05, Lane 15, Lane 06, and Lane 18 tab-engine handoffs.
-- Verified the implementation scope in `pocketsteel/tab_engine.py`, `pocketsteel/api.py`, and `tests/test_tab_engine.py`.
+- Verified the implementation scope in `steel_guitar_rag/tab_engine.py`, `steel_guitar_rag/api.py`, and `tests/test_tab_engine.py`.
 - Staged exact tab-engine implementation, test, and handoff paths only.
 - Committed the tab-engine slice as `686fd3c feat: add deterministic tab engine slice`.
 - Refreshed `docs/handoffs/task-completions/integration-status.md` with a concise tab-engine status section after the commit.
@@ -18,8 +18,8 @@ Intentionally not changed:
 ## Files Changed
 
 Committed:
-- `pocketsteel/api.py`
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/tab_engine.py`
 - `tests/test_tab_engine.py`
 - `docs/handoffs/task-completions/2026-06-18-05-tab-engine-first-slice.md`
 - `docs/handoffs/task-completions/2026-06-18-15-tab-engine-qa-matrix.md`
@@ -43,9 +43,9 @@ git log --oneline -5
 find docs/handoffs/task-completions -maxdepth 1 -type f | sort | tail -30
 git diff --stat
 git diff --name-only
-git diff -- pocketsteel/api.py
+git diff -- steel_guitar_rag/api.py
 git diff --check
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
 .venv/bin/python -m pytest tests/test_api_contract.py -q
 .venv/bin/python -m pytest tests/test_api_search.py -q
@@ -74,7 +74,7 @@ The two full-suite failures were unchanged unrelated static/UI caveats:
 ## Integration Notes
 
 - New endpoint: `POST /api/tab/render`.
-- New deterministic module: `pocketsteel.tab_engine`.
+- New deterministic module: `steel_guitar_rag.tab_engine`.
 - No `/api/answer` schema or behavior changes.
 - No UI tab rendering exists yet; Lane 06 has a planning handoff for future answer-page integration.
 - No source-card, retrieval, corpus, or private-data behavior changed.
@@ -85,7 +85,7 @@ Risk: low to medium.
 
 Why:
 - The tab engine is isolated and deterministic.
-- The only existing runtime file touched is `pocketsteel/api.py`, with a small route/import addition.
+- The only existing runtime file touched is `steel_guitar_rag/api.py`, with a small route/import addition.
 - Focused tab, API contract, and API search tests passed.
 - Full pytest still has two unrelated static/UI failures, so full-suite cleanliness is not restored by this commit.
 

@@ -233,7 +233,7 @@ The metadata mismatch does not require re-embedding. The fragment/duplicate issu
 - Copedent/fretboard and practice questions return instructional context, not isolated chord/position snippets.
 - Maintenance and troubleshooting answers continue to avoid unsafe or under-supported advice.
 - Answer eval against `/api/answer` passes at least as well as v1 after a separately approved v2 local config run.
-- Human review approves a separate app-config switch plan. Until then, The Turnaround should remain on v1.
+- Human review approves a separate app-config switch plan. Until then, Steel Guitar RAG should remain on v1.
 
 ## Recommended Next Implementation Prompt
 

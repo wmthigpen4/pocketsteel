@@ -4,7 +4,7 @@
 > retained for corpus-build decision history and is not a current operating
 > procedure. Corpus/vector work still requires explicit authorization.
 
-Scope: plan a safe corpus-v2 embedding workflow for The Turnaround without running embeddings, creating a vector store, modifying v1 Chroma, changing backend/frontend code, or switching app configuration.
+Scope: plan a safe corpus-v2 embedding workflow for Steel Guitar RAG without running embeddings, creating a vector store, modifying v1 Chroma, changing backend/frontend code, or switching app configuration.
 
 Task mode: GREEN for this planning document only. Any command that creates `corpus-v2` corpus outputs, writes a Chroma store, runs embeddings, or changes retrieval/app configuration requires explicit human approval under `AGENTS.md`.
 
@@ -260,7 +260,7 @@ Approval to plan Phase 3D is not approval to embed.
 ## Recommended Phase 3D Implementation Prompt
 
 ```text
-Begin Phase 3D embed-v2 implementation preflight for The Turnaround corpus-v2.
+Begin Phase 3D embed-v2 implementation preflight for Steel Guitar RAG corpus-v2.
 
 This is YELLOW/RED-adjacent. Do not run embeddings until the preflight report is complete and I explicitly approve the exact embedding command.
 

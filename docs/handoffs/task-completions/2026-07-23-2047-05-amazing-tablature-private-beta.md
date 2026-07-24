@@ -25,9 +25,9 @@ The official sealed test was not run.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_runtime.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/amazing_tablature_runtime.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/api.py`
 - `ui/melody-workbench.js`
 - `ui/melody-workbench.html`
 - `tests/test_amazing_tablature_runtime.py`
@@ -93,9 +93,9 @@ Stable promotion and the official sealed-test run remain separate decisions.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_runtime.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/amazing_tablature_runtime.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/api.py`
 - `ui/melody-workbench.js`
 - `ui/melody-workbench.html`
 - `tests/test_amazing_tablature_runtime.py`

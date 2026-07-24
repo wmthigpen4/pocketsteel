@@ -46,8 +46,8 @@ Intentionally not completed in this slice:
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
@@ -55,9 +55,9 @@ Intentionally not completed in this slice:
 
 ## Tests and checks
 
-- `.venv/bin/ruff check docs/amazing-tablature-training.md pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/ruff check docs/amazing-tablature-training.md steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py tests/test_amazing_tablature_training.py`
   - PASS.
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_training.py tests/test_amazing_tablature_extraction.py`
   - PASS: 228 passed.
@@ -110,8 +110,8 @@ The next human action is the single canonical packet after local smoke passes.
 ## Safe-to-stage exact file list
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`

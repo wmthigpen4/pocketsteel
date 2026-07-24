@@ -8,8 +8,8 @@ Intentionally unchanged: Access policy, DNS, credentials, allowlists, auth roles
 
 ## Files changed
 
-- `pocketsteel/cloudflare_access.py`
-- `pocketsteel/access_control.py`
+- `steel_guitar_rag/cloudflare_access.py`
+- `steel_guitar_rag/access_control.py`
 - `tests/test_cloudflare_access.py`
 - This handoff
 
@@ -18,7 +18,7 @@ No files were deleted and no generated artifacts were created.
 ## Tests and checks
 
 - `PYTHONPATH=.:scripts .venv/bin/pytest -q tests/test_cloudflare_access.py tests/test_api_search.py` — **319 passed**.
-- `git diff --check -- pocketsteel/access_control.py pocketsteel/cloudflare_access.py tests/test_cloudflare_access.py` — passed.
+- `git diff --check -- steel_guitar_rag/access_control.py steel_guitar_rag/cloudflare_access.py tests/test_cloudflare_access.py` — passed.
 - Protected-preview restart via the documented user-level `SIGTERM`/launchd `KeepAlive` path — succeeded.
 - Authenticated protected browser reload — passed: the header exposed **Go Backstage** and the question input was enabled.
 
@@ -40,8 +40,8 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/access_control.py`
-- `pocketsteel/cloudflare_access.py`
+- `steel_guitar_rag/access_control.py`
+- `steel_guitar_rag/cloudflare_access.py`
 - `tests/test_cloudflare_access.py`
 - `docs/handoffs/task-completions/2026-07-13-1455-11-cloudflare-issuer-compatibility.md`
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Representative user-question bank for The Turnaround / Steel Guitar RAG answer evaluation.",
+  "description": "Representative user-question bank for Steel Guitar RAG / Steel Guitar RAG answer evaluation.",
   "questions": [
     {"id": "A001", "category": "entity_player_biography", "question": "Who is Buddy Emmons?"},
     {"id": "A002", "category": "entity_player_biography", "question": "Who is Lloyd Green?"},

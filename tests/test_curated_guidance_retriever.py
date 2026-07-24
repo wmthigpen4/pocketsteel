@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pocketsteel.curated_guidance_retriever import (
+from steel_guitar_rag.curated_guidance_retriever import (
     ENABLE_CURATED_GUIDANCE_ENV,
     curated_guidance_retrieval_enabled,
     search_curated_guidance,

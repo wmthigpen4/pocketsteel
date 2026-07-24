@@ -27,7 +27,7 @@ Result: **WARN / blocked by Cloudflare Access browser login**. The protected URL
 - Expected implementation commit: `0f401a4`
 - Expected repo HEAD: `7dcd8cb`
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"7dcd8cb","git_branch":"feature/answer-api","server_started_at":"2026-07-04T14:12:16.159967+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"7dcd8cb","git_branch":"feature/answer-api","server_started_at":"2026-07-04T14:12:16.159967+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - If version endpoint missing, how version is inferred: not applicable
 - Whether app root `/` works: not verified through authenticated browser in this run
 - Whether app root `/` is expected to work: expected to redirect to the app shell based on prior Lane 12 smoke, but not reverified here
@@ -45,7 +45,7 @@ Result: **WARN / blocked by Cloudflare Access browser login**. The protected URL
 - Starting HEAD: `7dcd8cb`
 - Final repo HEAD at handoff write: `7dcd8cb`
 - `git merge-base --is-ancestor 0f401a4 HEAD`: passed
-- Dirty runtime-affecting file check for `pocketsteel/*.py`, `ui/*.js`, `scripts/*.py`, and `tests`: clean
+- Dirty runtime-affecting file check for `steel_guitar_rag/*.py`, `ui/*.js`, `scripts/*.py`, and `tests`: clean
 - Initial `/api/version`: stale at `2c8c7e2`
 - Restart path attempted first: `deploy/macos/install-private-preview-launchdaemon.sh restart`
   - Result: blocked because `sudo` required an interactive password
@@ -110,7 +110,7 @@ After the in-app browser is authenticated, rerun the protected URL and verify:
 - `git rev-parse --short HEAD` - `7dcd8cb`
 - `git log --oneline -8` - completed
 - `git merge-base --is-ancestor 0f401a4 HEAD` - passed
-- `git status --short -- 'pocketsteel/*.py' 'ui/*.js' 'scripts/*.py' tests` - clean
+- `git status --short -- 'steel_guitar_rag/*.py' 'ui/*.js' 'scripts/*.py' tests` - clean
 - `curl -sS http://127.0.0.1:8770/api/version` - passed after restart, returned `7dcd8cb`
 - `lsof -nP -iTCP:8770 -sTCP:LISTEN` - passed, Python listening on `127.0.0.1:8770`
 - `launchctl print system/com.steelguitarrag.private-preview` - passed, service running

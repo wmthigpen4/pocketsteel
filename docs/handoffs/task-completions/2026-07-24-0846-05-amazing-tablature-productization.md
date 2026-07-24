@@ -45,12 +45,12 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_product.py`
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/melody_import.py`
+- `steel_guitar_rag/amazing_tablature_product.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/melody_import.py`
 - `ui/answer-client.js`
 - `ui/e9-fretboard-explorer-loader.js`
 - `ui/e9-fretboard-explorer.html`
@@ -84,7 +84,7 @@ No file was deleted.
   `498 passed in 22.83s`;
 - `tests/test_melody_import.py`: `8 passed`;
 - Ruff on all changed Python and Python-test files: pass;
-- Python compileall for `pocketsteel`: pass;
+- Python compileall for `steel_guitar_rag`: pass;
 - `node --check` for all changed JavaScript files: pass;
 - `git diff --check`: pass;
 - direct local API smoke: pass for A-major input, contract version, event
@@ -154,12 +154,12 @@ and protected-preview activation.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_product.py`
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/melody_import.py`
+- `steel_guitar_rag/amazing_tablature_product.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/melody_import.py`
 - `ui/answer-client.js`
 - `ui/e9-fretboard-explorer-loader.js`
 - `ui/e9-fretboard-explorer.html`

@@ -10,13 +10,13 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageDraw
 
-from pocketsteel.amazing_tablature_glyph_decoder import (
+from steel_guitar_rag.amazing_tablature_glyph_decoder import (
     glyph_feature_vector,
     glyph_label,
     glyph_label_token,
     train_glyph_decoder,
 )
-from pocketsteel.amazing_tablature_training import (
+from steel_guitar_rag.amazing_tablature_training import (
     AmazingTablatureTrainingStore,
     CONTACT_SHEET_TRUTH_MAPPING_VERSION,
     TrainingWorkflowError,
@@ -26,13 +26,13 @@ from pocketsteel.amazing_tablature_training import (
     _discovery_line_review_readiness,
     _machine_validation_has_score_support,
 )
-from pocketsteel.e9_copedents import get_e9_copedent_profile
-from pocketsteel.melody_assistant import melody_exercise_response
-from pocketsteel.melody_decision_rules import MODEL_STATUS, style_catalog_payload
-from pocketsteel.melody_models import PositionCandidate
-from pocketsteel.melody_ranker import FEATURE_NAMES, feature_vector, train_pairwise_ranker
-from pocketsteel.melody_ranker_adapter import runtime_candidate_feature_record
-from pocketsteel.tab_engine import TabNote
+from steel_guitar_rag.e9_copedents import get_e9_copedent_profile
+from steel_guitar_rag.melody_assistant import melody_exercise_response
+from steel_guitar_rag.melody_decision_rules import MODEL_STATUS, style_catalog_payload
+from steel_guitar_rag.melody_models import PositionCandidate
+from steel_guitar_rag.melody_ranker import FEATURE_NAMES, feature_vector, train_pairwise_ranker
+from steel_guitar_rag.melody_ranker_adapter import runtime_candidate_feature_record
+from steel_guitar_rag.tab_engine import TabNote
 
 
 def test_glyph_feature_vector_and_label_contract_are_deterministic() -> None:
@@ -210,7 +210,7 @@ def test_challenger_rereview_guard_survives_score_system_id_change() -> None:
 
 
 def test_decision_candidates_retain_concrete_mechanical_actions() -> None:
-    from pocketsteel.amazing_tablature_decisions import _candidate
+    from steel_guitar_rag.amazing_tablature_decisions import _candidate
 
     previous = [
         {
@@ -245,7 +245,7 @@ def test_decision_candidates_retain_concrete_mechanical_actions() -> None:
 
 
 def test_decision_candidate_captures_phrase_sequence_context() -> None:
-    from pocketsteel.amazing_tablature_decisions import _candidate
+    from steel_guitar_rag.amazing_tablature_decisions import _candidate
 
     previous = [
         {
@@ -293,7 +293,7 @@ def test_decision_candidate_captures_phrase_sequence_context() -> None:
 
 
 def test_runtime_adapter_matches_trainer_for_all_21_features() -> None:
-    from pocketsteel.amazing_tablature_decisions import _candidate
+    from steel_guitar_rag.amazing_tablature_decisions import _candidate
 
     profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
     previous = PositionCandidate(
@@ -1734,7 +1734,7 @@ def test_machine_validation_score_support_uses_stable_execution_digest() -> None
         "tabEventId": "candidate-wrapper",
         "confidence": 0.93,
     }
-    from pocketsteel.amazing_tablature_validation import (
+    from steel_guitar_rag.amazing_tablature_validation import (
         validation_contact_execution_digest,
     )
 
@@ -2113,11 +2113,11 @@ def test_discovery_reader_calibration_is_private_and_discovery_only(
         }
 
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction.LocalTabVision.contract",
+        "steel_guitar_rag.amazing_tablature_extraction.LocalTabVision.contract",
         fake_contract,
     )
     monkeypatch.setattr(
-        "pocketsteel.amazing_tablature_extraction.LocalTabVision.read",
+        "steel_guitar_rag.amazing_tablature_extraction.LocalTabVision.read",
         fake_read,
     )
 
@@ -2514,10 +2514,10 @@ def test_authoritative_dataset_trains_and_evaluates_every_sealed_batch(tmp_path:
         store.import_annotations(batch_id, write_jsonl(tmp_path / f"{batch_id}.jsonl", records))
         assert store.validate(batch_id)["counts"]["accepted"] == 2
 
-    sealed_coordinator_path = tmp_path / "pocketsteel" / "amazing_tablature_sealed_test.py"
+    sealed_coordinator_path = tmp_path / "steel_guitar_rag" / "amazing_tablature_sealed_test.py"
     sealed_coordinator_path.parent.mkdir(parents=True, exist_ok=True)
     sealed_coordinator_path.write_text("# frozen sealed evaluator\n", encoding="utf-8")
-    (tmp_path / "pocketsteel" / "melody_arranger.py").write_text(
+    (tmp_path / "steel_guitar_rag" / "melody_arranger.py").write_text(
         "# frozen deterministic candidate enumerator\n",
         encoding="utf-8",
     )
@@ -2548,8 +2548,8 @@ def test_authoritative_dataset_trains_and_evaluates_every_sealed_batch(tmp_path:
     assert freeze["rulesEngineDigest"]
     assert set(freeze["rightsAuthorizationDigests"]) == {first_id, second_id}
     assert all(cohort["rightsAuthorizationDigest"] for cohort in freeze["sealedTestCohorts"])
-    assert "pocketsteel/amazing_tablature_sealed_test.py" in freeze["codeFileDigests"]
-    assert "pocketsteel/melody_arranger.py" in freeze["codeFileDigests"]
+    assert "steel_guitar_rag/amazing_tablature_sealed_test.py" in freeze["codeFileDigests"]
+    assert "steel_guitar_rag/melody_arranger.py" in freeze["codeFileDigests"]
 
     reauthorized = store.record_use_authorization(
         first_id,

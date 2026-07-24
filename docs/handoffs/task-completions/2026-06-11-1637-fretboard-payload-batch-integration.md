@@ -11,8 +11,8 @@ The batch is coherent from product contract to deterministic E9 known-position g
 Expected commit files:
 
 - `docs/fretboard-payload-contract.md`
-- `pocketsteel/fretboard_examples.py`
-- `pocketsteel/api_contract.py`
+- `steel_guitar_rag/fretboard_examples.py`
+- `steel_guitar_rag/api_contract.py`
 - `tests/test_fretboard_examples.py`
 - `tests/test_api_contract.py`
 - `tests/test_api_search.py`
@@ -46,7 +46,7 @@ Commands run:
 git status --short
 git log --oneline -8
 git diff --check
-.venv/bin/python -m py_compile pocketsteel/fretboard_examples.py pocketsteel/api_contract.py
+.venv/bin/python -m py_compile steel_guitar_rag/fretboard_examples.py steel_guitar_rag/api_contract.py
 .venv/bin/python -m pytest tests/test_fretboard_examples.py tests/test_fretboard_payload_qa.py tests/test_api_contract.py tests/test_api_search.py::test_location_based_g_chord_answer_includes_fretboard_payload tests/test_api_search.py::test_i_iv_v_question_includes_fretboard_payload tests/test_api_search.py::test_common_grips_question_includes_fretboard_payload tests/test_api_search.py::test_non_location_answer_omits_fretboard_payload tests/test_frontend_answer_ui.py -q
 .venv/bin/python -m pytest
 ```

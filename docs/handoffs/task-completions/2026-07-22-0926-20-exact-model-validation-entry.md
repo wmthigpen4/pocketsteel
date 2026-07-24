@@ -8,7 +8,7 @@ The change does not open validation or sealed-test data by itself. The first att
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/amazing-tablature-training.md`
@@ -35,7 +35,7 @@ No. Opening validation after the canonical rebuild is within the approved five-s
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/amazing-tablature-training.md`

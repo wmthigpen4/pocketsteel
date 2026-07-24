@@ -8,7 +8,7 @@ Musical clarification: unmarked `5 6 1` remains ambiguous in the abstract, but c
 
 ## Files changed
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `ui/melody-workbench.js`
 - `ui/melody-workbench.html`
 - `tests/test_melody_assistant.py`
@@ -57,7 +57,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `ui/melody-workbench.js`
 - `ui/melody-workbench.html`
 - `tests/test_melody_assistant.py`

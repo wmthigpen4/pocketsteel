@@ -15,10 +15,10 @@ No challenger was promoted and no validation or sealed-test data was opened in t
 
 ## Files changed
 
-- `pocketsteel/melody_ranker_adapter.py`
-- `pocketsteel/amazing_tablature_decisions.py`
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_ranker_adapter.py`
+- `steel_guitar_rag/amazing_tablature_decisions.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
 - `docs/handoffs/task-completions/2026-07-22-2012-20-runtime-ranker-adapter-parity.md`
@@ -47,10 +47,10 @@ No. The active goal authorizes the clean challenger rebuild and validation phase
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/melody_ranker_adapter.py`
-- `pocketsteel/amazing_tablature_decisions.py`
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/melody_ranker_adapter.py`
+- `steel_guitar_rag/amazing_tablature_decisions.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
 - `docs/handoffs/task-completions/2026-07-22-2012-20-runtime-ranker-adapter-parity.md`

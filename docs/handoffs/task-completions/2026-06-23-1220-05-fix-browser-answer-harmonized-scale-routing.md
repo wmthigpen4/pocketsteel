@@ -7,7 +7,7 @@
 - Intentionally not changed: UI files, protected-preview launchd state, deployment, auth policy, DNS, Chroma, embeddings, corpus, scraper output, private data, Explorer row generation, tab engine behavior, and 5&8 branch logic.
 
 ## Files Changed
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Split the generic specificity fallback detector out from tab-specific naming.
   - In final `/api/answer` assembly, when a deterministic `fretboard` payload exists:
     - suppress source cards,
@@ -52,7 +52,7 @@ Assertions:
 - `git diff --check` - passed
 - `node --check ui/answer-client.js` - passed
 - `node --check ui/pedal-steel-fretboard.js` - passed
-- `.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/curated_answers.py pocketsteel/fretboard_examples.py pocketsteel/fretboard_explorer.py` - passed
+- `.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/curated_answers.py steel_guitar_rag/fretboard_examples.py steel_guitar_rag/fretboard_explorer.py` - passed
 - `.venv/bin/python -m pytest tests/test_api_contract.py -q` - 5 passed
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'same_origin_browser_answer_path or production_cloudflare_answer_api_routes_broader_g_harmonized_scale_prompts or broad_g_major_harmonized or natural_minor_harmonized or named_diminished' -q` - 5 passed, 271 deselected
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'api_version or harmonized or diminished or static_g or tab_example' -q` - 24 passed, 252 deselected
@@ -76,7 +76,7 @@ Assertions:
 - No.
 
 ## Safe-To-Stage Exact File List
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-1220-05-fix-browser-answer-harmonized-scale-routing.md`
 

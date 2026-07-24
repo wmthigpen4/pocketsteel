@@ -26,8 +26,8 @@ did not alter current page records or create human approval.
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_sealed_test.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_sealed_test.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_amazing_tablature_sealed_test.py`
 - `tests/test_melody_import.py`
@@ -84,8 +84,8 @@ canonical training because machine automation cannot grant review approval.
 ## Safe-to-stage exact file list
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_sealed_test.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_sealed_test.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_amazing_tablature_sealed_test.py`
 - `tests/test_melody_import.py`

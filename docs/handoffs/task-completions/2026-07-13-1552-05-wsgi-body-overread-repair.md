@@ -14,7 +14,7 @@ Intentionally unchanged: API request/response schemas, body-size limits, authent
 
 ## Files changed
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - This handoff
 
@@ -69,7 +69,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-07-13-1552-05-wsgi-body-overread-repair.md`
 

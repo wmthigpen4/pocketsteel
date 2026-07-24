@@ -17,8 +17,8 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-2142-05-named-steel-vocabulary-routing.md`
@@ -27,7 +27,7 @@ Intentionally not changed:
 
 Passed:
 - `git diff --check`
-- `.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/curated_answers.py pocketsteel/answer_intent_classifier.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/curated_answers.py steel_guitar_rag/answer_intent_classifier.py`
 - `.venv/bin/python -m pytest tests/test_answer_intent_classifier.py -q`
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'franklin or pedal or lever or copedent or half_stop or split or compensator or named' -q`
 - `.venv/bin/python -m pytest tests/test_api_search.py -q`
@@ -72,8 +72,8 @@ Risk: low.
 Reason: this is a narrow pre-retrieval curated-answer addition and classifier rule. It does not change retrieval, source-card rendering, UI, or response schema. The main behavior tradeoff is that basic named-term definition prompts are now source-free deterministic answers. Explicit usage/source-seeking prompts still retrieve.
 
 Rollback:
-- Revert the named vocabulary regex/routing addition in `pocketsteel/answer_intent_classifier.py`.
-- Remove `NAMED_STEEL_VOCABULARY_*` helpers and pre-retrieval hook calls in `pocketsteel/curated_answers.py`.
+- Revert the named vocabulary regex/routing addition in `steel_guitar_rag/answer_intent_classifier.py`.
+- Remove `NAMED_STEEL_VOCABULARY_*` helpers and pre-retrieval hook calls in `steel_guitar_rag/curated_answers.py`.
 - Remove the two focused test additions.
 
 ## Human Decision Needed
@@ -82,8 +82,8 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-23-2142-05-named-steel-vocabulary-routing.md`

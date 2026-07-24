@@ -8,7 +8,7 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from pocketsteel.cloudflare_access import (
+from steel_guitar_rag.cloudflare_access import (
     CloudflareAccessConfig,
     CloudflareAccessError,
     CloudflareAccessJwtVerifier,

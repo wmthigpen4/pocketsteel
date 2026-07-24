@@ -22,9 +22,9 @@ Parallel lanes are safe when they touch different surfaces:
 
 Do not run lanes in parallel when they touch the same files:
 
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_api_search.py`
 - `ui/steel-guitar-rag-mock.html`
 - `tests/test_frontend_answer_ui.py`

@@ -2,7 +2,7 @@
 
 ## Task summary
 
-Verified the committed Melody Studio brand/background user-smoke adjustment after the user restarted the protected-preview LaunchDaemon. The protected runtime reports commit `6f95e9f`, Cloudflare Access served the enabled Studio, the page uses the E9 Fretboard Explorer gradient without a background image, and no `The Turnaround` text remains.
+Verified the committed Melody Studio brand/background user-smoke adjustment after the user restarted the protected-preview LaunchDaemon. The protected runtime reports commit `6f95e9f`, Cloudflare Access served the enabled Studio, the page uses the E9 Fretboard Explorer gradient without a background image, and no `Steel Guitar RAG` text remains.
 
 ## Files changed
 
@@ -17,7 +17,7 @@ No implementation files were changed during protected smoke.
 - Authenticated protected browser smoke — passed at the exact cache-busted Melody Studio URL.
 - DOM verification — passed; guided task cards rendered, proving the feature-enabled authenticated state.
 - Computed-style verification — passed; body background contains the Explorer radial and linear gradients and no image URL.
-- Copy verification — passed; no `The Turnaround` text.
+- Copy verification — passed; no `Steel Guitar RAG` text.
 - Rendering hygiene — passed; no `[object Object]`.
 
 ## Smoke Target

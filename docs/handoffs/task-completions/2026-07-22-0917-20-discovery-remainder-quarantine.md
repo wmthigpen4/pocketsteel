@@ -9,7 +9,7 @@ Intentionally not changed: runtime product behavior, model promotion, extraction
 ## Files changed
 
 - `docs/amazing-tablature-training.md`: documents the explicit bulk-quarantine contract and command.
-- `pocketsteel/amazing_tablature_extraction.py`: adds digest-pinned discovery-remainder quarantine through the official append-only review ledger and tolerates legacy feedback rows without a submission ID.
+- `steel_guitar_rag/amazing_tablature_extraction.py`: adds digest-pinned discovery-remainder quarantine through the official append-only review ledger and tolerates legacy feedback rows without a submission ID.
 - `scripts/amazing_tablature.py`: adds the guarded `quarantine-discovery-remainder` command.
 - `tests/test_amazing_tablature_extraction.py`: covers required confirmation, complete exclusion disposition, no factual approval, source preservation, and held-out closure.
 - `docs/handoffs/task-completions/2026-07-22-0917-20-discovery-remainder-quarantine.md`: this handoff.
@@ -40,7 +40,7 @@ No. The user already authorized the automatic discovery quarantine and the next 
 ## Safe-to-stage exact file list
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-0917-20-discovery-remainder-quarantine.md`

@@ -287,7 +287,7 @@ Rules:
 
 Recommended wording:
 
-- `This setup is modeled by The Turnaround for deterministic guidance. Source links provide context about common E9 copedents; individual guitars may differ.`
+- `This setup is modeled by Steel Guitar RAG for deterministic guidance. Source links provide context about common E9 copedents; individual guitars may differ.`
 
 ## Out Of Scope
 

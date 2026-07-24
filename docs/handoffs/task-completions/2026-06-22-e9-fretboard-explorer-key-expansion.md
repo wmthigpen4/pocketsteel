@@ -8,7 +8,7 @@ Intentionally not changed: UI, corpus, embeddings, Chroma, scraper output, deplo
 
 ## Files Changed
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-key-expansion.md`
 
@@ -68,7 +68,7 @@ The original `build_g_explorer_payload()` and `g_*` row helpers remain available
 
 Risk: medium-low. The change is isolated to the Explorer backend module and tests, but it expands generated output for many keys and therefore affects any future caller that uses `build_explorer_payload(key)`.
 
-Rollback: revert `pocketsteel/fretboard_explorer.py` and `tests/test_fretboard_explorer.py` to the prior G-only helpers. Existing G wrappers were preserved, so current G callers should remain stable.
+Rollback: revert `steel_guitar_rag/fretboard_explorer.py` and `tests/test_fretboard_explorer.py` to the prior G-only helpers. Existing G wrappers were preserved, so current G callers should remain stable.
 
 ## Human Decision Needed
 
@@ -78,7 +78,7 @@ Future product/architecture decision: whether UI key selectors should expose all
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-key-expansion.md`
 

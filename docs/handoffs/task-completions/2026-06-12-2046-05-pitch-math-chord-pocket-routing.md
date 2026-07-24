@@ -7,9 +7,9 @@
 
 ## Files Changed
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
-  - `pocketsteel/curated_answers.py`
-  - `pocketsteel/api_contract.py`
+  - `steel_guitar_rag/fretboard_examples.py`
+  - `steel_guitar_rag/curated_answers.py`
+  - `steel_guitar_rag/api_contract.py`
   - `scripts/run_full_answer_quality_eval.py`
   - `tests/fixtures/user_question_bank.json`
   - `tests/test_answer_eval.py`
@@ -23,7 +23,7 @@
 - Generated artifacts: temporary curl outputs in `/tmp/answer-g.json`, `/tmp/answer-b.json`, `/tmp/answer-e578.json`, `/tmp/answer-b9.json`, `/tmp/answer-vpockets.json`; not part of repo.
 
 ## Tests And Checks
-- `python3 -m py_compile pocketsteel/fretboard_examples.py pocketsteel/curated_answers.py pocketsteel/api_contract.py`
+- `python3 -m py_compile steel_guitar_rag/fretboard_examples.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api_contract.py`
   - Result: passed.
 - `.venv/bin/python -m pytest tests/test_fretboard_examples.py -q`
   - Initial result: 1 failed due old `positionKind == "starter"` expectation.
@@ -91,7 +91,7 @@
 ## Risk Assessment
 - Risk: Medium.
 - Why: the pitch-engine behavior is deterministic and covered by tests, but it expands the fretboard payload considerably and changes the generated catalog row count from the earlier lane’s expectations.
-- Rollback notes: revert changes in `pocketsteel/fretboard_examples.py`, `pocketsteel/curated_answers.py`, the API contract field additions, and the associated tests/fixtures to return to the previous starter-only behavior.
+- Rollback notes: revert changes in `steel_guitar_rag/fretboard_examples.py`, `steel_guitar_rag/curated_answers.py`, the API contract field additions, and the associated tests/fixtures to return to the previous starter-only behavior.
 
 ## Commit Readiness
 - Safe to commit.

@@ -16,10 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pocketsteel.api import create_app
-from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON
-from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
-from pocketsteel.chroma_search import ChromaSearchIndex, SearchResponse
+from steel_guitar_rag.api import create_app
+from steel_guitar_rag.access_control import DEV_ACCESS_ROLE_ENVIRON
+from steel_guitar_rag.answer_usage import InMemoryAnswerRateLimiter
+from steel_guitar_rag.chroma_search import ChromaSearchIndex, SearchResponse
 from scripts.run_answer_eval import DEFAULT_QUESTION_BANK, REPORT_GROUPS, render_report, result_to_json, run_eval
 from scripts.run_retrieval_ab_eval import RerankConfig, rerank_sources
 

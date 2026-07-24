@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pocketsteel.amazing_tablature_validation import (
+from steel_guitar_rag.amazing_tablature_validation import (
     validation_contact_execution_digest,
 )
 

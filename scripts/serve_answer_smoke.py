@@ -11,10 +11,10 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
-from pocketsteel.api import SECURITY_RESPONSE_HEADERS, create_app
-from pocketsteel.access_control import ANSWER_AUTH_MODE_ENV, AUTH_PROVIDER_ENV, LOCAL_DEV_AUTH_MODE
-from pocketsteel.runtime_server import serve_runtime
-from pocketsteel.static_files import static_file_response
+from steel_guitar_rag.api import SECURITY_RESPONSE_HEADERS, create_app
+from steel_guitar_rag.access_control import ANSWER_AUTH_MODE_ENV, AUTH_PROVIDER_ENV, LOCAL_DEV_AUTH_MODE
+from steel_guitar_rag.runtime_server import serve_runtime
+from steel_guitar_rag.static_files import static_file_response
 
 
 StartResponse = Callable[[str, list[tuple[str, str]]], None]

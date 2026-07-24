@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run lightweight Electronics-only RAG evaluations for The Turnaround."""
+"""Run lightweight Electronics-only RAG evaluations for Steel Guitar RAG."""
 
 from __future__ import annotations
 

@@ -26,14 +26,14 @@ changed, and neither sealed test was opened.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - This handoff.
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_training.py pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_training.py steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
   - PASS.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_training.py pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_training.py steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
   - PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_training.py -k 'machine_validation'`
   - PASS: 2 passed.
@@ -66,7 +66,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `docs/handoffs/task-completions/2026-07-23-1540-20-validation-adjudication-evidence-allocation.md`
 
 ## Files that must not be staged

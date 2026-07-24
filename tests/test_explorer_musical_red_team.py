@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from pocketsteel.e9_copedents import (
+from steel_guitar_rag.e9_copedents import (
     CUSTOM_LKV_COPEDENT_ID,
     DAY_COPEDENT_ID,
     DEFAULT_COPEDENT_ID,
     selected_copedent_payload,
 )
-from pocketsteel.fretboard_explorer import (
+from steel_guitar_rag.fretboard_explorer import (
     build_control_impact_preview,
     interval_label,
     resolve_notes,

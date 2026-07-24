@@ -29,8 +29,8 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_model.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/amazing_tablature_model.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_amazing_tablature_model.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
 - `docs/handoffs/task-completions/2026-07-23-0733-05-shadow-ranker-artifact-loader.md`
@@ -79,8 +79,8 @@ test, exact-model promotion, or runtime activation.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_model.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/amazing_tablature_model.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_amazing_tablature_model.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
 - `docs/handoffs/task-completions/2026-07-23-0733-05-shadow-ranker-artifact-loader.md`
@@ -89,12 +89,12 @@ test, exact-model promotion, or runtime activation.
 
 - `docs/handoffs/task-completions/integration-status.md`
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_reader_calibration.py`
+- `steel_guitar_rag/amazing_tablature_reader_calibration.py`
 - `tests/test_amazing_tablature_reader_calibration.py`
 - `corpus-private/**`
 - all unrelated historical untracked handoffs and generated/private artifacts

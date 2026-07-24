@@ -12,9 +12,9 @@ No OCR, transcription, annotations, ground truth, rule refinement, challenger tr
 
 ## Files changed
 
-- `pocketsteel/e9_copedents.py`
+- `steel_guitar_rag/e9_copedents.py`
   - Added the reviewed source-only copedent profile used by the lick batch.
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
   - Added separate source-copedent evidence registration and verification.
   - Added explicit content-unit boundaries and deterministic scalable partition selection.
 - `scripts/amazing_tablature.py`
@@ -32,8 +32,8 @@ No OCR, transcription, annotations, ground truth, rule refinement, challenger tr
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py tests/test_copedent_transfer.py` — 27 passed.
-- `.venv/bin/python -m ruff check pocketsteel/amazing_tablature_training.py pocketsteel/e9_copedents.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py tests/test_copedent_transfer.py` — passed.
-- `.venv/bin/python -m compileall -q pocketsteel scripts/amazing_tablature.py` — passed.
+- `.venv/bin/python -m ruff check steel_guitar_rag/amazing_tablature_training.py steel_guitar_rag/e9_copedents.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py tests/test_copedent_transfer.py` — passed.
+- `.venv/bin/python -m compileall -q steel_guitar_rag scripts/amazing_tablature.py` — passed.
 - Private intake verification — 35/35 assets matched; 34 score/tab inputs and one excluded copedent-evidence asset.
 - Idempotent intake verification — both the existing 278-page batch and new 34-page batch resumed with their original immutable digests.
 - Private split verification — 34 unique inputs and hashes; exact 24/3/7 counts; three viewed pages in discovery; sealed directory mode `0700`; sealed manifest mode `0600`; test membership absent from normal status.
@@ -59,8 +59,8 @@ Yes, before training: confirm permitted private training and intended downstream
 
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-16-1941-20-lick-collection-sealed-split.md`
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/e9_copedents.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/e9_copedents.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_copedent_transfer.py`

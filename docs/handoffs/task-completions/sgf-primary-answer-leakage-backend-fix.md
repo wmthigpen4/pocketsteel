@@ -24,9 +24,9 @@ Intentionally not changed:
 
 Scoped implementation/test files:
 
-- `pocketsteel/answering.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/sgf-primary-answer-leakage-backend-fix.md`
 
@@ -46,7 +46,7 @@ The strict scorer exposed four related backend issues:
 
 ## Behavior Before And After
 
-Strict eval before this patch, from `/tmp/pocketsteel-strict-after-c8.json`:
+Strict eval before this patch, from `/tmp/steel_guitar_rag-strict-after-c8.json`:
 
 - pass: 130
 - warn: 31
@@ -58,7 +58,7 @@ Strict eval before this patch, from `/tmp/pocketsteel-strict-after-c8.json`:
 - `weak_source_boilerplate_in_answer`: 0
 - `off_domain_sgf_source_cards`: 0
 
-Strict eval after this patch, from `/tmp/pocketsteel-strict-after-sgf-primary-fix4.json`:
+Strict eval after this patch, from `/tmp/steel_guitar_rag-strict-after-sgf-primary-fix4.json`:
 
 - pass: 153
 - warn: 33
@@ -85,7 +85,7 @@ Commands run:
 git status --short
 git diff --check
 .venv/bin/python -m pytest tests/test_answer_intent_classifier.py tests/test_answer_eval.py tests/test_api_contract.py tests/test_api_search.py tests/test_full_answer_quality_eval.py -q
-.venv/bin/python scripts/run_full_answer_quality_eval.py --output /tmp/pocketsteel-strict-after-sgf-primary-fix4.md --json-output /tmp/pocketsteel-strict-after-sgf-primary-fix4.json
+.venv/bin/python scripts/run_full_answer_quality_eval.py --output /tmp/steel_guitar_rag-strict-after-sgf-primary-fix4.md --json-output /tmp/steel_guitar_rag-strict-after-sgf-primary-fix4.json
 .venv/bin/python scripts/run_answer_eval.py
 .venv/bin/python -m pytest
 git diff --check
@@ -145,7 +145,7 @@ Why:
 
 Rollback:
 
-- Revert the scoped commit/file changes in `pocketsteel/answering.py`, `pocketsteel/api.py`, `pocketsteel/curated_answers.py`, and `tests/test_api_search.py`.
+- Revert the scoped commit/file changes in `steel_guitar_rag/answering.py`, `steel_guitar_rag/api.py`, `steel_guitar_rag/curated_answers.py`, and `tests/test_api_search.py`.
 
 ## Commit Readiness
 
@@ -153,9 +153,9 @@ Safe to commit.
 
 Exact safe-to-stage file list:
 
-- `pocketsteel/answering.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/sgf-primary-answer-leakage-backend-fix.md`
 

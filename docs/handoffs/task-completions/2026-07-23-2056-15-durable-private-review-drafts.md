@@ -18,7 +18,7 @@ recoverable because no accessible browser or server draft contained them.
 
 ## Files changed
 
-- `pocketsteel/lane15_review_drafts.py`
+- `steel_guitar_rag/lane15_review_drafts.py`
 - `scripts/lane15_review_drafts.py`
 - `tests/test_lane15_review_drafts.py`
 - This handoff
@@ -30,11 +30,11 @@ submission receipt, or official evaluation artifact changed.
 
 ## Tests and checks
 
-- `.venv/bin/python -m ruff check pocketsteel/lane15_review_drafts.py scripts/lane15_review_drafts.py tests/test_lane15_review_drafts.py`
+- `.venv/bin/python -m ruff check steel_guitar_rag/lane15_review_drafts.py scripts/lane15_review_drafts.py tests/test_lane15_review_drafts.py`
   — PASS
 - `.venv/bin/python -m pytest -q tests/test_lane15_review_drafts.py`
   — PASS, 7 tests
-- `.venv/bin/python -m compileall -q pocketsteel/lane15_review_drafts.py scripts/lane15_review_drafts.py`
+- `.venv/bin/python -m compileall -q steel_guitar_rag/lane15_review_drafts.py scripts/lane15_review_drafts.py`
   — PASS
 - `.venv/bin/python -m pytest -q tests/test_lane15_review_drafts.py tests/test_amazing_tablature_extraction.py`
   — PASS, 194 tests
@@ -114,7 +114,7 @@ Yes. Supply the exact Packet 2A decisions in chat, or confirm:
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/lane15_review_drafts.py`
+- `steel_guitar_rag/lane15_review_drafts.py`
 - `scripts/lane15_review_drafts.py`
 - `tests/test_lane15_review_drafts.py`
 - `docs/handoffs/task-completions/2026-07-23-2056-15-durable-private-review-drafts.md`

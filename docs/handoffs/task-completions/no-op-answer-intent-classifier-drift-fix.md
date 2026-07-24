@@ -16,13 +16,13 @@ This fix tightens classifier internals and tests only. `/api/answer` still calls
 
 ## Files Changed
 
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
 - `tests/test_answer_intent_classifier.py`
 - `docs/handoffs/task-completions/no-op-answer-intent-classifier-drift-fix.md`
 
 Related existing hook diff:
 
-- `pocketsteel/api.py` imports and calls `classify_answer_request(...)`; the returned decision remains unused.
+- `steel_guitar_rag/api.py` imports and calls `classify_answer_request(...)`; the returned decision remains unused.
 
 ## Classifier Rule Changes
 
@@ -113,11 +113,11 @@ Full pytest was not run for this narrow no-op slice.
 
 For this classifier drift-fix slice:
 
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
 - `tests/test_answer_intent_classifier.py`
 - `docs/handoffs/task-completions/no-op-answer-intent-classifier-drift-fix.md`
 
-Include `pocketsteel/api.py` only if Repo Steward is staging the existing approved no-op classifier hook in the same slice.
+Include `steel_guitar_rag/api.py` only if Repo Steward is staging the existing approved no-op classifier hook in the same slice.
 
 ## Must Remain Unstaged
 

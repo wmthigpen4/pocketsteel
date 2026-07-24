@@ -40,9 +40,9 @@ as `1f267343` and remains evaluation-only.
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_transition_decoder.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_transition_decoder.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_amazing_tablature_transition_decoder.py`
@@ -54,9 +54,9 @@ from this revision.
 ## Tests and checks
 
 - Python compilation:
-  - `pocketsteel/amazing_tablature_transition_decoder.py`
-  - `pocketsteel/amazing_tablature_extraction.py`
-  - `pocketsteel/amazing_tablature_training.py`
+  - `steel_guitar_rag/amazing_tablature_transition_decoder.py`
+  - `steel_guitar_rag/amazing_tablature_extraction.py`
+  - `steel_guitar_rag/amazing_tablature_training.py`
   - `scripts/amazing_tablature.py`
   - passed.
 - Ruff on the touched Python modules and tests:
@@ -103,9 +103,9 @@ after the machine-only pass.
 ## Safe-to-stage exact file list
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_extraction.py`
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/amazing_tablature_transition_decoder.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_transition_decoder.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_amazing_tablature_transition_decoder.py`

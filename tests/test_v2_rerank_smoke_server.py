@@ -4,9 +4,9 @@ import io
 import json
 from typing import Any
 
-from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON
-from pocketsteel.chroma_search import SearchResponse
-from pocketsteel.cloudflare_access import (
+from steel_guitar_rag.access_control import DEV_ACCESS_ROLE_ENVIRON
+from steel_guitar_rag.chroma_search import SearchResponse
+from steel_guitar_rag.cloudflare_access import (
     CLOUDFLARE_ACCESS_JWT_ENVIRON,
     CloudflareAccessClaims,
     CloudflareAccessError,

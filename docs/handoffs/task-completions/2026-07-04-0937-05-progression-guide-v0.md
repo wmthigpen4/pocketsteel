@@ -21,9 +21,9 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/progression_guide.py` - new deterministic route generator and pitch/fretboard payload builder.
-- `pocketsteel/api.py` - pre-retrieval progression-guide route.
-- `pocketsteel/api_contract.py` - optional `progression_guide` answer response field.
+- `steel_guitar_rag/progression_guide.py` - new deterministic route generator and pitch/fretboard payload builder.
+- `steel_guitar_rag/api.py` - pre-retrieval progression-guide route.
+- `steel_guitar_rag/api_contract.py` - optional `progression_guide` answer response field.
 - `ui/answer-client.js` - progression guide normalization.
 - `ui/steel-guitar-rag-mock.html` - progression guide display section and source-placeholder hiding for source-free deterministic/guardrail answers.
 - `tests/test_progression_guide.py` - unit coverage for deterministic progression routes.
@@ -77,8 +77,8 @@ Deterministic routes now supported:
 Commands run:
 
 - `PYTHONPATH=. .venv/bin/python scripts/serve_answer_smoke.py --help` - passed.
-- `.venv/bin/python -m py_compile pocketsteel/progression_guide.py pocketsteel/api.py`
-- `.venv/bin/python -m py_compile pocketsteel/progression_guide.py pocketsteel/api.py pocketsteel/api_contract.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/progression_guide.py steel_guitar_rag/api.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/progression_guide.py steel_guitar_rag/api.py steel_guitar_rag/api_contract.py`
 - `node --check ui/answer-client.js`
 - `node --check ui/pedal-steel-fretboard.js`
 - `.venv/bin/python -m pytest tests/test_progression_guide.py -q` - `6 passed`.
@@ -151,7 +151,7 @@ Reasons:
 
 Rollback:
 
-- Revert `pocketsteel/progression_guide.py`, the API import/branch, the optional API contract field, UI progression rendering, and related tests/docs.
+- Revert `steel_guitar_rag/progression_guide.py`, the API import/branch, the optional API contract field, UI progression rendering, and related tests/docs.
 
 ## Human Decision Needed
 
@@ -159,9 +159,9 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/progression_guide.py`
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
+- `steel_guitar_rag/progression_guide.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
 - `ui/answer-client.js`
 - `ui/steel-guitar-rag-mock.html`
 - `tests/test_progression_guide.py`

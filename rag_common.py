@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers for The Turnaround forum RAG scripts."""
+"""Shared helpers for Steel Guitar RAG forum RAG scripts."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ DEFAULT_CHAT_MODEL = "qwen3:14b"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 OLLAMA_EMBED_TIMEOUT_ENV = "STEEL_RAG_OLLAMA_EMBED_TIMEOUT_SECONDS"
 DEFAULT_OLLAMA_EMBED_TIMEOUT_SECONDS = 25.0
-APP_DISPLAY_NAME = "The Turnaround"
+APP_DISPLAY_NAME = "Steel Guitar RAG"
 LEGACY_ELECTRONICS_DIR = "rag-data/electronics"
 FORUMS_OUTPUT_ROOT = "rag-data/forums"
 

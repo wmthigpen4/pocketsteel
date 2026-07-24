@@ -24,7 +24,7 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
   - added strict construction of human-approved pitch/chord sequence targets;
   - added immutable private dataset creation from the frozen score benchmark;
   - enforces reviewed-record digests and model-training authorization;
@@ -97,7 +97,7 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/amazing-tablature-training.md`

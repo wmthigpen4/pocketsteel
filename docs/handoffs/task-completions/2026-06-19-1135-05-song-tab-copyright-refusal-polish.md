@@ -19,7 +19,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added `full_song_tab_guardrail_answer`.
   - Added `mentions_full_song_tab_or_transcription_request`.
   - Runs the guardrail before Steel Guitar Rag curated/reference answers.
@@ -59,7 +59,7 @@ Commands run:
 
 ```bash
 git status --short
-.venv/bin/python -m py_compile pocketsteel/curated_answers.py pocketsteel/api.py
+.venv/bin/python -m py_compile steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py
 .venv/bin/python -m pytest tests/test_api_search.py -k 'Steel_Guitar_Rag or steel_guitar_rag or copyright or copyrighted or transcribe' -q
 .venv/bin/python -m pytest tests/test_api_search.py -q
 .venv/bin/python -m pytest tests/test_api_contract.py -q
@@ -98,7 +98,7 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-19-1135-05-song-tab-copyright-refusal-polish.md`
 

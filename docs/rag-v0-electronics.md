@@ -1,9 +1,9 @@
-# The Turnaround RAG v0: Electronics
+# Steel Guitar RAG RAG v0: Electronics
 
 This v0 RAG pipeline uses only Steel Guitar Forum `forum_id=11`, `forum_name=Electronics`.
 It does not scrape anything and does not modify the scraper.
 
-The user-facing app name is The Turnaround. Script names, package names, and data paths
+The user-facing app name is Steel Guitar RAG. Script names, package names, and data paths
 keep their current technical names.
 
 ## Inputs

@@ -12,7 +12,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pocketsteel.schema import is_structured_path, iter_post_records, iter_structured_records, normalize_record, write_jsonl
+from steel_guitar_rag.schema import is_structured_path, iter_post_records, iter_structured_records, normalize_record, write_jsonl
 
 
 def expand_inputs(patterns: list[str]) -> list[Path]:

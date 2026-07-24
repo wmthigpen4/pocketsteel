@@ -16,8 +16,8 @@ The broad question-bank comparison also showed many expected/actual differences.
 
 ## Files Changed
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_answer_intent_classifier.py`
 - `docs/handoffs/task-completions/no-op-answer-intent-classifier-fix.md`
 
@@ -55,7 +55,7 @@ Classification remains deterministic and conservative:
 
 Hook location:
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `RetrievalApi.__call__`
 - After `parse_answer_request(...)` succeeds
 - Before deterministic curated/fretboard routes and before retrieval
@@ -74,7 +74,7 @@ Added `tests/test_answer_intent_classifier.py::test_api_answer_calls_classifier_
 
 This test:
 
-- Monkeypatches `pocketsteel.api.classify_answer_request`.
+- Monkeypatches `steel_guitar_rag.api.classify_answer_request`.
 - Calls the real WSGI `/api/answer` path.
 - Verifies the classifier was called with `(question, mode)`.
 - Verifies the public response keys remain exactly:
@@ -182,8 +182,8 @@ Human decision needed before enabling retrieval gating: yes.
 
 ## Safe-To-Stage File List
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_answer_intent_classifier.py`
 - `docs/handoffs/task-completions/no-op-answer-intent-classifier-fix.md`
 

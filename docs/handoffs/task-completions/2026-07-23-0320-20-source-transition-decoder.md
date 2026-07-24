@@ -36,8 +36,8 @@ are not silently labeled as held movements.
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_transition_decoder.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_transition_decoder.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_transition_decoder.py`
 - `docs/handoffs/task-completions/2026-07-23-0320-20-source-transition-decoder.md`
@@ -78,8 +78,8 @@ No.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_transition_decoder.py`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_transition_decoder.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_transition_decoder.py`
 - `docs/handoffs/task-completions/2026-07-23-0320-20-source-transition-decoder.md`

@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 from typing import Sequence
 
-from pocketsteel.amazing_tablature_training import DEFAULT_PRIVATE_ROOT
-from pocketsteel.lane15_review_drafts import (
+from steel_guitar_rag.amazing_tablature_training import DEFAULT_PRIVATE_ROOT
+from steel_guitar_rag.lane15_review_drafts import (
     harden_review_console,
     make_durable_review_http_server,
 )

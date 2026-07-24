@@ -8,8 +8,8 @@ This report is preflight-only. It does not run embeddings and does not create or
 
 - `clean_input`: `/tmp/steel-rag-corpus-v2-review/clean_classified_chunks.refined.jsonl`
 - `chunk_input`: `/tmp/steel-rag-corpus-v2-review/chunks-v2.refined.jsonl`
-- `target_chroma_path`: `~/Documents/Pocket Steel/corpus-v2/vector-stores/chroma`
-- `planned_output_path`: `~/Documents/Pocket Steel/corpus-v2/chunks-v2.jsonl`
+- `target_chroma_path`: `~/Documents/Steel Guitar RAG/corpus-v2/vector-stores/chroma`
+- `planned_output_path`: `~/Documents/Steel Guitar RAG/corpus-v2/chunks-v2.jsonl`
 
 ## Summary
 

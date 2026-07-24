@@ -16,14 +16,14 @@ Intentionally not changed: no UI layout, source-card UI, deployment files, DNS, 
 
 Implementation hunks:
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added/strengthened curated teacher-first routes for diminished-chord forum wisdom, Fender Steel King settings, and B+C pedal explanation.
   - Broadened the diagnostic hum/changer matcher so `hum ... touching the changer` routes to the existing diagnostic answer.
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Broadened deterministic major-position parsing for `Where are my G chord positions?` and `Show me C positions on E9.`
-- `pocketsteel/answering.py`
+- `steel_guitar_rag/answering.py`
   - Kept diagnostic-troubleshooting route recognition aligned with the symmetric hum/changer phrasing.
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/answer_contracts.py`
   - Kept contract inference aligned with the symmetric hum/changer phrasing.
 - `tests/test_api_search.py`
   - Added exact regression coverage for the six smoke-failure prompts.
@@ -172,7 +172,7 @@ Why:
 
 Rollback:
 
-- Revert the exact hunks in `pocketsteel/curated_answers.py`, `pocketsteel/fretboard_examples.py`, `pocketsteel/answering.py`, `pocketsteel/answer_contracts.py`, and `tests/test_api_search.py`.
+- Revert the exact hunks in `steel_guitar_rag/curated_answers.py`, `steel_guitar_rag/fretboard_examples.py`, `steel_guitar_rag/answering.py`, `steel_guitar_rag/answer_contracts.py`, and `tests/test_api_search.py`.
 - No data, vector, corpus, UI, auth, or deployment rollback is needed.
 
 ## Commit Readiness
@@ -185,17 +185,17 @@ Reason: tests are green, but the worktree is broadly dirty and the changed files
 
 Hunk-level safe-to-stage for this task:
 
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Diminished-chord curated route.
   - Steel King settings curated route and recognizer.
   - B+C pedals recognizer/route for `Explain B+C pedals.`
   - Symmetric hum/changer diagnostic matcher.
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/fretboard_examples.py`
   - Parser patterns for `Where are my <root> chord positions?`
   - Parser pattern for `Show me <root> positions on E9.`
-- `pocketsteel/answering.py`
+- `steel_guitar_rag/answering.py`
   - Symmetric hum/changer diagnostic matcher.
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/answer_contracts.py`
   - Symmetric hum/changer diagnostic matcher.
 - `tests/test_api_search.py`
   - `test_remaining_retrieval_gating_smoke_failures_get_teacher_first_answers`
@@ -225,8 +225,8 @@ Read:
 - docs/llm-guidance/answer-contract.md
 - docs/llm-guidance/eval-rubric.md
 - docs/llm-guidance/teacher-first-answer-policy.md
-- pocketsteel/curated_answers.py
-- pocketsteel/fretboard_examples.py
+- steel_guitar_rag/curated_answers.py
+- steel_guitar_rag/fretboard_examples.py
 - tests/test_api_search.py
 
 Verify the 12-prompt retrieval-gating smoke now passes, especially:

@@ -10,7 +10,7 @@ This contract is for the Steel Guitar RAG frontend and local backend API. The AP
 
 ## Shared Types
 
-Backend shared type definitions live in `pocketsteel/api_contract.py`.
+Backend shared type definitions live in `steel_guitar_rag/api_contract.py`.
 
 ### AccessRole
 
@@ -27,7 +27,7 @@ values only; there is no real auth provider connected yet.
 - `admin`: developer/admin role for local testing and future management tools.
   Admin may use the live answer UI.
 
-The matching backend constants live in `pocketsteel/access_control.py`.
+The matching backend constants live in `steel_guitar_rag/access_control.py`.
 
 ### AnswerMode
 

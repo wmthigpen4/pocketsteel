@@ -19,7 +19,7 @@ No source images, training records, challenger artifacts, validation data, seale
 
 Operational artifacts outside the repository:
 
-- `~/.steel-rag/venvs/pocket-steel-py312-20260722` — clone-on-write copy of the existing tested repository virtual environment, outside the macOS-protected workspace path.
+- `~/.steel-rag/venvs/steel-guitar-rag-py312-20260722` — clone-on-write copy of the existing tested repository virtual environment, outside the macOS-protected workspace path.
 - `~/.steel-rag/releases/4b443c7-standalone` — clean detached checkout of exact commit `4b443c79a01f9a615b2cef36763e9d94c4dd3ab1` linked to the external runtime environment.
 - `/Library/LaunchDaemons/com.steelguitarrag.private-preview.plist` — installed exact standalone release definition.
 - `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh` — content-identical wrapper for commit `4b443c7`; launch-blocking extended attributes removed.

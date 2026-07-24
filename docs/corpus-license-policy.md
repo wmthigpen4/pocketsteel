@@ -1,6 +1,6 @@
 # Corpus License Policy
 
-This policy describes how The Turnaround should treat source permissions and corpus metadata. It is not legal advice.
+This policy describes how Steel Guitar RAG should treat source permissions and corpus metadata. It is not legal advice.
 
 ## Policy Goals
 

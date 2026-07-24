@@ -39,7 +39,7 @@ Intentionally not changed:
 - Expected backend port: `8770`
 - Expected git HEAD: `e37f00e`
 - Version endpoint: `/api/version`
-- Version endpoint result: prior protected-smoke handoff reported `{"git_sha":"e37f00e","git_branch":"feature/answer-api","server_started_at":"2026-06-30T13:09:15.224521+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: prior protected-smoke handoff reported `{"git_sha":"e37f00e","git_branch":"feature/answer-api","server_started_at":"2026-06-30T13:09:15.224521+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Whether app root `/` works: yes, as a redirect to `/ui/steel-guitar-rag-mock.html`
 - Whether app root `/` is expected to work: yes, but it drops query strings during redirect
 - Whether `/ui/steel-guitar-rag-mock.html` works: yes

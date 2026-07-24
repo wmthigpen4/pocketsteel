@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from pocketsteel.fretboard_examples import absolute_pitch_for_string, major_positions
-from pocketsteel.melody_arranger import (
+from steel_guitar_rag.fretboard_examples import absolute_pitch_for_string, major_positions
+from steel_guitar_rag.melody_arranger import (
     MelodyInput,
     PositionCandidate,
     _candidate_for_fretboard_position,
@@ -11,14 +11,14 @@ from pocketsteel.melody_arranger import (
     choose_mixed_path,
     single_note_candidates,
 )
-from pocketsteel.melody_assistant import (
+from steel_guitar_rag.melody_assistant import (
     MelodyExerciseError,
     configured_melody_exercise_enabled,
     is_melody_teaching_request,
     melody_exercise_response,
 )
-from pocketsteel.melody_import import import_score_draft, public_song_catalog
-from pocketsteel.tab_engine import TabNote
+from steel_guitar_rag.melody_import import import_score_draft, public_song_catalog
+from steel_guitar_rag.tab_engine import TabNote
 
 
 def test_feature_flag_defaults_off() -> None:

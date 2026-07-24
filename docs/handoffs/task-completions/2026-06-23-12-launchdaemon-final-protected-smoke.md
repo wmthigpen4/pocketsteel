@@ -47,7 +47,7 @@ Protected/parked categories still present include corpus/source metadata, source
 - Version endpoint result:
 
 ```json
-{"git_sha":"18587d9","git_branch":"feature/answer-api","server_started_at":"2026-06-23T16:14:35.257254+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
+{"git_sha":"18587d9","git_branch":"feature/answer-api","server_started_at":"2026-06-23T16:14:35.257254+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
 ```
 
 - If version endpoint missing, how version is inferred: not applicable

@@ -9,11 +9,11 @@
 Fallback answer synthesis could still allow retrieved SGF/forum text, or lightly cleaned versions of it, to become the answer body when no deterministic teacher route caught the prompt. Some broad but answerable prompts also had no source-free teacher route, so unrelated SGF fragments looked like the product answer.
 
 ## Files Changed
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/api.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/answer_contracts.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/answer_contracts.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_api_search.py`
 - `tests/test_fretboard_examples.py`
 - `docs/handoffs/task-completions/sgf-answer-quarantine-teacher-router-fix.md`
@@ -72,7 +72,7 @@ Fallback answer synthesis could still allow retrieved SGF/forum text, or lightly
 ## Tests And Checks
 - `git status --short`: worktree has many unrelated parked files; scoped changed files listed above.
 - `git diff --check`: passed.
-- `python3 -m py_compile pocketsteel/curated_answers.py pocketsteel/api.py pocketsteel/answering.py pocketsteel/answer_contracts.py pocketsteel/fretboard_examples.py`: passed.
+- `python3 -m py_compile steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py steel_guitar_rag/answering.py steel_guitar_rag/answer_contracts.py steel_guitar_rag/fretboard_examples.py`: passed.
 - `.venv/bin/python -m pytest tests/test_api_search.py -k "sgf_quarantine or mixed_a_minor or off_domain_user_smoke"`: `3 passed`.
 - `.venv/bin/python -m pytest tests/test_fretboard_examples.py -k "mixed_a_minor"`: `1 passed`.
 - `.venv/bin/python -m pytest tests/test_answer_intent_classifier.py`: `70 passed`.
@@ -118,11 +118,11 @@ Fallback answer synthesis could still allow retrieved SGF/forum text, or lightly
 Safe to commit.
 
 Safe-to-stage files:
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/api.py`
-- `pocketsteel/answering.py`
-- `pocketsteel/answer_contracts.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/answering.py`
+- `steel_guitar_rag/answer_contracts.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_api_search.py`
 - `tests/test_fretboard_examples.py`
 - `docs/handoffs/task-completions/sgf-answer-quarantine-teacher-router-fix.md`

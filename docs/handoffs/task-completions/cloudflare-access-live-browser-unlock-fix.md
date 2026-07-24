@@ -8,8 +8,8 @@
 ## Files changed
 - Changed files:
   - `docs/api-contract.md`
-  - `pocketsteel/access_control.py`
-  - `pocketsteel/api.py`
+  - `steel_guitar_rag/access_control.py`
+  - `steel_guitar_rag/api.py`
   - `tests/test_api_search.py`
 - Created files:
   - `docs/handoffs/task-completions/cloudflare-access-live-browser-unlock-fix.md`
@@ -108,7 +108,7 @@ Smoke Target:
 ## Risk assessment
 - Risk: Medium.
 - Why: this touches auth/session code, but it only adds safe diagnostics and does not add a new unverified trust path. Normal `/api/session` and `/api/answer` behavior is unchanged unless `debug=auth` is explicitly requested on `/api/session`.
-- Rollback notes: revert `pocketsteel/access_control.py`, `pocketsteel/api.py`, `tests/test_api_search.py`, and `docs/api-contract.md` changes from this handoff to remove the diagnostics.
+- Rollback notes: revert `steel_guitar_rag/access_control.py`, `steel_guitar_rag/api.py`, `tests/test_api_search.py`, and `docs/api-contract.md` changes from this handoff to remove the diagnostics.
 
 ## Commit readiness
 Needs human review first
@@ -117,7 +117,7 @@ Needs human review first
 - Repo Steward prompt if the diagnostic files are approved for commit:
 
 ```text
-Repo Steward: review and commit only the scoped Cloudflare Access live-browser session diagnostic changes from the handoff docs/handoffs/task-completions/cloudflare-access-live-browser-unlock-fix.md. Stage exact paths only: docs/api-contract.md, pocketsteel/access_control.py, pocketsteel/api.py, tests/test_api_search.py, docs/handoffs/task-completions/cloudflare-access-live-browser-unlock-fix.md. Do not stage unrelated parked work. Use commit message: Add Cloudflare Access session diagnostics.
+Repo Steward: review and commit only the scoped Cloudflare Access live-browser session diagnostic changes from the handoff docs/handoffs/task-completions/cloudflare-access-live-browser-unlock-fix.md. Stage exact paths only: docs/api-contract.md, steel_guitar_rag/access_control.py, steel_guitar_rag/api.py, tests/test_api_search.py, docs/handoffs/task-completions/cloudflare-access-live-browser-unlock-fix.md. Do not stage unrelated parked work. Use commit message: Add Cloudflare Access session diagnostics.
 ```
 
 - Lane 12 prompt after commit/restart:

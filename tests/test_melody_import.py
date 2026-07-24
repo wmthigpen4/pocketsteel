@@ -8,7 +8,7 @@ import zipfile
 
 import pytest
 
-from pocketsteel.melody_import import (
+from steel_guitar_rag.melody_import import (
     MelodyImportError,
     import_score_draft,
     normalize_score_draft,
@@ -16,7 +16,7 @@ from pocketsteel.melody_import import (
     parse_musicxml,
     public_song_catalog,
 )
-from pocketsteel.melody_arranger import (
+from steel_guitar_rag.melody_arranger import (
     arrange_melody_routes,
     parse_melody_inputs,
     resolve_contour,

@@ -33,7 +33,7 @@ Intentionally not changed:
 - Expected backend port: `8770`
 - Expected git HEAD: `bce771f` or later containing tracked keyhead asset
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"bce771f","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"bce771f","git_branch":"feature/answer-api","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - If version endpoint missing, how version is inferred: not missing
 - Whether app root `/` works: not tested for this task
 - Whether app root `/` is expected to work: not required for this task

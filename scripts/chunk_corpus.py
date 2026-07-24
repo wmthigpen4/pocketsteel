@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chunk The Turnaround clean corpus for retrieval."""
+"""Chunk Steel Guitar RAG clean corpus for retrieval."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pocketsteel.schema import read_jsonl, source_metadata, stable_hash, write_jsonl
-from pocketsteel.text import normalize_text, split_paragraphs
+from steel_guitar_rag.schema import read_jsonl, source_metadata, stable_hash, write_jsonl
+from steel_guitar_rag.text import normalize_text, split_paragraphs
 
 
 def split_long_unit(unit: str, chunk_chars: int) -> list[str]:

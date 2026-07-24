@@ -8,14 +8,14 @@ import json
 
 import pytest
 
-import pocketsteel.melody_arranger as melody_arranger
-from pocketsteel.amazing_tablature_model import (
+import steel_guitar_rag.melody_arranger as melody_arranger
+from steel_guitar_rag.amazing_tablature_model import (
     CANONICAL_FEATURE_SCHEMA_VERSION,
     CANONICAL_STYLE_FAMILIES,
     load_sanitized_ranker_artifact,
 )
-from pocketsteel.e9_copedents import EMMONS_E9
-from pocketsteel.melody_arranger import (
+from steel_guitar_rag.e9_copedents import EMMONS_E9
+from steel_guitar_rag.melody_arranger import (
     MelodyInput,
     PositionCandidate,
     _learned_start_penalty,
@@ -24,9 +24,9 @@ from pocketsteel.melody_arranger import (
     choose_mixed_path,
     single_note_candidates,
 )
-from pocketsteel.melody_ranker import FEATURE_NAMES, score_candidate
-from pocketsteel.melody_ranker_adapter import runtime_candidate_feature_record
-from pocketsteel.tab_engine import TabNote
+from steel_guitar_rag.melody_ranker import FEATURE_NAMES, score_candidate
+from steel_guitar_rag.melody_ranker_adapter import runtime_candidate_feature_record
+from steel_guitar_rag.tab_engine import TabNote
 
 
 def _open_grip(fret: int, strings: tuple[int, ...], top_pitch: int) -> PositionCandidate:

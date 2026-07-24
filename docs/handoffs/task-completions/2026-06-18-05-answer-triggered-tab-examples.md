@@ -6,7 +6,7 @@ Requested: implement the next narrow backend slice that attaches deterministic t
 
 Completed:
 
-- Added a deterministic answer-tab selector that maps a small set of safe prompt patterns to committed `pocketsteel.tab_engine` examples.
+- Added a deterministic answer-tab selector that maps a small set of safe prompt patterns to committed `steel_guitar_rag.tab_engine` examples.
 - Added optional `tab_example` support to the answer response contract.
 - Wired `/api/answer` to attach a validated `tab_example` in existing deterministic, practical-curated, and normal answer return branches.
 - Added selector, contract, and API-level regression tests.
@@ -25,11 +25,11 @@ HEAD during implementation: `0bd0780`.
 
 ## Files Changed
 
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/answer_tab_examples.py`
   - New deterministic selector/registry for answer-triggered tab examples.
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Added passive `_attach_tab_example_if_available(...)` helper and called it after existing answer payloads are assembled.
-- `pocketsteel/api_contract.py`
+- `steel_guitar_rag/api_contract.py`
   - Added optional `tab_example` TypedDict shape to `AnswerResponse`.
 - `tests/test_tab_engine.py`
   - Added selector tests for safe mappings, blocked prompts, and validation-failure omission.
@@ -49,7 +49,7 @@ Generated artifacts: none.
 The answer route now imports:
 
 ```python
-from pocketsteel.answer_tab_examples import tab_example_payload_for_question
+from steel_guitar_rag.answer_tab_examples import tab_example_payload_for_question
 ```
 
 The helper is called only after an answer payload has already been built. It does not alter retrieval, answer text, source cards, warnings, auth, or fretboard routing.
@@ -124,7 +124,7 @@ Optional top-level answer field:
       "difficulty": "beginner",
       "grip": "4-5-6"
     },
-    "rendered_tab": "fixed-width tab from pocketsteel.tab_engine",
+    "rendered_tab": "fixed-width tab from steel_guitar_rag.tab_engine",
     "validation": {
       "ok": true,
       "issues": [],
@@ -147,7 +147,7 @@ Compatibility:
 ## Tests And Checks Run
 
 ```bash
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py pocketsteel/api_contract.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py steel_guitar_rag/api_contract.py
 # passed
 
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
@@ -189,9 +189,9 @@ Why:
 
 Rollback:
 
-- Revert `pocketsteel/answer_tab_examples.py`.
+- Revert `steel_guitar_rag/answer_tab_examples.py`.
 - Remove the optional `tab_example` contract types.
-- Remove `_attach_tab_example_if_available(...)` calls from `pocketsteel/api.py`.
+- Remove `_attach_tab_example_if_available(...)` calls from `steel_guitar_rag/api.py`.
 - Revert the added tests.
 
 ## Human Decision Needed
@@ -202,9 +202,9 @@ Future decision: whether Lane 06 should render `tab_example` exactly as snake_ca
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/answer_tab_examples.py`
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
+- `steel_guitar_rag/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
 - `tests/test_tab_engine.py`
 - `tests/test_api_contract.py`
 - `tests/test_api_search.py`

@@ -28,7 +28,7 @@ confirmed `alignment:score_supported` decisions.
 ## Files changed
 
 - `docs/amazing-tablature-training.md`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - this handoff
@@ -38,9 +38,9 @@ artifact was modified.
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py`
   - passed
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_training.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py`
   - passed
 - `.venv/bin/pytest -q tests/test_amazing_tablature_training.py -k 'machine_validation_scorer'`
   - 1 passed, 42 deselected
@@ -93,7 +93,7 @@ complete, mechanically coherent candidates.
 
 - `docs/amazing-tablature-training.md`
 - `docs/handoffs/task-completions/2026-07-23-1413-20-validation-preference-adjudication.md`
-- `pocketsteel/amazing_tablature_training.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 

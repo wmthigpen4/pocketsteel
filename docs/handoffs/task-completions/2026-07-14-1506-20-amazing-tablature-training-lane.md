@@ -13,8 +13,8 @@ Intentionally unchanged: scraping, embeddings, Chroma, RAG ingestion, authentica
 ## Files changed
 
 - Lane contract and workflow documentation: `AGENTS.md`, `docs/amazing-tablature-training.md`, `docs/chatgpt-project-context/03_Lane_Map.md`, `docs/codex-workflow.md`, `docs/llm-guidance/melody-copedent-transfer-rules.md`.
-- Headless workflow: `pocketsteel/amazing_tablature_training.py`, `scripts/amazing_tablature.py`.
-- Ranker/style/runtime metadata: `pocketsteel/melody_ranker.py`, `pocketsteel/melody_decision_rules.py`, `pocketsteel/melody_arranger.py`, `pocketsteel/melody_assistant.py`.
+- Headless workflow: `steel_guitar_rag/amazing_tablature_training.py`, `scripts/amazing_tablature.py`.
+- Ranker/style/runtime metadata: `steel_guitar_rag/melody_ranker.py`, `steel_guitar_rag/melody_decision_rules.py`, `steel_guitar_rag/melody_arranger.py`, `steel_guitar_rag/melody_assistant.py`.
 - Player-facing style selector and normalization: `ui/answer-client.js`, `ui/melody-workbench.html`, `ui/melody-workbench.js`.
 - Regression tests: `tests/test_amazing_tablature_training.py`, `tests/test_melody_workbench_ui.py`, `tests/test_frontend_answer_ui.py`.
 - This handoff.
@@ -25,7 +25,7 @@ Intentionally unchanged: scraping, embeddings, Chroma, RAG ingestion, authentica
 
 - `node --check ui/answer-client.js` — passed.
 - `node --check ui/melody-workbench.js` — passed.
-- `.venv/bin/ruff check pocketsteel/amazing_tablature_training.py pocketsteel/melody_ranker.py pocketsteel/melody_decision_rules.py pocketsteel/melody_arranger.py pocketsteel/melody_assistant.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py tests/test_melody_workbench_ui.py` — passed.
+- `.venv/bin/ruff check steel_guitar_rag/amazing_tablature_training.py steel_guitar_rag/melody_ranker.py steel_guitar_rag/melody_decision_rules.py steel_guitar_rag/melody_arranger.py steel_guitar_rag/melody_assistant.py scripts/amazing_tablature.py tests/test_amazing_tablature_training.py tests/test_melody_workbench_ui.py` — passed.
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py tests/test_copedent_transfer.py tests/test_melody_workbench_ui.py tests/test_frontend_answer_ui.py` — 57 passed.
 - `npm run check:js` — passed.
 - `.venv/bin/python -m pytest -q` — 1,118 passed.
@@ -60,11 +60,11 @@ No for implementation/commit/preview smoke. The next future decision is exceptio
 - `docs/codex-workflow.md`
 - `docs/llm-guidance/melody-copedent-transfer-rules.md`
 - `docs/handoffs/task-completions/2026-07-14-1506-20-amazing-tablature-training-lane.md`
-- `pocketsteel/amazing_tablature_training.py`
-- `pocketsteel/melody_ranker.py`
-- `pocketsteel/melody_decision_rules.py`
-- `pocketsteel/melody_arranger.py`
-- `pocketsteel/melody_assistant.py`
+- `steel_guitar_rag/amazing_tablature_training.py`
+- `steel_guitar_rag/melody_ranker.py`
+- `steel_guitar_rag/melody_decision_rules.py`
+- `steel_guitar_rag/melody_arranger.py`
+- `steel_guitar_rag/melody_assistant.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_melody_workbench_ui.py`

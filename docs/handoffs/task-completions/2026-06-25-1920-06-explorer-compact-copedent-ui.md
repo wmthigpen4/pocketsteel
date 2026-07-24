@@ -21,7 +21,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/e9_copedents.py`
+- `steel_guitar_rag/e9_copedents.py`
 - `tests/test_fretboard_explorer.py`
 - `tests/test_frontend_answer_ui.py`
 - `ui/e9-fretboard-explorer-data.js`
@@ -32,7 +32,7 @@ Intentionally not changed:
 - `docs/handoffs/task-completions/assets/2026-06-25-06-explorer-compact-copedent-ui/mobile-explorer-compact.png`
 
 Generated artifacts:
-- `ui/e9-fretboard-explorer-data.js` regenerated from `pocketsteel.fretboard_explorer.build_explorer_payload(key)` for default, Day, and custom LKV copedent payloads.
+- `ui/e9-fretboard-explorer-data.js` regenerated from `steel_guitar_rag.fretboard_explorer.build_explorer_payload(key)` for default, Day, and custom LKV copedent payloads.
 - Browser-smoke screenshots saved under the asset directory above.
 
 Deleted files: none.
@@ -91,8 +91,8 @@ Screenshots:
 Passed:
 
 ```bash
-python3 -m py_compile pocketsteel/e9_copedents.py
-python3 -m py_compile pocketsteel/e9_copedents.py pocketsteel/fretboard_explorer.py
+python3 -m py_compile steel_guitar_rag/e9_copedents.py
+python3 -m py_compile steel_guitar_rag/e9_copedents.py steel_guitar_rag/fretboard_explorer.py
 node --check ui/answer-client.js
 node --check ui/pedal-steel-fretboard.js
 node --check ui/e9-fretboard-explorer.js
@@ -142,7 +142,7 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/e9_copedents.py`
+- `steel_guitar_rag/e9_copedents.py`
 - `tests/test_fretboard_explorer.py`
 - `tests/test_frontend_answer_ui.py`
 - `ui/e9-fretboard-explorer-data.js`

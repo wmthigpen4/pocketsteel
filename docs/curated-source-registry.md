@@ -2,7 +2,7 @@
 
 The curated source registry lives in `corpus_metadata/source_registry.json`.
 
-Curated sources are human-reviewed links that The Turnaround may mention directly when an answer intent needs current or official reference material. They are separate from SGF/RAG evidence: RAG source cards show retrieved corpus material, while curated sources provide maintained links for things like vendors, official organizations, official brand pages, lessons/reference pages, and used-market starting points.
+Curated sources are human-reviewed links that Steel Guitar RAG may mention directly when an answer intent needs current or official reference material. They are separate from SGF/RAG evidence: RAG source cards show retrieved corpus material, while curated sources provide maintained links for things like vendors, official organizations, official brand pages, lessons/reference pages, and used-market starting points.
 
 ## When To Use Curated Sources
 

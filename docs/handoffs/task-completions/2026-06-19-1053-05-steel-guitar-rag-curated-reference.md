@@ -20,16 +20,16 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/resources/curated/steel-guitar-rag-expert-reference.md`
+- `steel_guitar_rag/resources/curated/steel-guitar-rag-expert-reference.md`
   - New runtime curated Markdown resource copied from the attached source.
   - Only change from the attachment: removed two trailing spaces in the metadata header for `git diff --check`.
   - SHA-256: `996b7b8cbf12ff09592726421d6ea4cf7cbd072ebd531d230bbd30b6bbf83c8a`
-- `pocketsteel/curated_song_references.py`
+- `steel_guitar_rag/curated_song_references.py`
   - New loader/source-card/answer helper for the Steel Guitar Rag curated reference.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Added optional `CuratedAnswer.source_cards`.
   - Routed Steel Guitar Rag questions through the curated reference helper.
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Allows curated answers to supply curated source cards in both pre-retrieval and normal curated-answer branches.
 - `tests/test_api_search.py`
   - Removed Steel Guitar Rag from the source-free SGF quarantine test.
@@ -43,7 +43,7 @@ Commands run:
 
 ```bash
 .venv/bin/python -m pytest tests/test_api_search.py -k 'Steel_Guitar_Rag or steel_guitar_rag' -q
-.venv/bin/python -m py_compile pocketsteel/curated_song_references.py pocketsteel/curated_answers.py pocketsteel/api.py
+.venv/bin/python -m py_compile steel_guitar_rag/curated_song_references.py steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py
 git diff --check
 .venv/bin/python -m pytest tests/test_api_search.py -q
 .venv/bin/python -m pytest tests/test_api_contract.py -q
@@ -63,8 +63,8 @@ Results:
 ## Retrieval / Indexing Notes
 
 This is a curated resource path, not Chroma retrieval:
-- The Markdown lives at `pocketsteel/resources/curated/steel-guitar-rag-expert-reference.md`.
-- `pocketsteel/curated_song_references.py` loads the Markdown directly.
+- The Markdown lives at `steel_guitar_rag/resources/curated/steel-guitar-rag-expert-reference.md`.
+- `steel_guitar_rag/curated_song_references.py` loads the Markdown directly.
 - Steel Guitar Rag questions are recognized by the existing curated answer route.
 - The answer payload includes curated `sources` cards with `source_system: curated_reference`.
 - The tab answer extracts the original teaching-study code block from the Markdown and returns it with the original code-fence formatting.
@@ -93,10 +93,10 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/resources/curated/steel-guitar-rag-expert-reference.md`
-- `pocketsteel/curated_song_references.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/resources/curated/steel-guitar-rag-expert-reference.md`
+- `steel_guitar_rag/curated_song_references.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-19-1053-05-steel-guitar-rag-curated-reference.md`
 

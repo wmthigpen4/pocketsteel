@@ -36,7 +36,7 @@ Intentionally not changed:
 - Expected git HEAD: `8c2536c`
 - Required app-code commit: `75fc370`
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"8c2536c","git_branch":"feature/answer-api","server_started_at":"2026-07-04T14:44:35.629467+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"8c2536c","git_branch":"feature/answer-api","server_started_at":"2026-07-04T14:44:35.629467+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - If version endpoint missing, how version is inferred: not applicable
 - Whether app root `/` works: yes, redirects to `/ui/steel-guitar-rag-mock.html`
 - Whether app root `/` is expected to work: yes as redirect; root drops query string

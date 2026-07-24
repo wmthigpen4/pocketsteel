@@ -19,7 +19,7 @@ The unconstrained vision replay was stopped after one uncached inference remaine
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
   - Captures direct key-signature evidence, explicit tie starts, and tie continuations from the Audiveris source graph.
   - Preserves visible-column counting separately from semantic attack counting.
   - Adds a source-only, fail-closed semantic score repair and confidence gate.
@@ -36,7 +36,7 @@ Private regression reports were written only beneath ignored `corpus-private/mel
 
 ## Tests and checks
 
-- `.venv/bin/python -m py_compile pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
+- `.venv/bin/python -m py_compile steel_guitar_rag/amazing_tablature_extraction.py scripts/amazing_tablature.py` — PASS.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_extraction.py` — PASS, 138 tests.
 - `.venv/bin/pytest -q tests/test_amazing_tablature_training.py tests/test_amazing_tablature_sealed_test.py tests/test_amazing_tablature_input_parity.py` — PASS, 38 tests using repository fixtures only; no private sealed cohort was opened.
 - Focused semantic/key/tie tests — PASS.
@@ -61,7 +61,7 @@ No. Do not request more review yet.
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_extraction.py`
+- `steel_guitar_rag/amazing_tablature_extraction.py`
 - `scripts/amazing_tablature.py`
 - `tests/test_amazing_tablature_extraction.py`
 - `docs/handoffs/task-completions/2026-07-22-1419-20-source-score-semantic-repair.md`

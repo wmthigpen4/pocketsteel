@@ -36,9 +36,9 @@ When the deterministic route missed, the answer provider could turn SGF snippets
 
 ## Files Changed
 
-- `pocketsteel/basic_chord_answers.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/basic_chord_answers.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/answer_contracts.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/direct-answer-first-user-smoke-fix.md`
 
@@ -248,7 +248,7 @@ Why:
 
 Rollback:
 
-- Revert the exact hunks in `pocketsteel/basic_chord_answers.py`, `pocketsteel/curated_answers.py`, `pocketsteel/answer_contracts.py`, and `tests/test_api_search.py` if this slice needs to be parked.
+- Revert the exact hunks in `steel_guitar_rag/basic_chord_answers.py`, `steel_guitar_rag/curated_answers.py`, `steel_guitar_rag/answer_contracts.py`, and `tests/test_api_search.py` if this slice needs to be parked.
 - Do not use destructive git cleanup against unrelated dirty files.
 
 ## Commit Readiness
@@ -267,9 +267,9 @@ Exact next QA prompt:
 Lane 15 QA / Answer Eval
 
 Review docs/handoffs/task-completions/direct-answer-first-user-smoke-fix.md and the diff for:
-- pocketsteel/basic_chord_answers.py
-- pocketsteel/curated_answers.py
-- pocketsteel/answer_contracts.py
+- steel_guitar_rag/basic_chord_answers.py
+- steel_guitar_rag/curated_answers.py
+- steel_guitar_rag/answer_contracts.py
 - tests/test_api_search.py
 
 Verify the direct-answer-first behavior for:
@@ -291,9 +291,9 @@ Exact next Repo Steward prompt after QA:
 Lane 01 Repo Steward
 
 QA approved the direct-answer-first user smoke fix. Stage only the approved hunks in:
-- pocketsteel/basic_chord_answers.py
-- pocketsteel/curated_answers.py
-- pocketsteel/answer_contracts.py
+- steel_guitar_rag/basic_chord_answers.py
+- steel_guitar_rag/curated_answers.py
+- steel_guitar_rag/answer_contracts.py
 - tests/test_api_search.py
 - docs/handoffs/task-completions/direct-answer-first-user-smoke-fix.md
 

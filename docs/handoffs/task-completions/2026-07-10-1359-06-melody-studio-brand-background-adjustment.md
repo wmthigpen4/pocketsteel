@@ -2,7 +2,7 @@
 
 ## Task summary
 
-User-smoke adjustment completed. Melody Studio no longer displays `The Turnaround`, and its landing-sign image background has been replaced with the same amber radial and dark linear gradient treatment used by E9 Fretboard Explorer. No shared brand assets or other pages were changed.
+User-smoke adjustment completed. Melody Studio no longer displays `Steel Guitar RAG`, and its landing-sign image background has been replaced with the same amber radial and dark linear gradient treatment used by E9 Fretboard Explorer. No shared brand assets or other pages were changed.
 
 ## Lane classification
 
@@ -24,7 +24,7 @@ User-smoke adjustment completed. Melody Studio no longer displays `The Turnaroun
 - `node --check ui/pedal-steel-fretboard.js` — passed.
 - `node --check ui/melody-workbench.js` — passed.
 - `git diff --check` — passed.
-- Local browser smoke — passed: title and visible branding changed to Steel Guitar RAG, body text contains no `The Turnaround`, and the computed body background contains only the Explorer gradients with no image URL.
+- Local browser smoke — passed: title and visible branding changed to Steel Guitar RAG, body text contains no `Steel Guitar RAG`, and the computed body background contains only the Explorer gradients with no image URL.
 
 ## Smoke Target
 

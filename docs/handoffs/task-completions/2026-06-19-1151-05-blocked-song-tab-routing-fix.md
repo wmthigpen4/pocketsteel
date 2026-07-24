@@ -19,7 +19,7 @@ Intentionally not changed:
 
 ## Files Changed
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Imported `full_song_tab_guardrail_answer`.
   - Added an early `/api/answer` return path immediately after request parsing/classification.
   - The guarded response has `sources: []`, `warnings: []`, no `fretboard`, and no `tab_example`.
@@ -71,11 +71,11 @@ Safe curated Steel Guitar Rag prompts remain covered by existing tests:
 
 ## Tests And Checks
 
-Run from `/Users/cory/Documents/Pocket Steel`:
+Run from `/Users/cory/Documents/Steel Guitar RAG`:
 
 - `git status --short`
-  - Large unrelated dirty/untracked worktree already present; scoped files are `pocketsteel/api.py`, `tests/test_api_search.py`, and this handoff.
-- `.venv/bin/python -m py_compile pocketsteel/curated_answers.py pocketsteel/api.py`
+  - Large unrelated dirty/untracked worktree already present; scoped files are `steel_guitar_rag/api.py`, `tests/test_api_search.py`, and this handoff.
+- `.venv/bin/python -m py_compile steel_guitar_rag/curated_answers.py steel_guitar_rag/api.py`
   - Passed.
 - `.venv/bin/python -m pytest tests/test_api_search.py -k 'Steel_Guitar_Rag or steel_guitar_rag or copyright or copyrighted or transcribe or Together_Again' -q`
   - Passed: `10 passed, 255 deselected`.
@@ -105,7 +105,7 @@ Reason:
 
 Rollback:
 
-- Revert the `pocketsteel/api.py` early guard and the associated test update.
+- Revert the `steel_guitar_rag/api.py` early guard and the associated test update.
 
 ## Human Decision Needed
 
@@ -113,7 +113,7 @@ No.
 
 ## Safe-To-Stage Exact File List
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-19-1151-05-blocked-song-tab-routing-fix.md`
 

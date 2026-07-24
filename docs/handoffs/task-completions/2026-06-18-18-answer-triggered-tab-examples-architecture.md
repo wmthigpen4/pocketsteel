@@ -2,7 +2,7 @@
 
 ## Task Summary
 
-- What was requested: define the next backend architecture slice for safely attaching deterministic `tab_example` payloads to normal answer responses in Pocket Steel.
+- What was requested: define the next backend architecture slice for safely attaching deterministic `tab_example` payloads to normal answer responses in Steel Guitar RAG.
 - What was completed: created this Lane 18 architecture handoff for answer-triggered tab examples, including current state, product goal, proposed response contract, intent routing strategy, deterministic example registry, safe generation ladder, backend integration points, test plan, risks, and the next Lane 05 implementation prompt.
 - What was intentionally not changed: no app code, frontend files, UI implementation, tests, `/api/answer`, `/api/tab/render`, SGF retrieval, Chroma/vector stores, embeddings, corpus data, source-inbox data, auth, deployment, staging, or commits were changed.
 
@@ -11,8 +11,8 @@
 Committed backend slice:
 
 - Commit: `686fd3c feat: add deterministic tab engine slice`
-- Module: `pocketsteel/tab_engine.py`
-- Route: `POST /api/tab/render` in `pocketsteel/api.py`
+- Module: `steel_guitar_rag/tab_engine.py`
+- Route: `POST /api/tab/render` in `steel_guitar_rag/api.py`
 - Tests: `tests/test_tab_engine.py`
 
 The committed tab engine provides:
@@ -126,7 +126,7 @@ Field rules:
 
 - `tab_example` is optional.
 - If present, it must be fully validated before display.
-- `rendered_tab` must be produced by `pocketsteel.tab_engine`, not hand-authored by the answer composer.
+- `rendered_tab` must be produced by `steel_guitar_rag.tab_engine`, not hand-authored by the answer composer.
 - `events` are the source of truth; `rendered_tab` is a renderer output.
 - `validation.ok=false` should not be attached to normal user answers except in explicit validation/explanation flows.
 - `rightsStatus` is required and should be `original_educational_example` for generated examples in the next slice.
@@ -190,7 +190,7 @@ Add a deterministic answer-tab registry before adding generative planners.
 
 Recommended module:
 
-- `pocketsteel/tab_examples.py` or `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/tab_examples.py` or `steel_guitar_rag/answer_tab_examples.py`
 
 Registry entry shape:
 
@@ -271,19 +271,19 @@ Naming caution:
 
 Likely files for the next Lane 05 slice:
 
-- `pocketsteel/tab_engine.py`
+- `steel_guitar_rag/tab_engine.py`
   - Reuse `TabEvent`, `TabNote`, `render_tab`, `render_example`, `tab_examples`, validation issues, and default profile.
   - Avoid broad changes unless small metadata/event-id additions are needed.
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
   - Attach optional `tab_example` in `/api/answer` payload after deterministic/curated answer selection and before response serialization.
   - Keep `/api/tab/render` unchanged unless the contract needs shared serializer helpers.
-- `pocketsteel/answer_intent_classifier.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
   - Add or extend internal routing attributes for tab-example eligibility.
   - Do not expose classifier internals in public payloads.
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - Existing teacher-first answers already cover lick requests, B+C pedal practice, song-learning guardrails, and tab/notation requests.
   - Next slice may map selected curated intents to deterministic tab examples, but curated prose must not generate events.
-- `pocketsteel/answer_contracts.py`
+- `steel_guitar_rag/answer_contracts.py`
   - Add optional `tab_example` response contract allowance if contract validation covers response shape.
 - `tests/test_tab_engine.py`
   - Add registry/serializer tests if the registry lives near the tab engine.
@@ -294,7 +294,7 @@ Likely files for the next Lane 05 slice:
 
 Suggested new module:
 
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/answer_tab_examples.py`
 
 Suggested responsibilities:
 
@@ -464,10 +464,10 @@ Read:
 - docs/handoffs/task-completions/2026-06-18-18-answer-triggered-tab-examples-architecture.md
 - docs/handoffs/task-completions/2026-06-18-05-tab-engine-first-slice.md
 - docs/handoffs/task-completions/2026-06-18-1516-06-tab-engine-answer-ux.md
-- pocketsteel/tab_engine.py
-- pocketsteel/api.py
-- pocketsteel/answer_intent_classifier.py
-- pocketsteel/curated_answers.py
+- steel_guitar_rag/tab_engine.py
+- steel_guitar_rag/api.py
+- steel_guitar_rag/answer_intent_classifier.py
+- steel_guitar_rag/curated_answers.py
 - tests/test_tab_engine.py
 - tests/test_api_contract.py
 - tests/test_api_search.py
@@ -476,8 +476,8 @@ Goal:
 Attach an optional `tab_example` payload to `/api/answer` only for safe, allowlisted teaching intents that map to deterministic tab examples.
 
 Scope:
-- Create a small deterministic registry/helper, likely `pocketsteel/answer_tab_examples.py`.
-- Reuse `pocketsteel.tab_engine` events, renderer, and validator.
+- Create a small deterministic registry/helper, likely `steel_guitar_rag/answer_tab_examples.py`.
+- Reuse `steel_guitar_rag.tab_engine` events, renderer, and validator.
 - Add feature flag `ENABLE_ANSWER_TAB_EXAMPLES`, default off.
 - Attach one compact validated `tab_example` for supported prompts:
   - "Show me a G to C move"
@@ -536,29 +536,29 @@ Commands run:
   - Passed. Returned `1`, confirming this handoff did not already exist.
 - `git show --stat --oneline 686fd3c --`
   - Passed. Confirmed committed deterministic tab engine slice.
-- `git status --short -- docs/handoffs/task-completions/2026-06-18-18-answer-triggered-tab-examples-architecture.md pocketsteel/tab_engine.py pocketsteel/api.py tests/test_tab_engine.py ui/answer-client.js ui/steel-guitar-rag-mock.html`
+- `git status --short -- docs/handoffs/task-completions/2026-06-18-18-answer-triggered-tab-examples-architecture.md steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py tests/test_tab_engine.py ui/answer-client.js ui/steel-guitar-rag-mock.html`
   - Passed. Showed unrelated dirty UI/test files; target handoff did not exist.
 - `sed -n '1,280p' /Users/cory/.codex/attachments/3dc5437e-9397-40aa-8feb-b4819d8463e0/pasted-text.txt`
   - Passed. Latest attachment matched the task and steered the final scope.
-- `rg -n "tab|tab_example|/api/tab|answer|intent|curated" pocketsteel tests -g '*.py'`
+- `rg -n "tab|tab_example|/api/tab|answer|intent|curated" steel_guitar_rag tests -g '*.py'`
   - Passed, though output was large/truncated. Used to identify relevant modules.
 - `sed -n '1,260p' docs/handoffs/task-completions/2026-06-18-18-tab-engine-product-architecture.md`
   - Passed. Used for prior Lane 18 architecture context.
 - `sed -n '1,220p' docs/handoffs/task-completions/2026-06-18-1516-06-tab-engine-answer-ux.md`
   - Passed. Used for Lane 06 parallel UI context.
-- `sed -n '1,280p' pocketsteel/tab_engine.py`
+- `sed -n '1,280p' steel_guitar_rag/tab_engine.py`
   - Passed. Read-only inspection.
-- `sed -n '280,620p' pocketsteel/tab_engine.py`
+- `sed -n '280,620p' steel_guitar_rag/tab_engine.py`
   - Passed. Read-only inspection.
-- `rg -n "tab|answer|api/tab|answerResponse|fretboard|curated|intent" pocketsteel/api.py`
+- `rg -n "tab|answer|api/tab|answerResponse|fretboard|curated|intent" steel_guitar_rag/api.py`
   - Passed. Used to locate answer/tab integration points.
 - `sed -n '1,320p' tests/test_tab_engine.py`
   - Passed. Read-only inspection.
-- `sed -n '240,530p' pocketsteel/api.py`
+- `sed -n '240,530p' steel_guitar_rag/api.py`
   - Passed. Read-only inspection of `/api/tab/render` and `/api/answer` flow.
-- `sed -n '1,240p' pocketsteel/answer_intent_classifier.py`
+- `sed -n '1,240p' steel_guitar_rag/answer_intent_classifier.py`
   - Passed. Read-only inspection of current intent classifier.
-- `sed -n '3000,3148p' pocketsteel/curated_answers.py`
+- `sed -n '3000,3148p' steel_guitar_rag/curated_answers.py`
   - Passed. Read-only inspection of existing lick/practice curated answers.
 - `sed -n '1,220p' docs/handoffs/task-completions/2026-06-18-05-tab-engine-first-slice.md`
   - Passed. Used for committed backend slice context.

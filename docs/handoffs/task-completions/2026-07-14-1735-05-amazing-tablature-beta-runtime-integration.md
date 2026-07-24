@@ -10,10 +10,10 @@
 
 ## Files changed
 
-- `pocketsteel/amazing_tablature_model.py` — sanitized immutable beta model contract.
-- `pocketsteel/melody_decision_rules.py` — exposes exact approved model identity and public audit metadata.
-- `pocketsteel/melody_ranker.py` — keeps the compatibility trainer on the ranker contract version rather than mislabeling new output as the approved runtime model.
-- `pocketsteel/melody_arranger.py` — adds the learned copedent-neutral tie-break score within deterministic constraints.
+- `steel_guitar_rag/amazing_tablature_model.py` — sanitized immutable beta model contract.
+- `steel_guitar_rag/melody_decision_rules.py` — exposes exact approved model identity and public audit metadata.
+- `steel_guitar_rag/melody_ranker.py` — keeps the compatibility trainer on the ranker contract version rather than mislabeling new output as the approved runtime model.
+- `steel_guitar_rag/melody_arranger.py` — adds the learned copedent-neutral tie-break score within deterministic constraints.
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_copedent_transfer.py`
 - `tests/test_melody_arranger_decision_fixtures.py`
@@ -87,10 +87,10 @@
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/amazing_tablature_model.py`
-- `pocketsteel/melody_decision_rules.py`
-- `pocketsteel/melody_ranker.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/amazing_tablature_model.py`
+- `steel_guitar_rag/melody_decision_rules.py`
+- `steel_guitar_rag/melody_ranker.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_amazing_tablature_training.py`
 - `tests/test_copedent_transfer.py`
 - `tests/test_melody_arranger_decision_fixtures.py`

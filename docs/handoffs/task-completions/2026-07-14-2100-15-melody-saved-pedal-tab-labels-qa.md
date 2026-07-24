@@ -10,7 +10,7 @@
 ## Files changed
 
 - QA handoff created: this file.
-- Implementation under review: `pocketsteel/copedent_transfer.py`, `pocketsteel/melody_arranger.py`, and `tests/test_copedent_transfer.py`.
+- Implementation under review: `steel_guitar_rag/copedent_transfer.py`, `steel_guitar_rag/melody_arranger.py`, and `tests/test_copedent_transfer.py`.
 - Deleted files: none.
 - Generated artifacts: none.
 
@@ -19,7 +19,7 @@
 - `.venv/bin/python -m pytest -q tests/test_copedent_transfer.py -k 'complete_song_arranges_when_player_uses_distinct_g_and_gg_labels or transfer_uses_stable_ids_when_player_g_label_collides_with_arranger_code'` — 2 passed.
 - Relevant Melody/copedent selection — 29 passed.
 - `.venv/bin/python -m pytest -q` — 1,133 passed in 60.32 seconds.
-- `.venv/bin/ruff check pocketsteel/copedent_transfer.py pocketsteel/melody_arranger.py tests/test_copedent_transfer.py` — passed.
+- `.venv/bin/ruff check steel_guitar_rag/copedent_transfer.py steel_guitar_rag/melody_arranger.py tests/test_copedent_transfer.py` — passed.
 - `npm run check:js` — passed.
 - `git diff --check` — passed for the scoped implementation.
 
@@ -40,8 +40,8 @@
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/copedent_transfer.py`
-- `pocketsteel/melody_arranger.py`
+- `steel_guitar_rag/copedent_transfer.py`
+- `steel_guitar_rag/melody_arranger.py`
 - `tests/test_copedent_transfer.py`
 - `docs/handoffs/task-completions/2026-07-14-2100-05-melody-saved-pedal-tab-labels.md`
 - `docs/handoffs/task-completions/2026-07-14-2100-15-melody-saved-pedal-tab-labels-qa.md`

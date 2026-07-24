@@ -38,7 +38,7 @@ Intentionally not changed:
 - Expected backend port: `8770`
 - Expected git HEAD: `e37f00e`
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"e37f00e","git_branch":"feature/answer-api","server_started_at":"2026-06-30T13:09:15.224521+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"e37f00e","git_branch":"feature/answer-api","server_started_at":"2026-06-30T13:09:15.224521+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - Whether app root `/` works: yes, it redirects to `/ui/steel-guitar-rag-mock.html`
 - Whether app root `/` is expected to work: yes, as a redirect to the app shell
 - Whether `/ui/steel-guitar-rag-mock.html` works: yes
@@ -52,7 +52,7 @@ Intentionally not changed:
 Starting runtime:
 
 ```json
-{"git_sha":"0406b1c","git_branch":"feature/answer-api","server_started_at":"2026-06-30T12:09:35.855631+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
+{"git_sha":"0406b1c","git_branch":"feature/answer-api","server_started_at":"2026-06-30T12:09:35.855631+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
 ```
 
 Service state before restart:
@@ -72,7 +72,7 @@ Restart method:
 Runtime after restart:
 
 ```json
-{"git_sha":"e37f00e","git_branch":"feature/answer-api","server_started_at":"2026-06-30T13:09:15.224521+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
+{"git_sha":"e37f00e","git_branch":"feature/answer-api","server_started_at":"2026-06-30T13:09:15.224521+00:00","python_module":"steel_guitar_rag.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}
 ```
 
 New listener:

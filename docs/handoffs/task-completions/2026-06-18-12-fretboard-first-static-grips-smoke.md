@@ -37,7 +37,7 @@ No implementation files, DNS, Cloudflare Access policy, Chroma/vector data, embe
 - Recent backend commit included: `0006905 fix: prefer fretboard for static grip examples`
 - Protected-preview runtime commit: `20d2f84`
 - Protected-preview process: listening on `127.0.0.1:8770`
-- Protected-preview cwd: repo path, `~/Documents/Pocket Steel`
+- Protected-preview cwd: repo path, `~/Documents/Steel Guitar RAG`
 - Temporary local smoke server: started on `127.0.0.1:8781` for local API/browser smoke, then stopped after verification
 
 Protected preview was restarted with the documented private-preview server command using:
@@ -143,7 +143,7 @@ curl -sS http://127.0.0.1:8770/api/version
 git diff --check
 node --check ui/answer-client.js
 node --check ui/pedal-steel-fretboard.js
-.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py
+.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py
 .venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q
 .venv/bin/python -m pytest tests/test_pedal_steel_fretboard_ui.py -q
 .venv/bin/python -m pytest tests/test_tab_engine.py -q
@@ -156,7 +156,7 @@ Results:
 - `git diff --check`: passed
 - `node --check ui/answer-client.js`: passed
 - `node --check ui/pedal-steel-fretboard.js`: passed
-- `py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py`: passed
+- `py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/api.py steel_guitar_rag/answer_tab_examples.py`: passed
 - `tests/test_frontend_answer_ui.py`: 20 passed
 - `tests/test_pedal_steel_fretboard_ui.py`: 29 passed
 - `tests/test_tab_engine.py`: 23 passed

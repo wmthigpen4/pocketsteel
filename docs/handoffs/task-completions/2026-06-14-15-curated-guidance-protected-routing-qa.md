@@ -3,7 +3,7 @@
 ## Task Summary
 
 - What was requested: QA review the first default-off protected-preview `/api/answer` curated-guidance routing slice before Repo Steward staging.
-- What was completed: reviewed the Lane 05 handoff, `pocketsteel/api.py`, `pocketsteel/curated_guidance_retriever.py`, focused curated-guidance API tests, API contract/intent tests, and retriever tests; ran the requested focused checks plus full pytest to classify the reported failures.
+- What was completed: reviewed the Lane 05 handoff, `steel_guitar_rag/api.py`, `steel_guitar_rag/curated_guidance_retriever.py`, focused curated-guidance API tests, API contract/intent tests, and retriever tests; ran the requested focused checks plus full pytest to classify the reported failures.
 - What was intentionally not changed: no implementation files, tests, `/api/answer` behavior, source cards, answer-body curated guidance, UI, Chroma/vector stores, embeddings, corpus-private files, SGF scraper, deployment, DNS, auth policy, staging, or commits were changed by this QA task.
 
 ## Pass/Fail Decision
@@ -15,8 +15,8 @@ QA approves exact-path staging of the protected-preview curated-guidance routing
 ## Files Reviewed
 
 - `docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_guidance_retriever.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_guidance_retriever.py`
 - `tests/test_curated_guidance_retriever.py`
 - `tests/test_api_search.py`
 - `tests/test_answer_intent_classifier.py`
@@ -87,7 +87,7 @@ Pass.
 
 Scoped diff for this slice is limited to:
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
 
@@ -124,21 +124,21 @@ Commands run:
   - Passed: `244 passed`.
 - `.venv/bin/python -m pytest tests/test_answer_eval.py tests/test_full_answer_quality_eval.py -q`
   - Passed: `64 passed`.
-- `.venv/bin/python -m py_compile pocketsteel/api.py pocketsteel/curated_guidance_retriever.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/api.py steel_guitar_rag/curated_guidance_retriever.py`
   - Passed.
 - `.venv/bin/python -m pytest`
   - Failed with known unrelated static/UI failures: `718 passed, 2 failed`.
 - `git diff --name-only`
   - Passed for worktree inspection. Confirmed broad unrelated dirty files remain.
-- `git status --short -- pocketsteel/api.py pocketsteel/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py tests/test_api_search.py tests/test_answer_intent_classifier.py tests/test_api_contract.py docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
-  - Passed. Scoped implementation files are `M pocketsteel/api.py`, `M tests/test_api_search.py`, plus the untracked Lane 05 handoff.
-- `git diff --stat -- pocketsteel/api.py tests/test_api_search.py docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
+- `git status --short -- steel_guitar_rag/api.py steel_guitar_rag/curated_guidance_retriever.py tests/test_curated_guidance_retriever.py tests/test_api_search.py tests/test_answer_intent_classifier.py tests/test_api_contract.py docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
+  - Passed. Scoped implementation files are `M steel_guitar_rag/api.py`, `M tests/test_api_search.py`, plus the untracked Lane 05 handoff.
+- `git diff --stat -- steel_guitar_rag/api.py tests/test_api_search.py docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
   - Passed. Scoped diff shows only API/test changes; the untracked handoff is not included in normal diff stat.
 - `git diff --check`
   - Passed after writing this QA handoff.
 - `git diff --no-index --check -- /dev/null docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md`
   - Passed with expected exit code `1` for a new untracked file diff and no whitespace-error output.
-- `git status --short -- pocketsteel/api.py tests/test_api_search.py docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md`
+- `git status --short -- steel_guitar_rag/api.py tests/test_api_search.py docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md`
   - Passed. Shows only the two implementation files and two handoffs in the approved staging scope.
 
 ## Full Pytest Caveat Decision
@@ -160,7 +160,7 @@ Decision: these failures do not block this curated-guidance backend slice.
 Reason:
 
 - They match the Lane 05 reported full-suite caveats exactly.
-- They are static/UI route failures outside `pocketsteel/api.py`, `pocketsteel/curated_guidance_retriever.py`, and the curated-guidance `/api/answer` hook.
+- They are static/UI route failures outside `steel_guitar_rag/api.py`, `steel_guitar_rag/curated_guidance_retriever.py`, and the curated-guidance `/api/answer` hook.
 - The focused backend/API/eval checks for this slice all passed.
 
 They should remain parked for a separate Lane 06/static task if still relevant.
@@ -179,8 +179,8 @@ Non-blocking test coverage note:
   - `docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md`
 - Reviewed:
   - `docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
-  - `pocketsteel/api.py`
-  - `pocketsteel/curated_guidance_retriever.py`
+  - `steel_guitar_rag/api.py`
+  - `steel_guitar_rag/curated_guidance_retriever.py`
   - `tests/test_curated_guidance_retriever.py`
   - `tests/test_api_search.py`
   - `tests/test_answer_intent_classifier.py`
@@ -194,7 +194,7 @@ Non-blocking test coverage note:
 
 For this protected-routing slice:
 
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md`
 - `docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md`
@@ -231,7 +231,7 @@ Why:
 
 Rollback notes:
 
-- Revert the scoped changes in `pocketsteel/api.py` and `tests/test_api_search.py`.
+- Revert the scoped changes in `steel_guitar_rag/api.py` and `tests/test_api_search.py`.
 - No corpus-private, Chroma, embeddings, UI, auth-policy, deployment, or DNS rollback is needed for this slice.
 
 ## Human Decision Needed
@@ -259,5 +259,5 @@ Recommended lane: `01 Repo Steward`.
 Suggested next prompt:
 
 ```text
-Lane 01: Run ExactPathCommit using docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md. Stage only pocketsteel/api.py, tests/test_api_search.py, docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md, and docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md. Do not stage corpus-private, public/UI/static files, source-inbox files, generated reports, or unrelated parked worktree files.
+Lane 01: Run ExactPathCommit using docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md. Stage only steel_guitar_rag/api.py, tests/test_api_search.py, docs/handoffs/task-completions/2026-06-14-2036-05-curated-guidance-protected-routing.md, and docs/handoffs/task-completions/2026-06-14-15-curated-guidance-protected-routing-qa.md. Do not stage corpus-private, public/UI/static files, source-inbox files, generated reports, or unrelated parked worktree files.
 ```

@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from pocketsteel.answer_contracts import normalize_intent, validate_answer_against_contract
+from steel_guitar_rag.answer_contracts import normalize_intent, validate_answer_against_contract
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8770"

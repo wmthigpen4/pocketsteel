@@ -33,10 +33,10 @@ The five confirmed P1 clusters had separate but related routing gaps:
 
 ## Files Changed
 
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `tests/test_fretboard_examples.py`
@@ -177,10 +177,10 @@ Why:
 
 Rollback:
 - Revert the scoped commit for:
-  - `pocketsteel/answer_intent_classifier.py`
-  - `pocketsteel/api.py`
-  - `pocketsteel/curated_answers.py`
-  - `pocketsteel/fretboard_examples.py`
+  - `steel_guitar_rag/answer_intent_classifier.py`
+  - `steel_guitar_rag/api.py`
+  - `steel_guitar_rag/curated_answers.py`
+  - `steel_guitar_rag/fretboard_examples.py`
   - the three focused test files
   - this handoff
 - Do not use broad reset/checkout in the dirty shared worktree.
@@ -190,10 +190,10 @@ Rollback:
 Safe to commit.
 
 Exact safe-to-stage file list:
-- `pocketsteel/answer_intent_classifier.py`
-- `pocketsteel/api.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
+- `steel_guitar_rag/answer_intent_classifier.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/curated_answers.py`
+- `steel_guitar_rag/fretboard_examples.py`
 - `tests/test_answer_intent_classifier.py`
 - `tests/test_api_search.py`
 - `tests/test_fretboard_examples.py`

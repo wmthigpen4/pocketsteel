@@ -27,7 +27,7 @@ Intentionally not changed:
 
 ## Files changed
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 
@@ -35,7 +35,7 @@ Intentionally not changed:
 
 ### New backend module
 
-`pocketsteel/fretboard_explorer.py` adds:
+`steel_guitar_rag/fretboard_explorer.py` adds:
 
 - `ExplorerRow`
 - `ExplorerCandidate`
@@ -110,7 +110,7 @@ Advanced swaps:
 
 - `git status --short`
 - `git branch --show-current`
-- `.venv/bin/python -m py_compile pocketsteel/fretboard_explorer.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/fretboard_explorer.py`
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q`
   - Result: `9 passed`
 - `.venv/bin/python -m pytest tests/test_fretboard_examples.py -q`
@@ -123,7 +123,7 @@ Advanced swaps:
   - Result: `784 passed`
 - `git diff --check`
   - Result: passed
-- `git diff --no-index --check -- /dev/null pocketsteel/fretboard_explorer.py`
+- `git diff --no-index --check -- /dev/null steel_guitar_rag/fretboard_explorer.py`
   - Result: no whitespace errors; exit 1 expected for `/dev/null` comparison.
 - `git diff --no-index --check -- /dev/null tests/test_fretboard_explorer.py`
   - Result: no whitespace errors; exit 1 expected for `/dev/null` comparison.
@@ -149,7 +149,7 @@ No for this backend slice. Future decisions are needed before:
 
 ## Safe-to-stage exact file list
 
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `tests/test_fretboard_explorer.py`
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-backend-slice.md`
 
@@ -170,7 +170,7 @@ Lane 15 QA / Answer Eval.
 Suggested next prompt:
 
 ```text
-Lane 15: QA the G-only deterministic E9 Fretboard Explorer backend slice in pocketsteel/fretboard_explorer.py and tests/test_fretboard_explorer.py. Verify row model shape, pitch validation, G major/minor coverage, advanced swap labeling, no RAG/corpus dependency, and readiness for a later UI/API wiring slice.
+Lane 15: QA the G-only deterministic E9 Fretboard Explorer backend slice in steel_guitar_rag/fretboard_explorer.py and tests/test_fretboard_explorer.py. Verify row model shape, pitch validation, G major/minor coverage, advanced swap labeling, no RAG/corpus dependency, and readiness for a later UI/API wiring slice.
 ```
 
 ## Commit readiness

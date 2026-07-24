@@ -11,10 +11,10 @@ Intentionally unchanged: audio transcription, authentication, corpus/Chroma, scr
 ## Files changed
 
 - `docs/melody-exercise-v0.md`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/melody_import.py`
-- `pocketsteel/resources/public_domain_songs/amazing_grace_new_britain.json`
-- `pocketsteel/resources/public_domain_songs/starter_songbook_v1.json`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/melody_import.py`
+- `steel_guitar_rag/resources/public_domain_songs/amazing_grace_new_britain.json`
+- `steel_guitar_rag/resources/public_domain_songs/starter_songbook_v1.json`
 - `ui/answer-client.js`
 - `ui/melody-score.js`
 - `ui/melody-workbench.html`
@@ -83,10 +83,10 @@ No. The complete-melody-cycle and phrase-section direction was explicitly approv
 ## Safe-to-stage exact file list
 
 - `docs/melody-exercise-v0.md`
-- `pocketsteel/melody_assistant.py`
-- `pocketsteel/melody_import.py`
-- `pocketsteel/resources/public_domain_songs/amazing_grace_new_britain.json`
-- `pocketsteel/resources/public_domain_songs/starter_songbook_v1.json`
+- `steel_guitar_rag/melody_assistant.py`
+- `steel_guitar_rag/melody_import.py`
+- `steel_guitar_rag/resources/public_domain_songs/amazing_grace_new_britain.json`
+- `steel_guitar_rag/resources/public_domain_songs/starter_songbook_v1.json`
 - `ui/answer-client.js`
 - `ui/melody-score.js`
 - `ui/melody-workbench.html`

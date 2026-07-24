@@ -189,7 +189,7 @@ Add after Lane 05 finishes the backend contract:
    - normal `/api/answer` never returns invalid tab examples.
 
 3. Tab engine tests:
-   - answer-triggered examples render through `pocketsteel.tab_engine`.
+   - answer-triggered examples render through `steel_guitar_rag.tab_engine`.
    - every attached example has 10 string rows.
    - every attached example has `validation.ok is True`.
    - every attached example has `rightsStatus`.
@@ -326,9 +326,9 @@ Do not stage unrelated dirty or untracked files, especially:
 - `docs/handoffs/task-completions/integration-status.md`
 - `docs/handoffs/task-completions/qa-no-op-answer-intent-classifier-source-backed-fix.md`
 - `docs/source-inbox-inventory.md`
-- `pocketsteel/api.py`
-- `pocketsteel/api_contract.py`
-- `pocketsteel/answer_tab_examples.py`
+- `steel_guitar_rag/api.py`
+- `steel_guitar_rag/api_contract.py`
+- `steel_guitar_rag/answer_tab_examples.py`
 - `rag_answer.py`
 - `rag_build_clean_corpus.py`
 - `rag_chunk_corpus.py`

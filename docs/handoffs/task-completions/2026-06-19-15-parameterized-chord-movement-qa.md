@@ -143,7 +143,7 @@ Not covered:
 
 ## Checks Run
 
-Run from `/Users/cory/Documents/Pocket Steel`:
+Run from `/Users/cory/Documents/Steel Guitar RAG`:
 
 - `git status --short`
   - Broad unrelated dirty/untracked worktree remains parked.
@@ -153,7 +153,7 @@ Run from `/Users/cory/Documents/Pocket Steel`:
   - Empty before QA handoff staging.
 - `git diff --check`
   - Passed.
-- `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/answer_tab_examples.py pocketsteel/api.py pocketsteel/api_contract.py`
+- `.venv/bin/python -m py_compile steel_guitar_rag/tab_engine.py steel_guitar_rag/answer_tab_examples.py steel_guitar_rag/api.py steel_guitar_rag/api_contract.py`
   - Passed.
 - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`
   - Passed: `25 passed`.

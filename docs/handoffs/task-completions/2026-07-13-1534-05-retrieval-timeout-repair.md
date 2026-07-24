@@ -15,7 +15,7 @@ Intentionally unchanged: retrieval ranking, Chroma/vector data, corpus content, 
 ## Files changed
 
 - `rag_common.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `tests/test_rag_common.py`
 - This handoff
@@ -27,7 +27,7 @@ No files were deleted. No generated artifacts were created.
 - `PYTHONPATH=.:scripts .venv/bin/pytest -q tests/test_rag_common.py tests/test_api_search.py -k 'retrieval_timeout or bounded_dependency_timeout or health_checks or content_concurrency'` — 8 passed.
 - `PYTHONPATH=.:scripts .venv/bin/pytest -q` — 1,018 passed.
 - Core JavaScript `node --check` commands for Chat, fretboard, Explorer loader/Explorer, Melody Studio, and Lessons — passed.
-- `python3 -m py_compile rag_common.py pocketsteel/api.py` — passed.
+- `python3 -m py_compile rag_common.py steel_guitar_rag/api.py` — passed.
 - `git diff --check` — passed.
 
 ## Smoke Target
@@ -75,7 +75,7 @@ No. The repair is inside the approved runtime reliability scope.
 ## Safe-to-stage exact file list
 
 - `rag_common.py`
-- `pocketsteel/api.py`
+- `steel_guitar_rag/api.py`
 - `tests/test_api_search.py`
 - `tests/test_rag_common.py`
 - `docs/handoffs/task-completions/2026-07-13-1534-05-retrieval-timeout-repair.md`

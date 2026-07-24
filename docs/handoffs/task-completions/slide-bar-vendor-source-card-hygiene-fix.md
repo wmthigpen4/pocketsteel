@@ -6,7 +6,7 @@ HEAD: `c2815e3`
 
 ## Task Summary
 
-Requested: fix the clean-HEAD backend hygiene blocker from `integration-status.md`: `/api/answer` imports `slide_bar_vendor_source_cards`, but clean HEAD did not define that helper in `pocketsteel.curated_source_registry`. The fix needed to reconcile curated-source-registry source cards for slide bar/vendor curated answers while preserving retrieval gating and current answer behavior.
+Requested: fix the clean-HEAD backend hygiene blocker from `integration-status.md`: `/api/answer` imports `slide_bar_vendor_source_cards`, but clean HEAD did not define that helper in `steel_guitar_rag.curated_source_registry`. The fix needed to reconcile curated-source-registry source cards for slide bar/vendor curated answers while preserving retrieval gating and current answer behavior.
 
 Completed: made the curated-source-registry dependency explicit and testable by adding `slide_bar_vendor_source_cards()` to the registry helper module and adding direct registry tests for its source-card metadata/order/excerpt hygiene.
 
@@ -21,10 +21,10 @@ Intentionally not changed:
 
 Clean HEAD had this runtime dependency:
 
-- `pocketsteel/api.py` imports `slide_bar_vendor_source_cards` from `pocketsteel.curated_source_registry`.
+- `steel_guitar_rag/api.py` imports `slide_bar_vendor_source_cards` from `steel_guitar_rag.curated_source_registry`.
 - The `/api/answer` vendor-buying branch uses it when `curated_answer.intent == "vendor_buying_guidance"` and the question mentions `slide bar`, `steel bar`, or `tone bar`.
 
-But clean `pocketsteel/curated_source_registry.py` only exposed:
+But clean `steel_guitar_rag/curated_source_registry.py` only exposed:
 
 - `slide_bar_vendor_bullets()`
 - generic curated-source lookup/format helpers
@@ -35,12 +35,12 @@ So API test collection/import could fail on a clean checkout even though a broad
 
 References inspected:
 
-- `pocketsteel/api.py`
-  - import: `from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards`
+- `steel_guitar_rag/api.py`
+  - import: `from steel_guitar_rag.curated_source_registry import slide_bar_vendor_source_cards`
   - source-card replacement path: curated slide/steel/tone-bar buying answers use `concise_source_cards(slide_bar_vendor_source_cards())`
-- `pocketsteel/curated_answers.py`
+- `steel_guitar_rag/curated_answers.py`
   - answer text uses `slide_bar_vendor_bullets()` for curated buying guidance.
-- `pocketsteel/curated_source_registry.py`
+- `steel_guitar_rag/curated_source_registry.py`
   - registry loader and filter helpers load `corpus_metadata/source_registry.json`.
   - new source-card helper is colocated with `slide_bar_vendor_bullets()` so answer text and source cards share the same curated registry source selection.
 - `tests/test_api_search.py`
@@ -52,7 +52,7 @@ References inspected:
 
 Implementation:
 
-- `pocketsteel/curated_source_registry.py`
+- `steel_guitar_rag/curated_source_registry.py`
   - Added `slide_bar_vendor_source_cards()`.
 
 Tests:
@@ -101,7 +101,7 @@ New direct registry test verifies:
 
 - stable source order;
 - every source card is labeled `curated_source_registry`;
-- every source card has `Pocket Steel curated source` as the source/forum label;
+- every source card has `Steel Guitar RAG curated source` as the source/forum label;
 - every source card has a stable `chunk_id`;
 - every source card has an HTTPS URL;
 - excerpts include registry caveats such as current-inventory cautions;
@@ -125,8 +125,8 @@ git status --short
 git diff --check
 .venv/bin/python -m pytest tests/test_curated_source_registry.py tests/test_api_search.py -k "slide_bar or source_cards_clean_contact_order_and_forum_junk or scope_guardrail_for_numbers_prompt_runs_before_retrieval or classifier_gates_unsafe_prompt_before_retrieval or classifier_gates_off_domain_prompt_before_retrieval or remaining_retrieval_gating_smoke_failures"
 .venv/bin/python - <<'PY'
-import pocketsteel.api
-from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards
+import steel_guitar_rag.api
+from steel_guitar_rag.curated_source_registry import slide_bar_vendor_source_cards
 cards = slide_bar_vendor_source_cards()
 print('api import ok')
 print(len(cards), [card['thread_title'] for card in cards[:4]])
@@ -184,7 +184,7 @@ Commit readiness: `Needs human review first`.
 
 Reason: tests are green and the slice is narrow, but the worktree remains broadly dirty. Repo Steward should hunk-stage only:
 
-- `pocketsteel/curated_source_registry.py`
+- `steel_guitar_rag/curated_source_registry.py`
 - `tests/test_curated_source_registry.py`
 - `docs/handoffs/task-completions/slide-bar-vendor-source-card-hygiene-fix.md`
 
@@ -207,8 +207,8 @@ Read:
 - AGENTS.md
 - docs/handoffs/task-completions/slide-bar-vendor-source-card-hygiene-fix.md
 - docs/handoffs/task-completions/integration-status.md
-- pocketsteel/api.py
-- pocketsteel/curated_source_registry.py
+- steel_guitar_rag/api.py
+- steel_guitar_rag/curated_source_registry.py
 - tests/test_curated_source_registry.py
 - tests/test_api_search.py
 

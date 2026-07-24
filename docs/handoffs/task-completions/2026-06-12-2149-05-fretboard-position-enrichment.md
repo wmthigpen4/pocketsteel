@@ -5,9 +5,9 @@
 
 # Files changed
 - Changed files:
-  - `pocketsteel/fretboard_examples.py`
-  - `pocketsteel/curated_answers.py`
-  - `pocketsteel/api_contract.py`
+  - `steel_guitar_rag/fretboard_examples.py`
+  - `steel_guitar_rag/curated_answers.py`
+  - `steel_guitar_rag/api_contract.py`
   - `tests/test_fretboard_examples.py`
   - `tests/test_api_search.py`
   - `tests/test_api_contract.py`

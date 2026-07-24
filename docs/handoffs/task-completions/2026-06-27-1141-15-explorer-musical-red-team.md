@@ -36,8 +36,8 @@ Intentionally not changed:
 - `docs/handoffs/task-completions/integration-status.md`
 - `docs/handoffs/task-completions/2026-06-27-1110-18-fretboard-musical-product-audit.md`
 - `docs/handoffs/task-completions/2026-06-27-1140-12-chord-voicing-finder-protected-smoke.md`
-- `pocketsteel/e9_copedents.py`
-- `pocketsteel/fretboard_explorer.py`
+- `steel_guitar_rag/e9_copedents.py`
+- `steel_guitar_rag/fretboard_explorer.py`
 - `ui/e9-fretboard-explorer.js`
 - `tests/test_fretboard_explorer.py`
 - `tests/test_frontend_answer_ui.py`
