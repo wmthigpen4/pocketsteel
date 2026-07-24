@@ -4,15 +4,18 @@
 
 The exact `2af97f5d` release did start under launchd during activation and served
 successful live, ready, and version responses for the full verification window.
-Activation was incorrectly rejected because the installer could not establish
-the relationship between the launchd job PID and the port-8770 listener PID.
-The subsequent immediate rollback bootstrap failed with launchd error 5 and
-left the daemon unloaded.
+Activation was incorrectly rejected because `/api/version` returned the
+repository's 8-character abbreviation (`2af97f5d`) while the installer required
+it to equal a 7-character slice (`2af97f5`) of the expected full SHA. The
+supervision check was therefore never reached. The subsequent immediate rollback
+bootstrap failed with launchd error 5 and left the daemon unloaded.
 
 This slice hardens only the private-preview activation script. It:
 
 - reads the launchd job through normal access with a non-interactive privileged
   fallback;
+- accepts a minimum-7-character API SHA only when it is a prefix of the exact
+  expected commit;
 - parses launchd state and PID explicitly;
 - accepts the listener only when it is the launchd PID or a descendant owned by
   the configured runtime user;

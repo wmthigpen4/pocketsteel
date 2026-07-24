@@ -110,6 +110,25 @@ def test_verify_health_checks_live_ready_and_exact_version() -> None:
     assert json.loads(result.stdout)["git_sha"] == "abc1234"
 
 
+def test_verify_accepts_api_abbreviation_of_full_expected_sha() -> None:
+    server, thread = _start_health_server()
+    try:
+        result = _run_installer(
+            "verify",
+            STEEL_RAG_HOST="127.0.0.1",
+            STEEL_RAG_PORT=str(server.server_address[1]),
+            STEEL_RAG_EXPECTED_GIT_SHA="abc1234def567890abc1234def567890abc1234d",
+            STEEL_RAG_HEALTH_TIMEOUT_SECONDS="2",
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["git_sha"] == "abc1234"
+
+
 def test_supervised_verify_accepts_listener_descended_from_launchd_pid(tmp_path: Path) -> None:
     launchctl = _write_executable(
         tmp_path / "launchctl",

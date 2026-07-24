@@ -284,6 +284,14 @@ bootstrap_with_retry() {
   return 1
 }
 
+version_matches_expected() {
+  local actual="$1"
+  if [[ -z "$STEEL_RAG_EXPECTED_GIT_SHA" ]]; then
+    return 0
+  fi
+  [[ ${#actual} -ge 7 && "$STEEL_RAG_EXPECTED_GIT_SHA" == "$actual"* ]]
+}
+
 wait_for_health() {
   local require_supervised="${1:-0}"
   local deadline now live ready version actual
@@ -306,7 +314,7 @@ wait_for_health() {
     version="$(curl --max-time 3 --fail --silent --show-error "http://$STEEL_RAG_HOST:$STEEL_RAG_PORT/api/version" 2>/dev/null || true)"
     if [[ "$live" == *'"live"'* && "$ready" == *'"ready"'* && -n "$version" ]]; then
       actual="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("git_sha", ""))' <<<"$version" 2>/dev/null || true)"
-      if [[ -z "$STEEL_RAG_EXPECTED_GIT_SHA" || "$actual" == "${STEEL_RAG_EXPECTED_GIT_SHA:0:7}" ]]; then
+      if version_matches_expected "$actual"; then
         if [[ "$require_supervised" == "1" ]]; then
           if ! supervised_listener_is_ready; then
             sleep 1
