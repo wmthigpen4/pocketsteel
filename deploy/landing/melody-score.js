@@ -187,7 +187,8 @@
       tie: event.tie || "",
       lyric: event.lyric || "",
       articulation: event.articulation || "",
-      chord: chordForEvent(draft, event)
+      chord: chordForEvent(draft, event),
+      ...(event.lockedPosition ? { position: { ...event.lockedPosition } } : {})
     }));
   }
 
@@ -299,6 +300,7 @@
     if (!VF?.Renderer || !VF?.Stave || !VF?.StaveNote || !VF?.Voice || !VF?.Formatter) return false;
     container.replaceChildren();
     const score = reflowDraft(draft).score;
+    const uncertainIds = new Set(draft?.review?.flaggedEventIds || []);
     const measureCount = Math.max(1, ...score.melody.map((event) => Number(event.measure) || 1));
     const layout = scoreSystemLayout(measureCount, container.clientWidth);
     const measureWidth = (layout.width - 24) / layout.columns;
@@ -353,6 +355,7 @@
       const element = typeof note.getSVGElement === "function" ? note.getSVGElement() : null;
       if (!element) return;
       element.classList.add("score-event");
+      if (uncertainIds.has(event.id)) element.classList.add("is-uncertain");
       if (index === selectedIndex) {
         element.classList.add("is-selected");
         element.setAttribute("aria-current", "true");
@@ -430,6 +433,7 @@
     if (!container || typeof document === "undefined") return;
     container.replaceChildren();
     const score = reflowDraft(draft).score;
+    const uncertainIds = new Set(draft?.review?.flaggedEventIds || []);
     const measures = Math.max(1, ...score.melody.map((event) => Number(event.measure) || 1));
     const layout = scoreSystemLayout(measures, container.clientWidth);
     const measureWidth = (layout.width - 24) / layout.columns;
@@ -476,7 +480,7 @@
       const column = measureIndex % layout.columns;
       const system = Math.floor(measureIndex / layout.columns);
       const x = 55 + column * measureWidth + ((Number(event.beat) - 1) / beats) * (measureWidth - 40);
-      const group = make("g", { class: `score-event${index === selectedIndex ? " is-selected" : ""}`, tabindex: "0", role: "button", "aria-label": event.rest ? `Rest ${index + 1}` : `${event.pitch}, note ${index + 1}` });
+      const group = make("g", { class: `score-event${uncertainIds.has(event.id) ? " is-uncertain" : ""}${index === selectedIndex ? " is-selected" : ""}`, tabindex: "0", role: "button", "aria-label": event.rest ? `Rest ${index + 1}` : `${event.pitch}, note ${index + 1}` });
       group.dataset.origin = event.origin || "source";
       if (event.rest) {
         const rest = make("text", { x: x - 8, y: 104 + system * layout.systemHeight, class: "rest-mark" });

@@ -23,6 +23,13 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 from xml.etree import ElementTree as ET
 
+from steel_guitar_rag.score_omr import (
+    LocalVisionOmrProvider,
+    ScoreOmrError,
+    inspect_pdf,
+    recognize_printed_document,
+)
+
 
 ENABLE_MELODY_IMPORT_ENV = "STEEL_RAG_ENABLE_MELODY_IMPORT"
 MELODY_VISION_MODEL_ENV = "STEEL_RAG_MELODY_VISION_MODEL"
@@ -34,12 +41,14 @@ DEFAULT_MELODY_VISION_TIMEOUT_SECONDS = 45.0
 SCORE_DRAFT_SCHEMA_VERSION = "score_draft_v1"
 MAX_IMPORT_BODY_BYTES = 12 * 1024 * 1024
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_PDF_BYTES = 8 * 1024 * 1024
 MAX_SCORE_BYTES = 2 * 1024 * 1024
 MAX_MIDI_BYTES = 1024 * 1024
 MAX_MXL_EXPANDED_BYTES = 4 * 1024 * 1024
 MAX_EVENTS = 128
 MAX_MEASURES = 64
 SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+SUPPORTED_PRINTED_DOCUMENT_TYPES = {*SUPPORTED_IMAGE_TYPES, "application/pdf"}
 
 _RESOURCE_ROOT = Path(__file__).resolve().parent / "resources" / "public_domain_songs"
 _AMAZING_GRACE_PATH = _RESOURCE_ROOT / "amazing_grace_new_britain.json"
@@ -124,25 +133,38 @@ def import_score_draft(
     if source_type == "midi":
         raw = _decode_file(payload, MAX_MIDI_BYTES)
         return parse_midi(raw, selected_track=payload.get("trackIndex"))
-    if source_type == "image":
+    if source_type in {"image", "pdf"}:
+        if payload.get("rightsAcknowledged") is not True:
+            raise MelodyImportError(
+                "Confirm that you own this material, have permission, or otherwise have the right to process it."
+            )
         mime_type = str(payload.get("mimeType") or payload.get("mime_type") or "").strip().lower()
-        if mime_type not in SUPPORTED_IMAGE_TYPES:
-            raise MelodyImportError("Upload a JPG, PNG, or WebP image. For PDF music, upload a page screenshot.")
-        raw = _decode_file(payload, MAX_IMAGE_BYTES)
-        encoded = base64.b64encode(raw).decode("ascii")
-        client = vision_client or _ollama_vision_client
-        interpreted = client(encoded, mime_type)
-        return normalize_score_draft(
-            interpreted,
-            source={
-                "type": "image",
-                "title": _safe_title(payload.get("title"), "Uploaded score"),
-                "url": None,
-                "rightsLabel": "unreviewed",
-                "retained": False,
-            },
-            review_status="needs_review",
+        expected_mime = "application/pdf" if source_type == "pdf" else mime_type
+        if expected_mime not in SUPPORTED_PRINTED_DOCUMENT_TYPES:
+            raise MelodyImportError("Upload a PDF, JPG, PNG, or WebP file containing clean printed notation.")
+        raw = _decode_file(payload, MAX_PDF_BYTES if source_type == "pdf" else MAX_IMAGE_BYTES)
+        if source_type == "pdf" and payload.get("inspectOnly") is True:
+            try:
+                return inspect_pdf(raw)
+            except ScoreOmrError as exc:
+                raise MelodyImportError(str(exc)) from exc
+        selected_part = str(payload.get("partId") or "").strip() or None
+        provider_client = vision_client or (
+            lambda encoded, mime: _ollama_vision_client(encoded, mime, selected_part=selected_part)
         )
+        provider = LocalVisionOmrProvider(provider_client)
+        try:
+            return recognize_printed_document(
+                raw=raw,
+                source_type="pdf" if source_type == "pdf" else mime_type,
+                title=_safe_title(payload.get("title") or payload.get("filename"), "Uploaded score"),
+                selected_pages=payload.get("selectedPages"),
+                selected_part=selected_part,
+                provider=provider,
+                normalize=normalize_score_draft,
+            )
+        except ScoreOmrError as exc:
+            raise MelodyImportError(str(exc)) from exc
     if source_type in {"pasted", "microphone", "composed_in_studio", "manual_phrase", "youtube"}:
         return normalize_score_draft(payload.get("draft") or payload)
     raise MelodyImportError("Choose a supported Melody Studio input method.")
@@ -163,17 +185,18 @@ def normalize_score_draft(
         if not isinstance(item, Mapping):
             continue
         if item.get("rest"):
-            melody.append(
-                {
-                    "id": str(item.get("id") or f"m{index}"),
-                    "measure": _bounded_int(item.get("measure"), 1, MAX_MEASURES, 1),
-                    "beat": _positive_number(item.get("beat"), 1.0),
-                    "durationBeats": _positive_number(item.get("durationBeats") or item.get("duration"), 1.0),
-                    "rest": True,
-                    "origin": str(item.get("origin") or "source"),
-                    "confidence": _confidence(item.get("confidence")),
-                }
-            )
+            event = {
+                "id": str(item.get("id") or f"m{index}"),
+                "measure": _bounded_int(item.get("measure"), 1, MAX_MEASURES, 1),
+                "beat": _positive_number(item.get("beat"), 1.0),
+                "durationBeats": _positive_number(item.get("durationBeats") or item.get("duration"), 1.0),
+                "rest": True,
+                "origin": str(item.get("origin") or "source"),
+                "confidence": _confidence(item.get("confidence")),
+            }
+            if item.get("sourcePage") is not None:
+                event["sourcePage"] = _bounded_int(item.get("sourcePage"), 1, 999, 1)
+            melody.append(event)
             continue
         pitch_value = _pitch_value(item.get("pitchValue"), item.get("pitch") or item.get("note"))
         if pitch_value is None or not 47 <= pitch_value <= 94:
@@ -191,6 +214,8 @@ def normalize_score_draft(
         for source_key, target_key in (("tie", "tie"), ("lyric", "lyric"), ("phraseLabel", "phraseLabel")):
             if item.get(source_key):
                 event[target_key] = str(item[source_key])[:80]
+        if item.get("sourcePage") is not None:
+            event["sourcePage"] = _bounded_int(item.get("sourcePage"), 1, 999, 1)
         melody.append(event)
     playable = [event for event in melody if not event.get("rest")]
     if not playable:
@@ -232,9 +257,19 @@ def normalize_score_draft(
         "feel",
         "sectionLabel",
         "formLabel",
+        "providerId",
+        "retentionPolicy",
     ):
         if raw_source.get(key):
             normalized_source[key] = str(raw_source[key])[:500]
+    normalized_source["private"] = bool(raw_source.get("private", normalized_source["type"] in {"image", "pdf"}))
+    normalized_source["trainingUse"] = False
+    if isinstance(raw_source.get("selectedPages"), Sequence):
+        normalized_source["selectedPages"] = [
+            _bounded_int(item, 1, 999, 1) for item in raw_source["selectedPages"]
+        ][:8]
+    if raw_source.get("pageCount") is not None:
+        normalized_source["pageCount"] = _bounded_int(raw_source["pageCount"], 1, 999, 1)
 
     source_key = _normalize_major_key(raw_score.get("sourceKey") or raw_score.get("key") or "G")
     arrangement_key = _normalize_major_key(raw_score.get("arrangementKey") or source_key)
@@ -556,13 +591,30 @@ def _read_varlen(data: bytes, position: int) -> tuple[int, int]:
     raise MelodyImportError("That MIDI file contains an invalid variable-length value.")
 
 
-def _ollama_vision_client(encoded_image: str, mime_type: str) -> Mapping[str, Any]:
+def _ollama_vision_client(
+    encoded_image: str,
+    mime_type: str,
+    *,
+    selected_part: str | None = None,
+) -> Mapping[str, Any]:
+    part_instruction = (
+        f" Read only the staff or instrument whose part id is {selected_part!r}."
+        if selected_part
+        else ""
+    )
     prompt = (
-        "Read this single-page melody or lead-sheet image. Return JSON only with a score object containing "
+        "Assess and read this single-page image of clean printed Western notation. Handwriting, handwritten "
+        "chord charts, and existing tablature are unsupported. Return JSON only with inputAssessment "
+        "(kind: printed_notation, handwritten, tablature, or unreadable; accepted boolean; rescanGuidance) "
+        "and a score object containing "
         "sourceKey, arrangementKey (major key when known), meter (3/4 or 4/4), pickupBeats, melody, and harmony. "
         "Each melody item needs measure, beat, durationBeats, pitch in scientific notation, confidence 0..1, "
         "and optional lyric. Each harmony item needs measure, beat, symbol, basis='source', and confidence. "
-        "Use at most 64 melody events. Do not guess unreadable notes; omit them and add review.warnings."
+        "Use at most 64 melody events. Do not guess unreadable notes, key signatures, time signatures, octaves, "
+        "or melody parts; omit uncertain events, lower confidence, and add review.warnings. Also return parts as "
+        "staff summaries with id, name, eventCount, and melodyProbability, plus selectedPartId. Choose the likely "
+        "melody automatically only when unambiguous."
+        + part_instruction
     )
     payload = {
         "model": os.environ.get(MELODY_VISION_MODEL_ENV, DEFAULT_VISION_MODEL),

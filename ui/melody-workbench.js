@@ -340,7 +340,7 @@
       },
       import: {
         label: "Import music",
-        defaultHelp: "Photo, MusicXML, or MIDI",
+        defaultHelp: "PDF, screenshot, or music file",
         replacementHelp: "Import a different file"
       }
     };
@@ -393,6 +393,9 @@
       tapTimes: [],
       importParts: [],
       importSelectedPart: "",
+      importFile: null,
+      pdfInspection: null,
+      scannedReviewConfirmed: false,
       practiceStatus: "stopped",
       practiceTimers: [],
       practiceContext: null,
@@ -429,6 +432,7 @@
     const name = String(file?.name || "").toLowerCase();
     const type = String(file?.type || "").toLowerCase();
     if (type.startsWith("image/") || /\.(jpe?g|png|webp)$/.test(name)) return "image";
+    if (type === "application/pdf" || /\.pdf$/.test(name)) return "pdf";
     if (/\.(mxl)$/.test(name)) return "mxl";
     if (/\.(mid|midi)$/.test(name) || type.includes("midi")) return "midi";
     if (/\.(xml|musicxml)$/.test(name) || type.includes("xml")) return "musicxml";
@@ -1311,9 +1315,17 @@
     scoreDeleteSelected: $("#studio-score-delete-selected"),
     scorePreviousNote: $("#studio-score-previous-note"),
     scoreNextNote: $("#studio-score-next-note"),
+    scoreNextFlagged: $("#studio-score-next-flagged"),
+    scoreConfirmation: $("#studio-score-confirmation"),
+    scoreConfirmed: $("#studio-score-confirmed"),
+    scoreConfirmationText: $("#studio-score-confirmation-text"),
     scoreStatus: $("#studio-score-status"),
     scoreEventEditor: $("#studio-score-event-editor"),
     scorePitch: $("#studio-score-pitch"),
+    scorePitchDown: $("#studio-score-pitch-down"),
+    scorePitchUp: $("#studio-score-pitch-up"),
+    scoreNoteOctaveDown: $("#studio-score-note-octave-down"),
+    scoreNoteOctaveUp: $("#studio-score-note-octave-up"),
     scoreConfidence: $("#studio-score-confidence"),
     eventDuration: $("#studio-event-duration"),
     scoreChord: $("#studio-score-chord"),
@@ -1341,9 +1353,13 @@
     scoreSource: $("#studio-score-source"),
     scoreSourceImage: $("#studio-score-source-image"),
     importFile: $("#studio-import-file"),
+    importDropzone: $("#studio-import-dropzone"),
+    importRights: $("#studio-import-rights"),
     importButton: $("#studio-import-button"),
     importStatus: $("#studio-import-status"),
     importPreview: $("#studio-import-preview"),
+    importProgress: $("#studio-import-progress"),
+    importPages: $("#studio-import-pages"),
     microphoneStart: $("#studio-microphone-start"),
     microphoneStop: $("#studio-microphone-stop"),
     microphoneStatus: $("#studio-microphone-status"),
@@ -1773,6 +1789,8 @@
     if (!scoreUi || !elements.scoreCanvas) return;
     const draft = ensureScoreDraft();
     const isCatalog = draft.source.type === "catalog";
+    const isScannedImport = ["image", "pdf"].includes(draft.source.type);
+    const flaggedIds = draft.review?.flaggedEventIds || [];
     const isReviewOnly = isCatalog && !state.scoreEditingEnabled;
     elements.scorePanel.classList.toggle("is-review-only", isReviewOnly);
     elements.scoreHeading.textContent = isCatalog ? "Review songbook melody" : "Staff editor";
@@ -1782,10 +1800,24 @@
     elements.scoreActionTitle.textContent = isCatalog ? `${draft.source.title || "Songbook melody"} is ready` : "Melody ready";
     elements.scoreActionHelp.textContent = isCatalog
       ? "Create the E9 arrangement now, or open note editing if the teaching melody needs a correction."
-      : "Review the staff, then create your E9 arrangement.";
+      : isScannedImport
+        ? flaggedIds.length
+          ? `${flaggedIds.length} uncertain ${flaggedIds.length === 1 ? "event is" : "events are"} highlighted. Correct only what needs attention, audition the melody, then confirm the score.`
+          : "No low-confidence notes remain. Audition the melody and confirm the score setup before arranging."
+        : "Review the staff, then create your E9 arrangement.";
     elements.scoreEditToggle.hidden = !isCatalog;
     elements.scoreEditToggle.textContent = isReviewOnly ? "Edit melody notes" : "Done editing";
     elements.scoreEditToggle.setAttribute("aria-pressed", String(!isReviewOnly));
+    elements.scoreNextFlagged.hidden = !isScannedImport || !flaggedIds.length;
+    elements.scoreConfirmation.hidden = !isScannedImport;
+    elements.scoreConfirmed.checked = state.scannedReviewConfirmed;
+    const confirmationLabels = {
+      key_signature: "key signature",
+      time_signature: "time signature",
+      melody_part: "selected melody part"
+    };
+    const confirmations = (draft.review?.confirmationsRequired || []).map((item) => confirmationLabels[item]).filter(Boolean);
+    elements.scoreConfirmationText.textContent = `I checked the highlighted notes, octave${confirmations.length ? `, ${confirmations.join(", ")}` : ""}.`;
     renderScoreKeyboard();
     scoreUi.render(elements.scoreCanvas, draft, state.scoreSelectedIndex, selectScoreEvent);
     const event = selectedScoreEvent();
@@ -1836,7 +1868,10 @@
     const unsupportedKey = !KEY_NOTES[draft.score.arrangementKey];
     elements.scoreWarnings.textContent = [...warnings, ...(unsupportedKey ? ["Choose a supported major key before arranging."] : [])].join(" ");
     elements.scoreWarnings.hidden = !elements.scoreWarnings.textContent;
-    elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey;
+    elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest)
+      || unsupportedKey
+      || structureWarnings.length > 0
+      || (isScannedImport && !state.scannedReviewConfirmed);
     elements.scoreArrange.textContent = draft.review.status === "confirmed" ? "Arrange for E9" : "Confirm and arrange for E9";
     elements.scoreSource.textContent = draft.source.type === "composed_in_studio" ? "User-created score" : `${draft.source.title || "Imported score"} · ${draft.review.status === "confirmed" ? "confirmed" : "review before arranging"}`;
     elements.scoreSourceImage.hidden = !state.sourceImageUrl;
@@ -1850,8 +1885,15 @@
   }
 
   function updateSelectedScoreEvent(changes) {
-    if (!selectedScoreEvent()) return;
-    commitScoreDraft(scoreUi.updateEvent(state.scoreDraft, state.scoreSelectedIndex, changes), state.scoreSelectedIndex);
+    const selected = selectedScoreEvent();
+    if (!selected) return;
+    const next = scoreUi.updateEvent(state.scoreDraft, state.scoreSelectedIndex, changes);
+    if (next.review) {
+      next.review.flaggedEventIds = (next.review.flaggedEventIds || []).filter((id) => id !== selected.id);
+      next.review.issues = (next.review.issues || []).filter((issue) => !(issue.eventIds || []).includes(selected.id));
+      if (next.review.summary) next.review.summary.flaggedEventCount = next.review.flaggedEventIds.length;
+    }
+    commitScoreDraft(next, state.scoreSelectedIndex);
   }
 
   function restoreScoreHistory(direction) {
@@ -1872,6 +1914,7 @@
     state.scoreEditingEnabled = draft.source?.type !== "catalog";
     state.importParts = Array.isArray(draft.parts) && draft.parts.length > 1 ? draft.parts : [];
     state.importSelectedPart = String(draft.selectedPartId ?? draft.selectedTrackIndex ?? state.importSelectedPart ?? "");
+    state.scannedReviewConfirmed = false;
     state.scoreSelectedIndex = state.scoreDraft.score.melody.length ? 0 : -1;
     state.inputMethod = "score";
     state.workflowPhase = "review";
@@ -2274,33 +2317,106 @@
     return canvas.toDataURL(file.type === "image/png" ? "image/png" : "image/webp", 0.88);
   }
 
+  function setImportProgress(activeStep, completedSteps = []) {
+    elements.importProgress.hidden = false;
+    Array.from(elements.importProgress.querySelectorAll("[data-import-step]")).forEach((item) => {
+      const step = item.dataset.importStep;
+      item.classList.toggle("is-active", step === activeStep);
+      item.classList.toggle("is-complete", completedSteps.includes(step));
+    });
+  }
+
+  function selectedPdfPages() {
+    return Array.from(elements.importPages.querySelectorAll("input[type='checkbox']:checked"))
+      .map((input) => Number(input.value))
+      .filter(Number.isInteger);
+  }
+
+  function renderPdfPageChoices(inspection) {
+    elements.importPages.replaceChildren();
+    (inspection.pages || []).forEach((page) => {
+      const label = doc.createElement("label");
+      label.className = "pdf-page-choice";
+      const image = doc.createElement("img");
+      image.src = `data:${page.previewMimeType};base64,${page.previewBase64}`;
+      image.alt = `PDF page ${page.pageNumber}`;
+      const choice = doc.createElement("span");
+      const checkbox = doc.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = String(page.pageNumber);
+      checkbox.checked = true;
+      choice.append(checkbox, ` Page ${page.pageNumber}`);
+      label.append(image, choice);
+      elements.importPages.appendChild(label);
+    });
+    elements.importPages.hidden = false;
+    elements.importButton.textContent = "Read selected pages";
+    elements.importStatus.textContent = `${inspection.pageCount} ${inspection.pageCount === 1 ? "page" : "pages"} found. Choose up to 8 pages containing the melody.`;
+    setImportProgress("pages", ["upload"]);
+  }
+
+  function resetImportInspection() {
+    state.pdfInspection = null;
+    elements.importPages.replaceChildren();
+    elements.importPages.hidden = true;
+    elements.importProgress.hidden = true;
+    elements.importButton.textContent = "Open for review";
+  }
+
   async function importSelectedFile() {
-    const file = elements.importFile.files?.[0];
-    if (!file) return elements.importStatus.textContent = "Choose an image, MusicXML, MXL, or MIDI file first.";
+    const file = state.importFile || elements.importFile.files?.[0];
+    if (!file) return elements.importStatus.textContent = "Choose a PDF, image, MusicXML, MXL, or MIDI file first.";
     const sourceType = fileSourceType(file);
-    if (!sourceType) return elements.importStatus.textContent = "Use JPG, PNG, WebP, MusicXML, MXL, or MIDI. For PDF, upload a screenshot.";
-    if (state.sourceImageUrl) URL.revokeObjectURL(state.sourceImageUrl);
+    if (!sourceType) return elements.importStatus.textContent = "Use PDF, JPG, PNG, WebP, MusicXML, MXL, or MIDI.";
+    const isPrintedDocument = ["image", "pdf"].includes(sourceType);
+    if (isPrintedDocument && !elements.importRights.checked) {
+      return elements.importStatus.textContent = "Confirm that you have the right to process this score.";
+    }
+    if (state.sourceImageUrl?.startsWith("blob:")) URL.revokeObjectURL(state.sourceImageUrl);
     state.sourceImageUrl = sourceType === "image" ? URL.createObjectURL(file) : "";
     elements.importPreview.hidden = !state.sourceImageUrl;
     if (state.sourceImageUrl) elements.importPreview.src = state.sourceImageUrl;
     elements.importButton.disabled = true;
-    elements.importStatus.textContent = sourceType === "image" ? "Reading the page locally. You will review every note before arranging…" : "Reading the music file in memory…";
+    elements.importStatus.textContent = sourceType === "pdf" && !state.pdfInspection
+      ? "Reading PDF pages in memory…"
+      : isPrintedDocument
+        ? `Recognizing ${sourceType === "pdf" ? `pages ${selectedPdfPages().join(", ")}` : "the printed page"}…`
+        : "Reading the music file in memory…";
+    setImportProgress(sourceType === "pdf" && !state.pdfInspection ? "upload" : isPrintedDocument ? "recognize" : "validate", []);
     try {
       const dataUrl = sourceType === "image" ? await imageFileDataUrl(file) : await readFileAsDataUrl(file);
       const request = {
         sourceType,
         filename: file.name,
         mimeType: sourceType === "image" ? dataUrl.slice(5, dataUrl.indexOf(";")) : file.type,
-        contentBase64: dataUrl.split(",")[1] || ""
+        contentBase64: dataUrl.split(",")[1] || "",
+        rightsAcknowledged: !isPrintedDocument || elements.importRights.checked
       };
+      if (sourceType === "pdf" && !state.pdfInspection) {
+        request.inspectOnly = true;
+        state.pdfInspection = await importPayload(request);
+        renderPdfPageChoices(state.pdfInspection);
+        return;
+      }
+      if (sourceType === "pdf") {
+        request.selectedPages = selectedPdfPages();
+        if (!request.selectedPages.length) throw new Error("Select at least one PDF page.");
+        if (request.selectedPages.length > 8) throw new Error("Select no more than 8 PDF pages at a time.");
+      }
       if (state.importSelectedPart) {
         if (sourceType === "midi") request.trackIndex = Number(state.importSelectedPart);
         else request.partId = state.importSelectedPart;
       }
       const draft = await importPayload(request);
+      setImportProgress("validate", ["upload", ...(sourceType === "pdf" ? ["pages"] : []), ...(isPrintedDocument ? ["recognize"] : [])]);
       draft.review = draft.review || { status: "needs_review", warnings: [] };
       draft.review.status = "needs_review";
+      if (sourceType === "pdf") {
+        const firstPage = (state.pdfInspection?.pages || []).find((page) => request.selectedPages.includes(page.pageNumber));
+        state.sourceImageUrl = firstPage ? `data:${firstPage.previewMimeType};base64,${firstPage.previewBase64}` : "";
+      }
       hydrateScoreDraft(draft, state.sourceImageUrl);
+      setImportProgress("", ["upload", ...(sourceType === "pdf" ? ["pages"] : []), ...(isPrintedDocument ? ["recognize"] : []), "validate"]);
     } catch (error) {
       elements.importStatus.textContent = error.message || "The score could not be read.";
     } finally {
@@ -2725,7 +2841,30 @@
       });
       const pitches = doc.createElement("span");
       pitches.textContent = `Same pitches: ${(position.pitchLabels || pitchLabels).join(" + ")}`;
-      card.append(title, positionText, pitches);
+      const lock = doc.createElement("button");
+      lock.type = "button";
+      lock.className = "secondary-action";
+      lock.textContent = "Lock melody here and reflow";
+      lock.addEventListener("click", async () => {
+        const playableEvents = (state.scoreDraft?.score?.melody || []).filter((item) => !item.rest);
+        const eventStart = Number(state.response?.melodyExercise?.section?.eventStart || 0);
+        const scoreEvent = playableEvents[eventStart + eventIndex];
+        const matchingNote = (position.notes || []).find((note) => note.scientificPitch === scoreEvent?.pitch)
+          || (position.notes || [])[0];
+        if (!scoreEvent || !matchingNote) return;
+        const next = scoreUi.cloneDraft(state.scoreDraft);
+        const target = next.score.melody.find((item) => item.id === scoreEvent.id);
+        if (!target) return;
+        target.lockedPosition = {
+          string: matchingNote.string,
+          fret: matchingNote.fret,
+          changes: matchingNote.changes || []
+        };
+        state.scoreDraft = scoreUi.reflowDraft(next);
+        elements.tabAlternativesNote.textContent = "Reflowing the surrounding phrase around the locked melody position…";
+        await arrangeScoreDraft();
+      });
+      card.append(title, positionText, pitches, lock);
       elements.tabAlternativesList.appendChild(card);
     });
     elements.tabAlternativesNote.textContent = alternatives.length
@@ -3000,6 +3139,14 @@
   async function arrangeScoreDraft() {
     const draft = ensureScoreDraft();
     elements.scoreArrangeStatus.textContent = "";
+    if (["image", "pdf"].includes(draft.source.type) && !state.scannedReviewConfirmed) {
+      elements.scoreArrangeStatus.textContent = "Confirm the highlighted notes and score setup before arranging.";
+      return false;
+    }
+    if (scoreUi.draftWarnings(draft).length) {
+      elements.scoreArrangeStatus.textContent = "Fix the measure or tie warning before arranging.";
+      return false;
+    }
     if (!KEY_NOTES[draft.score.arrangementKey]) {
       elements.scoreArrangeStatus.textContent = "Choose a supported major key before arranging.";
       return false;
@@ -3288,6 +3435,16 @@
     const pitchValue = (Number(match[3]) + 1) * 12 + pitchClass;
     updateSelectedScoreEvent({ pitchValue, pitch: scoreUi.pitchLabel(pitchValue) });
   });
+  const shiftSelectedPitch = (semitones) => {
+    const event = selectedScoreEvent();
+    if (!event || event.rest) return;
+    const pitchValue = Math.max(47, Math.min(94, Number(event.pitchValue) + semitones));
+    updateSelectedScoreEvent({ pitchValue, pitch: scoreUi.pitchLabel(pitchValue) });
+  };
+  elements.scorePitchDown.addEventListener("click", () => shiftSelectedPitch(-1));
+  elements.scorePitchUp.addEventListener("click", () => shiftSelectedPitch(1));
+  elements.scoreNoteOctaveDown.addEventListener("click", () => shiftSelectedPitch(-12));
+  elements.scoreNoteOctaveUp.addEventListener("click", () => shiftSelectedPitch(12));
   elements.eventDuration.addEventListener("change", () => updateSelectedScoreEvent({ durationBeats: Number(elements.eventDuration.value) }));
   elements.scoreLyric.addEventListener("change", () => updateSelectedScoreEvent({ lyric: elements.scoreLyric.value.trim() }));
   elements.scoreTie.addEventListener("change", () => updateSelectedScoreEvent({ tie: elements.scoreTie.value }));
@@ -3313,6 +3470,18 @@
   });
   elements.scorePreviousNote.addEventListener("click", () => selectScoreEvent(state.scoreSelectedIndex - 1));
   elements.scoreNextNote.addEventListener("click", () => selectScoreEvent(state.scoreSelectedIndex + 1));
+  elements.scoreNextFlagged.addEventListener("click", () => {
+    const flagged = new Set(state.scoreDraft?.review?.flaggedEventIds || []);
+    const indexes = (state.scoreDraft?.score?.melody || [])
+      .map((event, index) => flagged.has(event.id) ? index : -1)
+      .filter((index) => index >= 0);
+    if (!indexes.length) return;
+    selectScoreEvent(indexes.find((index) => index > state.scoreSelectedIndex) ?? indexes[0]);
+  });
+  elements.scoreConfirmed.addEventListener("change", () => {
+    state.scannedReviewConfirmed = elements.scoreConfirmed.checked;
+    renderScoreBuilder();
+  });
   elements.scoreCanvas.addEventListener("click", (event) => {
     if (event.target.closest?.(".score-event")) return;
     if (state.scoreDraft?.source?.type === "catalog" && !state.scoreEditingEnabled) return;
@@ -3324,7 +3493,25 @@
   elements.importButton.addEventListener("click", importSelectedFile);
   elements.importFile.addEventListener("change", () => {
     const file = elements.importFile.files?.[0];
+    state.importFile = file || null;
+    resetImportInspection();
     elements.importStatus.textContent = file ? `${file.name} is ready to read.` : "";
+    renderStartingPoint();
+  });
+  ["dragenter", "dragover"].forEach((eventName) => elements.importDropzone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    elements.importDropzone.classList.add("is-dragging");
+  }));
+  ["dragleave", "drop"].forEach((eventName) => elements.importDropzone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    elements.importDropzone.classList.remove("is-dragging");
+  }));
+  elements.importDropzone.addEventListener("drop", (event) => {
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    state.importFile = file;
+    resetImportInspection();
+    elements.importStatus.textContent = `${file.name} is ready to read.`;
     renderStartingPoint();
   });
   elements.microphoneStart.addEventListener("click", startMicrophoneCapture);

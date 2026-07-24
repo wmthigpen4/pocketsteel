@@ -121,6 +121,8 @@ def test_saved_copedent_position_catalog_is_enumerated_once_per_grip_size(monkey
         )
         for alternative in event["alternatePositions"]:
             assert alternative["pitchValues"] == selected_pitches
+            assert len(alternative["notes"]) == len(alternative["pitchValues"])
+            assert all(note["scientificPitch"] for note in alternative["notes"])
             assert (
                 alternative["fret"],
                 alternative["strings"],

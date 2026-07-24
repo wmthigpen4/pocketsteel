@@ -1287,6 +1287,21 @@ def _alternate_position_payloads(
             "strings": sorted(note.string for note in candidate.notes),
             "controls": list(candidate.controls),
             "controlLabels": [control_tab_label(profile, control) for control in candidate.controls],
+            "notes": [
+                {
+                    "string": note.string,
+                    "fret": note.fret,
+                    "changes": [
+                        control
+                        for control in candidate.controls
+                        if control_affects_string(profile, control, note.string)
+                    ],
+                    "scientificPitch": scientific_pitch_for_value(
+                        _absolute_pitch(note.string, note.fret, candidate.controls, profile=profile)
+                    ),
+                }
+                for note in candidate.notes
+            ],
             "pitchValues": list(_candidate_pitch_values(candidate, profile=profile)),
             "pitchLabels": [
                 scientific_pitch_for_value(pitch)

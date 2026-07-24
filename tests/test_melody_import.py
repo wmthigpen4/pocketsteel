@@ -7,6 +7,7 @@ import struct
 import zipfile
 
 import pytest
+from PIL import Image, ImageDraw
 
 from steel_guitar_rag.melody_import import (
     MelodyImportError,
@@ -16,6 +17,12 @@ from steel_guitar_rag.melody_import import (
     parse_musicxml,
     public_song_catalog,
 )
+from steel_guitar_rag.score_omr import (
+    LocalVisionOmrProvider,
+    inspect_pdf,
+    provider_catalog,
+    recognize_printed_document,
+)
 from steel_guitar_rag.melody_arranger import (
     arrange_melody_routes,
     parse_melody_inputs,
@@ -24,6 +31,17 @@ from steel_guitar_rag.melody_arranger import (
 
 
 AMAZING_GRACE_PITCHES = ["D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"]
+
+
+def _printed_page_bytes(image_format: str = "PNG") -> bytes:
+    image = Image.new("RGB", (1200, 800), "white")
+    draw = ImageDraw.Draw(image)
+    for y in range(220, 271, 12):
+        draw.line((100, y, 1100, y), fill="black", width=2)
+    draw.ellipse((280, 235, 302, 250), fill="black")
+    stream = io.BytesIO()
+    image.save(stream, format=image_format)
+    return stream.getvalue()
 
 
 def _three_note_midi() -> bytes:
@@ -232,8 +250,9 @@ def test_image_recognition_is_review_gated_and_malformed_output_is_rejected() ->
     payload = {
         "sourceType": "image",
         "mimeType": "image/png",
-        "contentBase64": base64.b64encode(b"not persisted").decode("ascii"),
+        "contentBase64": base64.b64encode(_printed_page_bytes()).decode("ascii"),
         "title": "Page one",
+        "rightsAcknowledged": True,
     }
     draft = import_score_draft(
         payload,
@@ -241,10 +260,120 @@ def test_image_recognition_is_review_gated_and_malformed_output_is_rejected() ->
             "score": {"sourceKey": "G", "arrangementKey": "G", "meter": "3/4", "melody": [{"pitch": "D4", "durationBeats": 1}]}
         },
     )
-    assert draft["source"] == {"type": "image", "title": "Page one", "url": None, "rightsLabel": "unreviewed", "retained": False}
+    assert draft["source"]["type"] == "image"
+    assert draft["source"]["title"] == "Page one"
+    assert draft["source"]["rightsLabel"] == "user_authorized"
+    assert draft["source"]["retained"] is False
+    assert draft["source"]["private"] is True
+    assert draft["source"]["trainingUse"] is False
+    assert draft["source"]["retentionPolicy"] == "request_only"
+    assert draft["source"]["providerId"] == "local_vision"
     assert draft["review"]["status"] == "needs_review"
+    assert draft["review"]["confirmationsRequired"] == ["key_signature", "time_signature", "melody_part"]
     with pytest.raises(MelodyImportError):
         import_score_draft(payload, vision_client=lambda _image, _mime: {"score": {"melody": "bad"}})
+
+
+def test_printed_import_requires_rights_acknowledgement() -> None:
+    with pytest.raises(MelodyImportError, match="right to process"):
+        import_score_draft(
+            {
+                "sourceType": "image",
+                "mimeType": "image/png",
+                "contentBase64": base64.b64encode(_printed_page_bytes()).decode("ascii"),
+            },
+            vision_client=lambda _image, _mime: {"score": {"melody": [{"pitch": "G4"}]}},
+        )
+
+
+def test_pdf_inspection_and_selected_page_recognition_are_transient() -> None:
+    pdf_bytes = _printed_page_bytes("PDF")
+    inspection = inspect_pdf(pdf_bytes)
+    assert inspection["schemaVersion"] == "score_document_inspection_v1"
+    assert inspection["pageCount"] == 1
+    assert inspection["sourceRetained"] is False
+    assert inspection["pages"][0]["previewMimeType"] == "image/jpeg"
+    assert len(base64.b64decode(inspection["pages"][0]["previewBase64"])) > 100
+
+    provider = LocalVisionOmrProvider(
+        lambda _image, mime: {
+            "inputAssessment": {"kind": "printed_notation", "accepted": True},
+            "score": {
+                "sourceKey": "G",
+                "arrangementKey": "G",
+                "meter": "4/4",
+                "melody": [
+                    {"id": "n1", "measure": 1, "beat": 1, "durationBeats": 1, "pitch": "G4", "confidence": 0.72},
+                    {"id": "n2", "measure": 1, "beat": 2, "durationBeats": 3, "pitch": "B4", "confidence": 0.99},
+                ],
+            },
+        }
+    )
+    draft = recognize_printed_document(
+        raw=pdf_bytes,
+        source_type="pdf",
+        title="One-page score",
+        selected_pages=[1],
+        selected_part=None,
+        provider=provider,
+        normalize=normalize_score_draft,
+    )
+    assert draft["source"]["retained"] is False
+    assert draft["source"]["selectedPages"] == [1]
+    assert draft["omr"]["artifacts"]["source"] == "transient"
+    assert draft["omr"]["artifacts"]["arrangement"] == "not_started"
+    assert draft["review"]["summary"]["flaggedEventCount"] == 1
+    assert draft["review"]["flaggedEventIds"] == ["p1-n1"]
+
+
+def test_handwriting_and_existing_tablature_are_rejected_explicitly() -> None:
+    provider = LocalVisionOmrProvider(
+        lambda _image, _mime: {
+            "inputAssessment": {"kind": "handwritten", "accepted": False},
+            "score": {"melody": [{"pitch": "G4"}]},
+        }
+    )
+    with pytest.raises(MelodyImportError, match="not handwriting"):
+        import_score_draft(
+            {
+                "sourceType": "image",
+                "mimeType": "image/png",
+                "contentBase64": base64.b64encode(_printed_page_bytes()).decode("ascii"),
+                "rightsAcknowledged": True,
+            },
+            vision_client=provider._client,
+        )
+
+
+def test_ambiguous_staffs_are_exposed_and_explicit_selection_clears_part_confirmation() -> None:
+    draft = import_score_draft(
+        {
+            "sourceType": "image",
+            "mimeType": "image/png",
+            "contentBase64": base64.b64encode(_printed_page_bytes()).decode("ascii"),
+            "rightsAcknowledged": True,
+            "partId": "staff-2",
+        },
+        vision_client=lambda _image, _mime: {
+            "inputAssessment": {"kind": "printed_notation", "accepted": True},
+            "parts": [
+                {"id": "staff-1", "name": "Piano", "eventCount": 8},
+                {"id": "staff-2", "name": "Vocal", "eventCount": 6},
+            ],
+            "selectedPartId": "staff-2",
+            "score": {"sourceKey": "G", "meter": "4/4", "melody": [{"pitch": "G4"}]},
+        },
+    )
+    assert draft["parts"][1] == {"id": "staff-2", "name": "Vocal", "eventCount": 6}
+    assert draft["selectedPartId"] == "staff-2"
+    assert "melody_part" not in draft["review"]["confirmationsRequired"]
+
+
+def test_provider_catalog_keeps_managed_omr_fail_closed() -> None:
+    candidates = {item["id"]: item for item in provider_catalog()}
+    assert candidates["local_vision"]["available"] is True
+    assert candidates["flat_interactive_omr"]["available"] is False
+    assert candidates["flat_interactive_omr"]["beta"] is True
 
 
 def test_import_preserves_supported_major_arrangement_key() -> None:

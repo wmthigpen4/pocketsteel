@@ -128,6 +128,18 @@
     .compact-key { min-width: 118px; }
     .compact-key select { padding: 9px 34px 9px 11px; }
     .import-dropzone { display: grid; place-items: center; gap: 10px; min-height: 150px; border: 1px dashed rgba(240, 191, 105, 0.48); border-radius: 16px; background: rgba(240, 191, 105, 0.045); padding: 22px; text-align: center; }
+    .import-dropzone.is-dragging { border-color: var(--gold); background: rgba(240, 191, 105, 0.13); }
+    .import-rights { display: flex; align-items: start; gap: 9px; max-width: 720px; color: var(--muted); font-size: 13px; line-height: 1.45; text-align: left; }
+    .import-rights input, .score-confirmation input { margin-top: 3px; accent-color: var(--gold); }
+    .import-progress { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+    .import-progress li { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); padding: 5px 9px; font-size: 12px; font-weight: 750; }
+    .import-progress li.is-active { border-color: var(--gold); color: var(--cream); }
+    .import-progress li.is-complete { border-color: rgba(123, 198, 139, 0.55); color: #bfe8c8; }
+    .pdf-page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 180px)); gap: 10px; margin-top: 14px; }
+    .pdf-page-choice { display: grid; gap: 7px; border: 1px solid var(--line); border-radius: 12px; background: rgba(5, 7, 7, 0.35); padding: 9px; color: var(--cream); font-size: 12px; font-weight: 750; }
+    .pdf-page-choice img { width: 100%; aspect-ratio: 0.77; border-radius: 7px; background: #fff; object-fit: contain; }
+    .pdf-page-choice input { accent-color: var(--gold); }
+    .score-confirmation { display: flex; align-items: start; gap: 9px; flex-basis: 100%; color: var(--muted); font-size: 13px; line-height: 1.45; }
     .score-primary-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
     .score-primary-tools .field { min-width: 150px; }
     .score-review-action { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; margin: 0 0 16px; border: 1px solid rgba(240, 191, 105, 0.34); border-radius: 14px; background: rgba(240, 191, 105, 0.08); padding: 14px; }
@@ -164,6 +176,7 @@
     .note-head { fill: #1c1914; }
     .note-stem { stroke: #1c1914; stroke-width: 2; }
     .score-event { cursor: pointer; outline: none; }
+    .score-event.is-uncertain .note-head { fill: #a54835; stroke: #6f2618; stroke-width: 2; }
     .score-event.is-selected .note-head, .score-event:focus .note-head { fill: #b96b1d; stroke: #5a2f08; stroke-width: 2; }
     .score-event.is-selected, .score-event:focus-visible { filter: drop-shadow(0 0 5px rgba(185, 107, 29, 0.75)); }
     .score-event.is-selected path, .score-event.is-selected ellipse, .score-event:focus-visible path { fill: #b96b1d; stroke: #5a2f08; stroke-width: 2; }
@@ -688,7 +701,7 @@
             <button class="start-choice is-selected" type="button" data-studio-start="phrase" data-default-label="Type or tap notes" aria-pressed="true"><strong>Type or tap notes</strong><small>Notes or scale numbers</small></button>
             <button class="start-choice" type="button" data-studio-start="microphone" data-default-label="Record or upload audio" aria-pressed="false"><strong>Record or upload audio</strong><small>Choose a short passage</small></button>
             <button class="start-choice" type="button" data-studio-start="score" data-default-label="Staff editor" aria-pressed="false"><strong>Staff editor</strong><small>Write notes on a staff</small></button>
-            <button class="start-choice" type="button" data-studio-start="import" data-default-label="Import music" aria-pressed="false"><strong>Import music</strong><small>Photo, MusicXML, or MIDI</small></button>
+            <button class="start-choice" type="button" data-studio-start="import" data-default-label="Import music" aria-pressed="false"><strong>Import music</strong><small>PDF, screenshot, or music file</small></button>
           </div>
           <div class="replace-confirmation" id="studio-replace-confirmation" role="alert" hidden>
             <p id="studio-replace-message">Replace the melody you are working on?</p>
@@ -742,8 +755,10 @@
             <div><strong id="studio-score-action-title">Melody ready</strong><p class="field-help" id="studio-score-action-help">Review the staff, then create your E9 arrangement.</p></div>
             <div class="score-review-action__buttons">
               <button class="secondary-action" type="button" id="studio-score-edit-toggle" hidden>Edit melody notes</button>
+              <button class="secondary-action" type="button" id="studio-score-next-flagged" hidden>Next flagged note</button>
               <button class="primary-action" type="button" id="studio-score-arrange">Arrange for E9</button>
             </div>
+            <label class="score-confirmation" id="studio-score-confirmation" hidden><input id="studio-score-confirmed" type="checkbox"><span id="studio-score-confirmation-text">I checked the highlighted notes and score setup.</span></label>
             <p class="score-status" id="studio-score-arrange-status" role="status" aria-live="polite"></p>
           </div>
           <div class="score-primary-tools">
@@ -774,6 +789,12 @@
           <div class="score-event-editor" id="studio-score-event-editor" hidden>
             <div class="score-quick-edit">
               <label class="field">Pitch<input id="studio-score-pitch" placeholder="G4"></label>
+              <div class="score-actions" aria-label="Quick pitch corrections">
+                <button class="secondary-action" type="button" id="studio-score-pitch-down">Pitch −1</button>
+                <button class="secondary-action" type="button" id="studio-score-pitch-up">Pitch +1</button>
+                <button class="secondary-action" type="button" id="studio-score-note-octave-down">Octave −</button>
+                <button class="secondary-action" type="button" id="studio-score-note-octave-up">Octave +</button>
+              </div>
             </div>
             <p class="field-help" id="studio-score-confidence" aria-live="polite"></p>
             <details class="progressive-panel" id="studio-selected-note-details"><summary>Selected note details</summary><div class="progressive-panel__body field-grid">
@@ -799,13 +820,18 @@
         </section>
 
         <section class="input-panel" id="studio-import-panel" data-input-panel="import" hidden>
-          <div class="input-panel-head"><div><h3>Import music</h3><p class="field-help">Choose a score image, MusicXML/MXL, or MIDI. Melody Studio opens a review staff before arranging.</p></div></div>
-          <div class="import-dropzone">
-            <strong>Choose a photo or music file</strong>
-            <label class="field">Music file<input id="studio-import-file" type="file" accept="image/jpeg,image/png,image/webp,.xml,.musicxml,.mxl,.mid,.midi" capture="environment"></label>
+          <div class="input-panel-head"><div><h3>Import printed music</h3><p class="field-help">Drop a PDF, screenshot, or sharp photo of clean printed Western notation. Handwriting, handwritten chord charts, and existing tablature are not supported.</p></div></div>
+          <div class="import-dropzone" id="studio-import-dropzone">
+            <strong>Drop a PDF, screenshot, or music file</strong>
+            <label class="field">Music file<input id="studio-import-file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.xml,.musicxml,.mxl,.mid,.midi"></label>
+            <label class="import-rights"><input id="studio-import-rights" type="checkbox">I own this material, have permission, or otherwise have the legal right to process it.</label>
             <button class="primary-action" type="button" id="studio-import-button">Open for review</button>
           </div>
-          <p class="privacy-note">Session-only: the app does not save the file or draft. For PDF music, upload a page screenshot.</p>
+          <ol class="import-progress" id="studio-import-progress" aria-label="Recognition progress" hidden>
+            <li data-import-step="upload">Read file</li><li data-import-step="pages">Select pages</li><li data-import-step="recognize">Recognize notation</li><li data-import-step="validate">Check structure</li>
+          </ol>
+          <div class="pdf-page-grid" id="studio-import-pages" aria-label="Choose PDF pages" hidden></div>
+          <p class="privacy-note">Private and session-only: source bytes are processed in memory, excluded from training, and discarded after this request.</p>
           <p class="score-status" id="studio-import-status" aria-live="polite"></p>
           <img class="source-preview" id="studio-import-preview" alt="Selected score preview" hidden>
         </section>
@@ -1046,8 +1072,8 @@
   <script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=amazing-tablature-product-v1-20260724-2"></script>
+  <script src="melody-score.js?v=printed-score-omr-v1"></script>
   <script src="song-projects.js?v=amazing-tablature-product-v1-20260724-2"></script>
-  <script src="melody-workbench.js?v=amazing-tablature-product-v1-20260724-3"></script>
+  <script src="melody-workbench.js?v=printed-score-omr-v1"></script>
 </body>
 </html>

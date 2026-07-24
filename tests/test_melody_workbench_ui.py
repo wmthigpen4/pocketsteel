@@ -317,6 +317,7 @@ assert.equal(studio.youtubeVideoId("https://www.youtube.com/watch?v=xyz789"), "x
 assert.equal(studio.referenceEmbedUrl("https://youtube.com/watch?v=xyz789", 10, 20), "https://www.youtube-nocookie.com/embed/xyz789?rel=0&playsinline=1&start=10&end=20");
 assert.equal(studio.youtubeVideoId("https://ultimate-guitar.com/tab/example"), "");
 assert.equal(studio.fileSourceType({name: "page.webp", type: "image/webp"}), "image");
+assert.equal(studio.fileSourceType({name: "score.pdf", type: "application/pdf"}), "pdf");
 assert.equal(studio.fileSourceType({name: "song.mxl", type: ""}), "mxl");
 assert.equal(studio.frequencyToMidi(440), 69);
 assert.equal(studio.frequencyToMidiFloat(440), 69);
@@ -384,6 +385,9 @@ assert.deepEqual(score.arrangementEvents(draft)[1], {
   token: "G4", pitch: "G4", pitchValue: 67, measure: 2, beat: 1,
   durationBeats: 2, origin: "user_edit", confidence: 1, tie: "start", lyric: "grace", articulation: "accent", chord: "G"
 });
+const lockedDraft = score.cloneDraft(draft);
+lockedDraft.score.melody[1].lockedPosition = {string: 5, fret: 3, changes: ["A"]};
+assert.deepEqual(score.arrangementEvents(lockedDraft)[1].position, {string: 5, fret: 3, changes: ["A"]});
 const transposed = score.transposeDraft(draft, -5);
 assert.deepEqual(transposed.score.melody.map((event) => event.pitch), ["A3", "D4", "F#4"]);
 const octaveUp = score.transposeDraft(draft, 12);
@@ -485,9 +489,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "How many voices?" in html
     assert "How should it move?" in html
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-score.js?v=amazing-tablature-product-v1-20260724-2' in html
+    assert 'melody-score.js?v=printed-score-omr-v1' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=amazing-tablature-product-v1-20260724-3' in html
+    assert 'melody-workbench.js?v=printed-score-omr-v1' in html
     assert 'id="studio-engine-status" aria-live="polite" hidden' in html
     assert "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging." in script
     assert "Arrangement method: trained Amazing Tablature ranker with verified E9 rules." in script
@@ -506,6 +510,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "repeating-linear-gradient" in html
     assert "renderInteractiveTab(route)" in script
     assert "event.alternatePositions || []" in script
+    assert "Lock melody here and reflow" in script
+    assert "target.lockedPosition" in script
     assert "const selectedRoute = preferredStudioRoute(exercise, state.selectedHarmonyType);" in script
     assert 'state.voiceMode = elements.voiceMode.value || "mixed";' in script
     assert 'state.movementMode = elements.movementMode.value || "best_fit";' in script
@@ -602,7 +608,20 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'state.scoreDraft?.source?.type === "catalog" && !state.scoreEditingEnabled' in script
     assert "audio is decoded in this browser" in html
     assert "Longer files are fine" in html
-    assert "elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey;" in script
+    assert "|| (isScannedImport && !state.scannedReviewConfirmed);" in script
+    assert 'accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.xml,.musicxml,.mxl,.mid,.midi"' in html
+    assert "Handwriting, handwritten chord charts, and existing tablature are not supported." in html
+    assert 'id="studio-import-rights"' in html
+    assert 'id="studio-import-pages"' in html
+    assert 'id="studio-import-progress"' in html
+    assert 'id="studio-score-next-flagged"' in html
+    assert 'id="studio-score-confirmed"' in html
+    assert 'id="studio-score-pitch-down"' in html
+    assert 'id="studio-score-note-octave-up"' in html
+    assert 'if (type === "application/pdf" || /\\.pdf$/.test(name)) return "pdf";' in script
+    assert "request.inspectOnly = true;" in script
+    assert "request.selectedPages = selectedPdfPages();" in script
+    assert "rightsAcknowledged: !isPrintedDocument || elements.importRights.checked" in script
     assert 'statusElement: elements.scoreArrangeStatus' in script
     assert 'retryTransientOnce: true' in script
     assert 'elements.scoreArrangeStatus.textContent = "";' in script

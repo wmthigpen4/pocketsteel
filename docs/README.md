@@ -9,6 +9,7 @@ The user-facing app name is Steel Guitar RAG. The canonical Python namespace is
 ## Policy Scaffolding
 
 - [Copyright and Provenance Plan](copyright-provenance.md)
+- [Printed Sheet Music to E9 Tab](printed-score-import.md)
 - [Corpus License Policy](corpus-license-policy.md)
 
 ## Current Engineering Documents
