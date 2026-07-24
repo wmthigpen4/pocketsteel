@@ -86,6 +86,16 @@ assert.equal(
 );
 const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
 assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
+assert.deepEqual(
+  studio.mergePhraseEdits(
+    studio.parsePhraseEvents("G A"),
+    [{token: "G", chord: "G", direction: "up"}, {token: "A", chord: "D7", octaveShift: 1}]
+  ),
+  [
+    {token: "G", direction: "up", octaveShift: 0, chord: "G"},
+    {token: "A", direction: "auto", octaveShift: 1, chord: "D7"}
+  ]
+);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1", octaveShift: 1}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G5", "B4"]);
 
@@ -477,7 +487,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
     assert 'melody-score.js?v=amazing-tablature-product-v1-20260724-2' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=amazing-tablature-product-v1-20260724-2' in html
+    assert 'melody-workbench.js?v=amazing-tablature-product-v1-20260724-3' in html
     assert 'id="studio-engine-status" aria-live="polite" hidden' in html
     assert "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging." in script
     assert "Arrangement method: trained Amazing Tablature ranker with verified E9 rules." in script

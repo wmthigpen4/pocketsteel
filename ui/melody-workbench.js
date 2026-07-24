@@ -1147,6 +1147,7 @@
     parseSimpleTab,
     parseSimpleTabEvents,
     parsePhraseEvents,
+    mergePhraseEdits,
     resolvePhrasePreview,
     noteAtFret,
     sectionCount,
@@ -1483,16 +1484,24 @@
     showError("");
   }
 
+  function mergePhraseEdits(parsed, previous) {
+    return (parsed || []).map((item, index) => {
+      const prior = phraseItem(previous?.[index]);
+      return {
+        ...item,
+        direction: prior.direction || item.direction || "auto",
+        octaveShift: prior.octaveShift || item.octaveShift || 0,
+        ...(prior.chord ? { chord: prior.chord } : {})
+      };
+    });
+  }
+
   function syncStateFromFields() {
     state.key = elements.key.value;
     state.contourMode = elements.contour.value;
     const parsed = parsePhraseEvents(elements.phraseInput.value);
     const previous = state.tokens;
-    state.tokens = parsed.map((item, index) => ({
-      ...item,
-      direction: previous[index]?.direction || item.direction || "auto",
-      octaveShift: previous[index]?.octaveShift || item.octaveShift || 0
-    }));
+    state.tokens = mergePhraseEdits(parsed, previous);
     if (currentTask()?.needsMaterial) {
       state.artist = elements.artist.value.trim();
       state.song = elements.song.value.trim();
