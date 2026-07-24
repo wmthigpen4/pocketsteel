@@ -81,25 +81,34 @@ class BoundedThreadingWSGIServer(ThreadingMixIn, WSGIServer):
     ) -> None:
         self.max_workers = max(2, min(int(max_workers), 32))
         self.request_queue_size = max(self.max_workers, min(int(request_queue), 128))
+        self.request_capacity = self.max_workers + self.request_queue_size
         self._worker_slots = threading.BoundedSemaphore(self.max_workers)
+        self._request_slots = threading.BoundedSemaphore(self.request_capacity)
         super().__init__(server_address, request_handler_class)
 
     def process_request(self, request: Any, client_address: tuple[str, int]) -> None:
-        if not self._worker_slots.acquire(blocking=False):
+        if not self._request_slots.acquire(blocking=False):
+            LOGGER.warning(
+                "request_rejected_busy client=%s capacity=%s",
+                client_address[0],
+                self.request_capacity,
+            )
             self._reject_busy_request(request)
             self.shutdown_request(request)
             return
         try:
             super().process_request(request, client_address)
         except BaseException:
-            self._worker_slots.release()
+            self._request_slots.release()
             raise
 
     def process_request_thread(self, request: Any, client_address: tuple[str, int]) -> None:
+        self._worker_slots.acquire()
         try:
             super().process_request_thread(request, client_address)
         finally:
             self._worker_slots.release()
+            self._request_slots.release()
 
     @staticmethod
     def _reject_busy_request(request: Any) -> None:
