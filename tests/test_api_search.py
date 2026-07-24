@@ -625,6 +625,7 @@ def test_api_version_reports_runtime_identity_without_auth_or_secrets() -> None:
         "/api/version",
         method="GET",
         access_role=None,
+        private_search_index=FakeSearchIndex({"results": [], "warnings": []}),
         retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
         answer_auth_mode="production",
         auth_provider="cloudflare_access",
@@ -644,6 +645,7 @@ def test_api_version_reports_app_start_identity_consistently() -> None:
     app = create_app(
         fake_search_index(),
         answer_provider=FakeAnswerProvider(),
+        private_search_index=FakeSearchIndex({"results": [], "warnings": []}),
         retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
         answer_auth_mode="production",
         auth_provider="cloudflare_access",

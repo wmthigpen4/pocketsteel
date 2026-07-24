@@ -10,7 +10,9 @@ STEEL_RAG_RUN_AS_USER="${STEEL_RAG_RUN_AS_USER:-$(id -un)}"
 STEEL_RAG_RUN_AS_GROUP="${STEEL_RAG_RUN_AS_GROUP:-$(id -gn "$STEEL_RAG_RUN_AS_USER" 2>/dev/null || id -gn)}"
 
 user_home() {
-  dscl . -read "/Users/$STEEL_RAG_RUN_AS_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}'
+  if command -v dscl >/dev/null 2>&1; then
+    dscl . -read "/Users/$STEEL_RAG_RUN_AS_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}'
+  fi
 }
 
 STEEL_RAG_USER_HOME="${STEEL_RAG_USER_HOME:-$(user_home)}"
