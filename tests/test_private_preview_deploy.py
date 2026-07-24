@@ -12,6 +12,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = REPO_ROOT / "deploy/macos/install-private-preview-launchdaemon.sh"
+WRAPPER = REPO_ROOT / "deploy/macos/run-private-preview-app.sh"
 
 
 def _run_installer(command: str, **overrides: str) -> subprocess.CompletedProcess[str]:
@@ -70,6 +71,16 @@ def test_rendered_launchdaemon_always_keeps_origin_alive() -> None:
     assert payload["KeepAlive"] is True
     assert payload["EnvironmentVariables"]["STEEL_RAG_DATA_DIR"] == str(REPO_ROOT)
     assert payload["EnvironmentVariables"]["STEEL_RAG_REPO_DIR"] == str(REPO_ROOT)
+
+
+def test_private_preview_wrapper_enables_tested_printed_score_import() -> None:
+    wrapper = WRAPPER.read_text(encoding="utf-8")
+
+    assert 'STEEL_RAG_ENABLE_MELODY_IMPORT:-true' in wrapper
+    assert 'STEEL_RAG_SCORE_OMR_PROVIDER:-homr' in wrapper
+    assert ".local/bin/homr" in wrapper
+    assert '! -x "$HOMR_BIN"' in wrapper
+    assert ",," not in wrapper
 
 
 def test_restart_refuses_to_run_without_an_exact_release() -> None:

@@ -37,8 +37,22 @@ export STEEL_RAG_ANSWER_AUTH_MODE="${STEEL_RAG_ANSWER_AUTH_MODE:-production}"
 export STEEL_RAG_RETRIEVAL_MODE="${STEEL_RAG_RETRIEVAL_MODE:-hybrid_private_first}"
 export STEEL_RAG_ENABLE_PRIVATE_SOURCES="${STEEL_RAG_ENABLE_PRIVATE_SOURCES:-true}"
 export STEEL_RAG_ENABLE_MELODY_EXERCISE="${STEEL_RAG_ENABLE_MELODY_EXERCISE:-true}"
+export STEEL_RAG_ENABLE_MELODY_IMPORT="${STEEL_RAG_ENABLE_MELODY_IMPORT:-true}"
+export STEEL_RAG_SCORE_OMR_PROVIDER="${STEEL_RAG_SCORE_OMR_PROVIDER:-homr}"
 export STEEL_RAG_RETRIEVAL_DEBUG="${STEEL_RAG_RETRIEVAL_DEBUG:-false}"
 export OLLAMA_URL="${OLLAMA_URL:-http://127.0.0.1:11434}"
+
+STEEL_RAG_OPERATOR_HOME="$(cd "$(dirname "$STEEL_RAG_ENV_FILE")/../.." && pwd)"
+export HOMR_BIN="${HOMR_BIN:-$STEEL_RAG_OPERATOR_HOME/.local/bin/homr}"
+STEEL_RAG_IMPORT_ENABLED="$(printf '%s' "$STEEL_RAG_ENABLE_MELODY_IMPORT" | tr '[:upper:]' '[:lower:]')"
+STEEL_RAG_OMR_PROVIDER="$(printf '%s' "$STEEL_RAG_SCORE_OMR_PROVIDER" | tr '[:upper:]' '[:lower:]')"
+case "$STEEL_RAG_IMPORT_ENABLED" in
+  1|true|yes|on)
+    if [[ "$STEEL_RAG_OMR_PROVIDER" == "homr" && ! -x "$HOMR_BIN" ]]; then
+      fail "Homr is selected for printed-score import but is not executable: $HOMR_BIN"
+    fi
+    ;;
+esac
 
 STEEL_RAG_CHROMA_PATH="${STEEL_RAG_CHROMA_PATH:-$STEEL_RAG_DATA_DIR/corpus-v2/vector-stores/chroma}"
 STEEL_RAG_CHROMA_COLLECTION="${STEEL_RAG_CHROMA_COLLECTION:-steel_guitar_unified_v2}"

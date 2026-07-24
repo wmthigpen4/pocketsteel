@@ -26,6 +26,8 @@ commit that file. Production startup must specify:
 ```text
 STEEL_RAG_AUTH_PROVIDER=cloudflare_access
 STEEL_RAG_ANSWER_AUTH_MODE=production
+STEEL_RAG_ENABLE_MELODY_IMPORT=true
+STEEL_RAG_SCORE_OMR_PROVIDER=homr
 ```
 
 The environment also supplies Access issuer/audience/JWKS settings, allowlists,

@@ -38,10 +38,19 @@ The repo-managed wrapper is copied to `/usr/local/libexec/steel-guitar-rag/run-p
 
 The service wrapper reads `~/.steel-rag/env/private-preview.env` at runtime. That file must stay outside the repo and must not be pasted into handoffs, issues, prompts, shell history, or screenshots.
 
-The installed private-preview wrapper enables approved Melody Exercise v0 testing
-by default with `STEEL_RAG_ENABLE_MELODY_EXERCISE=true`. The app-wide feature
-default remains off, and the private-preview environment may explicitly set the
-flag to `false` for rollback.
+The installed private-preview wrapper enables Melody Studio and the tested
+printed-score import path by default with:
+
+```text
+STEEL_RAG_ENABLE_MELODY_EXERCISE=true
+STEEL_RAG_ENABLE_MELODY_IMPORT=true
+STEEL_RAG_SCORE_OMR_PROVIDER=homr
+```
+
+The app-wide feature defaults remain off. The private-preview environment may
+set either feature flag to `false` for rollback or select a different reviewed
+OMR provider. When Homr is selected, the wrapper fails closed unless the
+configured `HOMR_BIN` is executable.
 
 ## Install Or Update The App LaunchDaemon
 
