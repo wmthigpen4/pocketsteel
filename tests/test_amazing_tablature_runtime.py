@@ -20,7 +20,18 @@ from pocketsteel.amazing_tablature_runtime import (
     private_beta_model_metadata,
     sanitized_runtime_artifact,
 )
+from pocketsteel.e9_copedents import EMMONS_E9
 from pocketsteel.melody_assistant import melody_exercise_response
+from pocketsteel.melody_arranger import (
+    _phrase_boundaries,
+    _runtime_learned_penalty,
+    choose_mixed_path,
+    harmony_candidate_groups,
+    mixed_candidate_groups,
+    parse_melody_inputs,
+    resolve_contour,
+    single_note_candidates,
+)
 
 
 def _artifact_payload() -> dict[str, object]:
@@ -54,6 +65,27 @@ def _policy() -> RuntimeRankerPolicy:
         example_count=int(payload["exampleCount"]),
         copedent_neutral=True,
         shadow_eligible=True,
+    )
+
+
+def _weighted_policy() -> RuntimeRankerPolicy:
+    policy = _policy()
+    weights = {
+        feature: (index - 10) / 7.0
+        for index, feature in enumerate(CANONICAL_FEATURE_NAMES)
+    }
+    return RuntimeRankerPolicy(
+        model_id=policy.model_id,
+        status=policy.status,
+        feature_schema_version=policy.feature_schema_version,
+        feature_names=policy.feature_names,
+        weights_by_style={
+            style: dict(weights)
+            for style in CANONICAL_STYLE_FAMILIES
+        },
+        example_count=policy.example_count,
+        copedent_neutral=policy.copedent_neutral,
+        shadow_eligible=policy.shadow_eligible,
     )
 
 
@@ -201,3 +233,119 @@ def test_private_beta_builds_each_candidate_catalog_once(monkeypatch) -> None:
     assert harmony_calls.count("chord_melody") == 1
     assert harmony_calls.count("thirds") == 1
     assert harmony_calls.count("sixths") == 1
+
+
+def test_fast_private_path_matches_frozen_feature_scorer_and_search() -> None:
+    inputs = parse_melody_inputs(
+        ["1", "2", "3", "5"],
+        "G",
+        source_profile=EMMONS_E9,
+        target_profile=EMMONS_E9,
+    )
+    pitches = resolve_contour(inputs, "closest_playable", profile=EMMONS_E9)
+    single_groups = [
+        single_note_candidates(item, pitch, profile=EMMONS_E9)
+        for item, pitch in zip(inputs, pitches)
+    ]
+    generic_catalogs: dict[str, list] = {}
+    dyad_groups = harmony_candidate_groups(
+        inputs,
+        pitches,
+        "G",
+        "automatic_harmony",
+        profile=EMMONS_E9,
+        generic_catalogs=generic_catalogs,
+    )
+    triad_groups = harmony_candidate_groups(
+        inputs,
+        pitches,
+        "G",
+        "chord_melody",
+        profile=EMMONS_E9,
+        generic_catalogs=generic_catalogs,
+    )
+    groups = mixed_candidate_groups(
+        inputs,
+        pitches,
+        "G",
+        profile=EMMONS_E9,
+        single_groups=single_groups,
+        dyad_groups=dyad_groups,
+        triad_groups=triad_groups,
+    )
+    policy = _weighted_policy()
+    weights = policy.weights_by_style["harmonized"]
+    for previous in groups[0][:2]:
+        for current in groups[1][:2]:
+            for following in groups[2][:2]:
+                fast = runtime._fast_ranker_penalty(
+                    runtime._ranker_candidate_state(
+                        current,
+                        profile=EMMONS_E9,
+                    ),
+                    runtime._ranker_pair_state(
+                        previous,
+                        current,
+                        runtime._ranker_candidate_state(
+                            previous,
+                            profile=EMMONS_E9,
+                        ),
+                        runtime._ranker_candidate_state(
+                            current,
+                            profile=EMMONS_E9,
+                        ),
+                        profile=EMMONS_E9,
+                    ),
+                    runtime._ranker_pair_state(
+                        current,
+                        following,
+                        runtime._ranker_candidate_state(
+                            current,
+                            profile=EMMONS_E9,
+                        ),
+                        runtime._ranker_candidate_state(
+                            following,
+                            profile=EMMONS_E9,
+                        ),
+                        profile=EMMONS_E9,
+                    ),
+                    role="sustained_note",
+                    weights=weights,
+                )
+                frozen = _runtime_learned_penalty(
+                    previous,
+                    current,
+                    following,
+                    role="sustained_note",
+                    style_family="harmonized",
+                    profile=EMMONS_E9,
+                    shadow_ranker_policy=policy,
+                )
+                assert fast == frozen
+
+    phrase_starts, phrase_ends = _phrase_boundaries(inputs, None)
+    frozen_path = choose_mixed_path(
+        groups,
+        inputs=inputs,
+        key="G",
+        meter="4/4",
+        pickup_beats=0.0,
+        phrase_starts=phrase_starts,
+        phrase_ends=phrase_ends,
+        style_family="harmonized",
+        profile=EMMONS_E9,
+        shadow_ranker_policy=policy,
+    )
+    fast_path = runtime._choose_private_beta_path(
+        groups,
+        inputs=inputs,
+        key="G",
+        meter="4/4",
+        pickup_beats=0.0,
+        phrase_starts=phrase_starts,
+        phrase_ends=phrase_ends,
+        style_family="harmonized",
+        profile=EMMONS_E9,
+        policy=policy,
+    )
+    assert fast_path == frozen_path

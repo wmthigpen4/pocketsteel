@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -22,12 +23,21 @@ from pocketsteel.amazing_tablature_model import (
 from pocketsteel.copedent_transfer import resolve_target_profile
 from pocketsteel.e9_copedents import (
     DEFAULT_COPEDENT_ID,
+    E9CopedentProfile,
     get_e9_copedent_profile,
     scientific_pitch_for_value,
 )
 from pocketsteel.melody_arranger import (
     _active_chords,
+    _add_cost,
+    _arrangement_roles,
+    _learned_cost_component,
+    _learned_style_for_role,
+    _mixed_start_cost,
+    _mixed_transition_cost,
     _phrase_boundaries,
+    _ranker_candidate_is_hard_valid,
+    _ranker_sustained_strings,
     _recommendation_for,
     arrange_melody_routes,
     build_route,
@@ -40,13 +50,43 @@ from pocketsteel.melody_arranger import (
     single_note_candidates,
 )
 from pocketsteel.melody_decision_rules import normalize_style_family
-from pocketsteel.melody_models import SUPPORTED_CONTOURS, SUPPORTED_TEXTURES
+from pocketsteel.melody_models import (
+    SUPPORTED_CONTOURS,
+    SUPPORTED_TEXTURES,
+    MelodyInput,
+    PositionCandidate,
+)
+from pocketsteel.melody_ranker_adapter import actions_for_position
 
 
 ENABLE_PRIVATE_BETA_ENV = "STEEL_RAG_ENABLE_AMAZING_TABLATURE_BETA"
 PRIVATE_MODEL_PATH_ENV = "STEEL_RAG_AMAZING_TABLATURE_MODEL_PATH"
 PRIVATE_MODEL_ID_ENV = "STEEL_RAG_AMAZING_TABLATURE_MODEL_ID"
 PRIVATE_MODEL_SHA256_ENV = "STEEL_RAG_AMAZING_TABLATURE_MODEL_SHA256"
+
+
+@dataclass(frozen=True)
+class _RankerCandidateState:
+    texture_size: int
+    fret: int
+    top_string: int
+    pitches: tuple[int, ...]
+    strings: frozenset[int]
+    controls: frozenset[str]
+
+
+@dataclass(frozen=True)
+class _RankerPairState:
+    bar_travel: int
+    control_changes: int
+    pocket_changes: int
+    voice_leading: int
+    sustained_voices: int
+    repicked_voices: int
+    incoming_string_distance: int
+    outgoing_sustain_continuity: int
+    fret_direction: int
+    string_direction: int
 
 
 def _enabled(value: object) -> bool:
@@ -166,6 +206,347 @@ def _changed_event_count(
         )
         changed += learned_signature != deterministic_signature
     return changed, total
+
+
+def _direction(value: int) -> int:
+    return 1 if value > 0 else -1 if value < 0 else 0
+
+
+def _ranker_candidate_state(
+    candidate: PositionCandidate,
+    *,
+    profile: E9CopedentProfile,
+) -> _RankerCandidateState:
+    actions = actions_for_position(candidate, profile)
+    top = max(actions, key=lambda action: int(action["soundingPitchValue"]))
+    return _RankerCandidateState(
+        texture_size=len(actions),
+        fret=int(top["fret"]),
+        top_string=int(top["string"]),
+        pitches=tuple(int(action["soundingPitchValue"]) for action in actions),
+        strings=frozenset(int(action["string"]) for action in actions),
+        controls=frozenset(
+            str(control)
+            for action in actions
+            for control in action.get("controls") or ()
+        ),
+    )
+
+
+def _ranker_pair_state(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    previous_state: _RankerCandidateState,
+    current_state: _RankerCandidateState,
+    *,
+    profile: E9CopedentProfile,
+) -> _RankerPairState:
+    sustained = frozenset(
+        _ranker_sustained_strings(previous, current, profile=profile)
+    )
+    attacked = current_state.strings - sustained
+    common = previous_state.strings & current_state.strings
+    bar_travel = abs(current_state.fret - previous_state.fret)
+    control_changes = len(current_state.controls ^ previous_state.controls)
+    return _RankerPairState(
+        bar_travel=bar_travel,
+        control_changes=control_changes,
+        pocket_changes=int(current_state.fret != previous_state.fret),
+        voice_leading=sum(
+            min(abs(pitch - previous_pitch) for previous_pitch in previous_state.pitches)
+            for pitch in current_state.pitches
+        ),
+        sustained_voices=len(current_state.strings & sustained),
+        repicked_voices=len(common & attacked),
+        incoming_string_distance=abs(
+            current_state.top_string - previous_state.top_string
+        ),
+        outgoing_sustain_continuity=len(previous_state.strings & sustained),
+        fret_direction=_direction(current_state.fret - previous_state.fret),
+        string_direction=_direction(
+            current_state.top_string - previous_state.top_string
+        ),
+    )
+
+
+def _fast_ranker_penalty(
+    current: _RankerCandidateState,
+    incoming: _RankerPairState,
+    outgoing: _RankerPairState | None,
+    *,
+    role: str,
+    weights: Mapping[str, float],
+) -> int:
+    """Score the canonical 21 features without rebuilding action dictionaries."""
+
+    score = 0.0
+    score += float(weights.get(f"texture_{max(1, min(3, current.texture_size))}", 0.0))
+    score += incoming.bar_travel * float(weights.get("bar_travel", 0.0))
+    score += incoming.control_changes * float(
+        weights.get("control_changes", 0.0)
+    )
+    score += incoming.pocket_changes * float(
+        weights.get("pocket_changes", 0.0)
+    )
+    score += incoming.voice_leading * float(
+        weights.get("voice_leading", 0.0)
+    )
+    score += incoming.sustained_voices * float(
+        weights.get("sustained_voices", 0.0)
+    )
+    score += incoming.repicked_voices * float(
+        weights.get("repicked_voices", 0.0)
+    )
+    if incoming.repicked_voices <= 0:
+        score += incoming.bar_travel * float(
+            weights.get("disconnected_bar_travel", 0.0)
+        )
+    if incoming.control_changes > 0 and incoming.pocket_changes > 0:
+        score += float(weights.get("controlled_move", 0.0))
+    score += incoming.incoming_string_distance * float(
+        weights.get("incoming_string_distance", 0.0)
+    )
+    if outgoing is not None:
+        score += outgoing.bar_travel * float(
+            weights.get("outgoing_bar_travel", 0.0)
+        )
+        score += outgoing.control_changes * float(
+            weights.get("outgoing_control_changes", 0.0)
+        )
+        score += outgoing.incoming_string_distance * float(
+            weights.get("outgoing_string_distance", 0.0)
+        )
+        score += outgoing.outgoing_sustain_continuity * float(
+            weights.get("outgoing_sustain_continuity", 0.0)
+        )
+        score += int(
+            incoming.fret_direction * outgoing.fret_direction < 0
+        ) * float(weights.get("fret_direction_reversal", 0.0))
+        score += int(
+            incoming.fret_direction != 0
+            and incoming.fret_direction == outgoing.fret_direction
+        ) * float(weights.get("fret_direction_continuation", 0.0))
+        score += int(
+            incoming.string_direction * outgoing.string_direction < 0
+        ) * float(weights.get("string_direction_reversal", 0.0))
+        score += int(
+            incoming.string_direction != 0
+            and incoming.string_direction == outgoing.string_direction
+        ) * float(weights.get("string_direction_continuation", 0.0))
+    if role in {"cadence", "chord_arrival", "resolution"}:
+        score += float(weights.get("cadence_arrival", 0.0))
+    return round(score * 1000)
+
+
+def _choose_private_beta_path(
+    candidate_groups: Sequence[Sequence[PositionCandidate]],
+    *,
+    inputs: Sequence[MelodyInput],
+    key: str,
+    meter: str,
+    pickup_beats: float,
+    phrase_starts: set[int],
+    phrase_ends: set[int],
+    style_family: str,
+    profile: E9CopedentProfile,
+    policy: RuntimeRankerPolicy,
+) -> list[PositionCandidate]:
+    """Run the frozen second-order search with cached, parity-tested features."""
+
+    if not candidate_groups or any(not group for group in candidate_groups):
+        return []
+    active_chords = _active_chords(inputs)
+    roles = _arrangement_roles(
+        inputs,
+        active_chords,
+        meter=meter,
+        pickup_beats=pickup_beats,
+        phrase_starts=phrase_starts or {0},
+        phrase_ends=phrase_ends or {len(inputs) - 1},
+    )
+    selected_style = normalize_style_family(style_family)
+    learned_weights = [
+        policy.weights_by_style.get(
+            _learned_style_for_role(selected_style, role),
+            {},
+        )
+        for role in roles
+    ]
+    if len(candidate_groups) < 2 or not any(learned_weights[1:]):
+        return choose_mixed_path(
+            candidate_groups,
+            inputs=inputs,
+            key=key,
+            meter=meter,
+            pickup_beats=pickup_beats,
+            phrase_starts=phrase_starts,
+            phrase_ends=phrase_ends,
+            style_family=selected_style,
+            profile=profile,
+            shadow_ranker_policy=policy,
+        )
+
+    groups = [
+        [
+            candidate
+            for candidate in group
+            if _ranker_candidate_is_hard_valid(
+                candidate,
+                inputs[event_index],
+                profile=profile,
+            )
+        ]
+        for event_index, group in enumerate(candidate_groups)
+    ]
+    if any(not group for group in groups):
+        return []
+
+    state_cache: dict[int, _RankerCandidateState] = {}
+    pair_cache: dict[tuple[int, int], _RankerPairState] = {}
+
+    def candidate_state(candidate: PositionCandidate) -> _RankerCandidateState:
+        key_id = id(candidate)
+        state = state_cache.get(key_id)
+        if state is None:
+            state = _ranker_candidate_state(candidate, profile=profile)
+            state_cache[key_id] = state
+        return state
+
+    def pair_state(
+        previous: PositionCandidate,
+        current: PositionCandidate,
+    ) -> _RankerPairState:
+        key_ids = (id(previous), id(current))
+        state = pair_cache.get(key_ids)
+        if state is None:
+            state = _ranker_pair_state(
+                previous,
+                current,
+                candidate_state(previous),
+                candidate_state(current),
+                profile=profile,
+            )
+            pair_cache[key_ids] = state
+        return state
+
+    home_fret = 3 if key == "G" else 8
+    pair_states: list[
+        dict[tuple[int, int], tuple[tuple[int, ...], int | None]]
+    ] = [{} for _index in groups]
+    for previous_index, previous in enumerate(groups[0]):
+        start_cost = _mixed_start_cost(
+            previous,
+            inputs,
+            0,
+            active_chords,
+            roles,
+            home_fret=home_fret,
+            style_family=selected_style,
+        )
+        for current_index, current in enumerate(groups[1]):
+            transition = _mixed_transition_cost(
+                previous,
+                current,
+                inputs,
+                1,
+                active_chords,
+                roles,
+                phrase_starts=phrase_starts or {0},
+                home_fret=home_fret,
+                key=key,
+                style_family=selected_style,
+            )
+            pair_states[1][(previous_index, current_index)] = (
+                _add_cost(start_cost, transition),
+                None,
+            )
+
+    for event_index in range(2, len(groups)):
+        current_layer: dict[
+            tuple[int, int], tuple[tuple[int, ...], int | None]
+        ] = {}
+        for (previous_index, current_index), (
+            previous_cost,
+            _parent,
+        ) in pair_states[event_index - 1].items():
+            previous = groups[event_index - 2][previous_index]
+            current = groups[event_index - 1][current_index]
+            incoming = pair_state(previous, current)
+            for following_index, following in enumerate(groups[event_index]):
+                outgoing = pair_state(current, following)
+                learned_penalty = _fast_ranker_penalty(
+                    candidate_state(current),
+                    incoming,
+                    outgoing,
+                    role=roles[event_index - 1],
+                    weights=learned_weights[event_index - 1],
+                )
+                transition = _mixed_transition_cost(
+                    current,
+                    following,
+                    inputs,
+                    event_index,
+                    active_chords,
+                    roles,
+                    phrase_starts=phrase_starts or {0},
+                    home_fret=home_fret,
+                    key=key,
+                    style_family=selected_style,
+                )
+                total = _add_cost(
+                    previous_cost,
+                    _add_cost(
+                        transition,
+                        _learned_cost_component(learned_penalty),
+                    ),
+                )
+                key_pair = (current_index, following_index)
+                choice = (total, previous_index)
+                existing = current_layer.get(key_pair)
+                if existing is None or (choice[0], choice[1]) < (
+                    existing[0],
+                    int(existing[1] or 0),
+                ):
+                    current_layer[key_pair] = choice
+        pair_states[event_index] = current_layer
+
+    final_layer = pair_states[-1]
+    ranked_finals: list[tuple[tuple[int, ...], tuple[int, int]]] = []
+    for (previous_index, current_index), (cost, _parent) in final_layer.items():
+        previous = groups[-2][previous_index]
+        current = groups[-1][current_index]
+        final_penalty = _fast_ranker_penalty(
+            candidate_state(current),
+            pair_state(previous, current),
+            None,
+            role=roles[-1],
+            weights=learned_weights[-1],
+        )
+        ranked_finals.append(
+            (
+                _add_cost(cost, _learned_cost_component(final_penalty)),
+                (previous_index, current_index),
+            )
+        )
+    _final_cost, (previous_index, current_index) = min(
+        ranked_finals,
+        key=lambda item: (item[0], item[1]),
+    )
+    indices = [current_index, previous_index]
+    for event_index in range(len(groups) - 1, 1, -1):
+        parent = pair_states[event_index][
+            (previous_index, current_index)
+        ][1]
+        if parent is None:
+            raise ValueError("Learned path state lost its parent candidate.")
+        current_index = previous_index
+        previous_index = parent
+        indices.append(previous_index)
+    indices.reverse()
+    return [
+        groups[event_index][candidate_index]
+        for event_index, candidate_index in enumerate(indices)
+    ]
 
 
 def arrange_melody_routes_with_private_beta(
@@ -354,7 +735,7 @@ def arrange_melody_routes_with_private_beta(
                     style_family=selected_style,
                     profile=target_profile,
                 )
-                learned_path = choose_mixed_path(
+                learned_path = _choose_private_beta_path(
                     candidate_groups,
                     inputs=inputs,
                     key=key,
@@ -364,7 +745,7 @@ def arrange_melody_routes_with_private_beta(
                     phrase_ends=phrase_ends,
                     style_family=selected_style,
                     profile=target_profile,
-                    shadow_ranker_policy=policy,
+                    policy=policy,
                 )
                 if not deterministic_path:
                     continue
