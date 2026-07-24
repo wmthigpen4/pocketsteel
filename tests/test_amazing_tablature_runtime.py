@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 
+import pocketsteel.amazing_tablature_runtime as runtime
 from pocketsteel.amazing_tablature_model import (
     CANONICAL_FEATURE_NAMES,
     CANONICAL_FEATURE_SCHEMA_VERSION,
@@ -159,3 +160,44 @@ def test_disabled_private_beta_keeps_deterministic_route_contract() -> None:
     assert not any(route.get("engineMode") for route in exercise["routes"])
     assert exercise["decisionRules"]["modelMetadata"]["rankerEnabled"] is False
     assert exercise["decisionRules"]["modelMetadata"]["privateBeta"] is False
+
+
+def test_private_beta_builds_each_candidate_catalog_once(monkeypatch) -> None:
+    original_harmony_groups = runtime.harmony_candidate_groups
+    harmony_calls: list[str] = []
+
+    def counted_harmony_groups(*args, **kwargs):
+        harmony_calls.append(str(args[3]))
+        return original_harmony_groups(*args, **kwargs)
+
+    def unexpected_second_arranger_pass(*args, **kwargs):
+        raise AssertionError(
+            "active private beta must not rebuild the deterministic arranger"
+        )
+
+    monkeypatch.setattr(
+        runtime,
+        "harmony_candidate_groups",
+        counted_harmony_groups,
+    )
+    monkeypatch.setattr(
+        runtime,
+        "arrange_melody_routes",
+        unexpected_second_arranger_pass,
+    )
+
+    result = melody_exercise_response(
+        "Build a melody exercise",
+        {
+            "key": "G",
+            "melody": ["1", "2", "3", "5", "3", "2", "1"],
+            "styleFamily": "harmonized",
+        },
+        ranker_policy=_policy(),
+    )
+
+    assert result is not None
+    assert harmony_calls.count("automatic_harmony") == 1
+    assert harmony_calls.count("chord_melody") == 1
+    assert harmony_calls.count("thirds") == 1
+    assert harmony_calls.count("sixths") == 1

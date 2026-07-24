@@ -20,11 +20,18 @@ from pocketsteel.amazing_tablature_model import (
     load_sanitized_ranker_artifact,
 )
 from pocketsteel.copedent_transfer import resolve_target_profile
-from pocketsteel.e9_copedents import get_e9_copedent_profile
+from pocketsteel.e9_copedents import (
+    DEFAULT_COPEDENT_ID,
+    get_e9_copedent_profile,
+    scientific_pitch_for_value,
+)
 from pocketsteel.melody_arranger import (
+    _active_chords,
     _phrase_boundaries,
+    _recommendation_for,
     arrange_melody_routes,
     build_route,
+    choose_path,
     choose_mixed_path,
     harmony_candidate_groups,
     mixed_candidate_groups,
@@ -33,6 +40,7 @@ from pocketsteel.melody_arranger import (
     single_note_candidates,
 )
 from pocketsteel.melody_decision_rules import normalize_style_family
+from pocketsteel.melody_models import SUPPORTED_CONTOURS, SUPPORTED_TEXTURES
 
 
 ENABLE_PRIVATE_BETA_ENV = "STEEL_RAG_ENABLE_AMAZING_TABLATURE_BETA"
@@ -197,18 +205,17 @@ def arrange_melody_routes_with_private_beta(
         "target_copedent": target_copedent,
         "style_family": style_family,
     }
-    routes, resolved = arrange_melody_routes(raw_events, **arranger_kwargs)
     if not private_beta_enabled(policy) or texture not in {"both", "mixed_arrangement"}:
-        return routes, resolved, private_beta_model_metadata(policy)
-
-    deterministic = next(
-        (route for route in routes if route.get("harmonyType") == "mixed_arrangement"),
-        None,
-    )
-    if deterministic is None:
+        routes, resolved = arrange_melody_routes(raw_events, **arranger_kwargs)
         return routes, resolved, private_beta_model_metadata(policy)
 
     try:
+        contour = (
+            contour_mode
+            if contour_mode in SUPPORTED_CONTOURS
+            else "closest_playable"
+        )
+        selected_texture = texture if texture in SUPPORTED_TEXTURES else "both"
         selected_style = normalize_style_family(style_family)
         target_profile = resolve_target_profile(target_copedent_id, target_copedent)
         source_profile = (
@@ -222,93 +229,293 @@ def arrange_melody_routes_with_private_beta(
             source_profile=source_profile,
             target_profile=target_profile,
         )
-        all_pitches = resolve_contour(all_inputs, contour_mode, profile=target_profile)
+        all_pitches = resolve_contour(all_inputs, contour, profile=target_profile)
         inputs = all_inputs[event_start:event_end]
         resolved_pitches = all_pitches[event_start:event_end]
         phrase_starts, phrase_ends = _phrase_boundaries(inputs, sections)
-        single_groups = [
-            single_note_candidates(item, pitch, profile=target_profile)
+
+        single_cache: dict[tuple[object, ...], list[Any]] = {}
+        single_groups: list[list[Any]] = []
+        for item, pitch in zip(inputs, resolved_pitches):
+            literal_key = None
+            if item.literal is not None:
+                literal_key = (
+                    item.literal.string,
+                    item.literal.fret,
+                    tuple(item.literal.changes),
+                )
+            cache_key = (item.note, item.degree, pitch, literal_key)
+            candidates = single_cache.get(cache_key)
+            if candidates is None:
+                candidates = single_note_candidates(
+                    item,
+                    pitch,
+                    profile=target_profile,
+                )
+                single_cache[cache_key] = candidates
+            single_groups.append(candidates)
+        single_path = choose_path(single_groups, inputs=inputs)
+        if not single_path:
+            raise ValueError(
+                "The melody does not have a mechanically valid standard-E9 path."
+            )
+
+        route_specs: list[tuple[str, str, str]] = [
+            ("single-note", "single_note", "Faithful melody")
+        ]
+        if selected_texture in {"both", "mixed_arrangement"}:
+            route_specs.append(
+                ("mixed-arrangement", "mixed_arrangement", "Recommended arrangement")
+            )
+        if selected_texture == "automatic_harmony":
+            route_specs.append(
+                (
+                    "recommended-harmony",
+                    "automatic_harmony",
+                    "Recommended harmony",
+                )
+            )
+        if selected_texture in {"both", "thirds"}:
+            route_specs.append(("thirds", "thirds", "Diatonic thirds"))
+        if selected_texture in {"both", "sixths"}:
+            route_specs.append(("sixths", "sixths", "Diatonic sixths"))
+        if selected_texture in {"both", "chord_melody"}:
+            route_specs.append(
+                ("chord-melody", "chord_melody", "Chord melody")
+            )
+
+        routes: list[dict[str, Any]] = [
+            build_route(
+                route_id=f"{route_id_prefix}-single-note",
+                label=route_specs[0][2],
+                harmony_type="single_note",
+                recommendation=(
+                    "Start here to hear and learn the melody contour cleanly."
+                ),
+                inputs=inputs,
+                resolved_pitches=resolved_pitches,
+                path=single_path,
+                candidate_groups=single_groups,
+                key=key,
+                title=f"{title} — Single-note melody",
+                recommended=False,
+                meter=meter,
+                pickup_beats=pickup_beats,
+                phrase_starts=phrase_starts,
+                phrase_ends=phrase_ends,
+                target_profile=target_profile,
+                source_profile=source_profile,
+                style_family=selected_style,
+            )
+        ]
+
+        harmony_groups: dict[str, list[list[Any]]] = {}
+        generic_catalogs: dict[str, list[Any]] = {}
+
+        def groups_for(harmony_type: str) -> list[list[Any]]:
+            groups = harmony_groups.get(harmony_type)
+            if groups is None:
+                groups = harmony_candidate_groups(
+                    inputs,
+                    resolved_pitches,
+                    key,
+                    harmony_type,
+                    profile=target_profile,
+                    generic_catalogs=generic_catalogs,
+                )
+                harmony_groups[harmony_type] = groups
+            return groups
+
+        changed: int | None = None
+        total: int | None = None
+        for suffix, harmony_type, label in route_specs[1:]:
+            if harmony_type == "chord_melody" and not any(
+                _active_chords(inputs)
+            ):
+                continue
+            if harmony_type == "mixed_arrangement":
+                candidate_groups = mixed_candidate_groups(
+                    inputs,
+                    resolved_pitches,
+                    key,
+                    profile=target_profile,
+                    single_groups=single_groups,
+                    dyad_groups=groups_for("automatic_harmony"),
+                    triad_groups=groups_for("chord_melody"),
+                )
+                deterministic_path = choose_mixed_path(
+                    candidate_groups,
+                    inputs=inputs,
+                    key=key,
+                    meter=meter,
+                    pickup_beats=pickup_beats,
+                    phrase_starts=phrase_starts,
+                    phrase_ends=phrase_ends,
+                    style_family=selected_style,
+                    profile=target_profile,
+                )
+                learned_path = choose_mixed_path(
+                    candidate_groups,
+                    inputs=inputs,
+                    key=key,
+                    meter=meter,
+                    pickup_beats=pickup_beats,
+                    phrase_starts=phrase_starts,
+                    phrase_ends=phrase_ends,
+                    style_family=selected_style,
+                    profile=target_profile,
+                    shadow_ranker_policy=policy,
+                )
+                if not deterministic_path:
+                    continue
+                if (
+                    target_profile.id == DEFAULT_COPEDENT_ID
+                    and selected_style == "auto"
+                    and all(
+                        len(candidate.notes) == 1
+                        for candidate in deterministic_path
+                    )
+                ):
+                    continue
+                deterministic = build_route(
+                    route_id=f"{route_id_prefix}-{suffix}",
+                    label=label,
+                    harmony_type=harmony_type,
+                    recommendation=_recommendation_for(harmony_type),
+                    inputs=inputs,
+                    resolved_pitches=resolved_pitches,
+                    path=deterministic_path,
+                    candidate_groups=candidate_groups,
+                    key=key,
+                    title=f"{title} — {label}",
+                    recommended=True,
+                    meter=meter,
+                    pickup_beats=pickup_beats,
+                    phrase_starts=phrase_starts,
+                    phrase_ends=phrase_ends,
+                    target_profile=target_profile,
+                    source_profile=source_profile,
+                    style_family=selected_style,
+                )
+                if not learned_path:
+                    routes.append(deterministic)
+                    continue
+                learned = build_route(
+                    route_id=f"{route_id_prefix}-learned-beta",
+                    label="Learned beta recommendation",
+                    harmony_type="mixed_arrangement",
+                    recommendation=(
+                        "Private learned ranking chose this path after the frozen "
+                        "pitch, register, harmony, and mechanical gates passed."
+                    ),
+                    inputs=inputs,
+                    resolved_pitches=resolved_pitches,
+                    path=learned_path,
+                    candidate_groups=candidate_groups,
+                    key=key,
+                    title=f"{title} — Learned beta recommendation",
+                    recommended=True,
+                    meter=meter,
+                    pickup_beats=pickup_beats,
+                    phrase_starts=phrase_starts,
+                    phrase_ends=phrase_ends,
+                    target_profile=target_profile,
+                    source_profile=source_profile,
+                    style_family=selected_style,
+                )
+                learned["engineMode"] = "private_learned_beta"
+                learned["modelId"] = policy.model_id
+                deterministic["label"] = "Deterministic comparison"
+                deterministic["harmonyType"] = "deterministic_comparison"
+                deterministic["recommended"] = False
+                deterministic["engineMode"] = "deterministic_comparison"
+                deterministic["comparisonModelId"] = policy.model_id
+                changed, total = _changed_event_count(learned, deterministic)
+                learned["comparisonRouteId"] = deterministic["id"]
+                learned["comparisonChangedEvents"] = changed
+                learned["comparisonEventCount"] = total
+                deterministic["comparisonRouteId"] = learned["id"]
+                deterministic["comparisonChangedEvents"] = changed
+                deterministic["comparisonEventCount"] = total
+                routes.extend((learned, deterministic))
+                continue
+
+            candidate_groups = groups_for(harmony_type)
+            path = (
+                choose_path(candidate_groups, inputs=inputs)
+                if candidate_groups and all(candidate_groups)
+                else []
+            )
+            if not path:
+                continue
+            routes.append(
+                build_route(
+                    route_id=f"{route_id_prefix}-{suffix}",
+                    label=label,
+                    harmony_type=harmony_type,
+                    recommendation=_recommendation_for(harmony_type),
+                    inputs=inputs,
+                    resolved_pitches=resolved_pitches,
+                    path=path,
+                    candidate_groups=candidate_groups,
+                    key=key,
+                    title=f"{title} — {label}",
+                    recommended=harmony_type
+                    in {"mixed_arrangement", "automatic_harmony"},
+                    meter=meter,
+                    pickup_beats=pickup_beats,
+                    phrase_starts=phrase_starts,
+                    phrase_ends=phrase_ends,
+                    target_profile=target_profile,
+                    source_profile=source_profile,
+                    style_family=selected_style,
+                )
+            )
+
+        if len(routes) > 1 and not any(
+            route["recommended"] for route in routes
+        ):
+            fallback = next(
+                (
+                    route
+                    for route in routes
+                    if route["harmonyType"]
+                    not in {"single_note", "vocal_steel"}
+                ),
+                None,
+            )
+            if fallback is not None:
+                fallback["recommended"] = True
+                fallback["recommendation"] = (
+                    "Recommended validated harmony route for this phrase."
+                )
+
+        resolved = [
+            {
+                "inputToken": item.token,
+                "resolvedNote": item.note,
+                "scaleDegree": str(item.degree),
+                "pitch": scientific_pitch_for_value(pitch),
+                "pitchValue": pitch,
+                "direction": item.direction,
+                "octaveShift": item.octave_shift,
+                "literal": item.literal is not None,
+                "durationBeats": item.duration_beats,
+                "measure": item.measure,
+                "beat": item.beat,
+                "origin": item.origin,
+                "tie": item.tie,
+                "lyric": item.lyric,
+                "chord": item.chord,
+                "articulation": item.articulation,
+                **(
+                    {"sourceAction": item.source_action}
+                    if item.source_action
+                    else {}
+                ),
+            }
             for item, pitch in zip(inputs, resolved_pitches)
         ]
-        generic_catalogs: dict[str, list[Any]] = {}
-        dyad_groups = harmony_candidate_groups(
-            inputs,
-            resolved_pitches,
-            key,
-            "automatic_harmony",
-            profile=target_profile,
-            generic_catalogs=generic_catalogs,
-        )
-        triad_groups = harmony_candidate_groups(
-            inputs,
-            resolved_pitches,
-            key,
-            "chord_melody",
-            profile=target_profile,
-            generic_catalogs=generic_catalogs,
-        )
-        candidate_groups = mixed_candidate_groups(
-            inputs,
-            resolved_pitches,
-            key,
-            profile=target_profile,
-            single_groups=single_groups,
-            dyad_groups=dyad_groups,
-            triad_groups=triad_groups,
-        )
-        learned_path = choose_mixed_path(
-            candidate_groups,
-            inputs=inputs,
-            key=key,
-            meter=meter,
-            pickup_beats=pickup_beats,
-            phrase_starts=phrase_starts,
-            phrase_ends=phrase_ends,
-            style_family=selected_style,
-            profile=target_profile,
-            shadow_ranker_policy=policy,
-        )
-        if not learned_path:
-            return routes, resolved, private_beta_model_metadata(policy)
-        learned = build_route(
-            route_id=f"{route_id_prefix}-learned-beta",
-            label="Learned beta recommendation",
-            harmony_type="mixed_arrangement",
-            recommendation=(
-                "Private learned ranking chose this path after the frozen pitch, "
-                "register, harmony, and mechanical gates passed."
-            ),
-            inputs=inputs,
-            resolved_pitches=resolved_pitches,
-            path=learned_path,
-            candidate_groups=candidate_groups,
-            key=key,
-            title=f"{title} — Learned beta recommendation",
-            recommended=True,
-            meter=meter,
-            pickup_beats=pickup_beats,
-            phrase_starts=phrase_starts,
-            phrase_ends=phrase_ends,
-            target_profile=target_profile,
-            source_profile=source_profile,
-            style_family=selected_style,
-        )
-        learned["engineMode"] = "private_learned_beta"
-        learned["modelId"] = policy.model_id
-        deterministic["label"] = "Deterministic comparison"
-        deterministic["harmonyType"] = "deterministic_comparison"
-        deterministic["recommended"] = False
-        deterministic["engineMode"] = "deterministic_comparison"
-        deterministic["comparisonModelId"] = policy.model_id
-        changed, total = _changed_event_count(learned, deterministic)
-        learned["comparisonRouteId"] = deterministic["id"]
-        learned["comparisonChangedEvents"] = changed
-        learned["comparisonEventCount"] = total
-        deterministic["comparisonRouteId"] = learned["id"]
-        deterministic["comparisonChangedEvents"] = changed
-        deterministic["comparisonEventCount"] = total
-        mixed_index = routes.index(deterministic)
-        routes[mixed_index:mixed_index + 1] = [learned, deterministic]
         return routes, resolved, private_beta_model_metadata(
             policy,
             comparison_changed_events=changed,
@@ -316,6 +523,7 @@ def arrange_melody_routes_with_private_beta(
         )
     except (KeyError, TypeError, ValueError):
         # A private beta must never make a valid deterministic arrangement fail.
+        routes, resolved = arrange_melody_routes(raw_events, **arranger_kwargs)
         return routes, resolved, private_beta_model_metadata(policy)
 
 
