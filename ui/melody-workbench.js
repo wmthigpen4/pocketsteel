@@ -2296,6 +2296,32 @@
     return body.scoreDraft || body.score_draft || body;
   }
 
+  async function pollScoreImportJob(initialJob) {
+    let job = initialJob;
+    const startedAt = Date.now();
+    while (!["complete", "failed"].includes(job.status)) {
+      if (Date.now() - startedAt > 8 * 60 * 1000) {
+        throw new Error("Score recognition timed out. Try fewer pages or a tighter image.");
+      }
+      await new Promise((resolve) => global.setTimeout(resolve, 450));
+      const response = await global.fetch(`/api/melody/import/jobs/${encodeURIComponent(job.jobId)}`, {
+        credentials: "same-origin",
+        headers: accessHeaders(),
+        cache: "no-store"
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || `Recognition status failed with ${response.status}.`);
+      job = body;
+      const completed = Number(job.completedPages || 0);
+      const total = Number(job.pageCount || 1);
+      const current = job.currentPage ? ` · page ${job.currentPage} complete` : "";
+      elements.importStatus.textContent = `Recognized ${completed} of ${total} ${total === 1 ? "page" : "pages"}${current}.`;
+      setImportProgress("recognize", ["upload", ...(state.pdfInspection ? ["pages"] : [])]);
+    }
+    if (job.status === "failed") throw new Error(job.error || "The score could not be read reliably.");
+    return job.result;
+  }
+
   function readFileAsDataUrl(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -2407,7 +2433,9 @@
         if (sourceType === "midi") request.trackIndex = Number(state.importSelectedPart);
         else request.partId = state.importSelectedPart;
       }
-      const draft = await importPayload(request);
+      if (isPrintedDocument) request.async = true;
+      let draft = await importPayload(request);
+      if (draft.schemaVersion === "score_import_job_v1") draft = await pollScoreImportJob(draft);
       setImportProgress("validate", ["upload", ...(sourceType === "pdf" ? ["pages"] : []), ...(isPrintedDocument ? ["recognize"] : [])]);
       draft.review = draft.review || { status: "needs_review", warnings: [] };
       draft.review.status = "needs_review";

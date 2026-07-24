@@ -622,6 +622,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "request.inspectOnly = true;" in script
     assert "request.selectedPages = selectedPdfPages();" in script
     assert "rightsAcknowledged: !isPrintedDocument || elements.importRights.checked" in script
+    assert "request.async = true;" in script
+    assert "pollScoreImportJob" in script
+    assert "Recognized ${completed} of ${total}" in script
     assert 'statusElement: elements.scoreArrangeStatus' in script
     assert 'retryTransientOnce: true' in script
     assert 'elements.scoreArrangeStatus.textContent = "";' in script

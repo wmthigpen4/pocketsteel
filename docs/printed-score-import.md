@@ -26,6 +26,12 @@ For PDFs, `/api/melody/import` first accepts `inspectOnly: true` and returns
 transient page thumbnails. A second request supplies `selectedPages`. Neither
 request writes the source or draft to application storage.
 
+Printed recognition uses a short-lived in-memory job. The UI polls
+`/api/melody/import/jobs/{jobId}` and displays the provider's actual completed
+page count. Source bytes exist only in the worker request and are cleared when
+the job completes or fails; the retained job result contains only the
+reviewable draft and progress metadata.
+
 ## Recognition provider boundary
 
 `steel_guitar_rag.score_omr.ScoreOmrProvider` is the provider-neutral contract.

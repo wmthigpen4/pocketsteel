@@ -4827,6 +4827,73 @@ def test_melody_import_returns_temporary_amazing_grace_draft() -> None:
     assert payload == {"error": "melody import is not enabled"}
 
 
+def test_printed_score_import_jobs_are_async_authenticated_and_no_store() -> None:
+    class FakeScoreJobs:
+        def start(self, request: dict[str, Any]) -> dict[str, Any]:
+            assert request["contentBase64"] == "transient"
+            return {
+                "schemaVersion": "score_import_job_v1",
+                "jobId": "unguessable-test-job",
+                "status": "queued",
+                "pageCount": 2,
+                "completedPages": 0,
+            }
+
+        def snapshot(self, job_id: str) -> dict[str, Any] | None:
+            if job_id != "unguessable-test-job":
+                return None
+            return {
+                "schemaVersion": "score_import_job_v1",
+                "jobId": job_id,
+                "status": "complete",
+                "pageCount": 2,
+                "completedPages": 2,
+                "result": {"source": {"retained": False}, "score": {"melody": [{"pitch": "G4"}]}},
+            }
+
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        auth_provider="scaffold",
+        melody_import_enabled=True,
+    )
+    app.score_import_jobs = FakeScoreJobs()
+    status, headers, started = call_existing_app(
+        app,
+        "/api/melody/import",
+        method="POST",
+        json_body={
+            "sourceType": "pdf",
+            "contentBase64": "transient",
+            "rightsAcknowledged": True,
+            "selectedPages": [1, 2],
+            "async": True,
+        },
+    )
+    assert status == "202 Accepted"
+    assert headers["Cache-Control"] == "no-store"
+    assert started["status"] == "queued"
+    assert "contentBase64" not in started
+
+    status, headers, complete = call_existing_app(
+        app,
+        "/api/melody/import/jobs/unguessable-test-job",
+    )
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert complete["status"] == "complete"
+    assert complete["result"]["source"]["retained"] is False
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/melody/import/jobs/unguessable-test-job",
+        access_role=None,
+    )
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "request requires authenticated beta_user or admin access"}
+
+
 def test_session_exposes_both_melody_features_and_version_stays_minimal() -> None:
     status, _, session = call_app(
         "/api/session",

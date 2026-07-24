@@ -123,6 +123,7 @@ from steel_guitar_rag.melody_import import (
     import_score_draft,
     public_song_catalog,
 )
+from steel_guitar_rag.score_import_jobs import ScoreImportJobManager
 from steel_guitar_rag.lesson_studio import LessonStudioError, build_lesson_response, lesson_catalog
 from steel_guitar_rag.song_practice import (
     SongPracticeError,
@@ -402,6 +403,7 @@ class RetrievalApi:
             if melody_import_enabled is None
             else bool(melody_import_enabled)
         )
+        self.score_import_jobs = ScoreImportJobManager(importer=import_score_draft)
         self.song_practice_enabled = (
             configured_song_practice_enabled()
             if song_practice_enabled is None
@@ -1050,6 +1052,25 @@ class RetrievalApi:
                 extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
             )
 
+        score_job_prefix = "/api/melody/import/jobs/"
+        if path.startswith(score_job_prefix):
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            if not self.melody_import_enabled:
+                return self._json_response(start_response, "404 Not Found", {"error": "melody import is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            job = self.score_import_jobs.snapshot(path.removeprefix(score_job_prefix))
+            if job is None:
+                return self._json_response(start_response, "404 Not Found", {"error": "score import job not found"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            return self._json_response(
+                start_response,
+                "200 OK",
+                job,
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
         if path == "/api/melody/import":
             if method != "POST":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
@@ -1062,6 +1083,14 @@ class RetrievalApi:
                 catalog_allowed = source_type == "catalog" and self.melody_exercise_enabled
                 if not self.melody_import_enabled and not catalog_allowed:
                     return self._json_response(start_response, "404 Not Found", {"error": "melody import is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+                if request_payload.get("async") is True and source_type in {"image", "pdf"}:
+                    job = self.score_import_jobs.start(request_payload)
+                    return self._json_response(
+                        start_response,
+                        "202 Accepted",
+                        job,
+                        extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                    )
                 draft = import_score_draft(request_payload)
             except MelodyImportTooLargeError as exc:
                 return self._json_response(

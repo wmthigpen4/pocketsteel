@@ -119,6 +119,7 @@ def import_score_draft(
     payload: Mapping[str, Any],
     *,
     vision_client: Callable[[str, str], Mapping[str, Any]] | None = None,
+    progress_callback: Callable[[int, int, int], None] | None = None,
 ) -> dict[str, Any]:
     source_type = str(payload.get("sourceType") or payload.get("source_type") or "").strip().lower()
     if source_type == "catalog":
@@ -162,6 +163,7 @@ def import_score_draft(
                 selected_part=selected_part,
                 provider=provider,
                 normalize=normalize_score_draft,
+                progress_callback=progress_callback,
             )
         except ScoreOmrError as exc:
             raise MelodyImportError(str(exc)) from exc

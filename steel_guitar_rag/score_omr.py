@@ -118,6 +118,7 @@ def recognize_printed_document(
     selected_part: str | None,
     provider: ScoreOmrProvider,
     normalize: Callable[..., dict[str, Any]],
+    progress_callback: Callable[[int, int, int], None] | None = None,
 ) -> dict[str, Any]:
     """Recognize selected printed pages and return one normalized score draft."""
 
@@ -182,6 +183,8 @@ def recognize_printed_document(
             review_status="needs_review",
         )
         page_drafts.append(normalized)
+        if progress_callback is not None:
+            progress_callback(page.page_number, len(page_drafts), len(pages))
 
     combined = _combine_page_drafts(page_drafts, normalize=normalize)
     combined["source"].update(
