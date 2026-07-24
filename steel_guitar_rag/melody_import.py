@@ -24,6 +24,7 @@ from typing import Any, Callable, Mapping, Sequence
 from xml.etree import ElementTree as ET
 
 from steel_guitar_rag.score_omr import (
+    AudiverisOmrProvider,
     LocalVisionOmrProvider,
     ScoreOmrError,
     inspect_pdf,
@@ -150,10 +151,27 @@ def import_score_draft(
             except ScoreOmrError as exc:
                 raise MelodyImportError(str(exc)) from exc
         selected_part = str(payload.get("partId") or "").strip() or None
-        provider_client = vision_client or (
-            lambda encoded, mime: _ollama_vision_client(encoded, mime, selected_part=selected_part)
-        )
-        provider = LocalVisionOmrProvider(provider_client)
+        if vision_client is not None:
+            provider = LocalVisionOmrProvider(vision_client)
+        else:
+            audiveris_provider = AudiverisOmrProvider(
+                lambda musicxml, *, compressed: parse_musicxml(
+                    musicxml,
+                    compressed=compressed,
+                    selected_part=selected_part,
+                )
+            )
+            provider = (
+                audiveris_provider
+                if audiveris_provider.available
+                else LocalVisionOmrProvider(
+                    lambda encoded, mime: _ollama_vision_client(
+                        encoded,
+                        mime,
+                        selected_part=selected_part,
+                    )
+                )
+            )
         try:
             return recognize_printed_document(
                 raw=raw,
@@ -642,7 +660,9 @@ def _ollama_vision_client(
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             body = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise MelodyImportError("The local score reader is unavailable. You can still enter the passage manually.") from exc
+        raise MelodyImportError(
+            "Printed-score recognition could not complete. Confirm that Ollama is running, then try again."
+        ) from exc
     content = str((body.get("message") or {}).get("content") or "").strip()
     content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.I | re.S)
     try:

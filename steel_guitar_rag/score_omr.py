@@ -9,10 +9,14 @@ from __future__ import annotations
 
 import base64
 import io
+import os
+import subprocess
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol, Sequence
 
-from PIL import Image, ImageStat
+from PIL import Image, ImageOps, ImageStat
 
 
 OMR_RESULT_SCHEMA_VERSION = "score_omr_result_v1"
@@ -21,6 +25,9 @@ MAX_PDF_PAGES = 12
 MAX_SELECTED_PAGES = 8
 MAX_RENDERED_PIXELS = 18_000_000
 LOW_CONFIDENCE_THRESHOLD = 0.8
+DEFAULT_AUDIVERIS_BINARY = Path("/Volumes/Audiveris/Audiveris.app/Contents/MacOS/Audiveris")
+AUDIVERIS_TIMEOUT_ENV = "STEEL_RAG_AUDIVERIS_TIMEOUT_SECONDS"
+DEFAULT_AUDIVERIS_TIMEOUT_SECONDS = 180.0
 
 
 class ScoreOmrError(ValueError):
@@ -55,13 +62,173 @@ class LocalVisionOmrProvider:
         return self._client(base64.b64encode(page.image_bytes).decode("ascii"), page.mime_type)
 
 
+class AudiverisOmrProvider:
+    """Run Audiveris headlessly and parse its transient MusicXML export."""
+
+    provider_id = "audiveris_local"
+
+    def __init__(
+        self,
+        parser: Callable[..., Mapping[str, Any]],
+        *,
+        binary: Path | None = None,
+        runner: Callable[..., Any] | None = None,
+    ) -> None:
+        configured = binary or (
+            Path(os.environ["AUDIVERIS_BIN"]) if os.environ.get("AUDIVERIS_BIN") else None
+        )
+        self.binary = configured or DEFAULT_AUDIVERIS_BINARY
+        self._parser = parser
+        self._runner = runner or subprocess.run
+
+    @property
+    def available(self) -> bool:
+        return self.binary.exists() and os.access(self.binary, os.X_OK)
+
+    def _command_prefix(self) -> list[str]:
+        contents_dir = self.binary.parent.parent
+        bundled_java = contents_dir / "runtime" / "Contents" / "Home" / "bin" / "java"
+        bundled_app = contents_dir / "app"
+        if (
+            self.binary.parent.name == "MacOS"
+            and contents_dir.name == "Contents"
+            and bundled_java.exists()
+            and os.access(bundled_java, os.X_OK)
+            and (bundled_app / "audiveris.jar").exists()
+        ):
+            return [
+                str(bundled_java),
+                "-Djava.awt.headless=true",
+                "-Djpackage.app-version=5.11.0",
+                "--add-exports=java.desktop/sun.awt.image=ALL-UNNAMED",
+                "--enable-native-access=ALL-UNNAMED",
+                "-Dfile.encoding=UTF-8",
+                "-Xms512m",
+                "-Xmx8G",
+                "-cp",
+                f"{bundled_app}/*",
+                "Audiveris",
+            ]
+        return [str(self.binary)]
+
+    def recognize_page(self, page: ScoreOmrPage) -> Mapping[str, Any]:
+        if not self.available:
+            raise ScoreOmrError(
+                "Printed-score recognition is not available on this server. "
+                "The Audiveris reader is not installed or mounted."
+            )
+        try:
+            timeout_seconds = float(
+                os.environ.get(AUDIVERIS_TIMEOUT_ENV) or DEFAULT_AUDIVERIS_TIMEOUT_SECONDS
+            )
+        except (TypeError, ValueError):
+            timeout_seconds = DEFAULT_AUDIVERIS_TIMEOUT_SECONDS
+        timeout_seconds = max(30.0, min(timeout_seconds, 300.0))
+
+        with tempfile.TemporaryDirectory(prefix="steel-rag-omr-") as temporary:
+            root = Path(temporary)
+            source_path = root / f"page-{page.page_number}.png"
+            try:
+                with Image.open(io.BytesIO(page.image_bytes)) as image:
+                    prepared = ImageOps.autocontrast(image.convert("L"))
+                    if prepared.width < 1800:
+                        scale = min(4.0, 1800 / max(1, prepared.width))
+                        prepared = prepared.resize(
+                            (
+                                max(1, round(prepared.width * scale)),
+                                max(1, round(prepared.height * scale)),
+                            ),
+                            Image.Resampling.LANCZOS,
+                        )
+                    prepared.convert("RGB").save(source_path, format="PNG")
+            except (OSError, ValueError) as exc:
+                raise ScoreOmrError(
+                    "This page could not be decoded. Upload a valid PDF, JPG, PNG, or WebP file."
+                ) from exc
+
+            output_dir: Path | None = None
+            result: Any = None
+            for attempt in range(1, 3):
+                output_dir = root / f"output-{attempt}"
+                output_dir.mkdir(mode=0o700)
+                try:
+                    result = self._runner(
+                        [
+                            *self._command_prefix(),
+                            "-batch",
+                            "-transcribe",
+                            "-export",
+                            "-output",
+                            str(output_dir),
+                            str(source_path),
+                        ],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        stdin=subprocess.DEVNULL,
+                        timeout=timeout_seconds,
+                    )
+                except subprocess.TimeoutExpired as exc:
+                    raise ScoreOmrError(
+                        "Printed-score recognition took too long. "
+                        "Try a tighter image containing only the relevant score."
+                    ) from exc
+                except OSError as exc:
+                    raise ScoreOmrError(
+                        "Printed-score recognition could not start because the local reader is unavailable."
+                    ) from exc
+                if result.returncode == 0:
+                    break
+            if result is None or result.returncode != 0 or output_dir is None:
+                raise ScoreOmrError(
+                    "The local Audiveris engine failed while processing this score. "
+                    "The upload passed the image-quality checks; this is an internal recognition error."
+                )
+
+            candidates = sorted(
+                [
+                    *output_dir.rglob("*.mxl"),
+                    *output_dir.rglob("*.musicxml"),
+                    *output_dir.rglob("*.xml"),
+                ]
+            )
+            if not candidates:
+                raise ScoreOmrError(
+                    "Audiveris completed without producing a readable score. "
+                    "If this is clean printed notation, this is an internal recognition error."
+                )
+            recognized_path = candidates[0]
+            try:
+                parsed = self._parser(
+                    recognized_path.read_bytes(),
+                    compressed=recognized_path.suffix.lower() == ".mxl",
+                )
+            except (OSError, ValueError) as exc:
+                raise ScoreOmrError(str(exc)) from exc
+            return {
+                **dict(parsed),
+                "inputAssessment": {
+                    "kind": "printed_notation",
+                    "accepted": True,
+                    "rescanGuidance": "",
+                },
+            }
+
+
 def provider_catalog() -> list[dict[str, Any]]:
     """Return benchmark candidates without implying that a provider is enabled."""
 
     return [
         {
+            "id": "audiveris_local",
+            "label": "Local Audiveris",
+            "mode": "local",
+            "available": AudiverisOmrProvider(lambda *_args, **_kwargs: {}).available,
+            "trainingUse": False,
+        },
+        {
             "id": "local_vision",
-            "label": "Local vision / Audiveris pipeline",
+            "label": "Local vision fallback",
             "mode": "local",
             "available": True,
             "trainingUse": False,

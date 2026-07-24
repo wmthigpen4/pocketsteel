@@ -489,9 +489,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "How many voices?" in html
     assert "How should it move?" in html
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-score.js?v=printed-score-omr-v1' in html
+    assert 'melody-score.js?v=printed-score-omr-v2' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=printed-score-omr-v1' in html
+    assert 'melody-workbench.js?v=printed-score-omr-v2' in html
     assert 'id="studio-engine-status" aria-live="polite" hidden' in html
     assert "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging." in script
     assert "Arrangement method: trained Amazing Tablature ranker with verified E9 rules." in script
@@ -623,6 +623,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "request.selectedPages = selectedPdfPages();" in script
     assert "rightsAcknowledged: !isPrintedDocument || elements.importRights.checked" in script
     assert "request.async = true;" in script
+    assert 'if (scale === 1)' in script
+    assert 'return readFileAsDataUrl(file);' in script
     assert "pollScoreImportJob" in script
     assert "Recognized ${completed} of ${total}" in script
     assert 'statusElement: elements.scoreArrangeStatus' in script

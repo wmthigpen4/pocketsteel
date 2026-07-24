@@ -3,8 +3,10 @@ from __future__ import annotations
 import base64
 import io
 import json
+import subprocess
 import struct
 import zipfile
+from pathlib import Path
 
 import pytest
 from PIL import Image, ImageDraw
@@ -18,6 +20,7 @@ from steel_guitar_rag.melody_import import (
     public_song_catalog,
 )
 from steel_guitar_rag.score_omr import (
+    AudiverisOmrProvider,
     LocalVisionOmrProvider,
     inspect_pdf,
     provider_catalog,
@@ -372,8 +375,61 @@ def test_ambiguous_staffs_are_exposed_and_explicit_selection_clears_part_confirm
 def test_provider_catalog_keeps_managed_omr_fail_closed() -> None:
     candidates = {item["id"]: item for item in provider_catalog()}
     assert candidates["local_vision"]["available"] is True
+    assert candidates["audiveris_local"]["trainingUse"] is False
     assert candidates["flat_interactive_omr"]["available"] is False
     assert candidates["flat_interactive_omr"]["beta"] is True
+
+
+def test_audiveris_provider_uses_transient_musicxml_and_headless_batch(tmp_path: Path) -> None:
+    contents = tmp_path / "Audiveris.app" / "Contents"
+    binary = contents / "MacOS" / "Audiveris"
+    java = contents / "runtime" / "Contents" / "Home" / "bin" / "java"
+    jar = contents / "app" / "audiveris.jar"
+    for path in (binary, java, jar):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"test")
+        path.chmod(0o700)
+    captured: dict[str, object] = {}
+
+    def fake_runner(args: list[str], **kwargs: object) -> object:
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        captured["calls"] = int(captured.get("calls") or 0) + 1
+        if captured["calls"] == 1:
+            return type("Result", (), {"returncode": 1})()
+        output_dir = Path(args[args.index("-output") + 1])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / "page.mxl").write_bytes(b"musicxml")
+        return type("Result", (), {"returncode": 0})()
+
+    provider = AudiverisOmrProvider(
+        lambda raw, *, compressed: {
+            "score": {"melody": [{"pitch": "G4"}]},
+            "raw": raw.decode("ascii"),
+            "compressed": compressed,
+        },
+        binary=binary,
+        runner=fake_runner,
+    )
+    result = provider.recognize_page(
+        type(
+            "Page",
+            (),
+            {"page_number": 1, "image_bytes": _printed_page_bytes(), "mime_type": "image/png"},
+        )()
+    )
+
+    args = captured["args"]
+    assert isinstance(args, list)
+    assert "-batch" in args
+    assert "-transcribe" in args
+    assert "-export" in args
+    assert "-Djava.awt.headless=true" in args
+    assert result["raw"] == "musicxml"
+    assert result["compressed"] is True
+    assert result["inputAssessment"]["accepted"] is True
+    assert captured["kwargs"]["stdin"] is subprocess.DEVNULL
+    assert captured["calls"] == 2
 
 
 def test_import_preserves_supported_major_arrangement_key() -> None:

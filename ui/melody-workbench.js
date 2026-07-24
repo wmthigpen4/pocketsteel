@@ -2335,6 +2335,10 @@
     if (!global.createImageBitmap) return readFileAsDataUrl(file);
     const bitmap = await global.createImageBitmap(file);
     const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1) {
+      bitmap.close();
+      return readFileAsDataUrl(file);
+    }
     const canvas = doc.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
