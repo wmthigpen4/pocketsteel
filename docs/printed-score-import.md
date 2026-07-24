@@ -20,7 +20,9 @@ that it improves the founder's preferred first result.
 The UI accepts PDF, JPG, PNG, WebP, MusicXML/MXL, and MIDI. OMR is limited to
 clean printed or digitally engraved Western notation. Handwriting, handwritten
 chord charts, existing tablature, damaged images, and illegibly small images
-must receive a specific unsupported or rescan response.
+must receive a specific unsupported response. Rescan guidance is shown only
+when the provider supplies explicit image-quality evidence; a reader failure
+or timeout must not be mislabeled as a bad upload.
 
 For PDFs, `/api/melody/import` first accepts `inspectOnly: true` and returns
 transient page thumbnails. A second request supplies `selectedPages`. Neither
@@ -35,10 +37,13 @@ reviewable draft and progress metadata.
 ## Recognition provider boundary
 
 `steel_guitar_rag.score_omr.ScoreOmrProvider` is the provider-neutral contract.
-The current enabled adapter wraps the loopback local vision reader. The provider
-catalog also records Flat Interactive OMR as a managed benchmark candidate, but
-it is fail-closed until its commercial agreement, credentials, retention,
-training, deletion, subprocessors, and beta reliability have been reviewed.
+The default local adapter is Audiveris. An optional Homr command adapter can be
+selected with `STEEL_RAG_SCORE_OMR_PROVIDER=homr`; it remains a private
+benchmark/founder-test path until its license and production packaging are
+reviewed. The provider catalog also records Flat Interactive OMR as a managed
+benchmark candidate, but it is fail-closed until its commercial agreement,
+credentials, retention, training, deletion, subprocessors, and beta
+reliability have been reviewed.
 Soundslice is not an adapter candidate because its documented API does not
 expose its scanner.
 
@@ -51,11 +56,15 @@ The request result keeps these artifacts logically separate:
 
 ## Review and correction
 
-Scanned imports remain `needs_review`. Low-confidence events and overfull
-measures are flagged; the staff highlights only flagged events. The editor
+Scanned imports remain `needs_review`. MusicXML normalization separates part,
+staff, and voice candidates; an ambiguous grand staff cannot proceed until the
+user chooses the melody staff or voice. Low-confidence events and incomplete
+or overfull measures are hard failures; the staff highlights only actionable
+event uncertainty. The editor
 offers direct semitone and octave corrections in addition to pitch, duration,
 tie, rest, chord, and deletion controls. User edits set confidence to one and
-clear that event's recognition flag. Playback is available before approval.
+clear that event's recognition flag. Playback is available before approval and
+sustains tied continuations without repicking them.
 
 The user must explicitly confirm the highlighted events, key signature, time
 signature, octave, and selected melody part before arrangement. Structural

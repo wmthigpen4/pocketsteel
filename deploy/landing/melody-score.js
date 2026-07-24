@@ -49,7 +49,10 @@
   }
 
   function beatsPerMeasure(draft) {
-    return String(draft?.score?.meter || "4/4").startsWith("3/") ? 3 : 4;
+    const [beats, beatType] = String(draft?.score?.meter || "4/4").split("/").map(Number);
+    return Number.isFinite(beats) && Number.isFinite(beatType) && beatType > 0
+      ? beats * (4 / beatType)
+      : 4;
   }
 
   function reflowDraft(draft) {
@@ -73,7 +76,9 @@
       event.beat = preserveReviewedMeasures ? Math.max(1, Number(event.beat || 1)) : Number(beat.toFixed(3));
       event.durationBeats = duration;
       event.origin = event.origin || (next.source.type === "composed_in_studio" ? "user_edit" : "source");
-      event.confidence = Number.isFinite(Number(event.confidence)) ? Number(event.confidence) : 1;
+      event.confidence = Number.isFinite(Number(event.confidence))
+        ? Number(event.confidence)
+        : event.origin === "recognized" ? 0.5 : 1;
       event.articulation = ["accent", "tenuto", "staccato"].includes(event.articulation) ? event.articulation : "";
       if (!event.rest && Number.isFinite(Number(event.pitchValue))) {
         event.pitchValue = Number(event.pitchValue);
@@ -174,8 +179,32 @@
     )?.symbol || "";
   }
 
+  function performanceEvents(draft) {
+    const result = [];
+    (draft?.score?.melody || []).forEach((raw) => {
+      const event = { ...raw };
+      const previous = result.at(-1);
+      if (
+        event.tie === "stop"
+        && previous
+        && !previous.rest
+        && !event.rest
+        && previous.tie === "start"
+        && Number(previous.pitchValue) === Number(event.pitchValue)
+      ) {
+        previous.durationBeats = Number(previous.durationBeats || 0) + Number(event.durationBeats || 0);
+        previous.tie = "";
+        previous.sustainedFromTie = true;
+        previous.tieSegmentCount = Number(previous.tieSegmentCount || 1) + 1;
+        return;
+      }
+      result.push(event);
+    });
+    return result;
+  }
+
   function arrangementEvents(draft) {
-    return (draft?.score?.melody || []).filter((event) => !event.rest).map((event) => ({
+    return performanceEvents(draft).filter((event) => !event.rest).map((event) => ({
       token: event.pitch,
       pitch: event.pitch,
       pitchValue: event.pitchValue,
@@ -183,7 +212,9 @@
       beat: event.beat,
       durationBeats: event.durationBeats,
       origin: event.origin || "user_edit",
-      confidence: Number.isFinite(Number(event.confidence)) ? Number(event.confidence) : 1,
+      confidence: Number.isFinite(Number(event.confidence))
+        ? Number(event.confidence)
+        : event.origin === "recognized" ? 0.5 : 1,
       tie: event.tie || "",
       lyric: event.lyric || "",
       articulation: event.articulation || "",
@@ -229,7 +260,8 @@
     const measures = Array.from({ length: Math.max(1, ...byMeasure.keys()) }, (_, offset) => {
       const measure = offset + 1;
       const notes = byMeasure.get(measure) || [];
-      const attributes = measure === 1 ? `<attributes><divisions>${divisions}</divisions><key><fifths>${KEY_FIFTHS[score.arrangementKey] ?? 0}</fifths></key><time><beats>${beats}</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>` : "";
+      const [meterBeats, meterBeatType] = String(score.meter || "4/4").split("/").map(Number);
+      const attributes = measure === 1 ? `<attributes><divisions>${divisions}</divisions><key><fifths>${KEY_FIFTHS[score.arrangementKey] ?? 0}</fifths></key><time><beats>${meterBeats || beats}</beats><beat-type>${meterBeatType || 4}</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>` : "";
       const harmony = score.harmony.filter((item) => Number(item.measure) === measure).map((item) => `<direction><direction-type><words>${escape(item.symbol)}</words></direction-type></direction>`).join("");
       const body = notes.map((event) => {
         const duration = Math.max(1, Math.round(Number(event.durationBeats) * divisions));
@@ -603,6 +635,7 @@
     chordForEvent,
     chordChangeAtEvent,
     arrangementEvents,
+    performanceEvents,
     draftWarnings,
     durationName,
     musicXmlForDraft,

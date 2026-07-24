@@ -21,6 +21,7 @@ from steel_guitar_rag.melody_import import (
 )
 from steel_guitar_rag.score_omr import (
     AudiverisOmrProvider,
+    HomrOmrProvider,
     LocalVisionOmrProvider,
     inspect_pdf,
     provider_catalog,
@@ -249,6 +250,49 @@ def test_musicxml_derives_chord_only_when_explicit_symbol_is_absent() -> None:
     ]
 
 
+def test_recognized_musicxml_separates_staff_voices_and_preserves_cut_time_ties_and_rests() -> None:
+    xml = b"""<score-partwise><part-list><score-part id='P1'><part-name>Piano</part-name></score-part></part-list>
+    <part id='P1'><measure number='1'>
+      <attributes><divisions>2</divisions></attributes>
+      <attributes><key><fifths>1</fifths></key><time><beats>2</beats><beat-type>2</beat-type></time>
+        <clef number='1'><sign>G</sign><line>2</line></clef><clef number='2'><sign>F</sign><line>4</line></clef></attributes>
+      <note><pitch><step>A</step><octave>3</octave></pitch><duration>1</duration><voice>1</voice><staff>1</staff><notations><slur type='start' number='1'/></notations></note>
+      <note><pitch><step>A</step><octave>3</octave></pitch><duration>1</duration><voice>1</voice><staff>1</staff><notations><slur type='stop' number='1'/></notations></note>
+      <note><rest/><duration>2</duration><voice>1</voice><staff>1</staff></note>
+      <note><pitch><step>B</step><octave>3</octave></pitch><duration>4</duration><voice>1</voice><staff>1</staff></note>
+      <backup><duration>8</duration></backup>
+      <note><pitch><step>G</step><octave>2</octave></pitch><duration>8</duration><voice>5</voice><staff>2</staff></note>
+    </measure></part></score-partwise>"""
+    provisional = parse_musicxml(xml, recognized=True)
+    assert provisional["score"]["sourceKey"] == "G"
+    assert provisional["score"]["meter"] == "2/2"
+    assert provisional["selectionRequired"] is True
+    assert [part["clef"] for part in provisional["parts"]] == ["G2", "F4"]
+
+    selected = parse_musicxml(
+        xml,
+        recognized=True,
+        selected_part="P1:staff:1:voice:1",
+    )
+    assert selected["selectionRequired"] is False
+    assert selected["review"]["warnings"] == []
+    assert [event.get("pitch", "REST") for event in selected["score"]["melody"]] == [
+        "A3",
+        "A3",
+        "REST",
+        "B3",
+    ]
+    assert [event.get("tie", "") for event in selected["score"]["melody"]] == [
+        "start",
+        "stop",
+        "",
+        "",
+    ]
+    assert all(event["staff"] == "1" and event["voice"] == "1" for event in selected["score"]["melody"])
+    assert all(event["confidence"] == 0.8 for event in selected["score"]["melody"])
+    assert all(event["confidence"] < 1 for event in selected["score"]["melody"])
+
+
 def test_image_recognition_is_review_gated_and_malformed_output_is_rejected() -> None:
     payload = {
         "sourceType": "image",
@@ -260,7 +304,7 @@ def test_image_recognition_is_review_gated_and_malformed_output_is_rejected() ->
     draft = import_score_draft(
         payload,
         vision_client=lambda _image, _mime: {
-            "score": {"sourceKey": "G", "arrangementKey": "G", "meter": "3/4", "melody": [{"pitch": "D4", "durationBeats": 1}]}
+            "score": {"sourceKey": "G", "arrangementKey": "G", "meter": "3/4", "melody": [{"pitch": "D4", "durationBeats": 3}]}
         },
     )
     assert draft["source"]["type"] == "image"
@@ -364,7 +408,7 @@ def test_ambiguous_staffs_are_exposed_and_explicit_selection_clears_part_confirm
                 {"id": "staff-2", "name": "Vocal", "eventCount": 6},
             ],
             "selectedPartId": "staff-2",
-            "score": {"sourceKey": "G", "meter": "4/4", "melody": [{"pitch": "G4"}]},
+            "score": {"sourceKey": "G", "meter": "4/4", "melody": [{"pitch": "G4", "durationBeats": 4}]},
         },
     )
     assert draft["parts"][1] == {"id": "staff-2", "name": "Vocal", "eventCount": 6}
@@ -376,6 +420,8 @@ def test_provider_catalog_keeps_managed_omr_fail_closed() -> None:
     candidates = {item["id"]: item for item in provider_catalog()}
     assert candidates["local_vision"]["available"] is True
     assert candidates["audiveris_local"]["trainingUse"] is False
+    assert candidates["homr_local"]["trainingUse"] is False
+    assert "license review" in candidates["homr_local"]["reason"]
     assert candidates["flat_interactive_omr"]["available"] is False
     assert candidates["flat_interactive_omr"]["beta"] is True
 
@@ -430,6 +476,70 @@ def test_audiveris_provider_uses_transient_musicxml_and_headless_batch(tmp_path:
     assert result["inputAssessment"]["accepted"] is True
     assert captured["kwargs"]["stdin"] is subprocess.DEVNULL
     assert captured["calls"] == 2
+
+
+def test_homr_provider_uses_transient_musicxml_and_does_not_blame_source(
+    tmp_path: Path,
+) -> None:
+    binary = tmp_path / "homr"
+    binary.write_bytes(b"test")
+    binary.chmod(0o700)
+    captured: dict[str, object] = {}
+
+    def fake_runner(args: list[str], **kwargs: object) -> object:
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        source = Path(args[-1])
+        source.with_suffix(".musicxml").write_bytes(b"musicxml")
+        return type("Result", (), {"returncode": 0})()
+
+    provider = HomrOmrProvider(
+        lambda raw, *, compressed: {
+            "score": {"melody": [{"pitch": "G4"}]},
+            "raw": raw.decode("ascii"),
+            "compressed": compressed,
+        },
+        binary=binary,
+        runner=fake_runner,
+    )
+    result = provider.recognize_page(
+        type(
+            "Page",
+            (),
+            {"page_number": 1, "image_bytes": _printed_page_bytes(), "mime_type": "image/png"},
+        )()
+    )
+    assert result["raw"] == "musicxml"
+    assert result["compressed"] is False
+    assert result["inputAssessment"]["accepted"] is True
+    assert captured["kwargs"]["stdin"] is subprocess.DEVNULL
+    assert captured["kwargs"]["cwd"]
+
+
+def test_structurally_incomplete_recognition_fails_without_rescan_blame() -> None:
+    provider = LocalVisionOmrProvider(
+        lambda _image, _mime: {
+            "inputAssessment": {"kind": "printed_notation", "accepted": True},
+            "score": {
+                "sourceKey": "G",
+                "meter": "4/4",
+                "melody": [{"pitch": "G4", "durationBeats": 1}],
+            },
+        }
+    )
+    with pytest.raises(
+        ValueError,
+        match="recognition failure, not evidence that the source needs rescanning",
+    ):
+        recognize_printed_document(
+            raw=_printed_page_bytes(),
+            source_type="image/png",
+            title="Incomplete",
+            selected_pages=None,
+            selected_part=None,
+            provider=provider,
+            normalize=normalize_score_draft,
+        )
 
 
 def test_import_preserves_supported_major_arrangement_key() -> None:

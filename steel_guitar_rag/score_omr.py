@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import io
 import os
+import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -28,6 +29,9 @@ LOW_CONFIDENCE_THRESHOLD = 0.8
 DEFAULT_AUDIVERIS_BINARY = Path("/Volumes/Audiveris/Audiveris.app/Contents/MacOS/Audiveris")
 AUDIVERIS_TIMEOUT_ENV = "STEEL_RAG_AUDIVERIS_TIMEOUT_SECONDS"
 DEFAULT_AUDIVERIS_TIMEOUT_SECONDS = 180.0
+HOMR_BINARY_ENV = "HOMR_BIN"
+HOMR_TIMEOUT_ENV = "STEEL_RAG_HOMR_TIMEOUT_SECONDS"
+DEFAULT_HOMR_TIMEOUT_SECONDS = 180.0
 
 
 class ScoreOmrError(ValueError):
@@ -170,8 +174,8 @@ class AudiverisOmrProvider:
                     )
                 except subprocess.TimeoutExpired as exc:
                     raise ScoreOmrError(
-                        "Printed-score recognition took too long. "
-                        "Try a tighter image containing only the relevant score."
+                        "Printed-score recognition exceeded the processing limit. "
+                        "This is a reader timeout, not evidence that the source needs rescanning."
                     ) from exc
                 except OSError as exc:
                     raise ScoreOmrError(
@@ -215,6 +219,98 @@ class AudiverisOmrProvider:
             }
 
 
+class HomrOmrProvider:
+    """Run the optional local Homr CLI and parse its transient MusicXML."""
+
+    provider_id = "homr_local"
+
+    def __init__(
+        self,
+        parser: Callable[..., Mapping[str, Any]],
+        *,
+        binary: Path | None = None,
+        runner: Callable[..., Any] | None = None,
+    ) -> None:
+        configured = binary or (
+            Path(os.environ[HOMR_BINARY_ENV]) if os.environ.get(HOMR_BINARY_ENV) else None
+        )
+        discovered = shutil.which("homr")
+        self.binary = configured or (Path(discovered) if discovered else Path("homr"))
+        self._parser = parser
+        self._runner = runner or subprocess.run
+
+    @property
+    def available(self) -> bool:
+        return self.binary.is_file() and os.access(self.binary, os.X_OK)
+
+    def recognize_page(self, page: ScoreOmrPage) -> Mapping[str, Any]:
+        if not self.available:
+            raise ScoreOmrError(
+                "Printed-score recognition is not available on this server. "
+                "The configured Homr reader is not installed."
+            )
+        try:
+            timeout_seconds = float(
+                os.environ.get(HOMR_TIMEOUT_ENV) or DEFAULT_HOMR_TIMEOUT_SECONDS
+            )
+        except (TypeError, ValueError):
+            timeout_seconds = DEFAULT_HOMR_TIMEOUT_SECONDS
+        timeout_seconds = max(30.0, min(timeout_seconds, 300.0))
+
+        with tempfile.TemporaryDirectory(prefix="steel-rag-homr-") as temporary:
+            root = Path(temporary)
+            source_path = root / f"page-{page.page_number}.png"
+            try:
+                with Image.open(io.BytesIO(page.image_bytes)) as image:
+                    ImageOps.exif_transpose(image).convert("RGB").save(source_path, format="PNG")
+            except (OSError, ValueError) as exc:
+                raise ScoreOmrError(
+                    "This page could not be decoded. Upload a valid PDF, JPG, PNG, or WebP file."
+                ) from exc
+            try:
+                result = self._runner(
+                    [str(self.binary), str(source_path)],
+                    cwd=root,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    stdin=subprocess.DEVNULL,
+                    timeout=timeout_seconds,
+                )
+            except subprocess.TimeoutExpired as exc:
+                raise ScoreOmrError(
+                    "Printed-score recognition exceeded the processing limit. "
+                    "This is a reader timeout, not evidence that the source needs rescanning."
+                ) from exc
+            except OSError as exc:
+                raise ScoreOmrError(
+                    "Printed-score recognition could not start because the configured reader is unavailable."
+                ) from exc
+            if result.returncode != 0:
+                raise ScoreOmrError(
+                    "The local Homr engine failed after the upload passed intake validation. "
+                    "This is an internal recognition error, not evidence that the source needs rescanning."
+                )
+            recognized_path = source_path.with_suffix(".musicxml")
+            if not recognized_path.is_file():
+                raise ScoreOmrError(
+                    "Homr completed without producing a readable score. "
+                    "This is an internal recognition error, not evidence that the source needs rescanning."
+                )
+            try:
+                parsed = self._parser(recognized_path.read_bytes(), compressed=False)
+            except (OSError, ValueError) as exc:
+                raise ScoreOmrError(str(exc)) from exc
+            return {
+                **dict(parsed),
+                "inputAssessment": {
+                    "kind": "printed_notation",
+                    "accepted": True,
+                    "rescanGuidance": "",
+                },
+            }
+
+
 def provider_catalog() -> list[dict[str, Any]]:
     """Return benchmark candidates without implying that a provider is enabled."""
 
@@ -225,6 +321,14 @@ def provider_catalog() -> list[dict[str, Any]]:
             "mode": "local",
             "available": AudiverisOmrProvider(lambda *_args, **_kwargs: {}).available,
             "trainingUse": False,
+        },
+        {
+            "id": "homr_local",
+            "label": "Local Homr",
+            "mode": "local",
+            "available": HomrOmrProvider(lambda *_args, **_kwargs: {}).available,
+            "trainingUse": False,
+            "reason": "Optional benchmark adapter; production use requires license review.",
         },
         {
             "id": "local_vision",
@@ -336,7 +440,9 @@ def recognize_printed_document(
                 guidance = str(assessment.get("rescanGuidance") or "").strip()
                 raise ScoreOmrError(
                     guidance
-                    or "This page is not clear enough to read reliably. Use a sharp, straight image with the full staff visible."
+                    if guidance and assessment.get("qualityEvidence") is True
+                    else "The score reader could not produce trustworthy notation, so no tablature was created. "
+                    "The source was not blamed because no image-quality defect was verified."
                 )
         normalized = normalize(
             interpreted,
@@ -349,6 +455,19 @@ def recognize_printed_document(
             },
             review_status="needs_review",
         )
+        interpreted_score = (
+            interpreted.get("score") if isinstance(interpreted.get("score"), Mapping) else {}
+        )
+        if "metadataRecognition" not in interpreted:
+            normalized["metadataRecognition"] = {
+                "keySignature": bool(
+                    interpreted_score.get("sourceKey") or interpreted_score.get("key")
+                ),
+                "timeSignature": bool(interpreted_score.get("meter")),
+            }
+        for key in ("metadataRecognition", "selectionRequired", "selectedPartId"):
+            if key in interpreted:
+                normalized[key] = interpreted[key]
         page_drafts.append(normalized)
         if progress_callback is not None:
             progress_callback(page.page_number, len(page_drafts), len(pages))
@@ -370,12 +489,45 @@ def recognize_printed_document(
     )
     if recognized_parts:
         combined["parts"] = recognized_parts
-        combined["selectedPartId"] = str(selected_part or provider_selected_part or recognized_parts[0]["id"])
+        selection_required = bool(
+            any(bool(draft.get("selectionRequired")) for draft in page_drafts)
+            and not selected_part
+        )
+        combined["selectionRequired"] = selection_required
+        combined["selectedPartId"] = (
+            ""
+            if selection_required
+            else str(selected_part or provider_selected_part or recognized_parts[0]["id"])
+        )
+    metadata_results = [
+        draft.get("metadataRecognition")
+        for draft in page_drafts
+        if isinstance(draft.get("metadataRecognition"), Mapping)
+    ]
+    combined["metadataRecognition"] = {
+        "keySignature": bool(metadata_results) and all(
+            bool(item.get("keySignature")) for item in metadata_results
+        ),
+        "timeSignature": bool(metadata_results) and all(
+            bool(item.get("timeSignature")) for item in metadata_results
+        ),
+    }
     combined["review"] = structural_diagnostics(combined)
     if selected_part or len(recognized_parts) == 1:
         combined["review"]["confirmationsRequired"] = [
             item for item in combined["review"]["confirmationsRequired"] if item != "melody_part"
         ]
+    if combined["review"]["summary"]["errorCount"]:
+        details = " ".join(
+            issue["message"]
+            for issue in combined["review"]["issues"]
+            if issue.get("severity") == "error"
+        )
+        raise ScoreOmrError(
+            "Recognition produced incomplete or structurally inconsistent notation, "
+            "so no tablature was created. This is a recognition failure, not evidence "
+            f"that the source needs rescanning. {details}".strip()
+        )
     combined["omr"] = {
         "schemaVersion": OMR_RESULT_SCHEMA_VERSION,
         "providerId": provider.provider_id,
@@ -416,7 +568,40 @@ def structural_diagnostics(draft: Mapping[str, Any]) -> dict[str, Any]:
             )
 
     meter = str(score.get("meter") or "")
-    beats = 3.0 if meter == "3/4" else 4.0 if meter == "4/4" else 0.0
+    beats = _meter_capacity(meter)
+    metadata = (
+        draft.get("metadataRecognition")
+        if isinstance(draft.get("metadataRecognition"), Mapping)
+        else {}
+    )
+    if metadata:
+        if not metadata.get("keySignature"):
+            issues.append(
+                {
+                    "code": "key_signature_unrecognized",
+                    "severity": "error",
+                    "eventIds": [],
+                    "message": "The key signature was not recognized confidently.",
+                }
+            )
+        if not metadata.get("timeSignature"):
+            issues.append(
+                {
+                    "code": "time_signature_unrecognized",
+                    "severity": "error",
+                    "eventIds": [],
+                    "message": "The time signature was not recognized confidently.",
+                }
+            )
+    if not beats:
+        issues.append(
+            {
+                "code": "unsupported_meter",
+                "severity": "error",
+                "eventIds": [],
+                "message": f"The recognized meter {meter or 'is unknown'} cannot be validated.",
+            }
+        )
     totals: dict[int, float] = {}
     for event in events:
         if not isinstance(event, Mapping):
@@ -424,7 +609,6 @@ def structural_diagnostics(draft: Mapping[str, Any]) -> dict[str, Any]:
         measure = int(event.get("measure") or 1)
         totals[measure] = totals.get(measure, 0.0) + float(event.get("durationBeats") or 0)
     pickup = float(score.get("pickupBeats") or 0)
-    last_measure = max(totals, default=1)
     if beats:
         for measure, total in sorted(totals.items()):
             capacity = pickup if measure == 1 and pickup else beats
@@ -443,12 +627,18 @@ def structural_diagnostics(draft: Mapping[str, Any]) -> dict[str, Any]:
                         "message": f"Measure {measure} totals {total:g} beats but {meter} allows {capacity:g}.",
                     }
                 )
-            elif measure != last_measure and total < capacity - 0.001:
+            elif total < capacity - 0.001:
+                related = [
+                    str(event.get("id"))
+                    for event in events
+                    if isinstance(event, Mapping) and int(event.get("measure") or 1) == measure
+                ]
+                flagged_ids.extend(related)
                 issues.append(
                     {
                         "code": "measure_underfull",
-                        "severity": "warning",
-                        "eventIds": [],
+                        "severity": "error",
+                        "eventIds": related,
                         "message": f"Measure {measure} totals {total:g} beats; check for a missing rest, note, or voice.",
                     }
                 )
@@ -467,8 +657,23 @@ def structural_diagnostics(draft: Mapping[str, Any]) -> dict[str, Any]:
             "flaggedEventCount": len(set(flagged_ids)),
             "errorCount": sum(issue["severity"] == "error" for issue in issues),
             "warningCount": sum(issue["severity"] == "warning" for issue in issues),
+            "selectionRequired": bool(draft.get("selectionRequired")),
+            "canArrange": not any(issue["severity"] == "error" for issue in issues)
+            and not bool(draft.get("selectionRequired")),
         },
     }
+
+
+def _meter_capacity(meter: str) -> float:
+    try:
+        beats_text, beat_type_text = str(meter).split("/", 1)
+        beats = float(beats_text)
+        beat_type = float(beat_type_text)
+    except (TypeError, ValueError):
+        return 0.0
+    if beats <= 0 or beat_type <= 0:
+        return 0.0
+    return beats * (4.0 / beat_type)
 
 
 def _combine_page_drafts(

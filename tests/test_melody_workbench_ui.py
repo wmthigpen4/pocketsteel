@@ -388,6 +388,21 @@ assert.deepEqual(score.arrangementEvents(draft)[1], {
 const lockedDraft = score.cloneDraft(draft);
 lockedDraft.score.melody[1].lockedPosition = {string: 5, fret: 3, changes: ["A"]};
 assert.deepEqual(score.arrangementEvents(lockedDraft)[1].position, {string: 5, fret: 3, changes: ["A"]});
+const tiedDraft = score.reflowDraft({
+  ...draft,
+  score: {
+    ...draft.score,
+    sections: [{label: "Phrase", startMeasure: 1, endMeasure: 1}],
+    melody: [
+      {pitchValue: 67, pitch: "G4", measure: 1, beat: 1, durationBeats: 0.5, tie: "start", origin: "recognized", confidence: 0.8},
+      {pitchValue: 67, pitch: "G4", measure: 1, beat: 1.5, durationBeats: 1, tie: "stop", origin: "recognized", confidence: 0.8},
+      {rest: true, measure: 1, beat: 2.5, durationBeats: 0.5, origin: "recognized", confidence: 0.8},
+      {pitchValue: 69, pitch: "A4", measure: 1, beat: 3, durationBeats: 1, origin: "recognized", confidence: 0.8}
+    ]
+  }
+});
+assert.deepEqual(score.performanceEvents(tiedDraft).map((event) => [event.rest ? "rest" : event.pitch, event.durationBeats]), [["G4", 1.5], ["rest", 0.5], ["A4", 1]]);
+assert.deepEqual(score.arrangementEvents(tiedDraft).map((event) => [event.pitch, event.durationBeats]), [["G4", 1.5], ["A4", 1]]);
 const transposed = score.transposeDraft(draft, -5);
 assert.deepEqual(transposed.score.melody.map((event) => event.pitch), ["A3", "D4", "F#4"]);
 const octaveUp = score.transposeDraft(draft, 12);
@@ -404,6 +419,8 @@ assert.match(xml, /<time><beats>3<\/beats>/);
 assert.match(xml, /<words>G<\/words>/);
 assert.match(xml, /<lyric><text>grace<\/text><\/lyric>/);
 assert.match(xml, /<articulations><accent\/><\/articulations>/);
+const cutTimeXml = score.musicXmlForDraft(score.createDraft({key: "G", meter: "2/2"}));
+assert.match(cutTimeXml, /<time><beats>2<\/beats><beat-type>2<\/beat-type><\/time>/);
 assert.equal(score.removeEvent(draft, 0).score.melody.length, 2);
 assert.equal(score.duplicatePhrase(draft).score.melody.length, 6);
 assert.equal(score.clearMeasure(draft, 2).score.melody.length, 1);
@@ -489,9 +506,12 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "How many voices?" in html
     assert "How should it move?" in html
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-score.js?v=printed-score-omr-v2' in html
+    assert 'melody-score.js?v=printed-score-omr-v3' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=printed-score-omr-v2' in html
+    assert 'melody-workbench.js?v=printed-score-omr-v3' in html
+    assert '<option value="2/2">2/2 (cut time)</option>' in html
+    assert "Choose the melody staff or voice before arranging." in script
+    assert "reader timeout, not evidence that the source needs rescanning" in script
     assert 'id="studio-engine-status" aria-live="polite" hidden' in html
     assert "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging." in script
     assert "Arrangement method: trained Amazing Tablature ranker with verified E9 rules." in script

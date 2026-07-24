@@ -14,6 +14,7 @@ import io
 import json
 import os
 import re
+import socket
 import struct
 import urllib.error
 import urllib.request
@@ -25,6 +26,7 @@ from xml.etree import ElementTree as ET
 
 from steel_guitar_rag.score_omr import (
     AudiverisOmrProvider,
+    HomrOmrProvider,
     LocalVisionOmrProvider,
     ScoreOmrError,
     inspect_pdf,
@@ -36,6 +38,7 @@ ENABLE_MELODY_IMPORT_ENV = "STEEL_RAG_ENABLE_MELODY_IMPORT"
 MELODY_VISION_MODEL_ENV = "STEEL_RAG_MELODY_VISION_MODEL"
 OLLAMA_URL_ENV = "OLLAMA_URL"
 MELODY_VISION_TIMEOUT_ENV = "STEEL_RAG_MELODY_VISION_TIMEOUT_SECONDS"
+SCORE_OMR_PROVIDER_ENV = "STEEL_RAG_SCORE_OMR_PROVIDER"
 DEFAULT_VISION_MODEL = "gemma4:12b"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_MELODY_VISION_TIMEOUT_SECONDS = 45.0
@@ -154,24 +157,40 @@ def import_score_draft(
         if vision_client is not None:
             provider = LocalVisionOmrProvider(vision_client)
         else:
+            parse_recognized_musicxml = lambda musicxml, *, compressed: parse_musicxml(
+                musicxml,
+                compressed=compressed,
+                selected_part=selected_part,
+                recognized=True,
+            )
+            configured_provider = str(os.environ.get(SCORE_OMR_PROVIDER_ENV) or "audiveris").strip().lower()
             audiveris_provider = AudiverisOmrProvider(
+                parse_recognized_musicxml
+            )
+            homr_provider = HomrOmrProvider(
                 lambda musicxml, *, compressed: parse_musicxml(
                     musicxml,
                     compressed=compressed,
                     selected_part=selected_part,
+                    recognized=True,
                 )
             )
-            provider = (
-                audiveris_provider
-                if audiveris_provider.available
-                else LocalVisionOmrProvider(
+            if configured_provider == "homr":
+                if not homr_provider.available:
+                    raise MelodyImportError(
+                        "The configured Homr score reader is not installed on this server."
+                    )
+                provider = homr_provider
+            elif audiveris_provider.available:
+                provider = audiveris_provider
+            else:
+                provider = LocalVisionOmrProvider(
                     lambda encoded, mime: _ollama_vision_client(
                         encoded,
                         mime,
                         selected_part=selected_part,
                     )
                 )
-            )
         try:
             return recognize_printed_document(
                 raw=raw,
@@ -200,6 +219,10 @@ def normalize_score_draft(
     raw_melody = raw_score.get("melody") if isinstance(raw_score, Mapping) else None
     if not isinstance(raw_melody, Sequence) or isinstance(raw_melody, (str, bytes)):
         raise MelodyImportError("The imported material did not contain a readable melody.")
+    raw_source = source or (
+        value.get("source") if isinstance(value.get("source"), Mapping) else {}
+    )
+    recognized_source = str(raw_source.get("type") or "") in {"image", "pdf"}
     melody: list[dict[str, Any]] = []
     for index, item in enumerate(raw_melody[:MAX_EVENTS], start=1):
         if not isinstance(item, Mapping):
@@ -211,9 +234,15 @@ def normalize_score_draft(
                 "beat": _positive_number(item.get("beat"), 1.0),
                 "durationBeats": _positive_number(item.get("durationBeats") or item.get("duration"), 1.0),
                 "rest": True,
-                "origin": str(item.get("origin") or "source"),
-                "confidence": _confidence(item.get("confidence")),
+                "origin": str(item.get("origin") or ("recognized" if recognized_source else "source")),
+                "confidence": _confidence(
+                    item.get("confidence"),
+                    default=0.5 if recognized_source else 1.0,
+                ),
             }
+            for key in ("confidenceBasis", "staff", "voice"):
+                if item.get(key):
+                    event[key] = str(item[key])[:80]
             if item.get("sourcePage") is not None:
                 event["sourcePage"] = _bounded_int(item.get("sourcePage"), 1, 999, 1)
             melody.append(event)
@@ -228,12 +257,34 @@ def normalize_score_draft(
             "durationBeats": _positive_number(item.get("durationBeats") or item.get("duration"), 1.0),
             "pitch": _pitch_label(pitch_value),
             "pitchValue": pitch_value,
-            "origin": str(item.get("origin") or "source"),
-            "confidence": _confidence(item.get("confidence")),
+            "origin": str(item.get("origin") or ("recognized" if recognized_source else "source")),
+            "confidence": _confidence(
+                item.get("confidence"),
+                default=0.5 if recognized_source else 1.0,
+            ),
         }
-        for source_key, target_key in (("tie", "tie"), ("lyric", "lyric"), ("phraseLabel", "phraseLabel")):
+        for source_key, target_key in (
+            ("tie", "tie"),
+            ("lyric", "lyric"),
+            ("phraseLabel", "phraseLabel"),
+            ("confidenceBasis", "confidenceBasis"),
+            ("staff", "staff"),
+            ("voice", "voice"),
+        ):
             if item.get(source_key):
                 event[target_key] = str(item[source_key])[:80]
+        if isinstance(item.get("pitches"), Sequence) and not isinstance(
+            item.get("pitches"), (str, bytes)
+        ):
+            pitches = sorted(
+                {
+                    int(value)
+                    for value in item["pitches"]
+                    if isinstance(value, (int, float)) and 47 <= int(value) <= 94
+                }
+            )
+            if pitches:
+                event["pitches"] = pitches
         if item.get("sourcePage") is not None:
             event["sourcePage"] = _bounded_int(item.get("sourcePage"), 1, 999, 1)
         melody.append(event)
@@ -257,7 +308,6 @@ def normalize_score_draft(
                 }
             )
 
-    raw_source = source or (value.get("source") if isinstance(value.get("source"), Mapping) else {})
     normalized_source = {
         "type": str(raw_source.get("type") or "pasted"),
         "title": _safe_title(raw_source.get("title"), "Untitled melody"),
@@ -296,6 +346,10 @@ def normalize_score_draft(
     warnings = list((value.get("review") or {}).get("warnings") or []) if isinstance(value.get("review"), Mapping) else []
     if arrangement_key not in {"C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"}:
         warnings.append("Choose a supported major key before arranging this score.")
+    raw_meter = str(raw_score.get("meter") or "4/4").strip()
+    supported_meter = raw_meter if raw_meter in {"2/2", "2/4", "3/4", "4/4", "6/8"} else ""
+    if not supported_meter:
+        warnings.append("Confirm the time signature before arranging this score.")
     raw_sections = raw_score.get("sections") if isinstance(raw_score, Mapping) else []
     sections: list[dict[str, Any]] = []
     if isinstance(raw_sections, Sequence) and not isinstance(raw_sections, (str, bytes)):
@@ -318,7 +372,7 @@ def normalize_score_draft(
         "score": {
             "sourceKey": source_key,
             "arrangementKey": arrangement_key,
-            "meter": "3/4" if str(raw_score.get("meter")) == "3/4" else "4/4",
+            "meter": supported_meter or "4/4",
             "pickupBeats": max(0.0, min(3.0, float(raw_score.get("pickupBeats") or 0))),
             "melody": melody,
             "harmony": harmony,
@@ -331,7 +385,13 @@ def normalize_score_draft(
     }
 
 
-def parse_musicxml(raw: bytes, *, compressed: bool = False, selected_part: Any = None) -> dict[str, Any]:
+def parse_musicxml(
+    raw: bytes,
+    *,
+    compressed: bool = False,
+    selected_part: Any = None,
+    recognized: bool = False,
+) -> dict[str, Any]:
     xml_bytes = _mxl_xml_bytes(raw) if compressed or raw[:2] == b"PK" else raw
     try:
         root = ET.fromstring(xml_bytes)
@@ -345,28 +405,34 @@ def parse_musicxml(raw: bytes, *, compressed: bool = False, selected_part: Any =
     explicit_harmony: list[dict[str, Any]] = []
     meter = "4/4"
     source_key = "G"
-    pickup_beats = 0.0
+    metadata = {"keySignature": False, "timeSignature": False}
     for part in root.findall("./part"):
         part_id = part.attrib.get("id", "")
-        events: list[dict[str, Any]] = []
-        derived_harmony: list[dict[str, Any]] = []
         divisions = 1
-        time_beats = 4
-        measure_lengths: list[float] = []
+        candidate_groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+        candidate_harmony: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+        candidate_measure_lengths: dict[tuple[str, str], list[float]] = defaultdict(list)
+        clefs: dict[str, str] = {}
         for measure_index, measure in enumerate(part.findall("measure"), start=1):
-            attributes = measure.find("attributes")
-            if attributes is not None:
+            for attributes in measure.findall("attributes"):
                 divisions = int(attributes.findtext("divisions") or divisions or 1)
                 if attributes.find("time") is not None:
-                    time_beats = int(attributes.findtext("time/beats") or time_beats)
+                    time_beats = int(attributes.findtext("time/beats") or 4)
                     beat_type = int(attributes.findtext("time/beat-type") or 4)
                     meter = f"{time_beats}/{beat_type}"
+                    metadata["timeSignature"] = True
                 if attributes.find("key") is not None:
                     fifths = int(attributes.findtext("key/fifths") or 0)
                     source_key = {0: "C", 1: "G"}.get(fifths, _key_from_fifths(fifths))
+                    metadata["keySignature"] = True
+                for clef in attributes.findall("clef"):
+                    staff_number = str(clef.attrib.get("number") or "1")
+                    sign = str(clef.findtext("sign") or "").strip()
+                    line = str(clef.findtext("line") or "").strip()
+                    clefs[staff_number] = f"{sign}{line}" if sign else ""
             cursor = 0
             last_onset = 0
-            sounding: dict[int, list[tuple[int, int, ET.Element]]] = defaultdict(list)
+            groups: dict[tuple[str, str, int], list[dict[str, Any]]] = defaultdict(list)
             for child in list(measure):
                 if child.tag == "backup":
                     cursor -= int(child.findtext("duration") or 0)
@@ -387,18 +453,50 @@ def parse_musicxml(raw: bytes, *, compressed: bool = False, selected_part: Any =
                     onset = last_onset if child.find("chord") is not None else cursor
                     if child.find("chord") is None:
                         last_onset = onset
+                    staff = str(child.findtext("staff") or "1")
+                    voice = str(child.findtext("voice") or "1")
                     pitch = child.find("pitch")
-                    if pitch is not None:
-                        pitch_value = _musicxml_pitch_value(pitch)
-                        sounding[onset].append((pitch_value, duration, child))
+                    tie_types = {
+                        str(item.attrib.get("type") or "")
+                        for item in [*child.findall("tie"), *child.findall("notations/tied")]
+                        if item.attrib.get("type")
+                    }
+                    slur_starts = {
+                        str(item.attrib.get("number") or "1")
+                        for item in child.findall("notations/slur")
+                        if item.attrib.get("type") == "start"
+                    }
+                    slur_stops = {
+                        str(item.attrib.get("number") or "1")
+                        for item in child.findall("notations/slur")
+                        if item.attrib.get("type") == "stop"
+                    }
+                    groups[(staff, voice, onset)].append(
+                        {
+                            "pitchValue": _musicxml_pitch_value(pitch) if pitch is not None else None,
+                            "duration": duration,
+                            "rest": child.find("rest") is not None,
+                            "lyric": (child.findtext("lyric/text") or "")[:80],
+                            "tieTypes": tie_types,
+                            "slurStarts": slur_starts,
+                            "slurStops": slur_stops,
+                        }
+                    )
                     if child.find("chord") is None:
                         cursor += duration
-            measure_beats = max((onset + max(item[1] for item in group) for onset, group in sounding.items()), default=cursor) / divisions
-            measure_lengths.append(measure_beats)
-            for onset, group in sorted(sounding.items()):
-                derived_symbol = _derived_chord_symbol([item[0] for item in group])
+            measure_ends: dict[tuple[str, str], int] = defaultdict(int)
+            for (staff, voice, onset), group in sorted(groups.items()):
+                pitches = [
+                    int(item["pitchValue"])
+                    for item in group
+                    if item.get("pitchValue") is not None
+                ]
+                duration = max((int(item.get("duration") or 0) for item in group), default=0)
+                candidate = (staff, voice)
+                measure_ends[candidate] = max(measure_ends[candidate], onset + duration)
+                derived_symbol = _derived_chord_symbol(pitches)
                 if derived_symbol:
-                    derived_harmony.append(
+                    candidate_harmony[candidate].append(
                         {
                             "measure": measure_index,
                             "beat": round((onset / divisions) + 1, 3),
@@ -407,38 +505,111 @@ def parse_musicxml(raw: bytes, *, compressed: bool = False, selected_part: Any =
                             "confidence": 0.7,
                         }
                     )
-                pitch_value, duration, node = max(group, key=lambda item: item[0])
-                lyric = node.findtext("lyric/text") or ""
-                events.append(
-                    {
-                        "id": f"{part_id or 'part'}-m{measure_index}-{onset}",
-                        "measure": measure_index,
-                        "beat": round((onset / divisions) + 1, 3),
-                        "durationBeats": round(max(duration / divisions, 0.125), 3),
-                        "pitch": _pitch_label(pitch_value),
-                        "pitchValue": pitch_value,
-                        "lyric": lyric[:80],
-                        "origin": "source",
-                        "confidence": 1.0,
-                    }
+                event_id = (
+                    f"{part_id or 'part'}-s{staff}-v{voice}-m{measure_index}-{onset}"
                 )
-        if measure_lengths and 0 < measure_lengths[0] < time_beats:
-            pickup_beats = measure_lengths[0]
-        if events:
+                event: dict[str, Any] = {
+                    "id": event_id,
+                    "measure": measure_index,
+                    "beat": round((onset / divisions) + 1, 3),
+                    "durationBeats": round(max(duration / divisions, 0.125), 3),
+                    "origin": "recognized" if recognized else "source",
+                    "confidence": 0.8 if recognized else 1.0,
+                    "confidenceBasis": (
+                        "provider_not_reported_structural_review_required"
+                        if recognized
+                        else "user_supplied_musicxml"
+                    ),
+                    "staff": staff,
+                    "voice": voice,
+                    "_slurStarts": sorted(
+                        {
+                            number
+                            for item in group
+                            for number in item.get("slurStarts", set())
+                        }
+                    ),
+                    "_slurStops": sorted(
+                        {
+                            number
+                            for item in group
+                            for number in item.get("slurStops", set())
+                        }
+                    ),
+                    "_tieTypes": sorted(
+                        {
+                            tie_type
+                            for item in group
+                            for tie_type in item.get("tieTypes", set())
+                        }
+                    ),
+                }
+                if pitches:
+                    pitch_value = max(pitches)
+                    event.update(
+                        {
+                            "pitch": _pitch_label(pitch_value),
+                            "pitchValue": pitch_value,
+                            "lyric": next(
+                                (
+                                    str(item.get("lyric") or "")
+                                    for item in reversed(group)
+                                    if item.get("pitchValue") == pitch_value
+                                ),
+                                "",
+                            ),
+                        }
+                    )
+                    if len(set(pitches)) > 1:
+                        event["pitches"] = sorted(set(pitches))
+                else:
+                    event["rest"] = True
+                candidate_groups[candidate].append(event)
+            for candidate, end in measure_ends.items():
+                candidate_measure_lengths[candidate].append(end / divisions)
+        for (staff, voice), events in candidate_groups.items():
+            _infer_musicxml_ties(events)
+            playable = [event for event in events if not event.get("rest")]
+            if not playable:
+                continue
+            candidate_id = f"{part_id or 'part'}:staff:{staff}:voice:{voice}"
+            name = part_names.get(part_id, part_id or "Part")
+            if len(candidate_groups) > 1:
+                name = f"{name} · staff {staff} · voice {voice}"
             parsed_parts.append(
                 {
-                    "id": part_id,
-                    "name": part_names.get(part_id, part_id or "Part"),
+                    "id": candidate_id,
+                    "parentPartId": part_id,
+                    "staff": staff,
+                    "voice": voice,
+                    "clef": clefs.get(staff, ""),
+                    "name": name,
                     "events": events,
-                    "averagePitch": sum(item["pitchValue"] for item in events) / len(events),
-                    "derivedHarmony": derived_harmony,
+                    "averagePitch": sum(item["pitchValue"] for item in playable) / len(playable),
+                    "derivedHarmony": candidate_harmony[(staff, voice)],
+                    "measureLengths": candidate_measure_lengths[(staff, voice)],
                 }
             )
     if not parsed_parts:
         raise MelodyImportError("That MusicXML file did not contain a readable melody part.")
-    selected = next((part for part in parsed_parts if part["id"] == str(selected_part)), None)
+    requested_part = str(selected_part or "")
+    selected = next((part for part in parsed_parts if part["id"] == requested_part), None)
+    if selected is None and requested_part:
+        matching_parent_parts = [
+            part for part in parsed_parts if part["parentPartId"] == requested_part
+        ]
+        if len(matching_parent_parts) == 1:
+            selected = matching_parent_parts[0]
+    selection_matched = selected is not None
     selected = selected or max(parsed_parts, key=lambda item: (item["averagePitch"], len(item["events"])))
+    beats, beat_type = _meter_components(meter)
+    measure_capacity = beats * (4 / beat_type) if beats and beat_type else 4.0
+    pickup_beats = 0.0
+    measure_lengths = selected["measureLengths"]
+    if measure_lengths and 0 < measure_lengths[0] < measure_capacity:
+        pickup_beats = measure_lengths[0]
     title = root.findtext("./work/work-title") or root.findtext("./movement-title") or "Imported MusicXML"
+    selection_required = len(parsed_parts) > 1 and not selection_matched
     draft = {
         "source": {
             "type": "musicxml",
@@ -457,14 +628,70 @@ def parse_musicxml(raw: bytes, *, compressed: bool = False, selected_part: Any =
         },
         "review": {
             "status": "needs_review",
-            "warnings": [] if len(parsed_parts) == 1 else [f"Using {selected['name']} as the melody; choose another part if needed."],
+            "warnings": (
+                [f"Select the intended staff or voice before arranging; {selected['name']} is shown provisionally."]
+                if selection_required
+                else []
+            ),
         },
-        "parts": [{"id": item["id"], "name": item["name"], "eventCount": len(item["events"])} for item in parsed_parts],
+        "parts": [
+            {
+                "id": item["id"],
+                "name": item["name"],
+                "eventCount": len(item["events"]),
+                "parentPartId": item["parentPartId"],
+                "staff": item["staff"],
+                "voice": item["voice"],
+                "clef": item["clef"],
+            }
+            for item in parsed_parts
+        ],
     }
     normalized = normalize_score_draft(draft)
     normalized["parts"] = draft["parts"]
     normalized["selectedPartId"] = selected["id"]
+    normalized["selectionRequired"] = selection_required
+    normalized["metadataRecognition"] = {
+        "keySignature": metadata["keySignature"],
+        "timeSignature": metadata["timeSignature"],
+    }
     return normalized
+
+
+def _infer_musicxml_ties(events: list[dict[str, Any]]) -> None:
+    """Preserve explicit ties and convert same-pitch Homr slurs into ties."""
+
+    for index, event in enumerate(events):
+        explicit = set(event.pop("_tieTypes", []))
+        starts = set(event.pop("_slurStarts", []))
+        stops = set(event.pop("_slurStops", []))
+        if "start" in explicit:
+            event["tie"] = "start"
+        elif "stop" in explicit:
+            event["tie"] = "stop"
+        if index + 1 >= len(events) or event.get("rest"):
+            continue
+        following = events[index + 1]
+        following_stops = set(following.get("_slurStops", []))
+        if (
+            starts.intersection(following_stops)
+            and not following.get("rest")
+            and event.get("pitchValue") == following.get("pitchValue")
+        ):
+            event["tie"] = "start"
+            following["_tieTypes"] = sorted(
+                set(following.get("_tieTypes", [])).union({"stop"})
+            )
+        if stops and event.get("tie") is None and "stop" in explicit:
+            event["tie"] = "stop"
+
+
+def _meter_components(meter: str) -> tuple[int, int]:
+    try:
+        beats_text, beat_type_text = str(meter).split("/", 1)
+        return int(beats_text), int(beat_type_text)
+    except (TypeError, ValueError):
+        return 0, 0
 
 
 def parse_midi(raw: bytes, *, selected_track: Any = None) -> dict[str, Any]:
@@ -627,7 +854,8 @@ def _ollama_vision_client(
         "chord charts, and existing tablature are unsupported. Return JSON only with inputAssessment "
         "(kind: printed_notation, handwritten, tablature, or unreadable; accepted boolean; rescanGuidance) "
         "and a score object containing "
-        "sourceKey, arrangementKey (major key when known), meter (3/4 or 4/4), pickupBeats, melody, and harmony. "
+        "sourceKey, arrangementKey (major key when known), meter (including cut time as 2/2), pickupBeats, "
+        "melody, and harmony. "
         "Each melody item needs measure, beat, durationBeats, pitch in scientific notation, confidence 0..1, "
         "and optional lyric. Each harmony item needs measure, beat, symbol, basis='source', and confidence. "
         "Use at most 64 melody events. Do not guess unreadable notes, key signatures, time signatures, octaves, "
@@ -641,6 +869,7 @@ def _ollama_vision_client(
         "messages": [{"role": "user", "content": prompt, "images": [encoded_image]}],
         "format": "json",
         "stream": False,
+        "think": False,
         "options": {"temperature": 0},
     }
     request = urllib.request.Request(
@@ -659,7 +888,7 @@ def _ollama_vision_client(
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             body = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+    except (urllib.error.URLError, TimeoutError, socket.timeout, json.JSONDecodeError) as exc:
         raise MelodyImportError(
             "Printed-score recognition could not complete. Confirm that Ollama is running, then try again."
         ) from exc
@@ -668,7 +897,9 @@ def _ollama_vision_client(
     try:
         parsed = json.loads(content)
     except json.JSONDecodeError as exc:
-        raise MelodyImportError("The score reader returned an unreadable draft. Try a tighter, straighter photo.") from exc
+        raise MelodyImportError(
+            "The score reader returned an unreadable draft. This is an internal recognition failure."
+        ) from exc
     if not isinstance(parsed, Mapping):
         raise MelodyImportError("The score reader did not return a reviewable melody draft.")
     return parsed
@@ -768,9 +999,9 @@ def _safe_title(value: Any, default: str) -> str:
     return str(value or default).strip()[:160] or default
 
 
-def _confidence(value: Any) -> float:
+def _confidence(value: Any, *, default: float = 1.0) -> float:
     try:
-        return round(max(0.0, min(1.0, float(value if value is not None else 1.0))), 3)
+        return round(max(0.0, min(1.0, float(value if value is not None else default))), 3)
     except (TypeError, ValueError):
         return 0.5
 

@@ -1791,6 +1791,8 @@
     const isCatalog = draft.source.type === "catalog";
     const isScannedImport = ["image", "pdf"].includes(draft.source.type);
     const flaggedIds = draft.review?.flaggedEventIds || [];
+    const recognitionErrors = Number(draft.review?.summary?.errorCount || 0);
+    const selectionRequired = Boolean(draft.selectionRequired || draft.review?.summary?.selectionRequired);
     const isReviewOnly = isCatalog && !state.scoreEditingEnabled;
     elements.scorePanel.classList.toggle("is-review-only", isReviewOnly);
     elements.scoreHeading.textContent = isCatalog ? "Review songbook melody" : "Staff editor";
@@ -1811,6 +1813,7 @@
     elements.scoreNextFlagged.hidden = !isScannedImport || !flaggedIds.length;
     elements.scoreConfirmation.hidden = !isScannedImport;
     elements.scoreConfirmed.checked = state.scannedReviewConfirmed;
+    elements.scoreConfirmed.disabled = selectionRequired || recognitionErrors > 0;
     const confirmationLabels = {
       key_signature: "key signature",
       time_signature: "time signature",
@@ -1836,6 +1839,8 @@
         ? "Estimated rest — adjust or remove it if the silence was intentional phrasing rather than a rest."
         : event.origin === "user_edit"
           ? "Confirmed by your edit."
+          : event.confidenceBasis === "provider_not_reported_structural_review_required"
+            ? "The reader did not report note-level confidence. Pitch and duration remain subject to the score checks shown here."
           : `Estimated confidence: ${Math.round(Number(event.confidence || 0) * 100)}% — verify this pitch and duration.`;
       elements.eventDuration.value = String(event.durationBeats);
       elements.scoreChord.value = scoreUi.chordForEvent(draft, event);
@@ -1852,7 +1857,12 @@
     elements.scoreRedo.disabled = !state.scoreFuture.length;
     elements.scorePartField.hidden = !state.importParts.length;
     if (state.importParts.length) {
-      elements.scorePart.replaceChildren(...state.importParts.map((part) => {
+      const placeholder = doc.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Choose the melody staff or voice…";
+      placeholder.disabled = true;
+      placeholder.selected = !state.importSelectedPart;
+      elements.scorePart.replaceChildren(placeholder, ...state.importParts.map((part) => {
         const option = doc.createElement("option");
         option.value = String(part.id);
         option.textContent = `${part.name} (${part.eventCount} events)`;
@@ -1871,6 +1881,8 @@
     elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest)
       || unsupportedKey
       || structureWarnings.length > 0
+      || recognitionErrors > 0
+      || selectionRequired
       || (isScannedImport && !state.scannedReviewConfirmed);
     elements.scoreArrange.textContent = draft.review.status === "confirmed" ? "Arrange for E9" : "Confirm and arrange for E9";
     elements.scoreSource.textContent = draft.source.type === "composed_in_studio" ? "User-created score" : `${draft.source.title || "Imported score"} · ${draft.review.status === "confirmed" ? "confirmed" : "review before arranging"}`;
@@ -2241,7 +2253,7 @@
   }
 
   function playScoreDraft() {
-    const events = ensureScoreDraft().score.melody;
+    const events = scoreUi.performanceEvents(ensureScoreDraft());
     if (!events.length) return;
     const AudioContext = global.AudioContext || global.webkitAudioContext;
     if (!AudioContext) return showError("This browser does not support score playback.");
@@ -2301,7 +2313,7 @@
     const startedAt = Date.now();
     while (!["complete", "failed"].includes(job.status)) {
       if (Date.now() - startedAt > 8 * 60 * 1000) {
-        throw new Error("Score recognition timed out. Try fewer pages or a tighter image.");
+        throw new Error("Score recognition exceeded the processing limit. This is a reader timeout, not evidence that the source needs rescanning.");
       }
       await new Promise((resolve) => global.setTimeout(resolve, 450));
       const response = await global.fetch(`/api/melody/import/jobs/${encodeURIComponent(job.jobId)}`, {
@@ -3171,6 +3183,14 @@
   async function arrangeScoreDraft() {
     const draft = ensureScoreDraft();
     elements.scoreArrangeStatus.textContent = "";
+    if (draft.selectionRequired || draft.review?.summary?.selectionRequired) {
+      elements.scoreArrangeStatus.textContent = "Choose the melody staff or voice before arranging.";
+      return false;
+    }
+    if (Number(draft.review?.summary?.errorCount || 0) > 0) {
+      elements.scoreArrangeStatus.textContent = "Recognition found a structural error, so this score cannot be arranged.";
+      return false;
+    }
     if (["image", "pdf"].includes(draft.source.type) && !state.scannedReviewConfirmed) {
       elements.scoreArrangeStatus.textContent = "Confirm the highlighted notes and score setup before arranging.";
       return false;
