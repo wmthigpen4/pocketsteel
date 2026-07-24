@@ -508,7 +508,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
     assert 'melody-score.js?v=printed-score-omr-v3' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=printed-score-omr-v3' in html
+    assert 'melody-workbench.js?v=printed-score-omr-v4' in html
     assert '<option value="2/2">2/2 (cut time)</option>' in html
     assert "Choose the melody staff or voice before arranging." in script
     assert "reader timeout, not evidence that the source needs rescanning" in script
@@ -628,14 +628,16 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'state.scoreDraft?.source?.type === "catalog" && !state.scoreEditingEnabled' in script
     assert "audio is decoded in this browser" in html
     assert "Longer files are fine" in html
-    assert "|| (isScannedImport && !state.scannedReviewConfirmed);" in script
+    assert "scannedReviewConfirmed" not in script
     assert 'accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.xml,.musicxml,.mxl,.mid,.midi"' in html
     assert "Handwriting, handwritten chord charts, and existing tablature are not supported." in html
     assert 'id="studio-import-rights"' in html
     assert 'id="studio-import-pages"' in html
     assert 'id="studio-import-progress"' in html
     assert 'id="studio-score-next-flagged"' in html
-    assert 'id="studio-score-confirmed"' in html
+    assert 'id="studio-score-confirmed"' not in html
+    assert 'elements.scoreArrange.textContent = "Arrange for E9";' in script
+    assert "|| selectionRequired;" in script
     assert 'id="studio-score-pitch-down"' in html
     assert 'id="studio-score-note-octave-up"' in html
     assert 'if (type === "application/pdf" || /\\.pdf$/.test(name)) return "pdf";' in script

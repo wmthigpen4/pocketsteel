@@ -130,7 +130,7 @@
     .import-dropzone { display: grid; place-items: center; gap: 10px; min-height: 150px; border: 1px dashed rgba(240, 191, 105, 0.48); border-radius: 16px; background: rgba(240, 191, 105, 0.045); padding: 22px; text-align: center; }
     .import-dropzone.is-dragging { border-color: var(--gold); background: rgba(240, 191, 105, 0.13); }
     .import-rights { display: flex; align-items: start; gap: 9px; max-width: 720px; color: var(--muted); font-size: 13px; line-height: 1.45; text-align: left; }
-    .import-rights input, .score-confirmation input { margin-top: 3px; accent-color: var(--gold); }
+    .import-rights input { margin-top: 3px; accent-color: var(--gold); }
     .import-progress { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
     .import-progress li { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); padding: 5px 9px; font-size: 12px; font-weight: 750; }
     .import-progress li.is-active { border-color: var(--gold); color: var(--cream); }
@@ -139,7 +139,6 @@
     .pdf-page-choice { display: grid; gap: 7px; border: 1px solid var(--line); border-radius: 12px; background: rgba(5, 7, 7, 0.35); padding: 9px; color: var(--cream); font-size: 12px; font-weight: 750; }
     .pdf-page-choice img { width: 100%; aspect-ratio: 0.77; border-radius: 7px; background: #fff; object-fit: contain; }
     .pdf-page-choice input { accent-color: var(--gold); }
-    .score-confirmation { display: flex; align-items: start; gap: 9px; flex-basis: 100%; color: var(--muted); font-size: 13px; line-height: 1.45; }
     .score-primary-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
     .score-primary-tools .field { min-width: 150px; }
     .score-review-action { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; margin: 0 0 16px; border: 1px solid rgba(240, 191, 105, 0.34); border-radius: 14px; background: rgba(240, 191, 105, 0.08); padding: 14px; }
@@ -758,7 +757,6 @@
               <button class="secondary-action" type="button" id="studio-score-next-flagged" hidden>Next flagged note</button>
               <button class="primary-action" type="button" id="studio-score-arrange">Arrange for E9</button>
             </div>
-            <label class="score-confirmation" id="studio-score-confirmation" hidden><input id="studio-score-confirmed" type="checkbox"><span id="studio-score-confirmation-text">I checked the highlighted notes and score setup.</span></label>
             <p class="score-status" id="studio-score-arrange-status" role="status" aria-live="polite"></p>
           </div>
           <div class="score-primary-tools">
@@ -1074,6 +1072,6 @@
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=printed-score-omr-v3"></script>
   <script src="song-projects.js?v=amazing-tablature-product-v1-20260724-2"></script>
-  <script src="melody-workbench.js?v=printed-score-omr-v3"></script>
+  <script src="melody-workbench.js?v=printed-score-omr-v4"></script>
 </body>
 </html>

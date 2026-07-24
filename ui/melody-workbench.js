@@ -395,7 +395,6 @@
       importSelectedPart: "",
       importFile: null,
       pdfInspection: null,
-      scannedReviewConfirmed: false,
       practiceStatus: "stopped",
       practiceTimers: [],
       practiceContext: null,
@@ -1316,9 +1315,6 @@
     scorePreviousNote: $("#studio-score-previous-note"),
     scoreNextNote: $("#studio-score-next-note"),
     scoreNextFlagged: $("#studio-score-next-flagged"),
-    scoreConfirmation: $("#studio-score-confirmation"),
-    scoreConfirmed: $("#studio-score-confirmed"),
-    scoreConfirmationText: $("#studio-score-confirmation-text"),
     scoreStatus: $("#studio-score-status"),
     scoreEventEditor: $("#studio-score-event-editor"),
     scorePitch: $("#studio-score-pitch"),
@@ -1804,23 +1800,13 @@
       ? "Create the E9 arrangement now, or open note editing if the teaching melody needs a correction."
       : isScannedImport
         ? flaggedIds.length
-          ? `${flaggedIds.length} uncertain ${flaggedIds.length === 1 ? "event is" : "events are"} highlighted. Correct only what needs attention, audition the melody, then confirm the score.`
-          : "No low-confidence notes remain. Audition the melody and confirm the score setup before arranging."
+          ? `${flaggedIds.length} uncertain ${flaggedIds.length === 1 ? "event is" : "events are"} highlighted. Correct only what needs attention, audition the melody, then arrange it.`
+          : "No low-confidence notes remain. Audition the melody and review the score setup before arranging."
         : "Review the staff, then create your E9 arrangement.";
     elements.scoreEditToggle.hidden = !isCatalog;
     elements.scoreEditToggle.textContent = isReviewOnly ? "Edit melody notes" : "Done editing";
     elements.scoreEditToggle.setAttribute("aria-pressed", String(!isReviewOnly));
     elements.scoreNextFlagged.hidden = !isScannedImport || !flaggedIds.length;
-    elements.scoreConfirmation.hidden = !isScannedImport;
-    elements.scoreConfirmed.checked = state.scannedReviewConfirmed;
-    elements.scoreConfirmed.disabled = selectionRequired || recognitionErrors > 0;
-    const confirmationLabels = {
-      key_signature: "key signature",
-      time_signature: "time signature",
-      melody_part: "selected melody part"
-    };
-    const confirmations = (draft.review?.confirmationsRequired || []).map((item) => confirmationLabels[item]).filter(Boolean);
-    elements.scoreConfirmationText.textContent = `I checked the highlighted notes, octave${confirmations.length ? `, ${confirmations.join(", ")}` : ""}.`;
     renderScoreKeyboard();
     scoreUi.render(elements.scoreCanvas, draft, state.scoreSelectedIndex, selectScoreEvent);
     const event = selectedScoreEvent();
@@ -1882,9 +1868,8 @@
       || unsupportedKey
       || structureWarnings.length > 0
       || recognitionErrors > 0
-      || selectionRequired
-      || (isScannedImport && !state.scannedReviewConfirmed);
-    elements.scoreArrange.textContent = draft.review.status === "confirmed" ? "Arrange for E9" : "Confirm and arrange for E9";
+      || selectionRequired;
+    elements.scoreArrange.textContent = "Arrange for E9";
     elements.scoreSource.textContent = draft.source.type === "composed_in_studio" ? "User-created score" : `${draft.source.title || "Imported score"} · ${draft.review.status === "confirmed" ? "confirmed" : "review before arranging"}`;
     elements.scoreSourceImage.hidden = !state.sourceImageUrl;
     if (state.sourceImageUrl) elements.scoreSourceImage.src = state.sourceImageUrl;
@@ -1926,7 +1911,6 @@
     state.scoreEditingEnabled = draft.source?.type !== "catalog";
     state.importParts = Array.isArray(draft.parts) && draft.parts.length > 1 ? draft.parts : [];
     state.importSelectedPart = String(draft.selectedPartId ?? draft.selectedTrackIndex ?? state.importSelectedPart ?? "");
-    state.scannedReviewConfirmed = false;
     state.scoreSelectedIndex = state.scoreDraft.score.melody.length ? 0 : -1;
     state.inputMethod = "score";
     state.workflowPhase = "review";
@@ -3191,10 +3175,6 @@
       elements.scoreArrangeStatus.textContent = "Recognition found a structural error, so this score cannot be arranged.";
       return false;
     }
-    if (["image", "pdf"].includes(draft.source.type) && !state.scannedReviewConfirmed) {
-      elements.scoreArrangeStatus.textContent = "Confirm the highlighted notes and score setup before arranging.";
-      return false;
-    }
     if (scoreUi.draftWarnings(draft).length) {
       elements.scoreArrangeStatus.textContent = "Fix the measure or tie warning before arranging.";
       return false;
@@ -3529,10 +3509,6 @@
       .filter((index) => index >= 0);
     if (!indexes.length) return;
     selectScoreEvent(indexes.find((index) => index > state.scoreSelectedIndex) ?? indexes[0]);
-  });
-  elements.scoreConfirmed.addEventListener("change", () => {
-    state.scannedReviewConfirmed = elements.scoreConfirmed.checked;
-    renderScoreBuilder();
   });
   elements.scoreCanvas.addEventListener("click", (event) => {
     if (event.target.closest?.(".score-event")) return;
