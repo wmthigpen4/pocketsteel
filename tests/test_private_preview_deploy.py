@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import plistlib
+import pwd
 import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -24,6 +25,40 @@ def _run_installer(command: str, **overrides: str) -> subprocess.CompletedProces
         capture_output=True,
         text=True,
     )
+
+
+def _write_executable(path: Path, body: str) -> Path:
+    path.write_text(body, encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def _start_health_server() -> tuple[ThreadingHTTPServer, threading.Thread]:
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            payload = {
+                "/health/live": {"status": "live"},
+                "/health/ready": {"status": "ready"},
+                "/api/version": {"status": "ok", "git_sha": "abc1234"},
+            }.get(self.path)
+            if payload is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            body = json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, _format: str, *_args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
 
 
 def test_rendered_launchdaemon_always_keeps_origin_alive() -> None:
@@ -57,30 +92,7 @@ def test_preflight_rejects_a_branch_checkout() -> None:
 
 
 def test_verify_health_checks_live_ready_and_exact_version() -> None:
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802
-            payload = {
-                "/health/live": {"status": "live"},
-                "/health/ready": {"status": "ready"},
-                "/api/version": {"status": "ok", "git_sha": "abc1234"},
-            }.get(self.path)
-            if payload is None:
-                self.send_response(404)
-                self.end_headers()
-                return
-            body = json.dumps(payload).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-
-        def log_message(self, _format: str, *_args: object) -> None:
-            return
-
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
+    server, thread = _start_health_server()
     try:
         result = _run_installer(
             "verify",
@@ -96,6 +108,80 @@ def test_verify_health_checks_live_ready_and_exact_version() -> None:
 
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["git_sha"] == "abc1234"
+
+
+def test_supervised_verify_accepts_listener_descended_from_launchd_pid(tmp_path: Path) -> None:
+    launchctl = _write_executable(
+        tmp_path / "launchctl",
+        f"""#!/bin/sh
+cat <<'EOF'
+system/com.steelguitarrag.private-preview = {{
+    state = running
+    pid = {os.getppid()}
+}}
+EOF
+""",
+    )
+    lsof = _write_executable(
+        tmp_path / "lsof",
+        f"#!/bin/sh\nprintf '%s\\n' {os.getpid()}\n",
+    )
+    server, thread = _start_health_server()
+    try:
+        result = _run_installer(
+            "verify-supervised",
+            STEEL_RAG_HOST="127.0.0.1",
+            STEEL_RAG_PORT=str(server.server_address[1]),
+            STEEL_RAG_EXPECTED_GIT_SHA="abc1234",
+            STEEL_RAG_HEALTH_TIMEOUT_SECONDS="2",
+            STEEL_RAG_LAUNCHCTL_BIN=str(launchctl),
+            STEEL_RAG_LSOF_BIN=str(lsof),
+            STEEL_RAG_RUN_AS_USER=pwd.getpwuid(os.getuid()).pw_name,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["git_sha"] == "abc1234"
+
+
+def test_supervised_verify_rejects_unrelated_listener_with_diagnostic(tmp_path: Path) -> None:
+    launchctl = _write_executable(
+        tmp_path / "launchctl",
+        """#!/bin/sh
+cat <<'EOF'
+system/com.steelguitarrag.private-preview = {
+    state = running
+    pid = 999999
+}
+EOF
+""",
+    )
+    lsof = _write_executable(
+        tmp_path / "lsof",
+        f"#!/bin/sh\nprintf '%s\\n' {os.getpid()}\n",
+    )
+    server, thread = _start_health_server()
+    try:
+        result = _run_installer(
+            "verify-supervised",
+            STEEL_RAG_HOST="127.0.0.1",
+            STEEL_RAG_PORT=str(server.server_address[1]),
+            STEEL_RAG_EXPECTED_GIT_SHA="abc1234",
+            STEEL_RAG_HEALTH_TIMEOUT_SECONDS="1",
+            STEEL_RAG_LAUNCHCTL_BIN=str(launchctl),
+            STEEL_RAG_LSOF_BIN=str(lsof),
+            STEEL_RAG_RUN_AS_USER=pwd.getpwuid(os.getuid()).pw_name,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert result.returncode != 0
+    assert "not LaunchDaemon PID 999999 or its descendant" in result.stderr
 
 
 def test_verify_rejects_invalid_timeout_without_waiting() -> None:

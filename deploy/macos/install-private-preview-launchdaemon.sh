@@ -30,8 +30,11 @@ STEEL_RAG_PLIST_PATH="${STEEL_RAG_PLIST_PATH:-/Library/LaunchDaemons/$STEEL_RAG_
 STEEL_RAG_WRAPPER_INSTALL_DIR="${STEEL_RAG_WRAPPER_INSTALL_DIR:-/usr/local/libexec/steel-guitar-rag}"
 STEEL_RAG_WRAPPER_PATH="${STEEL_RAG_WRAPPER_PATH:-$STEEL_RAG_WRAPPER_INSTALL_DIR/run-private-preview-app.sh}"
 STEEL_RAG_WORKING_DIR="${STEEL_RAG_WORKING_DIR:-$STEEL_RAG_WRAPPER_INSTALL_DIR}"
+STEEL_RAG_LAUNCHCTL_BIN="${STEEL_RAG_LAUNCHCTL_BIN:-launchctl}"
+STEEL_RAG_LSOF_BIN="${STEEL_RAG_LSOF_BIN:-lsof}"
 TEMPLATE_PATH="$SCRIPT_DIR/com.steelguitarrag.private-preview.plist.template"
 WRAPPER_SOURCE_PATH="$SCRIPT_DIR/run-private-preview-app.sh"
+SUPERVISION_DIAGNOSTIC="not checked"
 
 usage() {
   cat <<USAGE
@@ -46,6 +49,8 @@ Commands:
   preflight Validate an exact detached release and rendered plist without changing state.
   restart   Restart the loaded LaunchDaemon and verify the exact release. Requires sudo.
   verify    Verify live, ready, and version endpoints without changing state.
+  verify-supervised
+            Verify health, exact version, LaunchDaemon state, and listener ownership.
   status    Print launchctl status for the LaunchDaemon without changing state.
   tail      Tail durable app stdout/stderr logs.
   version   Curl local /api/version on the configured loopback port.
@@ -204,9 +209,84 @@ preflight_release() {
   printf 'Validated exact detached release %s\n' "$(release_sha)"
 }
 
+launchd_job_status() {
+  local output
+  if output="$("$STEEL_RAG_LAUNCHCTL_BIN" print "system/$STEEL_RAG_LABEL" 2>/dev/null)"; then
+    printf '%s\n' "$output"
+    return 0
+  fi
+  if output="$(sudo -n "$STEEL_RAG_LAUNCHCTL_BIN" print "system/$STEEL_RAG_LABEL" 2>/dev/null)"; then
+    printf '%s\n' "$output"
+    return 0
+  fi
+  return 1
+}
+
+pid_is_or_descends_from() {
+  local candidate_pid="$1"
+  local ancestor_pid="$2"
+  local parent_pid
+  while [[ "$candidate_pid" =~ ^[1-9][0-9]*$ ]]; do
+    [[ "$candidate_pid" == "$ancestor_pid" ]] && return 0
+    parent_pid="$(ps -o ppid= -p "$candidate_pid" 2>/dev/null | tr -d '[:space:]')"
+    [[ -n "$parent_pid" && "$parent_pid" != "$candidate_pid" ]] || break
+    candidate_pid="$parent_pid"
+  done
+  return 1
+}
+
+supervised_listener_is_ready() {
+  local job_status state service_pid listener_pid listener_user
+  if ! job_status="$(launchd_job_status)"; then
+    SUPERVISION_DIAGNOSTIC="LaunchDaemon job is not readable in the system domain"
+    return 1
+  fi
+  state="$(sed -nE 's/^[[:space:]]*state = (.*)$/\1/p' <<<"$job_status" | head -n 1)"
+  service_pid="$(sed -nE 's/^[[:space:]]*pid = ([0-9]+).*$/\1/p' <<<"$job_status" | head -n 1)"
+  listener_pid="$("$STEEL_RAG_LSOF_BIN" -nP -tiTCP:"$STEEL_RAG_PORT" -sTCP:LISTEN 2>/dev/null | head -n 1)"
+  if [[ "$state" != "running" ]]; then
+    SUPERVISION_DIAGNOSTIC="LaunchDaemon state is '${state:-unknown}', expected 'running'"
+    return 1
+  fi
+  if [[ -z "$service_pid" ]]; then
+    SUPERVISION_DIAGNOSTIC="LaunchDaemon is running but did not report a service PID"
+    return 1
+  fi
+  if [[ -z "$listener_pid" ]]; then
+    SUPERVISION_DIAGNOSTIC="LaunchDaemon PID $service_pid is running but port $STEEL_RAG_PORT has no listener"
+    return 1
+  fi
+  listener_user="$(ps -o user= -p "$listener_pid" 2>/dev/null | tr -d '[:space:]')"
+  if [[ "$listener_user" != "$STEEL_RAG_RUN_AS_USER" ]]; then
+    SUPERVISION_DIAGNOSTIC="port $STEEL_RAG_PORT listener PID $listener_pid is owned by '${listener_user:-unknown}', expected '$STEEL_RAG_RUN_AS_USER'"
+    return 1
+  fi
+  if ! pid_is_or_descends_from "$listener_pid" "$service_pid"; then
+    SUPERVISION_DIAGNOSTIC="port $STEEL_RAG_PORT listener PID $listener_pid is not LaunchDaemon PID $service_pid or its descendant"
+    return 1
+  fi
+  SUPERVISION_DIAGNOSTIC="LaunchDaemon PID $service_pid owns listener PID $listener_pid"
+  return 0
+}
+
+bootstrap_with_retry() {
+  local attempts="${1:-3}"
+  local attempt
+  for (( attempt=1; attempt<=attempts; attempt++ )); do
+    if sudo "$STEEL_RAG_LAUNCHCTL_BIN" bootstrap system "$STEEL_RAG_PLIST_PATH"; then
+      return 0
+    fi
+    if (( attempt < attempts )); then
+      printf 'LaunchDaemon bootstrap attempt %s/%s failed; retrying after launchd settles.\n' "$attempt" "$attempts" >&2
+      sleep 2
+    fi
+  done
+  return 1
+}
+
 wait_for_health() {
   local require_supervised="${1:-0}"
-  local deadline now live ready version actual service_pid listener_pid
+  local deadline now live ready version actual
   [[ "$STEEL_RAG_HEALTH_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || {
     printf 'STEEL_RAG_HEALTH_TIMEOUT_SECONDS must be a positive integer.\n' >&2
     return 1
@@ -216,6 +296,9 @@ wait_for_health() {
     now="$(date +%s)"
     if (( now >= deadline )); then
       printf 'Timed out waiting for private preview health on %s:%s\n' "$STEEL_RAG_HOST" "$STEEL_RAG_PORT" >&2
+      if [[ "$require_supervised" == "1" ]]; then
+        printf 'Last supervision check: %s\n' "$SUPERVISION_DIAGNOSTIC" >&2
+      fi
       return 1
     fi
     live="$(curl --max-time 3 --fail --silent --show-error "http://$STEEL_RAG_HOST:$STEEL_RAG_PORT/health/live" 2>/dev/null || true)"
@@ -225,9 +308,7 @@ wait_for_health() {
       actual="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("git_sha", ""))' <<<"$version" 2>/dev/null || true)"
       if [[ -z "$STEEL_RAG_EXPECTED_GIT_SHA" || "$actual" == "${STEEL_RAG_EXPECTED_GIT_SHA:0:7}" ]]; then
         if [[ "$require_supervised" == "1" ]]; then
-          service_pid="$(launchctl print "system/$STEEL_RAG_LABEL" 2>/dev/null | awk '/^[[:space:]]*pid = [0-9]+/ {print $3; exit}')"
-          listener_pid="$(lsof -nP -tiTCP:"$STEEL_RAG_PORT" -sTCP:LISTEN 2>/dev/null | head -n 1)"
-          if [[ -z "$service_pid" || "$service_pid" != "$listener_pid" ]]; then
+          if ! supervised_listener_is_ready; then
             sleep 1
             continue
           fi
@@ -288,7 +369,7 @@ activate_release() {
   if ! stop_replacement_origin; then
     if [[ -n "$backup" ]]; then
       sudo install -o root -g wheel -m 0644 "$backup" "$STEEL_RAG_PLIST_PATH"
-      sudo launchctl bootstrap system "$STEEL_RAG_PLIST_PATH"
+      bootstrap_with_retry
       rm -f "$backup"
     else
       sudo rm -f "$STEEL_RAG_PLIST_PATH"
@@ -296,7 +377,7 @@ activate_release() {
     printf 'Replacement-origin handover failed; the previous definition was restored.\n' >&2
     return 1
   fi
-  if sudo launchctl bootstrap system "$STEEL_RAG_PLIST_PATH" && wait_for_health 1; then
+  if bootstrap_with_retry && wait_for_health 1; then
     [[ -z "$backup" ]] || rm -f "$backup"
     printf 'Activated verified release %s\n' "$(release_sha)"
     return 0
@@ -306,7 +387,8 @@ activate_release() {
   sudo launchctl bootout "system/$STEEL_RAG_LABEL" >/dev/null 2>&1 || true
   if [[ -n "$backup" ]]; then
     sudo install -o root -g wheel -m 0644 "$backup" "$STEEL_RAG_PLIST_PATH"
-    sudo launchctl bootstrap system "$STEEL_RAG_PLIST_PATH"
+    sleep 2
+    bootstrap_with_retry
     rm -f "$backup"
   else
     sudo rm -f "$STEEL_RAG_PLIST_PATH"
@@ -349,6 +431,9 @@ case "${1:-}" in
     ;;
   verify)
     wait_for_health
+    ;;
+  verify-supervised)
+    wait_for_health 1
     ;;
   -h|--help|help|"")
     usage
