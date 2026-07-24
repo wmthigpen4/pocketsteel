@@ -58,7 +58,7 @@ submission receipt, or official evaluation artifact changed.
 - Cloudflare Access login result: not required
 - Local backend URL: `http://127.0.0.1:8766`
 - Expected backend port: 8766
-- Expected git HEAD: `1b586e0a427651e898d8a740d1ddfff1aacd6408`
+- Expected git HEAD: `e4dffd18` (the durable-capture implementation commit)
 - Version endpoint: not available for the private review server
 - Version endpoint result: not available
 - If version endpoint missing, how version is inferred: exact git HEAD plus the
@@ -98,6 +98,8 @@ The frozen program remains:
   `0e5e727332f263672301070a4d3f377880dff0175c8d356879b9278360d9fa49`
 - Frozen-file mismatches: 0 of 21
 - Status: `frozen_tests_unopened`
+
+Implementation commit: `e4dffd18` (`fix: persist private review drafts durably`).
 
 ## Risk assessment
 
