@@ -14,6 +14,10 @@ from typing import Any, Mapping
 from urllib.parse import urlparse
 
 from pocketsteel.amazing_tablature_model import RuntimeRankerPolicy
+from pocketsteel.amazing_tablature_product import (
+    build_arrangement_contract,
+    resolve_arrangement_preferences,
+)
 from pocketsteel.amazing_tablature_runtime import (
     arrange_melody_routes_with_private_beta,
 )
@@ -44,7 +48,20 @@ SUPPORTED_RENDERING_MODES = {
 }
 SUPPORTED_ACCURACY = {"exact", "approximate", "interpretive"}
 SUPPORTED_CONFIDENCE = {"low", "medium", "high"}
-SUPPORTED_KEYS = {"G", "C"}
+SUPPORTED_KEYS = {
+    "C",
+    "Db",
+    "D",
+    "Eb",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "Ab",
+    "A",
+    "Bb",
+    "B",
+}
 
 _TEACHING_REQUEST_RE = re.compile(
     r"\b(?:tab|tablature|transcrib\w*|arrang\w*|teach|learn|play)\b.*"
@@ -88,9 +105,9 @@ def melody_exercise_response(
     if not isinstance(raw_melody, list) or not raw_melody:
         return _needs_source_response(question, kind, material, structured)
 
-    key = str(structured.get("key") or "G").strip().upper()
+    key = _normalize_key(structured.get("key") or "G")
     if key not in SUPPORTED_KEYS:
-        raise MelodyExerciseError("Melody Exercise v0 currently supports the keys of G and C.")
+        raise MelodyExerciseError("Amazing Tablature needs a major key from C through B.")
     tuning = str(structured.get("tuning") or "E9").strip().upper()
     if tuning != "E9":
         raise MelodyExerciseError("Melody Exercise v0 currently supports E9 tuning only.")
@@ -150,9 +167,13 @@ def melody_exercise_response(
     contour_mode = str(structured.get("contourMode") or structured.get("contour_mode") or "closest_playable").strip().lower()
     if contour_mode not in SUPPORTED_CONTOURS:
         raise MelodyExerciseError("Contour mode must be closest playable, ascending, descending, or preserve input.")
-    texture = str(structured.get("texture") or "both").strip().lower()
+    try:
+        arrangement_preferences = resolve_arrangement_preferences(structured)
+    except ValueError as exc:
+        raise MelodyExerciseError(str(exc)) from exc
+    texture = arrangement_preferences.arranger_texture
     if texture not in SUPPORTED_TEXTURES:
-        raise MelodyExerciseError("Unsupported Melody Studio texture.")
+        raise MelodyExerciseError("Unsupported Amazing Tablature voice mode.")
     meter = str(structured.get("meter") or "4/4").strip()
     if meter not in {"3/4", "4/4"}:
         meter = "4/4"
@@ -170,9 +191,7 @@ def melody_exercise_response(
     if target_copedent is not None and not isinstance(target_copedent, Mapping):
         raise MelodyExerciseError("A saved target copedent must be a structured profile.")
     try:
-        style_family = normalize_style_family(
-            structured.get("styleFamily") or structured.get("style_family") or "auto"
-        )
+        style_family = normalize_style_family(arrangement_preferences.arranger_style)
     except ValueError as exc:
         raise MelodyExerciseError(str(exc)) from exc
     try:
@@ -196,11 +215,28 @@ def melody_exercise_response(
         )
     except ValueError as exc:
         raise MelodyExerciseError(str(exc)) from exc
-    selected_route = routes[0]
+    all_routes = routes
+    public_routes, arrangement_contract = build_arrangement_contract(
+        routes,
+        preferences=arrangement_preferences,
+        model_metadata=model_metadata,
+    )
+    selected_route = next(
+        route
+        for route in public_routes
+        if route["id"] == arrangement_contract["recommendedRouteId"]
+    )
+    faithful_route = next(
+        (route for route in all_routes if route["harmonyType"] == "single_note"),
+        selected_route,
+    )
     selected_style = style_descriptor(style_family)
-    event_payloads = selected_route["events"]
-    tab_example = selected_route["tabExample"]
-    fretboard = selected_route["fretboard"]
+    # Preserve the established backend contract: ``events`` is the literal
+    # melody line. Product clients use ``selectedRouteId`` for the recommended
+    # Amazing Tablature rendering.
+    event_payloads = faithful_route["events"]
+    tab_example = faithful_route["tabExample"]
+    fretboard = faithful_route["fretboard"]
 
     decision_rules = rule_contract_payload(style_family)
     decision_rules["modelMetadata"] = model_metadata
@@ -246,6 +282,8 @@ def melody_exercise_response(
             "tokens": section_tokens,
             "contourMode": contour_mode,
             "texture": texture,
+            "voiceMode": arrangement_preferences.voice_mode,
+            "movementMode": arrangement_preferences.movement_mode,
             "meter": meter,
             "pickupBeats": pickup_beats,
             "resolvedPhrase": resolved_phrase,
@@ -254,8 +292,14 @@ def melody_exercise_response(
             "styleFamily": style_family,
         },
         "events": event_payloads,
-        "routes": routes,
+        # ``routes`` remains the full internal/legacy candidate ledger so
+        # evaluation can compare learned and deterministic candidates.
+        # Product clients consume ``publicRoutes``, which removes exact
+        # duplicates and only presents materially different choices.
+        "routes": all_routes,
+        "publicRoutes": public_routes,
         "selectedRouteId": selected_route["id"],
+        "arrangementContract": arrangement_contract,
         "validation": {
             "ok": True,
             "mechanical": [],
@@ -269,6 +313,7 @@ def melody_exercise_response(
         "answer": answer,
         "melody_exercise": exercise,
         "tab_example": tab_example,
+        "tabs": [route["tabExample"] for route in public_routes[:3]],
         "fretboard": fretboard,
         "sources": _source_cards(material),
         "warnings": [],
@@ -322,6 +367,21 @@ def _melody_token(item: Any) -> str:
     if isinstance(item, Mapping):
         return str(item.get("token") or item.get("note") or item.get("degree") or item.get("pitch") or "").strip()
     return str(item or "").strip()
+
+
+def _normalize_key(value: Any) -> str:
+    text = str(value or "G").strip().replace("♯", "#").replace("♭", "b")
+    aliases = {
+        "C#": "Db",
+        "D#": "Eb",
+        "G#": "Ab",
+        "A#": "Bb",
+        "Gb": "F#",
+    }
+    if not text:
+        return "G"
+    normalized = text[0].upper() + text[1:]
+    return aliases.get(normalized, normalized)
 
 
 def _section_spans(raw_melody: list[Any], requested_sections: Any) -> list[dict[str, Any]]:

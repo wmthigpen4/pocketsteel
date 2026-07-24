@@ -50,7 +50,8 @@ assert.equal(studio.createInitialState().inputMethod, "phrase");
 assert.equal(studio.createInitialState().workflowPhase, "add");
 assert.equal(studio.createInitialState().pendingReplacement, "");
 assert.equal(studio.createInitialState().scoreEditingEnabled, true);
-assert.equal(studio.createInitialState().styleFamily, "auto");
+assert.equal(studio.createInitialState().voiceMode, "mixed");
+assert.equal(studio.createInitialState().movementMode, "best_fit");
 assert.equal(studio.createInitialState().selectedHarmonyType, "mixed_arrangement");
 assert.deepEqual(studio.entryChoicePresentation("song"), {label: "Learn a song", help: "Chord Karaoke"});
 assert.deepEqual(studio.entryChoicePresentation("song", {replacing: true}), {label: "Learn a song", help: "Start a Song Project"});
@@ -103,7 +104,8 @@ assert.equal(artistPayload.sectionNumber, 2);
 assert.equal(artistPayload.material.artist, "Example Artist");
 assert.equal(artistPayload.renderingMode, "transcription");
 assert.equal(artistPayload.contourMode, "closest_playable");
-assert.equal(artistPayload.texture, "both");
+assert.equal(artistPayload.voiceMode, "mixed");
+assert.equal(artistPayload.movementMode, "best_fit");
 artist.scoreDraft = {score: {sections: [{label: "Verse", startMeasure: 1, endMeasure: 4}]}};
 assert.deepEqual(studio.buildMelodyRequest(artist).sections, [{label: "Verse", startMeasure: 1, endMeasure: 4}]);
 assert.equal(studio.buildMelodyRequest(artist).wholeSong, true);
@@ -468,12 +470,14 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave labels</button>' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
-    assert 'id="studio-playing-style"' in html
-    assert "Style for Recommended" in html
-    assert '>Style for Recommended' in html
-    assert 'answer-client.js?v=chord-karaoke-20260715-1' in html
-    assert 'song-projects.js?v=chord-karaoke-learner-20260715-1' in html
-    assert 'melody-workbench.js?v=amazing-tablature-private-beta-20260723-1' in html
+    assert 'id="studio-voice-mode"' in html
+    assert 'id="studio-movement-mode"' in html
+    assert "How many voices?" in html
+    assert "How should it move?" in html
+    assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
+    assert 'melody-score.js?v=amazing-tablature-product-v1-20260724-2' in html
+    assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
+    assert 'melody-workbench.js?v=amazing-tablature-product-v1-20260724-2' in html
     assert 'id="studio-engine-status" aria-live="polite" hidden' in html
     assert "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging." in script
     assert "Arrangement method: trained Amazing Tablature ranker with verified E9 rules." in script
@@ -493,10 +497,21 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "renderInteractiveTab(route)" in script
     assert "event.alternatePositions || []" in script
     assert "const selectedRoute = preferredStudioRoute(exercise, state.selectedHarmonyType);" in script
-    assert 'state.styleFamily = elements.playingStyle.value || "auto";' in script
-    assert 'state.selectedHarmonyType = "mixed_arrangement";' in script
+    assert 'state.voiceMode = elements.voiceMode.value || "mixed";' in script
+    assert 'state.movementMode = elements.movementMode.value || "best_fit";' in script
+    assert "elements.key.value = state.key;" in script
+    assert "elements.voiceMode.value = state.voiceMode;" in script
+    assert "elements.movementMode.value = state.movementMode;" in script
+    assert "state.tokens.map(phraseItemLabel).join(\" \")" in script
+    assert 'state.selectedHarmonyType = {' in script
+    assert 'three_voice: "chord_melody"' in script
     assert "uses the same Recommended tab for this melody" in script
     assert "Recommended tab positions" in script
+    song_projects = Path("ui/song-projects.js").read_text(encoding="utf-8")
+    assert "Arrange a melody over this chord" in song_projects
+    assert '["voice", "three_voice"]' not in song_projects
+    assert 'voice: "three_voice"' in song_projects
+    assert 'movement: "best_fit"' in song_projects
     assert "hideFilterControls: true" in script
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script

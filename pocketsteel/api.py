@@ -163,7 +163,15 @@ RETRIEVAL_WALL_TIMEOUT_ENV = "STEEL_RAG_RETRIEVAL_WALL_TIMEOUT_SECONDS"
 ANSWER_WALL_TIMEOUT_ENV = "STEEL_RAG_ANSWER_WALL_TIMEOUT_SECONDS"
 DEFAULT_RETRIEVAL_WALL_TIMEOUT_SECONDS = 20.0
 DEFAULT_ANSWER_WALL_TIMEOUT_SECONDS = 25.0
-CONTENT_BEARING_PATHS = frozenset({"/api/search", "/api/tab", "/api/answer", "/api/melody"})
+CONTENT_BEARING_PATHS = frozenset(
+    {
+        "/api/search",
+        "/api/tab",
+        "/api/answer",
+        "/api/melody",
+        "/api/amazing-tablature/arrange",
+    }
+)
 SECURITY_RESPONSE_HEADERS: tuple[tuple[str, str], ...] = (
     ("X-Content-Type-Options", "nosniff"),
     ("Referrer-Policy", "no-referrer"),
@@ -944,6 +952,89 @@ class RetrievalApi:
                 extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
             )
 
+        if path == "/api/amazing-tablature/arrange":
+            if method != "POST":
+                return self._json_response(
+                    start_response,
+                    "405 Method Not Allowed",
+                    {"error": "method not allowed"},
+                )
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            if not self.melody_exercise_enabled:
+                return self._json_response(
+                    start_response,
+                    "404 Not Found",
+                    {"error": "Amazing Tablature is not enabled"},
+                )
+            try:
+                request_payload = self._read_json_body(environ)
+                arrangement_request = dict(request_payload)
+                if not arrangement_request.get("melody") and isinstance(
+                    arrangement_request.get("events"), list
+                ):
+                    arrangement_request["melody"] = list(arrangement_request["events"])
+                context = arrangement_request.pop(
+                    "copedentContext",
+                    arrangement_request.pop("copedent_context", None),
+                )
+                if context is not None and not isinstance(context, dict):
+                    raise MelodyExerciseError("copedentContext must be an object")
+                profile, revision = self._resolve_request_copedent(access, context)
+                arrangement_request.setdefault("targetCopedentId", profile.id)
+                if profile.id.startswith("saved:") and not arrangement_request.get("targetCopedent"):
+                    snapshot = self._account_snapshot_for_profile(access, profile)
+                    if snapshot:
+                        arrangement_request["targetCopedent"] = snapshot
+                result = melody_exercise_response(
+                    "Arrange this normalized melody for E9.",
+                    arrangement_request,
+                    ranker_policy=self.amazing_tablature_policy,
+                )
+                if result is None or result["melody_exercise"]["status"] != "ready":
+                    raise MelodyExerciseError(
+                        "Amazing Tablature needs at least one normalized note or interval event."
+                    )
+            except EntitlementRequiredError as exc:
+                return self._entitlement_response(start_response, exc)
+            except AccountProfileNotFoundError as exc:
+                return self._json_response(start_response, "404 Not Found", {"error": str(exc)})
+            except AccountConfigurationError:
+                return self._json_response(
+                    start_response,
+                    "503 Service Unavailable",
+                    {"error": "account copedent service is unavailable"},
+                )
+            except (JsonRequestError, MelodyExerciseError, ValueError, TypeError) as exc:
+                status = (
+                    "413 Payload Too Large"
+                    if isinstance(exc, JsonRequestTooLargeError)
+                    else "400 Bad Request"
+                )
+                return self._json_response(start_response, status, {"error": str(exc)})
+            exercise = result["melody_exercise"]
+            selected_route = next(
+                route
+                for route in exercise["routes"]
+                if route["id"] == exercise["selectedRouteId"]
+            )
+            response = {
+                "schemaVersion": exercise["arrangementContract"]["schemaVersion"],
+                "arrangement": exercise["arrangementContract"],
+                "melodyExercise": exercise,
+                "tabs": list(result.get("tabs") or ()),
+                "tabExample": selected_route["tabExample"],
+                "fretboard": selected_route["fretboard"],
+            }
+            response.update(copedent_context_metadata(profile, revision))
+            return self._json_response(
+                start_response,
+                "200 OK",
+                response,
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
         if path == "/api/melody/catalog":
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
@@ -1261,6 +1352,15 @@ class RetrievalApi:
                 melody_result = None
             if melody_result is not None:
                 final_answer = normalize_answer_list_markers(str(melody_result["answer"]))
+                selected_melody_route = next(
+                    (
+                        route
+                        for route in melody_result["melody_exercise"].get("routes") or ()
+                        if route.get("id")
+                        == melody_result["melody_exercise"].get("selectedRouteId")
+                    ),
+                    None,
+                )
                 payload: AnswerResponse = {
                     "answer": final_answer,
                     "mode": answer_request.mode,
@@ -1269,10 +1369,22 @@ class RetrievalApi:
                     "sections": build_sections(final_answer),
                     "melody_exercise": melody_result["melody_exercise"],
                 }
-                if melody_result.get("tab_example") is not None:
-                    payload["tab_example"] = melody_result["tab_example"]
-                if melody_result.get("fretboard") is not None:
-                    payload["fretboard"] = melody_result["fretboard"]
+                selected_tab_example = (
+                    selected_melody_route.get("tabExample")
+                    if selected_melody_route is not None
+                    else melody_result.get("tab_example")
+                )
+                selected_fretboard = (
+                    selected_melody_route.get("fretboard")
+                    if selected_melody_route is not None
+                    else melody_result.get("fretboard")
+                )
+                if selected_tab_example is not None:
+                    payload["tab_example"] = selected_tab_example
+                if melody_result.get("tabs") is not None:
+                    payload["tabs"] = list(melody_result["tabs"])
+                if selected_fretboard is not None:
+                    payload["fretboard"] = selected_fretboard
                 payload.update(copedent_context_metadata(target_profile, target_revision))
                 self._log_answer_attempt(
                     request_payload,

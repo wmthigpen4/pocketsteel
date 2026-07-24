@@ -739,7 +739,7 @@ def choose_mixed_path(
         phrase_starts=phrase_starts or {0},
         phrase_ends=phrase_ends or {len(inputs) - 1},
     )
-    home_fret = 3 if key == "G" else 8
+    home_fret = _major_open_fret(key)
     selected_style = normalize_style_family(style_family)
     selected_profile = profile or EMMONS_E9
     learned_weights_available = _learned_weights_available(
@@ -1958,8 +1958,33 @@ def _major_position_root(chord: str) -> str:
     return f"{match.group(1).upper()}{match.group(2)}"
 
 
+_MAJOR_SCALES: dict[str, tuple[str, ...]] = {
+    "C": ("C", "D", "E", "F", "G", "A", "B"),
+    "Db": ("Db", "Eb", "F", "Gb", "Ab", "Bb", "C"),
+    "D": ("D", "E", "F#", "G", "A", "B", "C#"),
+    "Eb": ("Eb", "F", "G", "Ab", "Bb", "C", "D"),
+    "E": ("E", "F#", "G#", "A", "B", "C#", "D#"),
+    "F": ("F", "G", "A", "Bb", "C", "D", "E"),
+    "F#": ("F#", "G#", "A#", "B", "C#", "D#", "E#"),
+    "G": ("G", "A", "B", "C", "D", "E", "F#"),
+    "Ab": ("Ab", "Bb", "C", "Db", "Eb", "F", "G"),
+    "A": ("A", "B", "C#", "D", "E", "F#", "G#"),
+    "Bb": ("Bb", "C", "D", "Eb", "F", "G", "A"),
+    "B": ("B", "C#", "D#", "E", "F#", "G#", "A#"),
+}
+
+
 def _scale_notes(key: str) -> tuple[str, ...]:
-    return ("G", "A", "B", "C", "D", "E", "F#") if key == "G" else ("C", "D", "E", "F", "G", "A", "B")
+    try:
+        return _MAJOR_SCALES[key]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported major key: {key}") from exc
+
+
+def _major_open_fret(key: str) -> int:
+    """Return the no-pedals major position on E strings within one octave."""
+
+    return (_pitch_class(key) - _pitch_class("E")) % 12
 
 
 def _resolve_token(token: str, scale: tuple[str, ...]) -> tuple[str, int]:

@@ -61,6 +61,20 @@ def configured_melody_import_enabled(env: Mapping[str, str] | None = None) -> bo
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _normalize_major_key(value: object) -> str:
+    text = str(value or "G").strip().replace("♯", "#").replace("♭", "b")
+    if not text:
+        return "G"
+    normalized = text[0].upper() + text[1:]
+    return {
+        "C#": "Db",
+        "D#": "Eb",
+        "G#": "Ab",
+        "A#": "Bb",
+        "Gb": "F#",
+    }.get(normalized, normalized)
+
+
 def public_song_catalog() -> list[dict[str, Any]]:
     """Return compact catalog cards without exposing internal score bodies."""
     cards: list[dict[str, Any]] = []
@@ -222,11 +236,11 @@ def normalize_score_draft(
         if raw_source.get(key):
             normalized_source[key] = str(raw_source[key])[:500]
 
-    source_key = str(raw_score.get("sourceKey") or raw_score.get("key") or "G").upper()
-    arrangement_key = str(raw_score.get("arrangementKey") or source_key).upper()
+    source_key = _normalize_major_key(raw_score.get("sourceKey") or raw_score.get("key") or "G")
+    arrangement_key = _normalize_major_key(raw_score.get("arrangementKey") or source_key)
     warnings = list((value.get("review") or {}).get("warnings") or []) if isinstance(value.get("review"), Mapping) else []
-    if arrangement_key not in {"G", "C"}:
-        warnings.append("Choose G or C as the E9 arrangement key before arranging this score.")
+    if arrangement_key not in {"C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"}:
+        warnings.append("Choose a supported major key before arranging this score.")
     raw_sections = raw_score.get("sections") if isinstance(raw_score, Mapping) else []
     sections: list[dict[str, Any]] = []
     if isinstance(raw_sections, Sequence) and not isinstance(raw_sections, (str, bytes)):
@@ -321,7 +335,6 @@ def parse_musicxml(raw: bytes, *, compressed: bool = False, selected_part: Any =
                     pitch = child.find("pitch")
                     if pitch is not None:
                         pitch_value = _musicxml_pitch_value(pitch)
-                        voice = int(child.findtext("voice") or 1)
                         sounding[onset].append((pitch_value, duration, child))
                     if child.find("chord") is None:
                         cursor += duration
@@ -546,7 +559,7 @@ def _read_varlen(data: bytes, position: int) -> tuple[int, int]:
 def _ollama_vision_client(encoded_image: str, mime_type: str) -> Mapping[str, Any]:
     prompt = (
         "Read this single-page melody or lead-sheet image. Return JSON only with a score object containing "
-        "sourceKey, arrangementKey (G or C when known), meter (3/4 or 4/4), pickupBeats, melody, and harmony. "
+        "sourceKey, arrangementKey (major key when known), meter (3/4 or 4/4), pickupBeats, melody, and harmony. "
         "Each melody item needs measure, beat, durationBeats, pitch in scientific notation, confidence 0..1, "
         "and optional lyric. Each harmony item needs measure, beat, symbol, basis='source', and confidence. "
         "Use at most 64 melody events. Do not guess unreadable notes; omit them and add review.warnings."

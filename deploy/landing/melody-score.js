@@ -10,6 +10,10 @@
     eighth: 0.5
   };
   const PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const KEY_FIFTHS = {
+    C: 0, G: 1, D: 2, A: 3, E: 4, B: 5, "F#": 6,
+    F: -1, Bb: -2, Eb: -3, Ab: -4, Db: -5
+  };
   const MAX_EVENTS = 128;
   const MAX_MEASURES = 64;
 
@@ -224,7 +228,7 @@
     const measures = Array.from({ length: Math.max(1, ...byMeasure.keys()) }, (_, offset) => {
       const measure = offset + 1;
       const notes = byMeasure.get(measure) || [];
-      const attributes = measure === 1 ? `<attributes><divisions>${divisions}</divisions><key><fifths>${score.arrangementKey === "G" ? 1 : 0}</fifths></key><time><beats>${beats}</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>` : "";
+      const attributes = measure === 1 ? `<attributes><divisions>${divisions}</divisions><key><fifths>${KEY_FIFTHS[score.arrangementKey] ?? 0}</fifths></key><time><beats>${beats}</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>` : "";
       const harmony = score.harmony.filter((item) => Number(item.measure) === measure).map((item) => `<direction><direction-type><words>${escape(item.symbol)}</words></direction-type></direction>`).join("");
       const body = notes.map((event) => {
         const duration = Math.max(1, Math.round(Number(event.durationBeats) * divisions));

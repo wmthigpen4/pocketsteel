@@ -5935,7 +5935,7 @@
 
   <script src="copedent-store.js?v=simple-control-dialog-20260714-1"></script>
   <script src="copedent-grid-model.js?v=editable-tab-labels-20260714-1"></script>
-  <script src="answer-client.js?v=plan-activity-20260714-1"></script>
+  <script src="answer-client.js?v=amazing-tablature-product-v1-20260724-2"></script>
   <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
@@ -6761,9 +6761,13 @@
       meta.className = "melody-exercise-meta";
       const section = exercise.section || {};
       const accuracy = exercise.accuracy || {};
+      const arrangementContract = exercise.arrangementContract || {};
+      const arrangementRequest = arrangementContract.request || {};
       [
         melodyLabel(exercise.kind),
         melodyLabel(exercise.renderingMode),
+        arrangementRequest.voiceMode ? `${melodyLabel(arrangementRequest.voiceMode)} texture` : "",
+        arrangementRequest.movementMode ? `${melodyLabel(arrangementRequest.movementMode)} movement` : "",
         `${melodyLabel(accuracy.label)} · ${melodyLabel(accuracy.confidence)} confidence`,
         section.total ? `Section ${section.number} of ${section.total}` : section.label
       ].filter(Boolean).forEach((label) => {
@@ -6787,6 +6791,16 @@
 
       card.append(kicker, title, meta, identity, accuracyNote);
 
+      if (arrangementContract.provenance?.claim) {
+        const policy = document.createElement("p");
+        policy.className = "melody-exercise-copy";
+        const alternativeCount = Array.isArray(arrangementContract.alternatives)
+          ? arrangementContract.alternatives.length
+          : 0;
+        policy.textContent = `${arrangementContract.provenance.claim} ${alternativeCount} materially different ${alternativeCount === 1 ? "alternative is" : "alternatives are"} available.`;
+        card.appendChild(policy);
+      }
+
       if (material.sourceUrl) {
         const sourceLink = document.createElement("a");
         sourceLink.className = "movement-lesson-card__handoff-link";
@@ -6797,7 +6811,8 @@
         card.appendChild(sourceLink);
       }
 
-      if (exercise.events?.length) {
+      const displayEvents = exercise.selectedEvents?.length ? exercise.selectedEvents : exercise.events;
+      if (displayEvents?.length) {
         const stepper = document.createElement("div");
         stepper.className = "melody-stepper";
         stepper.setAttribute("aria-label", "Melody lesson steps");
@@ -6828,7 +6843,7 @@
           }
         };
 
-        exercise.events.forEach((event, index) => {
+        displayEvents.forEach((event, index) => {
           const note = event.notes?.[0] || {};
           const button = document.createElement("button");
           button.className = "melody-step";
@@ -6857,13 +6872,16 @@
         card.appendChild(continuation);
       }
 
-      if (exercise.status === "needs_source") {
-        const studioLink = document.createElement("a");
-        studioLink.className = "movement-lesson-card__handoff-link";
-        studioLink.href = `/ui/melody-workbench.html?kind=${encodeURIComponent(exercise.kind || "artist_solo_lesson")}`;
-        studioLink.textContent = "Open in Melody Studio";
-        card.appendChild(studioLink);
-      }
+      const studioLink = document.createElement("a");
+      studioLink.className = "movement-lesson-card__handoff-link";
+      const studioParams = new URLSearchParams({
+        kind: exercise.kind || "user_melody",
+        voice: arrangementRequest.voiceMode || "mixed",
+        movement: arrangementRequest.movementMode || "best_fit"
+      });
+      studioLink.href = `/ui/melody-workbench.html?${studioParams.toString()}`;
+      studioLink.textContent = "Open in Melody Studio";
+      card.appendChild(studioLink);
 
       answerMelodyContent.appendChild(card);
     }

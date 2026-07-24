@@ -721,6 +721,15 @@ const STEEL_RAG_ANSWER_UI = (() => {
       styleFamily: firstTextValue(route.styleFamily, route.style_family),
       styleLabel: firstTextValue(route.styleLabel, route.style_label),
       styleReason: firstTextValue(route.styleReason, route.style_reason),
+      voiceMode: firstTextValue(route.voiceMode, route.voice_mode),
+      movementMode: firstTextValue(route.movementMode, route.movement_mode),
+      movementTypes: normalizeStringList(route.movementTypes || route.movement_types),
+      materiallyDistinct: route.materiallyDistinct !== false,
+      materialDifferenceReasons: normalizeStringList(
+        route.materialDifferenceReasons || route.material_difference_reasons
+      ),
+      provenance: isObjectRecord(route.provenance) ? route.provenance : {},
+      validation: isObjectRecord(route.validation) ? route.validation : {},
       decisionModelVersion: firstTextValue(route.decisionModelVersion, route.decision_model_version),
       decisionModelStatus: firstTextValue(route.decisionModelStatus, route.decision_model_status),
       fallbacks: Array.isArray(route.fallbacks) ? route.fallbacks.filter(isObjectRecord) : [],
@@ -747,7 +756,14 @@ const STEEL_RAG_ANSWER_UI = (() => {
     const section = isObjectRecord(exercise.section) ? exercise.section : {};
     const validation = isObjectRecord(exercise.validation) ? exercise.validation : {};
     const events = Array.isArray(exercise.events) ? exercise.events.map(normalizeMelodyEvent).filter(Boolean) : [];
-    const routes = Array.isArray(exercise.routes) ? exercise.routes.map(normalizeMelodyRoute).filter(Boolean) : [];
+    const routePayloads = exercise.publicRoutes || exercise.public_routes || exercise.routes;
+    const routes = Array.isArray(routePayloads) ? routePayloads.map(normalizeMelodyRoute).filter(Boolean) : [];
+    const selectedRouteId = firstTextValue(
+      exercise.selectedRouteId,
+      exercise.selected_route_id,
+      routes[0]?.id
+    );
+    const selectedEvents = routes.find((route) => route.id === selectedRouteId)?.events || events;
     return {
       schemaVersion: firstTextValue(exercise.schemaVersion, exercise.schema_version, "melody_exercise_v0"),
       id: firstTextValue(exercise.id, "melody-exercise"),
@@ -773,6 +789,11 @@ const STEEL_RAG_ANSWER_UI = (() => {
       decisionModelStatus: firstTextValue(exercise.decisionModelStatus, exercise.decision_model_status),
       decisionRules: isObjectRecord(exercise.decisionRules || exercise.decision_rules)
         ? (exercise.decisionRules || exercise.decision_rules)
+        : {},
+      arrangementContract: isObjectRecord(
+        exercise.arrangementContract || exercise.arrangement_contract
+      )
+        ? (exercise.arrangementContract || exercise.arrangement_contract)
         : {},
       material: {
         artist: firstTextValue(material.artist),
@@ -801,8 +822,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
         measureEnd: section.measureEnd ?? section.measure_end ?? null
       },
       events,
+      selectedEvents,
       routes,
-      selectedRouteId: firstTextValue(exercise.selectedRouteId, exercise.selected_route_id, routes[0]?.id),
+      selectedRouteId,
       input: isObjectRecord(exercise.input) ? exercise.input : {},
       validation: {
         ok: Boolean(validation.ok),

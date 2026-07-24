@@ -65,7 +65,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     status, headers, html = call_app(smoke_app(), "/ui/steel-guitar-rag-mock.html")
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
-    assert b'<script src="answer-client.js?v=plan-activity-20260714-1"></script>' in html
+    assert b'<script src="answer-client.js?v=amazing-tablature-product-v1-20260724-2"></script>' in html
     assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert b'<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
     assert b'<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html
@@ -141,9 +141,9 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"What do you want to work on?" in studio
-    assert b'<script src="melody-score.js?v=copedent-transfer-20260713-1"></script>' in studio
-    assert b'<script src="song-projects.js?v=chord-karaoke-learner-20260715-1"></script>' in studio
-    assert b'<script src="melody-workbench.js?v=amazing-tablature-private-beta-20260723-1"></script>' in studio
+    assert b'<script src="melody-score.js?v=amazing-tablature-product-v1-20260724-2"></script>' in studio
+    assert b'<script src="song-projects.js?v=amazing-tablature-product-v1-20260724-2"></script>' in studio
+    assert b'<script src="melody-workbench.js?v=amazing-tablature-product-v1-20260724-2"></script>' in studio
 
     status, headers, studio_script = call_app(smoke_app(), "/ui/melody-workbench.js")
     assert status == "200 OK"

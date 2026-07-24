@@ -4351,7 +4351,38 @@ def test_api_answer_builds_structured_melody_exercise_when_feature_enabled() -> 
     assert [event["resolvedNote"] for event in payload["melody_exercise"]["events"]] == ["G", "A", "B", "D"]
     assert payload["tab_example"]["validation"]["ok"] is True
     assert len(payload["tab_example"]["events"]) == len(payload["fretboard"]["positions"]) == 4
+    assert payload["melody_exercise"]["arrangementContract"]["validation"]["ok"] is True
+    assert payload["tabs"]
     assert payload["sources"] == []
+
+
+def test_amazing_tablature_endpoint_returns_shared_voice_movement_contract() -> None:
+    status, headers, payload = call_app(
+        "/api/amazing-tablature/arrange",
+        method="POST",
+        json_body={
+            "key": "A",
+            "events": [
+                {"token": "1", "chord": "A"},
+                {"token": "2", "chord": "E7"},
+                {"token": "3", "chord": "A"},
+            ],
+            "voiceMode": "three_voice",
+            "movementMode": "pedal_lever",
+        },
+        melody_exercise_enabled=True,
+    )
+
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert payload["schemaVersion"] == "amazing_tablature_response_v1"
+    assert payload["arrangement"]["request"]["voiceMode"] == "three_voice"
+    assert payload["arrangement"]["request"]["movementMode"] == "pedal_lever"
+    assert payload["arrangement"]["validation"]["ok"] is True
+    assert payload["arrangement"]["recommendedRouteId"] == payload["melodyExercise"]["selectedRouteId"]
+    assert payload["tabExample"]["validation"]["ok"] is True
+    assert len(payload["tabExample"]["events"]) == len(payload["fretboard"]["positions"]) == 3
+    assert all(route["materiallyDistinct"] for route in payload["melodyExercise"]["routes"])
 
 
 def test_api_answer_preserves_recording_attribution_for_melody_lesson() -> None:
@@ -4444,13 +4475,13 @@ def test_api_answer_rejects_invalid_melody_without_rendering() -> None:
         method="POST",
         json_body={
             "question": "Build this melody.",
-            "melodyRequest": {"kind": "user_melody", "key": "F", "melody": ["1", "2"]},
+            "melodyRequest": {"kind": "user_melody", "key": "H", "melody": ["1", "2"]},
         },
         melody_exercise_enabled=True,
     )
 
     assert status == "400 Bad Request"
-    assert "keys of G and C" in payload["error"]
+    assert "major key from C through B" in payload["error"]
     assert "melody_exercise" not in payload
     assert "tab_example" not in payload
     assert "fretboard" not in payload

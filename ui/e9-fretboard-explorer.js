@@ -3404,6 +3404,32 @@
     `;
   }
 
+  function amazingTablatureHandoffHtml(notes, options = {}) {
+    const melody = toArray(notes).map((note) => formatValue(note, "")).filter(Boolean);
+    if (!melody.length) {
+      return "";
+    }
+    const params = [
+      ["kind", "user_melody"],
+      ["key", options.key || activeKey()],
+      ["notes", melody.join(" ")],
+      ["voice", options.voice || "mixed"],
+      ["movement", options.movement || (melody.length > 1 ? "slides" : "best_fit")],
+      ["source", "fretboard-explorer"]
+    ];
+    if (options.chord) params.push(["chord", options.chord]);
+    const query = params
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+      .join("&");
+    return `
+      <section class="explorer-teaching-note" aria-label="Amazing Tablature handoff">
+        <strong>Turn this into playable tab</strong>
+        <p>Send the selected note${melody.length === 1 ? "" : " path"} to the same validated arranger used by Melody Studio and Q&amp;A. Choose one, two, three, or mixed voices there.</p>
+        <a class="explorer-back" href="/ui/melody-workbench.html?${escapeHtml(query)}">Open in Amazing Tablature →</a>
+      </section>
+    `;
+  }
+
   function renderSelectedDetail(row) {
     if (!row) {
       els.selectedDetail.className = "explorer-selected-detail";
@@ -3442,6 +3468,14 @@
       </dl>
       ${stringActionRowsHtml(row)}
       ${rowControlImpactsHtml(row)}
+      ${amazingTablatureHandoffHtml(
+        isPathMode() ? currentRows.map((item) => topVoice(item).note) : [topVoice(row).note],
+        {
+          voice: isPathMode() ? "mixed" : ((toArray(row.strings).length >= 3) ? "three_voice" : (toArray(row.strings).length === 2 ? "two_voice" : "single")),
+          movement: isPathMode() ? "slides" : "best_fit",
+          chord: row.chord_name || ""
+        }
+      )}
     `;
   }
 
@@ -4219,6 +4253,7 @@
         ${detailRow("Final note with register", activePitchRegisterMode() === "off" ? "" : cellRegisterLabel(cell))}
         ${detailRow(`${notationModeLabel()} in ${scaleText}`, cell.notationValue)}
       </dl>
+      ${amazingTablatureHandoffHtml([cell.finalNote], {voice: "single"})}
     `;
   }
 
@@ -4686,6 +4721,10 @@
         ${detailRow("Warnings", row.warnings)}
       </dl>
       ${stringActionRowsHtml(row)}
+      ${amazingTablatureHandoffHtml(
+        [topVoice(row).note],
+        {voice: "three_voice", movement: "best_fit", chord: target.label || row.chord_name || ""}
+      )}
     `;
   }
 
@@ -4802,6 +4841,10 @@
         ${detailRow("Warnings", identityWarnings)}
       </dl>
       ${voicingStringActionRowsHtml(result.cells)}
+      ${amazingTablatureHandoffHtml(
+        [result.cells.at(-1)?.finalNote],
+        {voice: result.strings.length >= 3 ? "three_voice" : "two_voice", chord: identity.label || ""}
+      )}
     `;
   }
 

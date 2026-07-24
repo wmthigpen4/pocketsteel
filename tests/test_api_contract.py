@@ -64,7 +64,7 @@ def test_api_contract_fixture_matches_required_shapes() -> None:
     assert answer["mode"] in VALID_MODES
     required_answer_keys = {"answer", "mode", "sources", "warnings", "sections"}
     assert required_answer_keys.issubset(answer)
-    assert set(answer).issubset(required_answer_keys | {"fretboard", "tab_example", "progression_guide", "melody_exercise"})
+    assert set(answer).issubset(required_answer_keys | {"fretboard", "tab_example", "tabs", "progression_guide", "melody_exercise"})
     assert "fretboard" not in answer
     assert set(answer["sources"][0]) == {"title", "forumName", "url", "excerpt", "score", "chunkId", "postUid"}
     assert set(answer["sections"][0]) == {"title", "style", "body"}

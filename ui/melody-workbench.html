@@ -311,6 +311,8 @@
     .style-choice { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
     .style-choice select { width: 100%; min-height: 44px; border: 1px solid rgba(240, 191, 105, 0.34); border-radius: 12px; background: rgba(5, 7, 7, 0.72); color: var(--cream); padding: 9px 36px 9px 11px; font-weight: 750; letter-spacing: normal; text-transform: none; }
     .style-choice small { min-height: 34px; color: rgba(244, 234, 214, 0.62); font-size: 12px; font-weight: 500; letter-spacing: normal; line-height: 1.4; text-transform: none; }
+    .arrangement-policy-controls { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 10px; }
+    .arrangement-policy-summary { grid-column: 1 / -1; margin: 0; color: rgba(244, 234, 214, 0.72); font-size: 12px; line-height: 1.45; }
     .route-tabs { max-width: 100%; display: flex; flex-wrap: nowrap; gap: 8px; margin: 0; overflow-x: auto; padding: 2px 0 5px; scrollbar-width: thin; }
     .route-tab { min-height: 40px; border: 1px solid var(--line); border-radius: 999px; background: rgba(5, 7, 7, 0.55); color: var(--muted); cursor: pointer; padding: 0 14px; font-weight: 800; }
     .route-tab.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.14); color: var(--cream); }
@@ -386,7 +388,7 @@
       main { padding-top: 34px; }
       .start-picker__heading { display: grid; }
       .start-options, .field-grid, .catalog-grid, .score-event-editor, .catalog-controls { grid-template-columns: 1fr; }
-      .audio-choice, .score-quick-edit { grid-template-columns: 1fr; }
+      .audio-choice, .score-quick-edit, .arrangement-policy-controls { grid-template-columns: 1fr; }
       .arrangement-choices { grid-template-columns: 1fr; }
       .start-choice { justify-content: flex-start; min-height: 44px; }
       .field.is-wide { grid-column: auto; }
@@ -698,7 +700,12 @@
           <p class="field-help" id="studio-entry-guidance">Enter a short melody, then arrange it for E9.</p>
           <div class="editor-settings">
             <label class="field compact-key">Key
-              <select id="studio-key"><option value="G">G major</option><option value="C">C major</option></select>
+              <select id="studio-key">
+                <option value="C">C major</option><option value="Db">D♭ major</option><option value="D">D major</option>
+                <option value="Eb">E♭ major</option><option value="E">E major</option><option value="F">F major</option>
+                <option value="F#">F♯ major</option><option value="G" selected>G major</option><option value="Ab">A♭ major</option>
+                <option value="A">A major</option><option value="Bb">B♭ major</option><option value="B">B major</option>
+              </select>
             </label>
           </div>
         </div>
@@ -961,10 +968,26 @@
             <strong>Arrangement</strong>
             <div class="route-tabs" id="studio-route-tabs" aria-label="Melody arrangement routes"></div>
           </div>
-          <label class="style-choice">Style for Recommended
-            <select id="studio-playing-style" aria-describedby="studio-style-reason"></select>
-            <small id="studio-style-reason"></small>
-          </label>
+          <div class="arrangement-policy-controls" aria-label="Amazing Tablature controls">
+            <label class="style-choice">How many voices?
+              <select id="studio-voice-mode" aria-describedby="studio-arrangement-policy-summary">
+                <option value="single">Single note</option>
+                <option value="two_voice">Two note</option>
+                <option value="three_voice">Three note</option>
+                <option value="mixed" selected>Mixed</option>
+              </select>
+            </label>
+            <label class="style-choice">How should it move?
+              <select id="studio-movement-mode" aria-describedby="studio-arrangement-policy-summary">
+                <option value="best_fit" selected>Best fit</option>
+                <option value="slides">Slides</option>
+                <option value="pedal_lever">Pedal &amp; lever</option>
+                <option value="compact_pocket">Stay in a pocket</option>
+                <option value="clean_repick">Clean repicks</option>
+              </select>
+            </label>
+            <p class="arrangement-policy-summary" id="studio-arrangement-policy-summary"></p>
+          </div>
         </div>
 
         <div id="studio-transport" hidden>
@@ -1018,13 +1041,13 @@
   </aside>
 
   <script src="copedent-store.js?v=account-copedents-20260714-1"></script>
-  <script src="answer-client.js?v=chord-karaoke-20260715-1"></script>
+  <script src="answer-client.js?v=amazing-tablature-product-v1-20260724-2"></script>
   <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=copedent-transfer-20260713-1"></script>
-  <script src="song-projects.js?v=chord-karaoke-learner-20260715-1"></script>
-  <script src="melody-workbench.js?v=amazing-tablature-private-beta-20260723-1"></script>
+  <script src="melody-score.js?v=amazing-tablature-product-v1-20260724-2"></script>
+  <script src="song-projects.js?v=amazing-tablature-product-v1-20260724-2"></script>
+  <script src="melody-workbench.js?v=amazing-tablature-product-v1-20260724-2"></script>
 </body>
 </html>

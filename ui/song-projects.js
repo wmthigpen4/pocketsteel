@@ -779,7 +779,21 @@
     elements.positionTitle.textContent = `${event.chord} · fret ${position.fret} · strings ${position.grip}`;
     elements.positionInstruction.textContent = position.instruction;
     const choices = [event.position, ...(event.alternatives || [])];
-    elements.alternatives.innerHTML = choices.map((choice, index) => `<button type="button" data-song-position-choice="${index}">${index === 0 ? "Recommended" : `Alternative ${index}`} · fret ${choice.fret}</button>`).join("");
+    const topNote = [...(position.notes || [])]
+      .sort((left, right) => Number(right.pitch) - Number(left.pitch))[0]?.note || "";
+    const arrangementParams = new URLSearchParams({
+      kind: "user_melody",
+      key: project.key || "G",
+      notes: topNote,
+      chord: event.chord || "",
+      voice: "three_voice",
+      movement: "best_fit",
+      source: "song-practice"
+    });
+    elements.alternatives.innerHTML = [
+      ...choices.map((choice, index) => `<button type="button" data-song-position-choice="${index}">${index === 0 ? "Recommended" : `Alternative ${index}`} · fret ${choice.fret}</button>`),
+      topNote ? `<a class="secondary-action" href="/ui/melody-workbench.html?${escapeHtml(arrangementParams.toString())}">Arrange a melody over this chord →</a>` : ""
+    ].join("");
     elements.alternatives.querySelectorAll("[data-song-position-choice]").forEach((button) => button.addEventListener("click", () => showPosition(event, choices[Number(button.dataset.songPositionChoice)])));
     renderFretboard(position);
   }

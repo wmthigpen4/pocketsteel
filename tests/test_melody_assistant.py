@@ -740,7 +740,7 @@ def test_top_level_material_identity_and_tokens_are_supported() -> None:
 @pytest.mark.parametrize(
     ("request_payload", "message"),
     [
-        ({"key": "F", "melody": ["1", "2"]}, "keys of G and C"),
+        ({"key": "H", "melody": ["1", "2"]}, "major key from C through B"),
         ({"key": "G", "tuning": "C6", "melody": ["1", "2"]}, "E9 tuning only"),
         ({"key": "G", "melody": ["1", "b9"]}, "not in the selected major scale"),
     ],

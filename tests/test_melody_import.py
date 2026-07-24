@@ -247,7 +247,7 @@ def test_image_recognition_is_review_gated_and_malformed_output_is_rejected() ->
         import_score_draft(payload, vision_client=lambda _image, _mime: {"score": {"melody": "bad"}})
 
 
-def test_non_g_or_c_import_requires_explicit_arrangement_choice() -> None:
+def test_import_preserves_supported_major_arrangement_key() -> None:
     draft = import_score_draft(
         {
             "sourceType": "pasted",
@@ -255,4 +255,4 @@ def test_non_g_or_c_import_requires_explicit_arrangement_choice() -> None:
         }
     )
     assert draft["score"]["arrangementKey"] == "D"
-    assert "Choose G or C" in draft["review"]["warnings"][0]
+    assert draft["review"]["warnings"] == []

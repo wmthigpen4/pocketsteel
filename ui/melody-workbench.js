@@ -45,8 +45,18 @@
     exercise: "original_exercise"
   };
   const KEY_NOTES = {
+    C: ["C", "D", "E", "F", "G", "A", "B"],
+    Db: ["Db", "Eb", "F", "Gb", "Ab", "Bb", "C"],
+    D: ["D", "E", "F#", "G", "A", "B", "C#"],
+    Eb: ["Eb", "F", "G", "Ab", "Bb", "C", "D"],
+    E: ["E", "F#", "G#", "A", "B", "C#", "D#"],
+    F: ["F", "G", "A", "Bb", "C", "D", "E"],
+    "F#": ["F#", "G#", "A#", "B", "C#", "D#", "E#"],
     G: ["G", "A", "B", "C", "D", "E", "F#"],
-    C: ["C", "D", "E", "F", "G", "A", "B"]
+    Ab: ["Ab", "Bb", "C", "Db", "Eb", "F", "G"],
+    A: ["A", "B", "C#", "D", "E", "F#", "G#"],
+    Bb: ["Bb", "C", "D", "Eb", "F", "G", "A"],
+    B: ["B", "C#", "D#", "E", "F#", "G#", "A#"]
   };
   const E9_OPEN_NOTES = {
     1: "F#", 2: "D#", 3: "G#", 4: "E", 5: "B",
@@ -250,8 +260,8 @@
       renderingMode: task.renderingMode,
       sectionNumber: state.sectionNumber || 1,
       contourMode: state.contourMode || "closest_playable",
-      texture: "both",
-      styleFamily: state.styleFamily || "auto"
+      voiceMode: state.voiceMode || "mixed",
+      movementMode: state.movementMode || "best_fit"
     };
     if (state.targetCopedent) {
       request.targetCopedent = state.targetCopedent;
@@ -353,7 +363,8 @@
       paletteMode: "degrees",
       tokens: [],
       contourMode: "closest_playable",
-      styleFamily: "auto",
+      voiceMode: "mixed",
+      movementMode: "best_fit",
       selectedHarmonyType: "mixed_arrangement",
       sourceCopedentId: "",
       targetCopedentId: "emmons-e9-basic",
@@ -733,6 +744,36 @@
       return "Arrangement method: trained Amazing Tablature ranker with verified E9 rules.";
     }
     return "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging.";
+  }
+
+  function arrangementPolicySummary(exercise = {}) {
+    const contract = exercise.arrangementContract || {};
+    const request = contract.request || {};
+    const route = (exercise.routes || []).find((item) => item.id === contract.recommendedRouteId)
+      || (exercise.routes || []).find((item) => item.recommended)
+      || (exercise.routes || [])[0];
+    if (!route) return "";
+    const voiceLabels = {
+      single: "single note",
+      two_voice: "two note",
+      three_voice: "three note",
+      mixed: "mixed voice"
+    };
+    const movementLabels = {
+      best_fit: "best fit",
+      slides: "slides",
+      pedal_lever: "pedal & lever movement",
+      compact_pocket: "a compact pocket",
+      clean_repick: "clean repicks"
+    };
+    const requestedVoice = voiceLabels[request.voiceMode] || request.voiceMode || "mixed voice";
+    const realizedVoice = voiceLabels[route.voiceMode] || route.voiceMode || requestedVoice;
+    const movement = movementLabels[request.movementMode] || request.movementMode || "best fit";
+    const fallback = contract.requestedVoiceModeAvailable === false
+      ? ` Requested ${requestedVoice}; the closest validated result is ${realizedVoice}.`
+      : "";
+    const alternatives = Array.isArray(contract.alternatives) ? contract.alternatives.length : 0;
+    return `Recommended: ${realizedVoice} with ${movement}. ${alternatives} materially different ${alternatives === 1 ? "alternative" : "alternatives"}.${fallback}`;
   }
 
   function numberList(value) {
@@ -1153,7 +1194,8 @@
     preferredStudioRoute,
     tabPositionSignature,
     changedTabPositionCount,
-    styleImpactSummary
+    styleImpactSummary,
+    arrangementPolicySummary
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -1171,7 +1213,28 @@
   let state = createInitialState(studioParams.get("kind") || "user_melody");
   const activeCopedentContext = global.STEEL_RAG_COPEDENTS?.activeContext?.();
   state.targetCopedentId = studioParams.get("copedent") || activeCopedentContext?.profileId || state.targetCopedentId;
-  state.styleFamily = studioParams.get("style") || state.styleFamily;
+  state.voiceMode = studioParams.get("voice") || state.voiceMode;
+  const legacyMovementByStyle = {
+    vocal_steel: "slides",
+    lever_driven: "pedal_lever",
+    fixed_pocket: "compact_pocket",
+    single_note_run: "clean_repick"
+  };
+  state.movementMode = studioParams.get("movement")
+    || legacyMovementByStyle[studioParams.get("style")]
+    || state.movementMode;
+  if (studioParams.get("key")) {
+    const requestedKey = studioParams.get("key");
+    const normalizedKey = requestedKey.slice(0, 1).toUpperCase() + requestedKey.slice(1);
+    if (KEY_NOTES[normalizedKey]) state.key = normalizedKey;
+  }
+  if (studioParams.get("notes")) {
+    const chord = studioParams.get("chord") || "";
+    state.tokens = parsePhraseEvents(studioParams.get("notes")).map((item) => (
+      chord ? {...phraseItem(item), chord} : item
+    ));
+    state.workflowPhase = "review";
+  }
   state.targetCopedent = studioParams.get("copedent") ? null : (activeCopedentContext?.profileSnapshot || savedE9TargetCopedent());
   let session = null;
   let catalogSongs = [];
@@ -1328,8 +1391,9 @@
     printRoute: $("#studio-print-route"),
     arrangementChoices: $("#studio-arrangement-choices"),
     routeTabs: $("#studio-route-tabs"),
-    playingStyle: $("#studio-playing-style"),
-    styleReason: $("#studio-style-reason"),
+    voiceMode: $("#studio-voice-mode"),
+    movementMode: $("#studio-movement-mode"),
+    arrangementPolicySummary: $("#studio-arrangement-policy-summary"),
     sourceNeeded: $("#studio-source-needed"),
     fretboard: $("#studio-fretboard"),
     fretboardPlayingContext: $("#studio-fretboard-playing-context"),
@@ -1760,8 +1824,8 @@
       : "Choose a pitch, click the staff, or press A–G to add the first note.";
     const structureWarnings = scoreUi.draftWarnings(draft);
     const warnings = [...(draft.review?.warnings || []), ...structureWarnings];
-    const unsupportedKey = !["G", "C"].includes(draft.score.arrangementKey);
-    elements.scoreWarnings.textContent = [...warnings, ...(unsupportedKey ? ["Choose G or C as the arrangement key before arranging."] : [])].join(" ");
+    const unsupportedKey = !KEY_NOTES[draft.score.arrangementKey];
+    elements.scoreWarnings.textContent = [...warnings, ...(unsupportedKey ? ["Choose a supported major key before arranging."] : [])].join(" ");
     elements.scoreWarnings.hidden = !elements.scoreWarnings.textContent;
     elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey;
     elements.scoreArrange.textContent = draft.review.status === "confirmed" ? "Arrange for E9" : "Confirm and arrange for E9";
@@ -1807,7 +1871,7 @@
       : state.showSourceDetails && hasMaterialDetails() && currentTask()?.needsMaterial
         ? state.kind
         : "user_melody";
-    state.key = ["G", "C"].includes(draft.score.arrangementKey) ? draft.score.arrangementKey : elements.key.value;
+    state.key = KEY_NOTES[draft.score.arrangementKey] ? draft.score.arrangementKey : elements.key.value;
     elements.key.value = state.key;
     if (imageUrl) state.sourceImageUrl = imageUrl;
     renderStartingPoint();
@@ -2733,8 +2797,7 @@
   function renderRoutes(exercise) {
     elements.routeTabs.replaceChildren();
     const routes = exercise?.routes || [];
-    const styles = exercise?.styleCatalog || [];
-    elements.arrangementChoices.hidden = routes.length < 2 && styles.length < 2;
+    elements.arrangementChoices.hidden = !routes.length;
     routes.forEach((route) => {
       const button = doc.createElement("button");
       button.type = "button";
@@ -2744,18 +2807,10 @@
       button.addEventListener("click", () => activateRoute(route.id));
       elements.routeTabs.appendChild(button);
     });
-    elements.playingStyle.replaceChildren();
-    styles.forEach((style) => {
-      const option = doc.createElement("option");
-      option.value = style.id;
-      option.textContent = style.label;
-      option.title = style.description || "";
-      elements.playingStyle.appendChild(option);
-    });
-    elements.playingStyle.value = exercise?.styleFamily || state.styleFamily || "auto";
-    elements.playingStyle.hidden = styles.length < 2;
-    elements.styleReason.textContent = exercise?.styleReason || "";
-    elements.styleReason.hidden = !elements.styleReason.textContent;
+    const request = exercise?.arrangementContract?.request || {};
+    elements.voiceMode.value = request.voiceMode || state.voiceMode || "mixed";
+    elements.movementMode.value = request.movementMode || state.movementMode || "best_fit";
+    elements.arrangementPolicySummary.textContent = arrangementPolicySummary(exercise);
   }
 
   function updateOctaveMapVisibility() {
@@ -2936,8 +2991,8 @@
   async function arrangeScoreDraft() {
     const draft = ensureScoreDraft();
     elements.scoreArrangeStatus.textContent = "";
-    if (!["G", "C"].includes(draft.score.arrangementKey)) {
-      elements.scoreArrangeStatus.textContent = "Choose G or C as the arrangement key before arranging.";
+    if (!KEY_NOTES[draft.score.arrangementKey]) {
+      elements.scoreArrangeStatus.textContent = "Choose a supported major key before arranging.";
       return false;
     }
     state.tokens = scoreUi.arrangementEvents(draft);
@@ -3048,6 +3103,17 @@
           }
         }
       }
+      // Preserve Explorer, Q&A, and Song Practice handoffs as visible,
+      // editable input. Without this synchronization the parsed deep-link
+      // state could disagree with the controls and be erased on submit.
+      elements.key.value = state.key;
+      elements.voiceMode.value = state.voiceMode;
+      elements.movementMode.value = state.movementMode;
+      if (state.tokens.length) {
+        elements.phraseInput.value = state.tokens.some((item) => Number.isInteger(item.string))
+          ? state.tokens.map(phraseItemLabel).join("\n")
+          : state.tokens.map(phraseItemLabel).join(" ");
+      }
       elements.editor.hidden = false;
       renderStartingPoint();
       renderPalette();
@@ -3132,28 +3198,35 @@
     state.contourMode = elements.contour.value;
     renderPhraseBuilder();
   });
-  elements.playingStyle.addEventListener("change", async () => {
-    const previous = state.styleFamily;
+  async function rebuildArrangementPolicy() {
+    const previousVoiceMode = state.voiceMode;
+    const previousMovementMode = state.movementMode;
     const previousHarmonyType = state.selectedHarmonyType;
-    const previousRecommended = preferredStudioRoute(state.response?.melodyExercise, "mixed_arrangement");
-    state.styleFamily = elements.playingStyle.value || "auto";
-    state.selectedHarmonyType = "mixed_arrangement";
-    elements.playingStyle.disabled = true;
-    elements.styleReason.textContent = "Rebuilding the Recommended arrangement in this style…";
+    state.voiceMode = elements.voiceMode.value || "mixed";
+    state.movementMode = elements.movementMode.value || "best_fit";
+    state.selectedHarmonyType = {
+      single: "single_note",
+      two_voice: "automatic_harmony",
+      three_voice: "chord_melody",
+      mixed: "mixed_arrangement"
+    }[state.voiceMode] || "mixed_arrangement";
+    elements.voiceMode.disabled = true;
+    elements.movementMode.disabled = true;
+    elements.arrangementPolicySummary.textContent = "Rebuilding validated tab, movement, and alternatives…";
     const sectionNumber = Number(state.response?.melodyExercise?.section?.number || state.sectionNumber || 1);
     const success = await submitSection(sectionNumber);
     if (!success) {
-      state.styleFamily = previous;
+      state.voiceMode = previousVoiceMode;
+      state.movementMode = previousMovementMode;
       state.selectedHarmonyType = previousHarmonyType;
-      elements.playingStyle.value = previous;
-    } else {
-      const exercise = state.response?.melodyExercise;
-      const nextRecommended = preferredStudioRoute(exercise, "mixed_arrangement");
-      const impact = styleImpactSummary(previousRecommended, nextRecommended, exercise?.styleLabel || "This style");
-      elements.styleReason.textContent = [exercise?.styleReason, impact].filter(Boolean).join(" ");
+      elements.voiceMode.value = previousVoiceMode;
+      elements.movementMode.value = previousMovementMode;
     }
-    elements.playingStyle.disabled = false;
-  });
+    elements.voiceMode.disabled = false;
+    elements.movementMode.disabled = false;
+  }
+  elements.voiceMode.addEventListener("change", rebuildArrangementPolicy);
+  elements.movementMode.addEventListener("change", rebuildArrangementPolicy);
   elements.phraseInput.addEventListener("input", () => {
     state.tokens = parsePhraseEvents(elements.phraseInput.value);
     renderPhraseBuilder();
