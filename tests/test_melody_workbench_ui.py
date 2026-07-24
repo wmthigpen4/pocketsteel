@@ -68,6 +68,21 @@ const changedStyleRoute = {events: [
 assert.deepEqual(studio.changedTabPositionCount(previousStyleRoute, changedStyleRoute), {changed: 1, total: 2});
 assert.equal(studio.styleImpactSummary(previousStyleRoute, previousStyleRoute, "Pocket Playing"), "Pocket Playing uses the same Recommended tab for this melody.");
 assert.equal(studio.styleImpactSummary(previousStyleRoute, changedStyleRoute, "Singing Steel"), "Singing Steel changed 1 of 2 Recommended tab positions.");
+assert.equal(
+  studio.arrangementEngineStatus({
+    privateBeta: true,
+    rankerEnabled: true,
+    modelId: "at-test-private-beta",
+    exampleCount: 702,
+    comparisonChangedEvents: 2,
+    comparisonEventCount: 7
+  }),
+  "Private learned beta · at-test-private-beta · 702 reviewed choices. It changed 2 of 7 positions compared with the deterministic route. Pitch, register, and mechanics still pass the verified E9 rules. Score-image reading remains a separate reviewed step."
+);
+assert.equal(
+  studio.arrangementEngineStatus({rankerEnabled: false}),
+  "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging."
+);
 const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
 assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
@@ -458,7 +473,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert '>Style for Recommended' in html
     assert 'answer-client.js?v=chord-karaoke-20260715-1' in html
     assert 'song-projects.js?v=chord-karaoke-learner-20260715-1' in html
-    assert 'melody-workbench.js?v=arrangement-engine-20260722-1' in html
+    assert 'melody-workbench.js?v=amazing-tablature-private-beta-20260723-1' in html
     assert 'id="studio-engine-status" aria-live="polite" hidden' in html
     assert "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging." in script
     assert "Arrangement method: trained Amazing Tablature ranker with verified E9 rules." in script

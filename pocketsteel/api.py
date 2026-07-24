@@ -68,6 +68,11 @@ from pocketsteel.answer_tab_examples import (
 from pocketsteel.api_contract import AnswerResponse
 from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
 from pocketsteel.answer_intent_classifier import classify_answer_request
+from pocketsteel.amazing_tablature_model import RuntimeRankerPolicy
+from pocketsteel.amazing_tablature_runtime import (
+    configured_private_ranker_policy,
+    private_beta_enabled,
+)
 from pocketsteel.chroma_search import (
     ChromaSearchIndex,
     SearchResponse,
@@ -361,6 +366,7 @@ class RetrievalApi:
         account_copedent_repository: AccountCopedentRepository | None = None,
         account_usage_enabled: bool | None = None,
         account_usage_repository: AccountUsageRepository | None = None,
+        amazing_tablature_policy: RuntimeRankerPolicy | None = None,
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
@@ -377,6 +383,11 @@ class RetrievalApi:
             configured_melody_exercise_enabled()
             if melody_exercise_enabled is None
             else bool(melody_exercise_enabled)
+        )
+        self.amazing_tablature_policy = (
+            configured_private_ranker_policy()
+            if amazing_tablature_policy is None
+            else amazing_tablature_policy
         )
         self.melody_import_enabled = (
             configured_melody_import_enabled()
@@ -550,6 +561,8 @@ class RetrievalApi:
             if self.melody_exercise_enabled:
                 features["melodyExercise"] = True
                 features["melodyCatalog"] = True
+            if private_beta_enabled(self.amazing_tablature_policy):
+                features["amazingTablaturePrivateBeta"] = True
             if self.melody_import_enabled:
                 features["melodyImport"] = True
             if self.song_practice_enabled:
@@ -1229,7 +1242,11 @@ class RetrievalApi:
                     melody_request["targetCopedentId"] = target_profile.id
             if self.melody_exercise_enabled:
                 try:
-                    melody_result = melody_exercise_response(answer_request.question, melody_request)
+                    melody_result = melody_exercise_response(
+                        answer_request.question,
+                        melody_request,
+                        ranker_policy=self.amazing_tablature_policy,
+                    )
                 except MelodyExerciseError as exc:
                     self._log_answer_attempt(
                         request_payload,
@@ -2031,6 +2048,7 @@ def create_app(
     account_copedent_repository: AccountCopedentRepository | None = None,
     account_usage_enabled: bool | None = None,
     account_usage_repository: AccountUsageRepository | None = None,
+    amazing_tablature_policy: RuntimeRankerPolicy | None = None,
 ) -> RetrievalApi:
     retrieval_config = retrieval_config or configured_retrieval_mode_config()
     private_requested = retrieval_config.requested_mode in {
@@ -2060,6 +2078,7 @@ def create_app(
         account_copedent_repository=account_copedent_repository,
         account_usage_enabled=account_usage_enabled,
         account_usage_repository=account_usage_repository,
+        amazing_tablature_policy=amazing_tablature_policy,
     )
 
 

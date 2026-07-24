@@ -13,7 +13,11 @@ import re
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
-from pocketsteel.melody_arranger import SUPPORTED_CONTOURS, SUPPORTED_TEXTURES, arrange_melody_routes
+from pocketsteel.amazing_tablature_model import RuntimeRankerPolicy
+from pocketsteel.amazing_tablature_runtime import (
+    arrange_melody_routes_with_private_beta,
+)
+from pocketsteel.melody_arranger import SUPPORTED_CONTOURS, SUPPORTED_TEXTURES
 from pocketsteel.melody_decision_rules import (
     MODEL_STATUS,
     MODEL_VERSION,
@@ -67,6 +71,8 @@ def is_melody_teaching_request(question: str) -> bool:
 def melody_exercise_response(
     question: str,
     request: Mapping[str, Any] | None = None,
+    *,
+    ranker_policy: RuntimeRankerPolicy | None = None,
 ) -> dict[str, Any] | None:
     """Build a teaching response from structured input or a song/solo request."""
 
@@ -170,8 +176,9 @@ def melody_exercise_response(
     except ValueError as exc:
         raise MelodyExerciseError(str(exc)) from exc
     try:
-        routes, resolved_phrase = arrange_melody_routes(
+        routes, resolved_phrase, model_metadata = arrange_melody_routes_with_private_beta(
             raw_melody,
+            policy=ranker_policy,
             key=key,
             contour_mode=contour_mode,
             texture=texture,
@@ -195,6 +202,8 @@ def melody_exercise_response(
     tab_example = selected_route["tabExample"]
     fretboard = selected_route["fretboard"]
 
+    decision_rules = rule_contract_payload(style_family)
+    decision_rules["modelMetadata"] = model_metadata
     exercise = {
         "schemaVersion": MELODY_SCHEMA_VERSION,
         "id": tab_example["id"],
@@ -213,7 +222,7 @@ def melody_exercise_response(
         "styleCatalog": style_catalog_payload(),
         "decisionModelVersion": MODEL_VERSION,
         "decisionModelStatus": MODEL_STATUS,
-        "decisionRules": rule_contract_payload(style_family),
+        "decisionRules": decision_rules,
         "accuracy": {
             "label": accuracy,
             "confidence": requested_confidence or ("high" if accuracy == "exact" else "medium"),

@@ -717,6 +717,24 @@
     return route?.label || (route?.recommended ? "Recommended harmony" : "Arrangement");
   }
 
+  function arrangementEngineStatus(modelMetadata = {}) {
+    if (modelMetadata.privateBeta === true && modelMetadata.rankerEnabled === true) {
+      const modelId = String(modelMetadata.modelId || "unknown model");
+      const exampleCount = Number(modelMetadata.exampleCount || 0);
+      const changed = Number(modelMetadata.comparisonChangedEvents);
+      const total = Number(modelMetadata.comparisonEventCount);
+      const comparison = Number.isInteger(changed) && Number.isInteger(total) && total > 0
+        ? ` It changed ${changed} of ${total} positions compared with the deterministic route.`
+        : "";
+      const examples = exampleCount > 0 ? ` · ${exampleCount} reviewed choices` : "";
+      return `Private learned beta · ${modelId}${examples}.${comparison} Pitch, register, and mechanics still pass the verified E9 rules. Score-image reading remains a separate reviewed step.`;
+    }
+    if (modelMetadata.rankerEnabled === true) {
+      return "Arrangement method: trained Amazing Tablature ranker with verified E9 rules.";
+    }
+    return "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging.";
+  }
+
   function numberList(value) {
     return Array.from(new Set((Array.isArray(value) ? value : [])
       .map(Number)
@@ -1114,6 +1132,7 @@
     fretboardPlayingContext,
     hasChordContext,
     routeButtonLabel,
+    arrangementEngineStatus,
     eventPerformanceControls,
     transitionSustainedStrings,
     transitionGlidingStrings,
@@ -2790,10 +2809,7 @@
       elements.resultSource.hidden = !arrangedFor;
     }
     const modelMetadata = exercise?.decisionRules?.modelMetadata || {};
-    const rankerEnabled = modelMetadata.rankerEnabled === true;
-    elements.engineStatus.textContent = rankerEnabled
-      ? "Arrangement method: trained Amazing Tablature ranker with verified E9 rules."
-      : "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging."
+    elements.engineStatus.textContent = arrangementEngineStatus(modelMetadata);
     elements.engineStatus.hidden = false;
     elements.sourceNeeded.hidden = !needsSource;
     elements.sourceNeeded.querySelector("p").textContent = needsSource

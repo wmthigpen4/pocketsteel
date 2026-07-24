@@ -39,6 +39,12 @@ from pocketsteel.curated_song_references import (
 )
 from pocketsteel.fretboard_examples import DEFAULT_PEDAL_LEVER_LABELS
 from pocketsteel.api import MAX_JSON_BODY_BYTES, RetrievalApi, create_app
+from pocketsteel.amazing_tablature_model import (
+    CANONICAL_FEATURE_NAMES,
+    CANONICAL_FEATURE_SCHEMA_VERSION,
+    CANONICAL_STYLE_FAMILIES,
+    RuntimeRankerPolicy,
+)
 from pocketsteel.access_control import (
     DEV_ACCESS_ROLE_ENVIRON,
     TRUSTED_AUTH_ROLE_ENVIRON,
@@ -83,6 +89,7 @@ def call_app(
     account_copedent_repository: Any | None = None,
     account_usage_enabled: bool | None = None,
     account_usage_repository: Any | None = None,
+    amazing_tablature_policy: RuntimeRankerPolicy | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     app = create_app(
         search_index or fake_search_index(),
@@ -100,6 +107,7 @@ def call_app(
         account_copedent_repository=account_copedent_repository,
         account_usage_enabled=account_usage_enabled,
         account_usage_repository=account_usage_repository,
+        amazing_tablature_policy=amazing_tablature_policy,
     )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -4633,6 +4641,34 @@ def test_api_session_exposes_melody_feature_and_version_stays_minimal() -> None:
     status, _, version = call_app("/api/version", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"
     assert set(version) == {"status", "git_sha", "server_started_at"}
+
+
+def test_api_session_exposes_private_amazing_tablature_beta_when_validated() -> None:
+    policy = RuntimeRankerPolicy(
+        model_id="at-test-private-beta",
+        status="challenger",
+        feature_schema_version=CANONICAL_FEATURE_SCHEMA_VERSION,
+        feature_names=CANONICAL_FEATURE_NAMES,
+        weights_by_style={
+            style: {feature: 0.0 for feature in CANONICAL_FEATURE_NAMES}
+            for style in CANONICAL_STYLE_FAMILIES
+        },
+        example_count=702,
+        copedent_neutral=True,
+        shadow_eligible=True,
+    )
+    status, _, session = call_app(
+        "/api/session",
+        method="GET",
+        melody_exercise_enabled=True,
+        amazing_tablature_policy=policy,
+    )
+    assert status == "200 OK"
+    assert session["features"] == {
+        "melodyExercise": True,
+        "melodyCatalog": True,
+        "amazingTablaturePrivateBeta": True,
+    }
 
 
 def test_song_practice_api_is_authenticated_flag_gated_private_and_no_store() -> None:
