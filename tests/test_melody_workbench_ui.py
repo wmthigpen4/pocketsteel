@@ -528,7 +528,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Select a note below to change its octave" in html
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=module-boundaries-20260713") == 2
+    assert html.count("?v=module-boundaries-20260713") == 1
+    assert "pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724" in html
     assert html.count("?v=account-copedents-20260714-1") == 1
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html

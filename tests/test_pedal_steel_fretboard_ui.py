@@ -2236,3 +2236,20 @@ def test_component_source_contains_no_eyeballed_fret_spacing_formula() -> None:
     assert "LAYOUT.nutX + normalizedFretPosition(fret, maxFret) * fretboardWidth" in source
     assert "data-spacing=\"equal-temperament\"" in source
     assert re.search(r"COMMON_FRET_MARKERS\s*=\s*\[3, 5, 7, 9, 12, 15, 17, 19, 21, 24\]", source)
+
+
+def test_resting_highlight_bubbles_remain_visible_without_flattening_selection_hierarchy() -> None:
+    styles = (REPO_ROOT / STYLES).read_text(encoding="utf-8")
+
+    assert re.search(
+        r"\.pedal-steel-fretboard__highlight\s*\{\s*opacity:\s*0\.78;",
+        styles,
+    )
+    assert re.search(
+        r"\.pedal-steel-fretboard__highlight\.is-emphasized-visible\s*\{\s*opacity:\s*0\.9;",
+        styles,
+    )
+    assert re.search(
+        r"\.pedal-steel-fretboard__highlight\.is-selected\s*\{\s*opacity:\s*1;",
+        styles,
+    )

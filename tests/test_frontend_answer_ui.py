@@ -1100,7 +1100,7 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     assert '<script src="answer-client.js?v=amazing-tablature-product-v1-20260724-2"></script>' in html
     assert '<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
-    assert '<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
+    assert '<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="mock-answer-data.js"></script>' not in html
@@ -1273,7 +1273,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
+    assert '<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html

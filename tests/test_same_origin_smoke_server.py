@@ -67,7 +67,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b'<script src="answer-client.js?v=amazing-tablature-product-v1-20260724-2"></script>' in html
     assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
-    assert b'<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
+    assert b'<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
     assert b'<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html
     assert b'<script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>' in html
     assert b'<script src="melody-score.js?v=updated-score-artwork-20260714-1"></script>' in html

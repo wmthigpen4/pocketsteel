@@ -458,7 +458,7 @@
 }
 
 .pedal-steel-fretboard__highlight {
-  opacity: 0.42;
+  opacity: 0.78;
   transition: opacity 140ms ease, filter 140ms ease;
 }
 
