@@ -69,7 +69,7 @@ No outside testers should be invited until post-switch smoke passes.
 This is the known rollback command for the current v1 private preview:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 set -a
 source ~/.steel-rag/env/private-preview.env
@@ -104,7 +104,7 @@ Use this only for loopback smoke testing on `127.0.0.1:8781`. This command keeps
 local-dev mock access enabled and must not be routed publicly:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 
 PYTHONPATH=. \
@@ -124,7 +124,7 @@ auth. Do not route `app.steelguitarrag.com` to this process unless it is started
 with production auth and Cloudflare Access provider settings.
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 set -a
 source ~/.steel-rag/env/private-preview.env
@@ -339,7 +339,7 @@ If any stop condition triggers, roll back immediately.
 2. Restart v1 on `8770`:
 
    ```bash
-   cd ~/Documents/Pocket\ Steel
+   cd ~/Documents/Steel\ Guitar\ RAG
    source .venv/bin/activate
    set -a
    source ~/.steel-rag/env/private-preview.env

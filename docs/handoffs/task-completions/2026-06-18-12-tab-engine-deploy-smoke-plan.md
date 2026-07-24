@@ -270,7 +270,7 @@ Browser UI checks:
 Use the documented private-preview command from the repo root after runtime dirty gate is clean:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 
 lsof -tiTCP:8770 -sTCP:LISTEN | xargs kill 2>/dev/null || true

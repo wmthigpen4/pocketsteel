@@ -160,7 +160,7 @@ Yes.
 Run the documented privileged restart from an interactive terminal session on the Mac mini:
 
 ```bash
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 deploy/macos/install-private-preview-launchdaemon.sh restart
 curl -sS http://127.0.0.1:8770/api/version
 ```

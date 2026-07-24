@@ -225,7 +225,7 @@ Do not bind the beta app to `0.0.0.0` unless there is a separate local firewall 
 Candidate app service command, to be finalized before beta:
 
 ```text
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 STEEL_RAG_CHROMA_PATH=<approved local Chroma path> \
 STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified \

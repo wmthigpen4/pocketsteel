@@ -87,7 +87,7 @@ Docs/coordination files intentionally left unstaged:
 Restart command used:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 
 lsof -tiTCP:8770 -sTCP:LISTEN | xargs kill 2>/dev/null || true

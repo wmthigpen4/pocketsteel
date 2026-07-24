@@ -52,7 +52,7 @@ No auth policy, DNS, Tunnel, secrets, environment file, corpus, Chroma, private 
 Required trusted-terminal commands:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 deploy/macos/install-private-preview-launchdaemon.sh install
 deploy/macos/install-private-preview-launchdaemon.sh restart
 ```

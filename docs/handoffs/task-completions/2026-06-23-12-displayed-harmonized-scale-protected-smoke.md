@@ -206,7 +206,7 @@ Yes.
 Run the privileged restart from a Terminal session with sudo access:
 
 ```bash
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 deploy/macos/install-private-preview-launchdaemon.sh restart
 curl -sS http://127.0.0.1:8770/api/version
 ps -p "$(lsof -tiTCP:8770 -sTCP:LISTEN)" -o pid,lstart,command

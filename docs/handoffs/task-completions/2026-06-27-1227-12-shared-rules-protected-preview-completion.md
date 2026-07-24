@@ -214,7 +214,7 @@ Blocker for clean end-to-end pass:
 - Run the documented restart in a local Terminal:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 deploy/macos/install-private-preview-launchdaemon.sh restart
 curl -sS http://127.0.0.1:8770/api/version
 ```
@@ -252,7 +252,7 @@ Safe to commit.
 For strict end-to-end completion, run this locally and then rerun Lane 12:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 deploy/macos/install-private-preview-launchdaemon.sh restart
 curl -sS http://127.0.0.1:8770/api/version
 ```

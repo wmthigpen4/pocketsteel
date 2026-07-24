@@ -72,7 +72,7 @@ Stop if dirty runtime-affecting files are present unless the task explicitly say
 Local same-origin answer UI smoke server:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 
 PYTHONPATH=. \
@@ -90,7 +90,7 @@ http://127.0.0.1:8770/ui/steel-guitar-rag-mock.html?access=beta_user
 Local v2 rerank smoke server for protected-preview-like retrieval:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 
 .venv/bin/python scripts/serve_v2_rerank_smoke.py \
@@ -118,7 +118,7 @@ http://127.0.0.1:8781/ui/steel-guitar-rag-mock.html?access=beta_user
 Private-preview auth-config local server:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 
 set -a
@@ -405,7 +405,7 @@ git diff --check
 Restart protected preview with documented private-preview command:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 
 lsof -tiTCP:8770 -sTCP:LISTEN | xargs kill 2>/dev/null || true

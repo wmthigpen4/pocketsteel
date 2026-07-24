@@ -33,7 +33,7 @@ Use `production` auth mode with the `cloudflare_access` provider for any preview
 Planning command:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 
 set -a

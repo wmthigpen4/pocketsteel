@@ -277,7 +277,7 @@ deploy/macos/install-private-preview-launchdaemon.sh unload
 If necessary, return to the current manual screen process while debugging:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 set -a
 source ~/.steel-rag/env/private-preview.env

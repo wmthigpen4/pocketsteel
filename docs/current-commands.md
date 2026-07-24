@@ -66,7 +66,7 @@ STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified" \
 Start the same-origin answer UI against Cloudflare Access auth config for private-preview verification:
 
 ```bash
-cd ~/Documents/Pocket\ Steel
+cd ~/Documents/Steel\ Guitar\ RAG
 source .venv/bin/activate
 set -a
 source ~/.steel-rag/env/private-preview.env
