@@ -40,6 +40,19 @@ assert.equal(studio.noteAtFret(4, 3), "G");
 assert.equal(studio.noteAtFret(5, 1), "C");
 assert.equal(studio.sectionCount(Array.from({ length: 17 }, () => "1")), 1);
 assert.deepEqual(studio.reorderToken(["1", "2", "3"], 1, -1), ["2", "1", "3"]);
+assert.deepEqual(studio.phraseRangeIndexes(4, 1, 8), [1, 2, 3, 4]);
+const bulkLowered = studio.adjustPhraseOctaves(
+  [{token: "G"}, {token: "A"}, {token: "B"}],
+  [0, 2],
+  -1,
+  "G"
+);
+assert.deepEqual(bulkLowered.map((event) => Boolean(event.registerOverride)), [true, false, true]);
+assert.deepEqual(studio.resolvePhrasePreview(bulkLowered, "G").map((event) => event.pitch), ["G3", "A3", "B3"]);
+const preservedBulkLowering = studio.mergePhraseEdits(studio.parsePhraseEvents("G A B"), bulkLowered);
+assert.deepEqual(studio.resolvePhrasePreview(preservedBulkLowering, "G").map((event) => event.pitch), ["G3", "A3", "B3"]);
+const bulkAutomatic = studio.adjustPhraseOctaves(bulkLowered, [0, 2], "auto", "G");
+assert.deepEqual(studio.resolvePhrasePreview(bulkAutomatic, "G").map((event) => event.pitch), ["G4", "A4", "B4"]);
 assert.equal(studio.validateTokens(["1", "2", "3"], "G").ok, true);
 assert.equal(studio.validateTokens(["G", "A", "B", "D"], "G").ok, true);
 assert.equal(studio.validateTokens(["F"], "G").ok, false);
@@ -125,7 +138,8 @@ assert.deepEqual(
 );
 assert.deepEqual(studio.resolvePhrasePreview(studio.parsePhraseEvents("G4 F#4 Bb3"), "G").map((event) => event.pitch), ["G4", "F#4", "A#3"]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
-assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1", octaveShift: 1}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G5", "B4"]);
+assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1", octaveShift: 1}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G5", "B5"]);
+assert.deepEqual(studio.resolvePhrasePreview(studio.parsePhraseEvents("G A B D E F#"), "G").map((event) => event.pitch), ["G4", "A4", "B4", "D4", "E4", "F#4"]);
 
 const artist = studio.createInitialState("artist_solo_lesson");
 Object.assign(artist, {
@@ -160,14 +174,12 @@ assert.equal("material" in originalPayload, false);
 assert.equal(originalPayload.wholeSong, true);
 assert.deepEqual(
   originalPayload.melody.map((event) => [event.token, event.pitch, event.pitchValue, event.octaveShift]),
-  [["1", "G4", 67, 0], ["3", "B4", 71, 0], ["5", "D5", 74, 0]]
+  [["1", "G4", 67, 0], ["3", "B4", 71, 0], ["5", "D4", 62, 0]]
 );
 const reportedPhrase = studio.createInitialState("user_melody");
 reportedPhrase.tokens = studio.parsePhraseEvents("G G A B E F# F# G A D G G G G A B E D E F# G A D");
-reportedPhrase.tokens[4].octaveShift = -1;
-reportedPhrase.tokens[16].octaveShift = -1;
-reportedPhrase.tokens[18].octaveShift = -1;
 const reportedPreviews = studio.resolvePhrasePreview(reportedPhrase.tokens, "G");
+assert.equal(reportedPreviews.every((event) => event.pitch.endsWith("4")), true);
 const reportedRequest = studio.buildMelodyRequest(reportedPhrase);
 assert.deepEqual(
   reportedRequest.melody.map((event) => [event.pitch, event.pitchValue]),
@@ -547,6 +559,14 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-phrase-chord-markers"' in html
     assert 'id="studio-phrase-chord-remove" hidden' in html
     assert 'id="studio-open-staff"' in html
+    assert 'id="studio-phrase-score-preview"' in html
+    assert 'id="studio-phrase-score" aria-label="Typed melody staff"' in html
+    assert 'id="studio-phrase-multi-select"' in html
+    assert 'id="studio-phrase-select-all"' in html
+    assert "Quick entry uses quarter notes." in html
+    assert "Open full Staff Editor" in html
+    assert "Shift-click selects a range." in html
+    assert "Plain notes stay in the preceding note’s octave." in html
     assert 'placeholder="G4 G4 A4 B4 E4 F#4 F#4 G4 A4 D4"' in html
     assert "<summary>Advanced</summary>" in html
     assert '<details class="progressive-panel" id="studio-phrase-options"><summary>Advanced</summary>' in html
@@ -594,7 +614,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
     assert 'melody-score.js?v=chord-aware-harmony-v1' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=whole-melody-controls-print-v1' in html
+    assert 'melody-workbench.js?v=quick-score-bulk-octave-v2' in html
     assert 'id="studio-score-chord-lane" aria-label="Editable chord timeline"' in html
     assert "Chord from this beat" in html
     assert "Chord timeline" in script
@@ -644,6 +664,10 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Select a note to adjust it or start a chord there." in html
     assert "Only affects notes entered without a scientific octave." in html
     assert "state.selectedPhraseIndex" in script
+    assert "state.selectedPhraseIndexes" in script
+    assert "adjustPhraseOctaves(" in script
+    assert "selectedPhraseIndexes()" in script
+    assert "scoreUi.render(" in script
     assert html.count("?v=module-boundaries-20260713") == 1
     assert "pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724" in html
     assert html.count("?v=account-copedents-20260714-1") == 1

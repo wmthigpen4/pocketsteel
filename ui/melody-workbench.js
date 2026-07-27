@@ -242,13 +242,18 @@
         if (previousBase === null) basePitch = options.sort((a, b) => Math.abs(a - anchor) - Math.abs(b - anchor) || a - b)[0];
         else {
           const direction = item.direction !== "auto" ? item.direction : contourMode === "ascending" ? "up" : contourMode === "descending" ? "down" : "nearest";
-          const directed = options.filter((value) => direction === "up" ? value >= previousBase : direction === "down" ? value <= previousBase : true);
+          const sameOctave = direction === "nearest"
+            ? options.filter((value) => Math.floor(value / 12) === Math.floor(previousBase / 12))
+            : [];
+          const directed = sameOctave.length
+            ? sameOctave
+            : options.filter((value) => direction === "up" ? value >= previousBase : direction === "down" ? value <= previousBase : true);
           basePitch = (directed.length ? directed : options).sort((a, b) => Math.abs(a - previousBase) - Math.abs(b - previousBase) || a - b)[0];
         }
       }
       const pitch = basePitch + (Number.isInteger(item.string) ? 0 : Number(item.octaveShift || 0) * 12);
       result.push({ ...item, pitchValue: pitch, pitch: pitchLabel(pitch) });
-      previousBase = basePitch;
+      previousBase = pitch;
     });
     return result;
   }
@@ -320,6 +325,66 @@
     if (index < 0 || target < 0 || index >= next.length || target >= next.length) return next;
     [next[index], next[target]] = [next[target], next[index]];
     return next;
+  }
+
+  function phraseRangeIndexes(anchor, target, length) {
+    const limit = Math.max(0, Number(length) || 0);
+    if (!limit) return [];
+    const start = Math.max(0, Math.min(limit - 1, Number(anchor) || 0));
+    const end = Math.max(0, Math.min(limit - 1, Number(target) || 0));
+    return Array.from(
+      { length: Math.abs(end - start) + 1 },
+      (_value, offset) => Math.min(start, end) + offset
+    );
+  }
+
+  function adjustPhraseOctaves(
+    tokens,
+    indexes,
+    adjustment,
+    key = "G",
+    contourMode = "closest_playable"
+  ) {
+    const selected = new Set((indexes || []).map(Number));
+    const previews = resolvePhrasePreview(tokens, key, contourMode);
+    return (tokens || []).map((raw, index) => {
+      const item = phraseItem(raw);
+      if (!selected.has(index) || (Number.isInteger(item.string) && Number.isInteger(item.fret))) return item;
+      if (adjustment === "auto") {
+        const next = { ...item, octaveShift: 0 };
+        if (!next.registerOverride) return next;
+        if (Number.isFinite(Number(next.registerOriginalPitchValue))) {
+          next.pitchValue = Number(next.registerOriginalPitchValue);
+          next.pitch = next.registerOriginalPitch || pitchLabel(next.pitchValue);
+        } else {
+          delete next.pitchValue;
+          delete next.pitch;
+        }
+        delete next.registerOverride;
+        delete next.registerOriginalPitchValue;
+        delete next.registerOriginalPitch;
+        return next;
+      }
+      const currentPitchValue = Number(previews[index]?.pitchValue);
+      if (!Number.isFinite(currentPitchValue)) return item;
+      const nextPitchValue = Math.max(
+        47,
+        Math.min(94, currentPitchValue + Number(adjustment || 0) * 12)
+      );
+      return {
+        ...item,
+        pitchValue: nextPitchValue,
+        pitch: pitchLabel(nextPitchValue),
+        octaveShift: 0,
+        registerOverride: true,
+        ...(!item.registerOverride && Number.isFinite(Number(item.pitchValue))
+          ? {
+              registerOriginalPitchValue: Number(item.pitchValue),
+              registerOriginalPitch: item.pitch || pitchLabel(Number(item.pitchValue))
+            }
+          : {})
+      };
+    });
   }
 
   function buildMelodyRequest(state) {
@@ -448,6 +513,9 @@
       targetCopedentId: "emmons-e9-basic",
       targetCopedent: null,
       selectedPhraseIndex: 0,
+      selectedPhraseIndexes: [],
+      phraseSelectionAnchor: 0,
+      phraseMultiSelect: false,
       artist: "",
       song: "",
       recording: "",
@@ -1303,6 +1371,8 @@
     resolvedPhraseEventsForRequest,
     validatePhraseRegister,
     reorderToken,
+    phraseRangeIndexes,
+    adjustPhraseOctaves,
     buildMelodyRequest,
     youtubeVideoId,
     referenceEmbedUrl,
@@ -1425,7 +1495,11 @@
     key: $("#studio-key"),
     contour: $("#studio-contour"),
     phraseInput: $("#studio-phrase-input"),
+    phraseScorePreview: $("#studio-phrase-score-preview"),
+    phraseScore: $("#studio-phrase-score"),
     sequence: $("#studio-sequence"),
+    phraseMultiSelect: $("#studio-phrase-multi-select"),
+    phraseSelectAll: $("#studio-phrase-select-all"),
     phraseChordLane: $("#studio-phrase-chord-lane"),
     phraseChordSelection: $("#studio-phrase-chord-selection"),
     phraseChord: $("#studio-phrase-chord"),
@@ -1637,6 +1711,9 @@
     clearTransientDraft();
     state.tokens = [];
     state.selectedPhraseIndex = 0;
+    state.selectedPhraseIndexes = [];
+    state.phraseSelectionAnchor = 0;
+    state.phraseMultiSelect = false;
     state.scoreDraft = null;
     state.scoreEditingEnabled = true;
     state.scoreSelectedIndex = -1;
@@ -1694,6 +1771,19 @@
         id: prior?.id || item.id || nextPhraseEventId(),
         direction: prior?.direction || item.direction || "auto",
         octaveShift: prior?.octaveShift || item.octaveShift || 0,
+        ...(prior?.registerOverride
+          ? {
+              pitch: prior.pitch,
+              pitchValue: prior.pitchValue,
+              registerOverride: true,
+              ...(Number.isFinite(Number(prior.registerOriginalPitchValue))
+                ? {
+                    registerOriginalPitchValue: Number(prior.registerOriginalPitchValue),
+                    registerOriginalPitch: prior.registerOriginalPitch
+                  }
+                : {})
+            }
+          : {}),
         ...(prior?.chord ? { chord: prior.chord, chordBasis: prior.chordBasis || "user" } : {}),
         ...(prior?.chordDraft ? { chordDraft: prior.chordDraft } : {})
       };
@@ -1720,6 +1810,11 @@
   function setTokens(tokens) {
     state.tokens = mergePhraseEdits((tokens || []).map(phraseItem).filter((item) => phraseItemLabel(item)), state.tokens);
     state.selectedPhraseIndex = Math.max(0, Math.min(state.selectedPhraseIndex || 0, state.tokens.length - 1));
+    state.selectedPhraseIndexes = (state.selectedPhraseIndexes || [])
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < state.tokens.length);
+    if (state.tokens.length && !state.selectedPhraseIndexes.length) {
+      state.selectedPhraseIndexes = [state.selectedPhraseIndex];
+    }
     elements.phraseInput.value = state.tokens.some((item) => Number.isInteger(item.string))
       ? state.tokens.map(phraseItemLabel).join("\n")
       : state.tokens.map(phraseItemLabel).join(" ");
@@ -1736,7 +1831,13 @@
       button.className = "palette-note";
       button.textContent = value;
       button.setAttribute("aria-label", `Add ${value} to phrase`);
-      button.addEventListener("click", () => setTokens([...state.tokens, phraseItem(value)]));
+      button.addEventListener("click", () => {
+        const nextIndex = state.tokens.length;
+        state.selectedPhraseIndex = nextIndex;
+        state.selectedPhraseIndexes = [nextIndex];
+        state.phraseSelectionAnchor = nextIndex;
+        setTokens([...state.tokens, phraseItem(value)]);
+      });
       elements.palette.appendChild(button);
     });
     elements.paletteModeButtons.forEach((button) => {
@@ -1753,6 +1854,52 @@
       if (chord) active = chord;
     }
     return active;
+  }
+
+  function selectedPhraseIndexes() {
+    const indexes = Array.from(new Set((state.selectedPhraseIndexes || []).map(Number)))
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < state.tokens.length)
+      .sort((left, right) => left - right);
+    if (!indexes.length && state.tokens.length) return [state.selectedPhraseIndex];
+    return indexes;
+  }
+
+  function selectPhraseNote(index, event = {}) {
+    const extend = Boolean(event.shiftKey);
+    const toggle = Boolean(state.phraseMultiSelect || event.metaKey || event.ctrlKey);
+    const current = new Set(selectedPhraseIndexes());
+    if (extend) {
+      state.selectedPhraseIndexes = phraseRangeIndexes(
+        state.phraseSelectionAnchor,
+        index,
+        state.tokens.length
+      );
+    } else if (toggle) {
+      if (current.has(index) && current.size > 1) current.delete(index);
+      else current.add(index);
+      state.selectedPhraseIndexes = Array.from(current).sort((left, right) => left - right);
+      state.phraseSelectionAnchor = index;
+    } else {
+      state.selectedPhraseIndexes = [index];
+      state.phraseSelectionAnchor = index;
+    }
+    state.selectedPhraseIndex = index;
+    renderPhraseBuilder();
+  }
+
+  function renderPhraseScore() {
+    const visible = Boolean(scoreUi && elements.phraseScore && state.tokens.length);
+    elements.phraseScorePreview.hidden = !visible;
+    if (!visible) {
+      elements.phraseScore?.replaceChildren();
+      return;
+    }
+    scoreUi.render(
+      elements.phraseScore,
+      scoreDraftFromPhrase(),
+      state.selectedPhraseIndex,
+      (index) => selectPhraseNote(index)
+    );
   }
 
   function renderPhraseChordLane() {
@@ -1782,6 +1929,8 @@
       marker.setAttribute("aria-label", `Select ${chord} chord change at note ${index + 1}`);
       marker.addEventListener("click", () => {
         state.selectedPhraseIndex = index;
+        state.selectedPhraseIndexes = [index];
+        state.phraseSelectionAnchor = index;
         renderPhraseBuilder();
         elements.phraseChord.focus();
       });
@@ -1825,6 +1974,8 @@
       elements.sequence.appendChild(empty);
     }
     const previews = resolvePhrasePreview(state.tokens, state.key, state.contourMode);
+    const selectedIndexes = selectedPhraseIndexes();
+    const selectedIndexSet = new Set(selectedIndexes);
     state.tokens.forEach((raw, index) => {
       const token = phraseItem(raw);
       const tokenLabel = phraseItemLabel(token);
@@ -1832,9 +1983,9 @@
       const chip = doc.createElement("button");
       chip.type = "button";
       chip.className = "sequence-chip";
-      chip.classList.toggle("is-selected", index === state.selectedPhraseIndex);
+      chip.classList.toggle("is-selected", selectedIndexSet.has(index));
       chip.classList.toggle("has-chord-change", Boolean(token.chord));
-      chip.setAttribute("aria-pressed", String(index === state.selectedPhraseIndex));
+      chip.setAttribute("aria-pressed", String(selectedIndexSet.has(index)));
       chip.setAttribute("aria-label", `Select ${tokenLabel}, ${previews[index]?.pitch || "unresolved pitch"}${activeChord ? `, over ${activeChord}` : ""}`);
       chip.dataset.sequenceIndex = String(index);
       const label = doc.createElement("strong");
@@ -1842,10 +1993,7 @@
       const pitch = doc.createElement("span");
       pitch.className = "sequence-pitch";
       pitch.textContent = previews[index]?.pitch || "";
-      chip.addEventListener("click", () => {
-        state.selectedPhraseIndex = index;
-        renderPhraseBuilder();
-      });
+      chip.addEventListener("click", (event) => selectPhraseNote(index, event));
       chip.append(label, pitch);
       if (token.chord) {
         const chord = doc.createElement("span");
@@ -1855,28 +2003,57 @@
       }
       elements.sequence.appendChild(chip);
     });
+    elements.phraseMultiSelect.classList.toggle("is-selected", state.phraseMultiSelect);
+    elements.phraseMultiSelect.setAttribute("aria-pressed", String(state.phraseMultiSelect));
+    elements.phraseMultiSelect.textContent = state.phraseMultiSelect ? "Done selecting" : "Select several";
+    elements.phraseSelectAll.disabled = !state.tokens.length || selectedIndexes.length === state.tokens.length;
+    renderPhraseScore();
     renderPhraseChordLane();
     const selected = state.tokens[state.selectedPhraseIndex];
     elements.noteEditor.hidden = !selected;
     if (selected) {
       const selectedItem = phraseItem(selected);
-      elements.selectedNote.textContent = `Selected: ${phraseItemLabel(selectedItem)}`;
-      elements.selectedPitch.textContent = previews[state.selectedPhraseIndex]?.pitch || "";
-      const literal = Number.isInteger(selectedItem.string) && Number.isInteger(selectedItem.fret);
+      const multiple = selectedIndexes.length > 1;
+      const selectedPreviews = selectedIndexes.map((index) => previews[index]).filter(Boolean);
+      elements.selectedNote.textContent = multiple
+        ? `Selected: ${selectedIndexes.length} notes`
+        : `Selected: ${phraseItemLabel(selectedItem)}`;
+      elements.selectedPitch.textContent = multiple
+        ? `${selectedPreviews[0]?.pitch || ""} – ${selectedPreviews.at(-1)?.pitch || ""}`
+        : previews[state.selectedPhraseIndex]?.pitch || "";
       const preview = previews[state.selectedPhraseIndex];
       const shift = Number(selectedItem.octaveShift || 0);
       const octave = scientificOctaveForEvent({ resolvedPitch: preview?.pitch, pitchValue: preview?.pitchValue });
-      const shiftLabel = shift === 0 ? "Automatic" : shift > 0 ? `+${shift} octave${shift === 1 ? "" : "s"}` : `${shift} octave${shift === -1 ? "" : "s"}`;
-      elements.registerValue.textContent = octave === null ? shiftLabel : `Octave ${octave} · ${shiftLabel}`;
-      elements.octaveDown.disabled = literal || shift <= -2;
-      elements.octaveAuto.disabled = literal || shift === 0;
-      elements.octaveUp.disabled = literal || shift >= 2;
+      const shiftLabel = selectedItem.registerOverride
+        ? "Adjusted"
+        : shift === 0 ? "Automatic" : shift > 0 ? `+${shift} octave${shift === 1 ? "" : "s"}` : `${shift} octave${shift === -1 ? "" : "s"}`;
+      const editableItems = selectedIndexes
+        .map((index) => phraseItem(state.tokens[index]))
+        .filter((item) => !(Number.isInteger(item.string) && Number.isInteger(item.fret)));
+      const editablePreviews = selectedIndexes
+        .filter((index) => {
+          const item = phraseItem(state.tokens[index]);
+          return !(Number.isInteger(item.string) && Number.isInteger(item.fret));
+        })
+        .map((index) => previews[index])
+        .filter(Boolean);
+      const selectedOctaves = selectedPreviews.map((item) => scientificOctaveForEvent({
+        resolvedPitch: item.pitch,
+        pitchValue: item.pitchValue
+      }));
+      elements.registerValue.textContent = multiple
+        ? `${selectedIndexes.length} notes · ${new Set(selectedOctaves).size === 1 ? `octave ${selectedOctaves[0]}` : "mixed octaves"}`
+        : octave === null ? shiftLabel : `Octave ${octave} · ${shiftLabel}`;
+      elements.octaveDown.disabled = !editableItems.length || editablePreviews.every((item) => Number(item.pitchValue) - 12 < 47);
+      elements.octaveAuto.disabled = !editableItems.length || editableItems.every((item) => !item.registerOverride && Number(item.octaveShift || 0) === 0);
+      elements.octaveUp.disabled = !editableItems.length || editablePreviews.every((item) => Number(item.pitchValue) + 12 > 94);
       const lowerPitch = Number.isFinite(preview?.pitchValue) ? pitchLabel(preview.pitchValue - 12) : "a lower octave";
       const upperPitch = Number.isFinite(preview?.pitchValue) ? pitchLabel(preview.pitchValue + 12) : "a higher octave";
-      elements.octaveDown.setAttribute("aria-label", `Lower selected note from ${preview?.pitch || "its current pitch"} to ${lowerPitch}`);
-      elements.octaveUp.setAttribute("aria-label", `Raise selected note from ${preview?.pitch || "its current pitch"} to ${upperPitch}`);
-      elements.noteEarlier.disabled = state.selectedPhraseIndex === 0;
-      elements.noteLater.disabled = state.selectedPhraseIndex === state.tokens.length - 1;
+      elements.octaveDown.setAttribute("aria-label", multiple ? `Lower ${selectedIndexes.length} selected notes one octave` : `Lower selected note from ${preview?.pitch || "its current pitch"} to ${lowerPitch}`);
+      elements.octaveUp.setAttribute("aria-label", multiple ? `Raise ${selectedIndexes.length} selected notes one octave` : `Raise selected note from ${preview?.pitch || "its current pitch"} to ${upperPitch}`);
+      elements.noteEarlier.disabled = multiple || state.selectedPhraseIndex === 0;
+      elements.noteLater.disabled = multiple || state.selectedPhraseIndex === state.tokens.length - 1;
+      elements.noteRemove.textContent = multiple ? `Remove ${selectedIndexes.length} notes` : "Remove note";
     }
     elements.sectionCount.textContent = state.tokens.length
       ? `${state.tokens.length} notes · one continuous melody`
@@ -3763,35 +3940,72 @@
   });
   [elements.catalogSearch, elements.catalogDifficulty, elements.catalogMeter, elements.catalogFeel].forEach((control) => control.addEventListener("input", renderCatalog));
   elements.octaveDown.addEventListener("click", () => {
-    const index = state.selectedPhraseIndex;
-    state.tokens[index] = { ...phraseItem(state.tokens[index]), octaveShift: Math.max(-2, Number(state.tokens[index]?.octaveShift || 0) - 1) };
+    state.tokens = adjustPhraseOctaves(
+      state.tokens,
+      selectedPhraseIndexes(),
+      -1,
+      state.key,
+      state.contourMode
+    );
     renderPhraseBuilder();
   });
   elements.octaveAuto.addEventListener("click", () => {
-    const index = state.selectedPhraseIndex;
-    state.tokens[index] = { ...phraseItem(state.tokens[index]), direction: "auto", octaveShift: 0 };
+    state.tokens = adjustPhraseOctaves(
+      state.tokens,
+      selectedPhraseIndexes(),
+      "auto",
+      state.key,
+      state.contourMode
+    );
     renderPhraseBuilder();
   });
   elements.octaveUp.addEventListener("click", () => {
-    const index = state.selectedPhraseIndex;
-    state.tokens[index] = { ...phraseItem(state.tokens[index]), octaveShift: Math.min(2, Number(state.tokens[index]?.octaveShift || 0) + 1) };
+    state.tokens = adjustPhraseOctaves(
+      state.tokens,
+      selectedPhraseIndexes(),
+      1,
+      state.key,
+      state.contourMode
+    );
+    renderPhraseBuilder();
+  });
+  elements.phraseMultiSelect.addEventListener("click", () => {
+    state.phraseMultiSelect = !state.phraseMultiSelect;
+    if (!state.phraseMultiSelect) {
+      state.selectedPhraseIndexes = [state.selectedPhraseIndex];
+    }
+    renderPhraseBuilder();
+  });
+  elements.phraseSelectAll.addEventListener("click", () => {
+    state.phraseMultiSelect = true;
+    state.selectedPhraseIndexes = state.tokens.map((_item, index) => index);
+    state.selectedPhraseIndex = state.tokens.length - 1;
+    state.phraseSelectionAnchor = 0;
     renderPhraseBuilder();
   });
   elements.noteEarlier.addEventListener("click", () => {
     const index = state.selectedPhraseIndex;
     state.selectedPhraseIndex = Math.max(0, index - 1);
+    state.selectedPhraseIndexes = [state.selectedPhraseIndex];
+    state.phraseSelectionAnchor = state.selectedPhraseIndex;
     setTokens(reorderToken(state.tokens, index, -1));
   });
   elements.noteLater.addEventListener("click", () => {
     const index = state.selectedPhraseIndex;
     state.selectedPhraseIndex = Math.min(state.tokens.length - 1, index + 1);
+    state.selectedPhraseIndexes = [state.selectedPhraseIndex];
+    state.phraseSelectionAnchor = state.selectedPhraseIndex;
     setTokens(reorderToken(state.tokens, index, 1));
   });
   elements.noteRemove.addEventListener("click", () => {
-    const index = state.selectedPhraseIndex;
-    state.tokens = state.tokens.filter((_item, itemIndex) => itemIndex !== index);
-    state.selectedPhraseIndex = Math.max(0, Math.min(index, state.tokens.length - 1));
-    setTokens(state.tokens);
+    const indexes = new Set(selectedPhraseIndexes());
+    const first = Math.min(...indexes);
+    const next = state.tokens.filter((_item, itemIndex) => !indexes.has(itemIndex));
+    state.selectedPhraseIndex = Math.max(0, Math.min(first, next.length - 1));
+    state.selectedPhraseIndexes = next.length ? [state.selectedPhraseIndex] : [];
+    state.phraseSelectionAnchor = state.selectedPhraseIndex;
+    state.phraseMultiSelect = false;
+    setTokens(next);
   });
   elements.key.addEventListener("change", () => {
     const nextKey = elements.key.value;
