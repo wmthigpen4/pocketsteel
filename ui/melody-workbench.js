@@ -282,6 +282,38 @@
     return { ok: true, message: "" };
   }
 
+  function resolvedPhraseEventsForRequest(tokens, key, contourMode = "closest_playable") {
+    const previews = resolvePhrasePreview(tokens, key, contourMode);
+    return (tokens || []).map((raw, index) => {
+      const item = phraseItem(raw);
+      if (Number.isInteger(item.string) && Number.isInteger(item.fret)) return item;
+      const preview = previews[index];
+      if (!Number.isFinite(Number(preview?.pitchValue))) return item;
+      return {
+        ...item,
+        pitch: preview.pitch,
+        pitchValue: Number(preview.pitchValue),
+        // The displayed pitch already includes the user's octave correction.
+        // Sending the shift as well would make the backend apply it twice.
+        octaveShift: 0
+      };
+    });
+  }
+
+  function validatePhraseRegister(tokens, key, contourMode = "closest_playable") {
+    const events = resolvedPhraseEventsForRequest(tokens, key, contourMode);
+    const invalidIndex = events.findIndex((event) => (
+      Number.isFinite(Number(event.pitchValue))
+      && (Number(event.pitchValue) < 47 || Number(event.pitchValue) > 94)
+    ));
+    if (invalidIndex < 0) return { ok: true, message: "" };
+    const event = events[invalidIndex];
+    return {
+      ok: false,
+      message: `Note ${invalidIndex + 1} (${phraseItemLabel(event)}) resolves to ${event.pitch}, outside the supported E9 register. Choose Automatic or another octave.`
+    };
+  }
+
   function reorderToken(tokens, index, direction) {
     const next = [...(tokens || [])];
     const target = index + direction;
@@ -309,7 +341,13 @@
       request.targetCopedentId = state.targetCopedentId;
     }
     if (state.sourceCopedentId) request.sourceCopedentId = state.sourceCopedentId;
-    if (state.tokens?.length) request.melody = [...state.tokens];
+    if (state.tokens?.length) {
+      request.melody = resolvedPhraseEventsForRequest(
+        state.tokens,
+        state.key,
+        state.contourMode
+      );
+    }
     const sections = state.scoreDraft?.score?.sections;
     const score = state.scoreDraft?.score;
     if (score?.meter) request.meter = score.meter;
@@ -1225,6 +1263,8 @@
     noteAtFret,
     sectionCount,
     validateTokens,
+    resolvedPhraseEventsForRequest,
+    validatePhraseRegister,
     reorderToken,
     buildMelodyRequest,
     youtubeVideoId,
@@ -3383,6 +3423,8 @@
     if (!task) return fail("Choose what you want to learn first.");
     const validation = validateTokens(state.tokens, state.key);
     if (!validation.ok && (!task.needsMaterial || state.tokens.length)) return fail(validation.message);
+    const registerValidation = validatePhraseRegister(state.tokens, state.key, state.contourMode);
+    if (!registerValidation.ok) return fail(registerValidation.message);
     if (state.tokens.some((event) => event.chordDraft)) {
       return fail("Correct the unsupported chord symbol before arranging.");
     }

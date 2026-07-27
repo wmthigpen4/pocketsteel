@@ -147,7 +147,29 @@ const original = studio.createInitialState("original_exercise");
 Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourceUrl: "https://example.test/stale" });
 const originalPayload = studio.buildMelodyRequest(original);
 assert.equal("material" in originalPayload, false);
-assert.deepEqual(originalPayload.melody, ["1", "3", "5"]);
+assert.deepEqual(
+  originalPayload.melody.map((event) => [event.token, event.pitch, event.pitchValue, event.octaveShift]),
+  [["1", "G4", 67, 0], ["3", "B4", 71, 0], ["5", "D5", 74, 0]]
+);
+const reportedPhrase = studio.createInitialState("user_melody");
+reportedPhrase.tokens = studio.parsePhraseEvents("G G A B E F# F# G A D G G G G A B E D E F# G A D");
+reportedPhrase.tokens[4].octaveShift = -1;
+reportedPhrase.tokens[16].octaveShift = -1;
+reportedPhrase.tokens[18].octaveShift = -1;
+const reportedPreviews = studio.resolvePhrasePreview(reportedPhrase.tokens, "G");
+const reportedRequest = studio.buildMelodyRequest(reportedPhrase);
+assert.deepEqual(
+  reportedRequest.melody.map((event) => [event.pitch, event.pitchValue]),
+  reportedPreviews.map((event) => [event.pitch, event.pitchValue])
+);
+assert.equal(reportedRequest.melody.every((event) => event.octaveShift === 0), true);
+assert.equal(studio.validatePhraseRegister(reportedPhrase.tokens, "G").ok, true);
+const invalidRegister = studio.parsePhraseEvents("E");
+invalidRegister[0].octaveShift = -2;
+assert.deepEqual(studio.validatePhraseRegister(invalidRegister, "G"), {
+  ok: false,
+  message: "Note 1 (E) resolves to E2, outside the supported E9 register. Choose Automatic or another octave."
+});
 const typedHarmony = studio.createInitialState("user_melody");
 typedHarmony.tokens = [
   {...studio.scientificPitchItem("G4"), id: "typed-1", chord: "G", chordBasis: "user"},
@@ -560,7 +582,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
     assert 'melody-score.js?v=chord-aware-harmony-v1' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=typed-chord-lane-v1' in html
+    assert 'melody-workbench.js?v=typed-chord-lane-v2' in html
     assert 'id="studio-score-chord-lane" aria-label="Editable chord timeline"' in html
     assert "Chord from this beat" in html
     assert "Chord timeline" in script
