@@ -263,7 +263,7 @@
   }
 
   function sectionCount(tokens) {
-    return Math.max(1, Math.ceil((tokens?.length || 0) / MAX_EVENTS_PER_SECTION));
+    return tokens?.length ? 1 : 0;
   }
 
   function validateTokens(tokens, key) {
@@ -347,6 +347,7 @@
         state.key,
         state.contourMode
       );
+      request.wholeSong = true;
     }
     const sections = state.scoreDraft?.score?.sections;
     const score = state.scoreDraft?.score;
@@ -1240,6 +1241,42 @@
     return `${styleLabel} changed ${changed} of ${total} Recommended tab positions.`;
   }
 
+  function printableTabHtml({ title = "E9 tablature", route = "", tabText = "" } = {}) {
+    const escapeHtml = (value) => String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: letter portrait; margin: 0.45in; }
+    body { margin: 0; color: #17130d; font-family: Georgia, serif; }
+    header { border-bottom: 1px solid #9b7b3d; margin-bottom: 18px; padding-bottom: 10px; }
+    header p, footer { color: #65563f; font: 10pt/1.35 system-ui, sans-serif; }
+    h1 { font-size: 21pt; margin: 3px 0; }
+    pre { font: 7.5pt/1.15 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: normal; white-space: pre; }
+    footer { border-top: 1px solid #d1c4ad; margin-top: 18px; padding-top: 8px; }
+    @media print { button { display: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <p>Melody Studio · Steel Guitar RAG</p>
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(route)}</p>
+  </header>
+  <pre>${escapeHtml(tabText)}</pre>
+  <footer>www.steelguitarrag.com</footer>
+</body>
+</html>`;
+  }
+
   const api = {
     MAX_EVENTS_PER_SECTION,
     TASKS,
@@ -1309,6 +1346,7 @@
     tabPositionSignature,
     changedTabPositionCount,
     styleImpactSummary,
+    printableTabHtml,
     arrangementPolicySummary
   };
 
@@ -1840,9 +1878,8 @@
       elements.noteEarlier.disabled = state.selectedPhraseIndex === 0;
       elements.noteLater.disabled = state.selectedPhraseIndex === state.tokens.length - 1;
     }
-    const count = sectionCount(state.tokens);
     elements.sectionCount.textContent = state.tokens.length
-      ? `${state.tokens.length} notes · ${count} ${count === 1 ? "section" : "sections"}`
+      ? `${state.tokens.length} notes · one continuous melody`
       : "Complete songbook melodies appear as one continuous score and tab.";
   }
 
@@ -3466,6 +3503,49 @@
     return submitLesson(sectionNumber, { preserveStructuredEvents: Boolean(state.scoreDraft) });
   }
 
+  function downloadPrintableTab(payload) {
+    const blob = new Blob([printableTabHtml(payload)], { type: "text/html;charset=utf-8" });
+    const url = global.URL.createObjectURL(blob);
+    const link = doc.createElement("a");
+    const stem = String(payload.title || "e9-tablature")
+      .trim()
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "e9-tablature";
+    link.href = url;
+    link.download = `${stem}.html`;
+    link.hidden = true;
+    doc.body.appendChild(link);
+    link.click();
+    link.remove();
+    global.setTimeout(() => global.URL.revokeObjectURL(url), 0);
+  }
+
+  function printOrDownloadTab(payload) {
+    return new Promise((resolve) => {
+      let printStarted = false;
+      const onBeforePrint = () => {
+        printStarted = true;
+        global.removeEventListener?.("beforeprint", onBeforePrint);
+        resolve("print");
+      };
+      global.addEventListener?.("beforeprint", onBeforePrint, { once: true });
+      if (typeof global.print === "function") {
+        try {
+          global.print();
+        } catch (_error) {
+          // The downloadable document below is the browser-independent fallback.
+        }
+      }
+      global.setTimeout(() => {
+        if (printStarted) return;
+        global.removeEventListener?.("beforeprint", onBeforePrint);
+        downloadPrintableTab(payload);
+        resolve("download");
+      }, 500);
+    });
+  }
+
   async function printWholeSong() {
     const exercise = state.response?.melodyExercise;
     const total = Number(exercise?.section?.total || 1);
@@ -3494,9 +3574,14 @@
         const tabText = route?.tab?.printTabText || route?.tab?.tabText || response.tabs?.[0]?.printTabText || response.tabs?.[0]?.tabText || "";
         sections.push([sectionLabel, tabText].filter(Boolean).join("\n"));
       }
-      elements.wholeSongTabCode.textContent = sections.join("\n\n");
+      const tabText = sections.join("\n\n");
+      elements.wholeSongTabCode.textContent = tabText;
       elements.wholeSongTab.hidden = false;
-      global.print();
+      await printOrDownloadTab({
+        title: elements.printTitle.textContent,
+        route: elements.printRoute.textContent,
+        tabText
+      });
     } catch (error) {
       showError(error.message || "The complete tablature could not be prepared for printing.");
     } finally {
@@ -3732,8 +3817,16 @@
     const previousVoiceMode = state.voiceMode;
     const previousMovementMode = state.movementMode;
     const previousHarmonyType = state.selectedHarmonyType;
+    const previousExercise = state.response?.melodyExercise;
+    const previousRoute = previousExercise?.routes?.find(
+      (route) => route.id === previousExercise.selectedRouteId
+    );
     state.voiceMode = elements.voiceMode.value || "mixed";
     state.movementMode = elements.movementMode.value || "best_fit";
+    const voiceChanged = state.voiceMode !== previousVoiceMode;
+    const changedControl = voiceChanged ? elements.voiceMode : elements.movementMode;
+    const selectedOption = changedControl.options[changedControl.selectedIndex];
+    const selectionLabel = selectedOption?.textContent?.trim() || "This choice";
     state.selectedHarmonyType = {
       single: "single_note",
       two_voice: "",
@@ -3751,6 +3844,14 @@
       state.selectedHarmonyType = previousHarmonyType;
       elements.voiceMode.value = previousVoiceMode;
       elements.movementMode.value = previousMovementMode;
+    } else {
+      const exercise = state.response?.melodyExercise;
+      const nextRoute = exercise?.routes?.find((route) => route.id === exercise.selectedRouteId);
+      const impact = styleImpactSummary(previousRoute, nextRoute, selectionLabel);
+      elements.arrangementPolicySummary.textContent = [
+        arrangementPolicySummary(exercise),
+        impact
+      ].filter(Boolean).join(" ");
     }
     elements.voiceMode.disabled = false;
     elements.movementMode.disabled = false;

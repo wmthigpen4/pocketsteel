@@ -219,6 +219,7 @@ def arrange_melody_routes(
                 inputs=inputs,
                 key=key,
                 roles=chord_roles,
+                style_family=selected_style,
             )
         elif harmony_type == "mixed_arrangement":
             candidate_groups = mixed_candidate_groups(
@@ -956,6 +957,7 @@ def choose_chord_aware_path(
     inputs: Sequence[MelodyInput],
     key: str,
     roles: Sequence[str],
+    style_family: str = "auto",
 ) -> list[PositionCandidate]:
     """Choose a connected harmonic-scale line with chord-correct anchors."""
 
@@ -963,6 +965,44 @@ def choose_chord_aware_path(
         return []
     active_chords = _active_chords(inputs)
     home_fret = _major_open_fret(key)
+    selected_style = normalize_style_family(style_family)
+
+    def movement_preference_penalty(
+        previous: PositionCandidate,
+        current: PositionCandidate,
+    ) -> int:
+        previous_strings = {note.string for note in previous.notes}
+        current_strings = {note.string for note in current.notes}
+        shared_strings = len(previous_strings & current_strings)
+        fret_distance = abs(current.fret - previous.fret)
+        control_changes = len(set(previous.controls) ^ set(current.controls))
+        string_changes = len(previous_strings ^ current_strings)
+        if selected_style == "vocal_steel":
+            # Prefer a connected bar move on shared strings.
+            if not fret_distance:
+                return control_changes * 2 + string_changes
+            return (
+                (0 if shared_strings else 12)
+                + control_changes * 2
+                + string_changes
+            )
+        if selected_style == "lever_driven":
+            # Prefer expressive control motion while the bar stays put.
+            return (
+                fret_distance * 7
+                + (0 if control_changes and not fret_distance else 12)
+                + string_changes
+            )
+        if selected_style == "fixed_pocket":
+            return fret_distance * 10 + string_changes * 4
+        if selected_style == "single_note_run":
+            # A clean repick route avoids elaborate control-posture changes.
+            return (
+                control_changes * 9
+                + len(current.controls) * 5
+                + string_changes * 2
+            )
+        return 0
 
     def chord_pedal_position(chord: str) -> int | None:
         match = re.match(r"^\s*([A-Ga-g])([#b]?)", chord)
@@ -1038,6 +1078,7 @@ def choose_chord_aware_path(
             pedal_position = chord_pedal_position(chord)
             if pedal_position is not None:
                 motion += abs(current.fret - pedal_position) * 5
+        motion += movement_preference_penalty(previous, current)
         return motion
 
     states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []

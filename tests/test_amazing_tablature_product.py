@@ -144,6 +144,60 @@ def test_mixed_best_fit_prefers_deterministic_key_harmony_over_learned_route() -
     assert selected["provenance"]["learnedPreferenceApplied"] is False
 
 
+def test_chord_aware_harmony_stays_recommended_for_non_best_fit_movement() -> None:
+    def route(
+        route_id: str,
+        harmony_type: str,
+        *,
+        fret: int,
+        engine_mode: str = "deterministic_rules",
+        recommended: bool = False,
+    ) -> dict[str, object]:
+        return {
+            "id": route_id,
+            "label": route_id,
+            "harmonyType": harmony_type,
+            "engineMode": engine_mode,
+            "recommended": recommended,
+            "events": [
+                {
+                    "notes": [
+                        {"string": 4, "fret": fret, "changes": []},
+                        {"string": 6, "fret": fret, "changes": []},
+                    ]
+                }
+            ],
+            "transitions": [],
+            "tabExample": {"validation": {"ok": True, "eventCount": 1}},
+        }
+
+    routes, contract = build_arrangement_contract(
+        [
+            route(
+                "learned",
+                "mixed_arrangement",
+                fret=5,
+                engine_mode="private_learned_beta",
+            ),
+            route(
+                "chord-aware",
+                "chord_aware_harmony",
+                fret=3,
+                recommended=True,
+            ),
+        ],
+        preferences=resolve_arrangement_preferences(
+            {"voiceMode": "mixed", "movementMode": "slides"}
+        ),
+        model_metadata={"rankerEnabled": True, "modelId": "at-test"},
+    )
+
+    assert contract["recommendedRouteId"] == "chord-aware"
+    selected = next(item for item in routes if item["recommended"])
+    assert selected["harmonyType"] == "chord_aware_harmony"
+    assert selected["provenance"]["learnedPreferenceApplied"] is False
+
+
 @pytest.mark.parametrize(
     "key",
     ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"],

@@ -542,6 +542,33 @@ def test_mixed_arrangement_limits_transitions_and_never_places_them_adjacent() -
     assert all(right - left > 1 for left, right in zip(target_steps, target_steps[1:]))
 
 
+def test_typed_melody_request_keeps_more_than_sixteen_notes_in_one_lesson() -> None:
+    pitches = "G4 G4 A4 B4 E4 F#4 F#4 G4 A4 D4 G4 G4 G4 G4 A4 B4 E4 D4 E4 F#4 G4 A4 D4".split()
+    pitch_values = {
+        "D4": 62,
+        "E4": 64,
+        "F#4": 66,
+        "G4": 67,
+        "A4": 69,
+        "B4": 71,
+    }
+    melody = [
+        {"token": pitch, "pitch": pitch, "pitchValue": pitch_values[pitch]}
+        for pitch in pitches
+    ]
+
+    result = melody_exercise_response(
+        "Arrange the complete typed melody",
+        {"key": "G", "melody": melody, "wholeSong": True},
+    )
+
+    exercise = result["melody_exercise"]
+    assert exercise["section"]["total"] == 1
+    assert exercise["section"]["eventStart"] == 0
+    assert exercise["section"]["eventEnd"] == 23
+    assert len(exercise["events"]) == 23
+
+
 def test_chord_context_is_not_invented_and_ranks_chord_melody_grips() -> None:
     result = melody_exercise_response(
         "Build a chord-aware phrase",

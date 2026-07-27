@@ -267,10 +267,7 @@ def _recommended_route(
         "three_voice": ("chord_melody",),
         "mixed": ("chord_aware_harmony", "mixed_arrangement"),
     }[preferences.voice_mode]
-    if (
-        preferences.movement_mode == "best_fit"
-        and preferences.voice_mode in {"two_voice", "mixed"}
-    ):
+    if preferences.voice_mode in {"two_voice", "mixed"}:
         chord_aware = next(
             (
                 route
@@ -282,6 +279,10 @@ def _recommended_route(
         )
         if chord_aware is not None:
             return chord_aware
+    if (
+        preferences.movement_mode == "best_fit"
+        and preferences.voice_mode in {"two_voice", "mixed"}
+    ):
         key_harmonies = [
             route
             for route in routes

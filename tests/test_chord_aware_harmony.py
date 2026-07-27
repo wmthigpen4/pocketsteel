@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from steel_guitar_rag.amazing_tablature_product import route_signature
 from steel_guitar_rag.melody_arranger import (
     _chord_pitch_classes,
     arrange_melody_routes,
@@ -170,6 +171,58 @@ def test_typed_scientific_phrase_with_user_chords_selects_chord_aware_route() ->
         "D",
         "D",
     ]
+
+
+def test_movement_choices_rebuild_the_full_chord_aware_melody() -> None:
+    pitches = "G4 G4 A4 B4 E4 F#4 F#4 G4 A4 D4 G4 G4 G4 G4 A4 B4 E4 D4 E4 F#4 G4 A4 D4".split()
+    chord_changes = {
+        0: "G",
+        4: "C",
+        5: "D",
+        9: "G",
+        10: "Em",
+        16: "Am7",
+        17: "D",
+        22: "G",
+    }
+    events = []
+    for index, pitch in enumerate(pitches):
+        event: dict[str, object] = {
+            "token": pitch,
+            "pitch": pitch,
+            "pitchValue": PITCH_VALUES[pitch],
+        }
+        if index in chord_changes:
+            event["chord"] = chord_changes[index]
+            event["chordBasis"] = "user"
+        events.append(event)
+
+    routes = {}
+    for movement in ("best_fit", "slides", "pedal_lever", "compact_pocket", "clean_repick"):
+        result = melody_exercise_response(
+            "Build",
+            {
+                "key": "G",
+                "melody": events,
+                "wholeSong": True,
+                "voiceMode": "mixed",
+                "movementMode": movement,
+            },
+        )
+        exercise = result["melody_exercise"]
+        route = next(
+            item
+            for item in exercise["routes"]
+            if item["id"] == exercise["selectedRouteId"]
+        )
+        assert route["harmonyType"] == "chord_aware_harmony"
+        assert len(route["events"]) == 23
+        routes[movement] = route_signature(route)
+
+    assert len(set(routes.values())) >= 4
+    assert routes["best_fit"] != routes["slides"]
+    assert routes["best_fit"] != routes["pedal_lever"]
+    assert routes["best_fit"] != routes["clean_repick"]
 
 
 def test_suggested_chords_do_not_enable_a_chord_aware_claim() -> None:

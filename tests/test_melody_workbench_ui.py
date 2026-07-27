@@ -38,7 +38,7 @@ assert.equal(studio.isSupportedChordSymbol("Fmaj7"), true);
 assert.equal(studio.isSupportedChordSymbol("H7"), false);
 assert.equal(studio.noteAtFret(4, 3), "G");
 assert.equal(studio.noteAtFret(5, 1), "C");
-assert.equal(studio.sectionCount(Array.from({ length: 17 }, () => "1")), 2);
+assert.equal(studio.sectionCount(Array.from({ length: 17 }, () => "1")), 1);
 assert.deepEqual(studio.reorderToken(["1", "2", "3"], 1, -1), ["2", "1", "3"]);
 assert.equal(studio.validateTokens(["1", "2", "3"], "G").ok, true);
 assert.equal(studio.validateTokens(["G", "A", "B", "D"], "G").ok, true);
@@ -78,6 +78,15 @@ const changedStyleRoute = {events: [
 assert.deepEqual(studio.changedTabPositionCount(previousStyleRoute, changedStyleRoute), {changed: 1, total: 2});
 assert.equal(studio.styleImpactSummary(previousStyleRoute, previousStyleRoute, "Pocket Playing"), "Pocket Playing uses the same Recommended tab for this melody.");
 assert.equal(studio.styleImpactSummary(previousStyleRoute, changedStyleRoute, "Singing Steel"), "Singing Steel changed 1 of 2 Recommended tab positions.");
+const printable = studio.printableTabHtml({
+  title: "Cory & Steel",
+  route: "Two note < Slides",
+  tabText: "4 | 3A"
+});
+assert.match(printable, /Cory &amp; Steel/);
+assert.match(printable, /Two note &lt; Slides/);
+assert.match(printable, /4 \| 3A/);
+assert.doesNotMatch(printable, /Two note < Slides/);
 assert.equal(
   studio.arrangementEngineStatus({
     privateBeta: true,
@@ -135,6 +144,7 @@ assert.equal(artistPayload.renderingMode, "transcription");
 assert.equal(artistPayload.contourMode, "closest_playable");
 assert.equal(artistPayload.voiceMode, "mixed");
 assert.equal(artistPayload.movementMode, "best_fit");
+assert.equal(artistPayload.wholeSong, true);
 artist.scoreDraft = {score: {sections: [{label: "Verse", startMeasure: 1, endMeasure: 4}]}};
 assert.deepEqual(studio.buildMelodyRequest(artist).sections, [{label: "Verse", startMeasure: 1, endMeasure: 4}]);
 assert.equal(studio.buildMelodyRequest(artist).wholeSong, true);
@@ -147,6 +157,7 @@ const original = studio.createInitialState("original_exercise");
 Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourceUrl: "https://example.test/stale" });
 const originalPayload = studio.buildMelodyRequest(original);
 assert.equal("material" in originalPayload, false);
+assert.equal(originalPayload.wholeSong, true);
 assert.deepEqual(
   originalPayload.melody.map((event) => [event.token, event.pitch, event.pitchValue, event.octaveShift]),
   [["1", "G4", 67, 0], ["3", "B4", 71, 0], ["5", "D5", 74, 0]]
@@ -163,6 +174,7 @@ assert.deepEqual(
   reportedPreviews.map((event) => [event.pitch, event.pitchValue])
 );
 assert.equal(reportedRequest.melody.every((event) => event.octaveShift === 0), true);
+assert.equal(reportedRequest.wholeSong, true);
 assert.equal(studio.validatePhraseRegister(reportedPhrase.tokens, "G").ok, true);
 const invalidRegister = studio.parsePhraseEvents("E");
 invalidRegister[0].octaveShift = -2;
@@ -582,7 +594,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
     assert 'melody-score.js?v=chord-aware-harmony-v1' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=typed-chord-lane-v2' in html
+    assert 'melody-workbench.js?v=whole-melody-controls-print-v1' in html
     assert 'id="studio-score-chord-lane" aria-label="Editable chord timeline"' in html
     assert "Chord from this beat" in html
     assert "Chord timeline" in script
@@ -744,7 +756,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-practice-loop-panel" hidden' in html
     assert '>Loop options</summary>' in html
     assert 'id="studio-print-tab"' in html
-    assert '>Print</button>' in html
+    assert '>Print / save</button>' in html
+    assert 'otherwise saves a printable HTML file' in html
+    assert 'Each choice rebuilds the full melody.' in html
     assert html.index('id="studio-tab"') < html.index('id="studio-print-tab"')
     assert html.index('data-start-over') < html.index('id="studio-print-tab"')
     assert html.index('id="studio-fretboard"') < html.index('id="studio-octave-map-controls"') < html.index('id="studio-arrangement-choices"')
@@ -780,6 +794,10 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-whole-song-tab-code"' in html
     assert 'state.scoreDraft?.score?.sections' in script
     assert 'async function printWholeSong()' in script
+    assert 'function printOrDownloadTab(payload)' in script
+    assert 'downloadPrintableTab(payload);' in script
+    assert 'global.addEventListener?.("beforeprint"' in script
+    assert 'one continuous melody' in script
     assert 'elements.printRoute.textContent = `E9 tablature · ${routeButtonLabel(route)} · Arranged for ${route.arrangedFor || exercise.arrangedFor || "E9"}`;' in script
     assert "savedE9TargetCopedent" in script
     assert "Arranged for ${arrangedFor}" in script
