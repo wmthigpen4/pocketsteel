@@ -94,7 +94,8 @@ Smoke Target:
 - Exact browser URL tested:
   `http://127.0.0.1:8791/ui/melody-workbench.html?access=beta_user&v=chord-aware-harmony-local`
 - Cache-busted URL tested: same as above
-- Exact URL the user should use: pending protected activation
+- Exact URL the user should use:
+  `https://app.steelguitarrag.com/ui/melody-workbench.html?v=736d4cff-chord-aware`
 - Auth required: no
 - Auth provider: local development scaffold
 - Cloudflare Access login result: not required
@@ -129,26 +130,54 @@ The immutable release was prepared and passed detached-release preflight:
 - release: `~/.steel-rag/releases/736d4cff-chord-aware`
 - SHA: `736d4cff0c05241245c29a17985065496f7c2156`
 
-Activation reached the macOS administrator-password prompt and was stopped
-without replacing the running service. Current production remains healthy on
-release `7e52032`:
+The administrator-authorized activation completed successfully:
 
 - `/health/live`: live
 - `/health/ready`: ready
-- `/api/version`: `git_sha=7e52032`
-- port 8770 listener: running under the existing supervised process
+- `/api/version`: `git_sha=736d4cf`
+- port 8770 listener: owned by the LaunchDaemon-supervised process
+- root `/`: HTTP 302 to the canonical app
+- Melody Studio: HTTP 200
+- `/ui/steel-guitar-rag-mock.html`: HTTP 200
 
-Run this from the repository and enter the Mac administrator password:
+Smoke Target:
 
-```bash
-STEEL_RAG_REPO_DIR="$HOME/.steel-rag/releases/736d4cff-chord-aware" \
-STEEL_RAG_DATA_DIR="$HOME/Documents/Steel Guitar RAG" \
-STEEL_RAG_EXPECTED_GIT_SHA=736d4cff0c05241245c29a17985065496f7c2156 \
-deploy/macos/install-private-preview-launchdaemon.sh activate
-```
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested:
+  `https://app.steelguitarrag.com/ui/melody-workbench.html?v=736d4cff-chord-aware`
+- Cache-busted URL tested: same as above
+- Exact URL the user should use: same as above
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded through the existing authenticated
+  in-app browser session
+- Local backend URL: `http://127.0.0.1:8770`
+- Expected backend port: `8770`
+- Expected git HEAD:
+  `736d4cff0c05241245c29a17985065496f7c2156`
+- Version endpoint: `http://127.0.0.1:8770/api/version`
+- Version endpoint result: HTTP 200, `git_sha=736d4cf`
+- If version endpoint missing, how version is inferred: not applicable
+- Whether app root `/` works: yes; it redirects to the canonical app shell
+- Whether app root `/` is expected to work: yes
+- Whether `/ui/steel-guitar-rag-mock.html` works: yes
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: Codex and the user
+- Do not test these URLs: the stopped disposable port-8791 local build
+- Known caveats: the application remains Cloudflare Access protected
 
-Protected browser smoke must follow successful activation. Until then, the
-production URL does not prove this feature.
+Protected browser result:
+
+- Melody Studio loaded under the authenticated account and showed the saved
+  `Cory's E9th Emmons Lashley LeGrande` copedent;
+- the deployed assets were exactly
+  `melody-score.js?v=chord-aware-harmony-v1` and
+  `melody-workbench.js?v=chord-aware-harmony-v1`;
+- the Staff editor exposed the visible editable Chord timeline;
+- its no-chord state explicitly offered key-only thirds and sixths;
+- root and the canonical app shell loaded correctly;
+- the browser reported zero warnings or errors.
 
 ## Integration notes
 
@@ -166,18 +195,17 @@ remain editable but do not enable the Chord-aware label.
 
 ## Risk assessment
 
-Medium-low for the committed implementation: deterministic outputs, exact
-mechanical validation, focused coverage, two consecutive full-suite passes,
-and local browser smoke are green. Production remains on the previous healthy
-release until administrator-authorized activation and protected browser smoke.
+Low for the protected application: deterministic outputs, exact mechanical
+validation, focused coverage, two consecutive full-suite passes, supervised
+exact-release activation, and authenticated production browser smoke are
+green.
 
 Rollback after activation remains the prior immutable `7e520323-import-music`
 release.
 
 ## Human decision needed
 
-Yes. An administrator must run the exact activation command above and enter
-the Mac password. No product or musical decision is pending.
+No. The feature is activated and ready for founder musical testing.
 
 ## Safe-to-stage exact file list
 
@@ -196,7 +224,7 @@ The implementation files are already committed in `736d4cff`.
 
 ## Recommended next lane
 
-Lane 12 protected activation and browser smoke.
+Founder musical testing.
 
 ## Commit readiness
 
@@ -204,5 +232,5 @@ Safe to commit
 
 ## Suggested next step
 
-Run the exact administrator activation command, then ask Codex to complete
-protected smoke at the cache-busted production Melody Studio URL.
+Open the cache-busted production Melody Studio URL and verify the frozen G/C/D
+harmonized example plus additional chord progressions on the saved copedent.
