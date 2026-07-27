@@ -28,6 +28,14 @@ const studio = require("./ui/melody-workbench.js");
 assert.deepEqual(studio.parsePhraseInput("1 2, 3 | 5"), ["1", "2", "3", "5"]);
 assert.deepEqual(studio.parsePhraseInput("g a b d"), ["G", "A", "B", "D"]);
 assert.deepEqual(studio.parsePhraseInput("S4: 3 5 7 10"), ["G", "A", "B", "D"]);
+assert.deepEqual(
+  studio.parsePhraseInput("G4 F#4 Bb3").map((event) => [event.token, event.pitch, event.pitchValue]),
+  [["G4", "G4", 67], ["F#4", "F#4", 66], ["Bb3", "Bb3", 58]]
+);
+assert.equal(studio.normalizeChordSymbol("g"), "G");
+assert.equal(studio.normalizeChordSymbol("c/e"), "C/E");
+assert.equal(studio.isSupportedChordSymbol("Fmaj7"), true);
+assert.equal(studio.isSupportedChordSymbol("H7"), false);
 assert.equal(studio.noteAtFret(4, 3), "G");
 assert.equal(studio.noteAtFret(5, 1), "C");
 assert.equal(studio.sectionCount(Array.from({ length: 17 }, () => "1")), 2);
@@ -53,6 +61,7 @@ assert.equal(studio.createInitialState().scoreEditingEnabled, true);
 assert.equal(studio.createInitialState().voiceMode, "mixed");
 assert.equal(studio.createInitialState().movementMode, "best_fit");
 assert.equal(studio.createInitialState().selectedHarmonyType, "");
+assert.equal(studio.createInitialState().paletteMode, "notes");
 assert.deepEqual(studio.entryChoicePresentation("song"), {label: "Learn a song", help: "Chord Karaoke"});
 assert.deepEqual(studio.entryChoicePresentation("song", {replacing: true}), {label: "Learn a song", help: "Start a Song Project"});
 assert.equal(studio.printableLessonTitle({title: "Amazing Grace — Complete E9 lesson", material: {song: "Amazing Grace"}}), "Amazing Grace");
@@ -86,16 +95,26 @@ assert.equal(
 );
 const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
 assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
-assert.deepEqual(
-  studio.mergePhraseEdits(
-    studio.parsePhraseEvents("G A"),
-    [{token: "G", chord: "G", direction: "up"}, {token: "A", chord: "D7", octaveShift: 1}]
-  ),
-  [
-    {token: "G", direction: "up", octaveShift: 0, chord: "G"},
-    {token: "A", direction: "auto", octaveShift: 1, chord: "D7"}
-  ]
+const mergedPhrase = studio.mergePhraseEdits(
+  studio.parsePhraseEvents("G A"),
+  [{id: "g-event", token: "G", chord: "G", chordBasis: "user", direction: "up"}, {id: "a-event", token: "A", chord: "D7", chordBasis: "user", octaveShift: 1}]
 );
+assert.deepEqual(
+  mergedPhrase.map((event) => [event.id, event.token, event.direction, event.octaveShift, event.chord, event.chordBasis]),
+  [["g-event", "G", "up", 0, "G", "user"], ["a-event", "A", "auto", 1, "D7", "user"]]
+);
+const insertedPhrase = studio.mergePhraseEdits(studio.parsePhraseEvents("C G A"), mergedPhrase);
+assert.match(insertedPhrase[0].id, /^typed-note-/);
+assert.deepEqual(
+  insertedPhrase.map((event) => [event.token, event.id, event.chord || ""]),
+  [["C", insertedPhrase[0].id, ""], ["G", "g-event", "G"], ["A", "a-event", "D7"]]
+);
+const reorderedPhrase = studio.mergePhraseEdits(studio.reorderToken(mergedPhrase, 0, 1), mergedPhrase);
+assert.deepEqual(
+  reorderedPhrase.map((event) => [event.id, event.token, event.chord || ""]),
+  [["a-event", "A", "D7"], ["g-event", "G", "G"]]
+);
+assert.deepEqual(studio.resolvePhrasePreview(studio.parsePhraseEvents("G4 F#4 Bb3"), "G").map((event) => event.pitch), ["G4", "F#4", "A#3"]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1", octaveShift: 1}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G5", "B4"]);
 
@@ -129,6 +148,18 @@ Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourc
 const originalPayload = studio.buildMelodyRequest(original);
 assert.equal("material" in originalPayload, false);
 assert.deepEqual(originalPayload.melody, ["1", "3", "5"]);
+const typedHarmony = studio.createInitialState("user_melody");
+typedHarmony.tokens = [
+  {...studio.scientificPitchItem("G4"), id: "typed-1", chord: "G", chordBasis: "user"},
+  {...studio.scientificPitchItem("A4"), id: "typed-2"},
+  {...studio.scientificPitchItem("D4"), id: "typed-3", chord: "D7", chordBasis: "user"}
+];
+assert.deepEqual(
+  studio.buildMelodyRequest(typedHarmony).melody.map((event) => [event.pitch, event.pitchValue, event.chord || "", event.chordBasis || ""]),
+  [["G4", 67, "G", "user"], ["A4", 69, "", ""], ["D4", 62, "D7", "user"]]
+);
+assert.equal(studio.activePhraseChord(typedHarmony.tokens, 1), "G");
+assert.equal(studio.activePhraseChord(typedHarmony.tokens, 2), "D7");
 const savedTarget = studio.savedE9TargetCopedent({getItem: () => JSON.stringify({
   id: "local-e9", name: "My road guitar", tuningFamily: "E9", stringCount: 10,
   strings: ["F#", "D#", "G#", "E", "B", "G#", "F#", "E", "D", "B"].map((openNote, index) => ({stringNumber: index + 1, openNote, gauge: "private"})),
@@ -161,9 +192,12 @@ assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended ar
 const recommendedRoute = { id: "mixed", harmonyType: "mixed_arrangement", label: "Recommended arrangement" };
 const chordAwareRoute = { id: "chords", harmonyType: "chord_aware_harmony", label: "Chord-aware harmony" };
 const faithfulRoute = { id: "faithful", harmonyType: "single_note", label: "Faithful melody" };
+const thirdsRoute = { id: "thirds", harmonyType: "thirds", label: "Key-only harmonized thirds", pathSummary: {totalBarTravel: 8} };
+const sixthsRoute = { id: "sixths", harmonyType: "sixths", label: "Key-only harmonized sixths", pathSummary: {totalBarTravel: 3} };
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute, recommendedRoute] }), faithfulRoute);
-assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute, recommendedRoute, chordAwareRoute] }), faithfulRoute);
+assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute, recommendedRoute, chordAwareRoute] }), chordAwareRoute);
 assert.equal(studio.preferredStudioRoute({ routes: [faithfulRoute, recommendedRoute, chordAwareRoute] }), chordAwareRoute);
+assert.equal(studio.preferredStudioRoute({ selectedRouteId: "mixed", routes: [faithfulRoute, recommendedRoute, thirdsRoute, sixthsRoute] }), sixthsRoute);
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "mixed", routes: [faithfulRoute, recommendedRoute] }, "single_note"), faithfulRoute);
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute] }), faithfulRoute);
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "missing", routes: [faithfulRoute] }), faithfulRoute);
@@ -462,6 +496,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'data-studio-start="phrase" data-default-label="Type or tap notes" aria-pressed="true"' in start_options
     assert 'id="studio-open-score"' not in html
     assert 'id="studio-add-recording"' in html
+    assert 'data-palette-mode=' not in html
     assert 'id="studio-try-example"' not in html
     assert "Choose the easiest way to get the notes in." not in html
     assert 'data-source-treatment="artist_solo_lesson"' in html
@@ -473,6 +508,17 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-presets" aria-label="Practice phrase presets" hidden' in html
     assert 'id="studio-palette"' in html
     assert 'id="studio-sequence"' in html
+    assert 'id="studio-phrase-chord-lane" aria-label="Chord timeline"' in html
+    assert 'id="studio-phrase-chord"' in html
+    assert 'id="studio-phrase-chord-markers"' in html
+    assert 'id="studio-phrase-chord-remove" hidden' in html
+    assert 'id="studio-open-staff"' in html
+    assert 'placeholder="G4 G4 A4 B4 E4 F#4 F#4 G4 A4 D4"' in html
+    assert "<summary>Advanced</summary>" in html
+    assert '<details class="progressive-panel" id="studio-phrase-options"><summary>Advanced</summary>' in html
+    assert html.index('id="studio-phrase-options"') < html.index('id="studio-add-recording"')
+    assert "Chord starting here" in html
+    assert "A chord carries forward until the next marker." in html
     assert 'data-preset="1-2-3-5"' in html
     assert 'id="studio-fretboard"' in html
     assert 'id="studio-octave-guide"' in html
@@ -514,7 +560,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
     assert 'melody-score.js?v=chord-aware-harmony-v1' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=chord-aware-harmony-v1' in html
+    assert 'melody-workbench.js?v=typed-chord-lane-v1' in html
     assert 'id="studio-score-chord-lane" aria-label="Editable chord timeline"' in html
     assert "Chord from this beat" in html
     assert "Chord timeline" in script
@@ -561,8 +607,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "hideFilterControls: true" in script
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script
-    assert "Select a note below to change its octave" in html
-    assert "Change the register for this note only" in html
+    assert "Select a note to adjust it or start a chord there." in html
+    assert "Only affects notes entered without a scientific octave." in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=module-boundaries-20260713") == 1
     assert "pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724" in html

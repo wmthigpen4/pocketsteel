@@ -144,7 +144,7 @@ def test_exact_sanitized_artifact_loads_without_source_fields(tmp_path) -> None:
     assert len(policy.feature_names) == 21
 
 
-def test_private_beta_returns_learned_and_deterministic_routes() -> None:
+def test_private_beta_returns_comparison_routes_without_overriding_key_harmony() -> None:
     result = melody_exercise_response(
         "Build a melody exercise",
         {
@@ -165,8 +165,12 @@ def test_private_beta_returns_learned_and_deterministic_routes() -> None:
         if route.get("engineMode") == "deterministic_comparison"
     )
 
-    assert learned["recommended"] is True
+    recommended = next(route for route in exercise["routes"] if route["recommended"])
+
+    assert learned["recommended"] is False
     assert deterministic["recommended"] is False
+    assert recommended["harmonyType"] in {"thirds", "sixths"}
+    assert recommended.get("engineMode") != "private_learned_beta"
     assert len(learned["events"]) == len(deterministic["events"]) == 7
     assert learned["tabExample"]["validation"]["ok"] is True
     assert deterministic["tabExample"]["validation"]["ok"] is True

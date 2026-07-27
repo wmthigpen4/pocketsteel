@@ -282,6 +282,24 @@ def _recommended_route(
         )
         if chord_aware is not None:
             return chord_aware
+        key_harmonies = [
+            route
+            for route in routes
+            if route.get("harmonyType") in {"thirds", "sixths"}
+        ]
+        if key_harmonies:
+            def best_fit_cost(route: dict[str, Any]) -> tuple[int, ...]:
+                summary = route.get("pathSummary") or {}
+                return (
+                    int(summary.get("totalBarTravel") or 0),
+                    int(summary.get("harmonicFamilyChanges") or 0),
+                    int(summary.get("stringGroupChanges") or 0),
+                    int(summary.get("pedalFamilyChanges") or 0),
+                    int(summary.get("maxBarTravel") or 0),
+                    0 if route.get("harmonyType") == "thirds" else 1,
+                )
+
+            return min(key_harmonies, key=best_fit_cost)
     for engine_mode in ("private_learned_beta",):
         match = next(
             (
@@ -358,7 +376,12 @@ def build_arrangement_contract(
         or (
             preferences.voice_mode == "mixed"
             and recommended.get("harmonyType")
-            in {"mixed_arrangement", "chord_aware_harmony"}
+            in {
+                "mixed_arrangement",
+                "chord_aware_harmony",
+                "thirds",
+                "sixths",
+            }
         )
     )
     for route in unique_routes:

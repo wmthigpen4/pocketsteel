@@ -252,6 +252,7 @@
 
     .phrase-builder { margin-top: 24px; display: grid; gap: 18px; }
     .palette-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .field textarea.quick-note-input { min-height: 72px; }
     .segmented { display: inline-flex; gap: 4px; border: 1px solid var(--line); border-radius: 999px; padding: 4px; background: rgba(5, 7, 7, 0.6); }
     .segmented button, .preset-button {
       border: 0;
@@ -286,6 +287,19 @@
     .sequence-chip:hover, .sequence-chip:focus-visible, .sequence-chip.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.18); outline: none; }
     .sequence-chip strong { min-width: 24px; }
     .sequence-pitch { color: var(--gold); font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .sequence-chord { border-radius: 999px; background: rgba(88, 214, 189, 0.13); color: #8ce8d5; padding: 3px 6px; font-size: 11px; font-weight: 850; }
+    .sequence-chip.has-chord-change { box-shadow: inset 0 -3px rgba(88, 214, 189, 0.55); }
+    .phrase-chord-lane { display: grid; grid-template-columns: minmax(170px, 0.6fr) minmax(220px, 1fr); align-items: end; gap: 8px 14px; margin-top: 14px; border: 1px solid rgba(88, 214, 189, 0.25); border-radius: 14px; background: rgba(88, 214, 189, 0.055); padding: 12px; }
+    .phrase-chord-lane__head { display: grid; align-self: center; gap: 3px; }
+    .phrase-chord-lane__head strong { color: var(--cream); }
+    .phrase-chord-lane__head span { color: #8ce8d5; font-size: 12px; font-weight: 800; }
+    .phrase-chord-entry input[aria-invalid="true"] { border-color: #f1a85f; }
+    .phrase-chord-lane > .field-help, .phrase-chord-error { grid-column: 1 / -1; margin: 0; }
+    .phrase-chord-error { border-left: 3px solid #f1a85f; background: rgba(134, 61, 26, 0.14); color: #ffd7af; padding: 8px 10px; font-size: 13px; }
+    .phrase-chord-markers { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 7px; }
+    .phrase-chord-marker { border: 1px solid rgba(88, 214, 189, 0.4); border-radius: 999px; background: rgba(88, 214, 189, 0.1); color: var(--cream); padding: 6px 10px; cursor: pointer; font-weight: 800; }
+    .phrase-chord-marker.is-selected { border-color: #8ce8d5; background: rgba(88, 214, 189, 0.2); }
+    .phrase-chord-remove { grid-column: 1 / -1; justify-self: start; min-height: 38px; }
     .note-editor { display: grid; gap: 12px; margin-top: 14px; border-top: 1px solid rgba(244, 234, 214, 0.1); padding-top: 14px; }
     .note-editor-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
     .note-editor-head strong { font-family: var(--lesson); font-size: 19px; }
@@ -300,6 +314,7 @@
     .register-stepper button:disabled, #studio-octave-auto:disabled { opacity: 0.35; cursor: default; }
     #studio-register-value { display: grid; place-items: center; min-height: 38px; border-radius: 12px; background: rgba(5, 7, 7, 0.48); color: var(--cream); font-weight: 850; text-align: center; }
     #studio-section-count { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+    .quick-editor-advanced { display: grid; gap: 12px; }
     #studio-error { margin: 0; border-left: 3px solid #f1a85f; padding: 10px 12px; color: #ffd7af; background: rgba(134, 61, 26, 0.14); }
     .primary-action, .secondary-action {
       min-height: 46px;
@@ -413,6 +428,8 @@
       .editor-settings { justify-content: stretch; }
       .key-field, .contour-field { min-width: 0; flex: 1 1 100%; }
       .palette { grid-template-columns: repeat(4, minmax(48px, 1fr)); }
+      .phrase-chord-lane { grid-template-columns: 1fr; }
+      .phrase-chord-lane > .field-help, .phrase-chord-error, .phrase-chord-markers, .phrase-chord-remove { grid-column: 1; }
       .register-stepper { grid-template-columns: 1fr; }
       #studio-register-value { font-size: 13px; }
       .note-editor-actions button { flex: 1 1 calc(50% - 8px); }
@@ -874,33 +891,28 @@
 
         <div class="phrase-builder" id="studio-phrase-panel" data-input-panel="phrase">
           <div class="palette-head">
-            <div><h3>Notes or scale numbers</h3><p class="field-help">Try <strong>1 2 3 5</strong> or <strong>G A B D</strong>, or tap the note buttons.</p></div>
-            <div class="segmented" aria-label="Phrase palette mode">
-              <button type="button" data-palette-mode="degrees" aria-pressed="true">Scale degrees</button>
-              <button type="button" data-palette-mode="notes" aria-pressed="false">Note names</button>
-            </div>
+            <div><h3>Type or tap notes</h3><p class="field-help">Scientific pitches preserve the exact octave. Try <strong>G4 A4 B4 D4</strong>.</p></div>
           </div>
           <div class="palette" id="studio-palette" aria-label="Phrase note palette"></div>
           <label class="field">
-            <textarea id="studio-phrase-input" aria-label="Notes or scale numbers" placeholder="Try: 1 2 3 5 or G A B D"></textarea>
+            <textarea class="quick-note-input" id="studio-phrase-input" aria-label="Notes or scale numbers" placeholder="G4 G4 A4 B4 E4 F#4 F#4 G4 A4 D4"></textarea>
           </label>
-          <div class="context-actions">
-            <button class="secondary-action" type="button" id="studio-add-recording">Add recording details</button>
-          </div>
-          <details class="progressive-panel" id="studio-phrase-options"><summary>Phrase options</summary><div class="progressive-panel__body">
-            <label class="field contour-field">Melody direction<select id="studio-contour"><option value="closest_playable">Closest playable</option><option value="ascending">Ascending</option><option value="descending">Descending</option><option value="preserve_input">Preserve entered pitches</option></select><span class="field-help">Closest playable is the recommended default.</span></label>
-            <div class="presets" id="studio-presets" aria-label="Practice phrase presets" hidden><span>Quick starts:</span><button class="preset-button" type="button" data-preset="1-2-3-5">1 2 3 5</button><button class="preset-button" type="button" data-preset="1-3-5-3">1 3 5 3</button><button class="preset-button" type="button" data-preset="5-6-5-3">5 6 5 3</button></div>
-            <button class="secondary-action" type="button" id="studio-use-exercise" style="width:fit-content;">Use a practice phrase</button>
-            <details class="progressive-panel"><summary>More input formats</summary><div class="progressive-panel__body"><p class="field-help">Literal one-string E9 tab is supported, such as <strong>S4: 3 5 7 10</strong> or <strong>S4: 3 2F 7</strong>. String, fret, controls, and register are preserved.</p></div></details>
-          </div></details>
           <div class="sequence-wrap">
-            <p class="field-help" style="margin-bottom:10px;">Select a note below to change its octave, order, or remove it.</p>
+            <p class="field-help" style="margin-bottom:10px;">Select a note to adjust it or start a chord there.</p>
             <div class="sequence" id="studio-sequence" aria-label="Current phrase sequence"></div>
+            <section class="phrase-chord-lane" id="studio-phrase-chord-lane" aria-label="Chord timeline">
+              <div class="phrase-chord-lane__head"><strong>Chord timeline</strong><span id="studio-phrase-chord-selection">Select a melody note</span></div>
+              <label class="field phrase-chord-entry">Chord starting here
+                <input id="studio-phrase-chord" placeholder="G, C, D7, Em..." autocomplete="off">
+              </label>
+              <p class="field-help">A chord carries forward until the next marker.</p>
+              <p class="phrase-chord-error" id="studio-phrase-chord-error" role="alert" hidden></p>
+              <div class="phrase-chord-markers" id="studio-phrase-chord-markers"></div>
+              <button class="secondary-action phrase-chord-remove" type="button" id="studio-phrase-chord-remove" hidden>Remove chord marker</button>
+            </section>
             <div class="note-editor" id="studio-note-editor" hidden>
               <div class="note-editor-head"><strong id="studio-selected-note">Selected note</strong><span id="studio-selected-pitch"></span></div>
-              <p class="field-help">Change the register for this note only. Use Melody direction when you want to reshape the whole phrase.</p>
               <div class="register-editor" aria-label="Register for selected note">
-                <strong>Register for this note</strong>
                 <output id="studio-register-value" aria-live="polite">Automatic register</output>
                 <div class="register-stepper">
                   <button type="button" id="studio-octave-down" aria-label="Lower selected note one octave">Lower octave</button>
@@ -916,6 +928,16 @@
             </div>
             <p id="studio-section-count"></p>
           </div>
+          <details class="progressive-panel" id="studio-phrase-options"><summary>Advanced</summary><div class="progressive-panel__body quick-editor-advanced">
+            <label class="field contour-field">Automatic pitch direction<select id="studio-contour"><option value="closest_playable">Closest playable</option><option value="ascending">Ascending</option><option value="descending">Descending</option><option value="preserve_input">Preserve entered pitches</option></select><span class="field-help">Only affects notes entered without a scientific octave.</span></label>
+            <div class="presets" id="studio-presets" aria-label="Practice phrase presets" hidden><span>Quick starts:</span><button class="preset-button" type="button" data-preset="1-2-3-5">1 2 3 5</button><button class="preset-button" type="button" data-preset="1-3-5-3">1 3 5 3</button><button class="preset-button" type="button" data-preset="5-6-5-3">5 6 5 3</button></div>
+            <div class="context-actions">
+              <button class="secondary-action" type="button" id="studio-use-exercise">Use a practice phrase</button>
+              <button class="secondary-action" type="button" id="studio-add-recording">Add recording details</button>
+              <button class="secondary-action" type="button" id="studio-open-staff">Open in Staff Editor</button>
+            </div>
+            <p class="field-help">Advanced literal E9 tab remains supported, such as <strong>S4: 3 5 7 10</strong> or <strong>S4: 3 2F 7</strong>.</p>
+          </div></details>
           <p id="studio-error" role="alert" hidden></p>
         </div>
         <div class="editor-actions" id="studio-phrase-actions" data-input-panel="phrase">
@@ -1078,6 +1100,6 @@
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=chord-aware-harmony-v1"></script>
   <script src="song-projects.js?v=amazing-tablature-product-v1-20260724-2"></script>
-  <script src="melody-workbench.js?v=chord-aware-harmony-v1"></script>
+  <script src="melody-workbench.js?v=typed-chord-lane-v1"></script>
 </body>
 </html>

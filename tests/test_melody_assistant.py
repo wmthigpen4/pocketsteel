@@ -295,16 +295,15 @@ def test_literal_tab_rejects_octave_override_instead_of_moving_other_notes() -> 
         )
 
 
-def test_default_arranger_returns_faithful_and_recommended_mixed_routes() -> None:
+def test_default_arranger_returns_faithful_and_recommended_key_harmony() -> None:
     result = melody_exercise_response("Build", {"key": "G", "melody": ["5", "6", "1", "3", "2", "1", "3"]})
 
     assert result is not None
     routes = result["melody_exercise"]["routes"]
     assert routes[0]["harmonyType"] == "single_note"
     recommended = next(route for route in routes if route["recommended"])
-    assert recommended["harmonyType"] == "mixed_arrangement"
-    assert {len(event["notes"]) for event in recommended["events"]} == {1, 2}
-    assert all(len(event["notes"]) < 3 for event in recommended["events"])
+    assert recommended["harmonyType"] in {"thirds", "sixths"}
+    assert {len(event["notes"]) for event in recommended["events"]} == {2}
     assert all(
         max(
             absolute_pitch_for_string(note["string"], note["fret"], tuple(note["changes"]))

@@ -85,6 +85,65 @@ def test_contract_hides_exact_duplicate_routes_and_discloses_provenance() -> Non
     assert contract["provenance"]["claim"].startswith("Verified E9 rules")
 
 
+def test_mixed_best_fit_prefers_deterministic_key_harmony_over_learned_route() -> None:
+    def route(
+        route_id: str,
+        harmony_type: str,
+        *,
+        fret: int,
+        travel: int,
+        engine_mode: str = "deterministic_rules",
+    ) -> dict[str, object]:
+        return {
+            "id": route_id,
+            "label": route_id,
+            "harmonyType": harmony_type,
+            "engineMode": engine_mode,
+            "recommended": False,
+            "pathSummary": {
+                "totalBarTravel": travel,
+                "harmonicFamilyChanges": 0,
+                "stringGroupChanges": 0,
+                "pedalFamilyChanges": 0,
+                "maxBarTravel": travel,
+            },
+            "events": [
+                {
+                    "notes": [
+                        {"string": 4, "fret": fret, "changes": []},
+                        {"string": 6, "fret": fret, "changes": []},
+                    ]
+                }
+            ],
+            "transitions": [],
+            "tabExample": {"validation": {"ok": True, "eventCount": 1}},
+        }
+
+    routes, contract = build_arrangement_contract(
+        [
+            route(
+                "learned",
+                "mixed_arrangement",
+                fret=3,
+                travel=0,
+                engine_mode="private_learned_beta",
+            ),
+            route("thirds", "thirds", fret=4, travel=8),
+            route("sixths", "sixths", fret=5, travel=3),
+        ],
+        preferences=resolve_arrangement_preferences(
+            {"voiceMode": "mixed", "movementMode": "best_fit"}
+        ),
+        model_metadata={"rankerEnabled": True, "modelId": "at-test"},
+    )
+
+    assert contract["recommendedRouteId"] == "sixths"
+    assert contract["requestedVoiceModeAvailable"] is True
+    selected = next(item for item in routes if item["recommended"])
+    assert selected["harmonyType"] == "sixths"
+    assert selected["provenance"]["learnedPreferenceApplied"] is False
+
+
 @pytest.mark.parametrize(
     "key",
     ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"],

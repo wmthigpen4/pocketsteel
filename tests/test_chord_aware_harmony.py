@@ -6,6 +6,7 @@ from steel_guitar_rag.melody_arranger import (
     _chord_pitch_classes,
     arrange_melody_routes,
 )
+from steel_guitar_rag.melody_assistant import melody_exercise_response
 
 
 PITCH_VALUES = {
@@ -124,6 +125,50 @@ def test_chord_aware_route_can_be_requested_directly() -> None:
     assert [route["harmonyType"] for route in routes] == [
         "single_note",
         "chord_aware_harmony",
+    ]
+
+
+def test_typed_scientific_phrase_with_user_chords_selects_chord_aware_route() -> None:
+    result = melody_exercise_response(
+        "Build",
+        {
+            "key": "G",
+            "melody": _verification_events(),
+            "voiceMode": "mixed",
+            "movementMode": "best_fit",
+        },
+    )
+
+    exercise = result["melody_exercise"]
+    selected = next(
+        route
+        for route in exercise["routes"]
+        if route["id"] == exercise["selectedRouteId"]
+    )
+    assert selected["harmonyType"] == "chord_aware_harmony"
+    assert [event["resolvedPitch"] for event in selected["events"]] == [
+        "G4",
+        "G4",
+        "A4",
+        "B4",
+        "E4",
+        "F#4",
+        "F#4",
+        "G4",
+        "A4",
+        "D4",
+    ]
+    assert [event["activeChord"] for event in selected["events"]] == [
+        "G",
+        "G",
+        "G",
+        "G",
+        "C",
+        "C",
+        "C",
+        "C",
+        "D",
+        "D",
     ]
 
 

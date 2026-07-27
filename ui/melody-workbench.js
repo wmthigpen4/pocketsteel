@@ -76,6 +76,13 @@
     "1-3-5-3": ["1", "3", "5", "3"],
     "5-6-5-3": ["5", "6", "5", "3"]
   };
+  const SUPPORTED_CHORD_PATTERN = /^[A-Ga-g](?:#|b)?(?:(?:maj|major|m|min|minor)?(?:6|7)?|dim|°|aug|\+|sus|sus2|sus4)?(?:\/[A-Ga-g](?:#|b)?)?$/;
+  let phraseEventSequence = 0;
+
+  function nextPhraseEventId() {
+    phraseEventSequence += 1;
+    return `typed-note-${phraseEventSequence}`;
+  }
 
   function savedE9TargetCopedent(storage = global.localStorage) {
     const active = global.STEEL_RAG_COPEDENTS?.activeContext?.(storage);
@@ -114,6 +121,8 @@
   function normalizeToken(value) {
     const raw = String(value || "").trim().replace(/♯/g, "#").replace(/♭/g, "b");
     if (/^[1-7]$/.test(raw)) return raw;
+    const scientific = raw.match(/^([A-Ga-g])([#b]?)(-?\d+)$/);
+    if (scientific) return `${scientific[1].toUpperCase()}${scientific[2]}${scientific[3]}`;
     const match = raw.match(/^([A-Ga-g])([#b]?)$/);
     return match ? `${match[1].toUpperCase()}${match[2]}` : raw;
   }
@@ -122,6 +131,34 @@
     const normalized = normalizeToken(note);
     const flats = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
     return CHROMATIC_SHARPS.indexOf(flats[normalized] || normalized);
+  }
+
+  function scientificPitchItem(value) {
+    const token = normalizeToken(value);
+    const match = token.match(/^([A-G])([#b]?)(-?\d+)$/);
+    if (!match) return null;
+    const note = `${match[1]}${match[2]}`;
+    const pitchClass = semitoneForNote(note);
+    const octave = Number(match[3]);
+    const pitchValue = (octave + 1) * 12 + pitchClass;
+    if (pitchClass < 0 || pitchValue < 47 || pitchValue > 94) return null;
+    return {
+      token,
+      pitch: token,
+      pitchValue,
+      direction: "auto",
+      octaveShift: 0
+    };
+  }
+
+  function normalizeChordSymbol(value) {
+    const raw = String(value || "").trim().replace(/♯/g, "#").replace(/♭/g, "b");
+    if (!raw || !SUPPORTED_CHORD_PATTERN.test(raw)) return "";
+    return raw.replace(/^([a-g])/, (root) => root.toUpperCase()).replace(/\/([a-g])/, (_match, root) => `/${root.toUpperCase()}`);
+  }
+
+  function isSupportedChordSymbol(value) {
+    return Boolean(normalizeChordSymbol(value));
   }
 
   function noteAtFret(stringNumber, fret) {
@@ -166,7 +203,7 @@
 
   function phraseItem(value) {
     if (value && typeof value === "object") return { direction: "auto", octaveShift: 0, ...value };
-    return { token: normalizeToken(value), direction: "auto", octaveShift: 0 };
+    return scientificPitchItem(value) || { token: normalizeToken(value), direction: "auto", octaveShift: 0 };
   }
 
   function phraseItemLabel(value) {
@@ -192,7 +229,9 @@
     (items || []).forEach((raw) => {
       const item = phraseItem(raw);
       let basePitch;
-      if (Number.isInteger(item.string) && Number.isInteger(item.fret)) {
+      if (Number.isFinite(Number(item.pitchValue))) {
+        basePitch = Number(item.pitchValue);
+      } else if (Number.isInteger(item.string) && Number.isInteger(item.fret)) {
         const changeDelta = (item.changes || []).reduce((sum, change) => sum + (E9_CHANGE_DELTAS[String(change).toUpperCase()]?.[item.string] || 0), 0);
         basePitch = (E9_OPEN_PITCHES[item.string] ?? 64) + item.fret + changeDelta;
       } else {
@@ -219,7 +258,7 @@
     if (tabNotes.length) return tabNotes;
     return String(value || "")
       .split(/[\s,|]+/)
-      .map(normalizeToken)
+      .map((token) => scientificPitchItem(token) || normalizeToken(token))
       .filter(Boolean);
   }
 
@@ -360,7 +399,7 @@
       showSourceDetails: safeKind === "artist_solo_lesson" || safeKind === "song_arrangement_lesson",
       pendingReplacement: "",
       key: "G",
-      paletteMode: "degrees",
+      paletteMode: "notes",
       tokens: [],
       contourMode: "closest_playable",
       voiceMode: "mixed",
@@ -1102,9 +1141,35 @@
 
   function preferredStudioRoute(exercise, preferredHarmonyType = "") {
     const routes = exercise?.routes || [];
+    const keyHarmonyRoutes = routes.filter((route) => ["thirds", "sixths"].includes(route.harmonyType));
+    keyHarmonyRoutes.sort((left, right) => {
+      const leftSummary = left.pathSummary || {};
+      const rightSummary = right.pathSummary || {};
+      const leftCost = [
+        Number(leftSummary.totalBarTravel || 0),
+        Number(leftSummary.harmonicFamilyChanges || 0),
+        Number(leftSummary.stringGroupChanges || 0),
+        Number(leftSummary.pedalFamilyChanges || 0),
+        Number(leftSummary.maxBarTravel || 0),
+        left.harmonyType === "thirds" ? 0 : 1
+      ];
+      const rightCost = [
+        Number(rightSummary.totalBarTravel || 0),
+        Number(rightSummary.harmonicFamilyChanges || 0),
+        Number(rightSummary.stringGroupChanges || 0),
+        Number(rightSummary.pedalFamilyChanges || 0),
+        Number(rightSummary.maxBarTravel || 0),
+        right.harmonyType === "thirds" ? 0 : 1
+      ];
+      for (let index = 0; index < leftCost.length; index += 1) {
+        if (leftCost[index] !== rightCost[index]) return leftCost[index] - rightCost[index];
+      }
+      return String(left.id || "").localeCompare(String(right.id || ""));
+    });
     return routes.find((route) => route.harmonyType === preferredHarmonyType)
-      || routes.find((route) => route.id === exercise?.selectedRouteId)
       || routes.find((route) => route.harmonyType === "chord_aware_harmony")
+      || keyHarmonyRoutes[0]
+      || routes.find((route) => route.id === exercise?.selectedRouteId)
       || routes.find((route) => route.harmonyType === "mixed_arrangement")
       || routes[0]
       || null;
@@ -1147,12 +1212,16 @@
     createInitialState,
     startingPointForKind,
     entryChoicePresentation,
+    scientificPitchItem,
+    normalizeChordSymbol,
+    isSupportedChordSymbol,
     parsePhraseInput,
     parseSimpleTab,
     parseSimpleTabEvents,
     parsePhraseEvents,
     mergePhraseEdits,
     resolvePhrasePreview,
+    activePhraseChord,
     noteAtFret,
     sectionCount,
     validateTokens,
@@ -1279,6 +1348,12 @@
     contour: $("#studio-contour"),
     phraseInput: $("#studio-phrase-input"),
     sequence: $("#studio-sequence"),
+    phraseChordLane: $("#studio-phrase-chord-lane"),
+    phraseChordSelection: $("#studio-phrase-chord-selection"),
+    phraseChord: $("#studio-phrase-chord"),
+    phraseChordError: $("#studio-phrase-chord-error"),
+    phraseChordMarkers: $("#studio-phrase-chord-markers"),
+    phraseChordRemove: $("#studio-phrase-chord-remove"),
     noteEditor: $("#studio-note-editor"),
     selectedNote: $("#studio-selected-note"),
     selectedPitch: $("#studio-selected-pitch"),
@@ -1294,6 +1369,7 @@
     presets: $("#studio-presets"),
     useExercise: $("#studio-use-exercise"),
     addRecording: $("#studio-add-recording"),
+    openStaff: $("#studio-open-staff"),
     paletteModeButtons: Array.from(doc.querySelectorAll("[data-palette-mode]")),
     presetButtons: Array.from(doc.querySelectorAll("[data-preset]")),
     error: $("#studio-error"),
@@ -1499,13 +1575,49 @@
   }
 
   function mergePhraseEdits(parsed, previous) {
-    return (parsed || []).map((item, index) => {
-      const prior = phraseItem(previous?.[index]);
+    const incoming = (parsed || []).map(phraseItem);
+    const existing = (previous || []).map(phraseItem);
+    const rows = existing.length + 1;
+    const columns = incoming.length + 1;
+    const lengths = Array.from({ length: rows }, () => Array(columns).fill(0));
+    for (let left = existing.length - 1; left >= 0; left -= 1) {
+      for (let right = incoming.length - 1; right >= 0; right -= 1) {
+        lengths[left][right] = phraseItemLabel(existing[left]) === phraseItemLabel(incoming[right])
+          ? lengths[left + 1][right + 1] + 1
+          : Math.max(lengths[left + 1][right], lengths[left][right + 1]);
+      }
+    }
+    const matched = new Map();
+    let left = 0;
+    let right = 0;
+    while (left < existing.length && right < incoming.length) {
+      if (phraseItemLabel(existing[left]) === phraseItemLabel(incoming[right])) {
+        matched.set(right, existing[left]);
+        left += 1;
+        right += 1;
+      } else if (lengths[left + 1][right] >= lengths[left][right + 1]) {
+        left += 1;
+      } else {
+        right += 1;
+      }
+    }
+    return incoming.map((item, index) => {
+      if (item.id) {
+        return {
+          ...item,
+          direction: item.direction || "auto",
+          octaveShift: item.octaveShift || 0,
+          ...(item.chord ? { chordBasis: item.chordBasis || "user" } : {})
+        };
+      }
+      const prior = matched.get(index);
       return {
         ...item,
-        direction: prior.direction || item.direction || "auto",
-        octaveShift: prior.octaveShift || item.octaveShift || 0,
-        ...(prior.chord ? { chord: prior.chord } : {})
+        id: prior?.id || item.id || nextPhraseEventId(),
+        direction: prior?.direction || item.direction || "auto",
+        octaveShift: prior?.octaveShift || item.octaveShift || 0,
+        ...(prior?.chord ? { chord: prior.chord, chordBasis: prior.chordBasis || "user" } : {}),
+        ...(prior?.chordDraft ? { chordDraft: prior.chordDraft } : {})
       };
     });
   }
@@ -1528,7 +1640,7 @@
   }
 
   function setTokens(tokens) {
-    state.tokens = (tokens || []).map(phraseItem).filter((item) => phraseItemLabel(item));
+    state.tokens = mergePhraseEdits((tokens || []).map(phraseItem).filter((item) => phraseItemLabel(item)), state.tokens);
     state.selectedPhraseIndex = Math.max(0, Math.min(state.selectedPhraseIndex || 0, state.tokens.length - 1));
     elements.phraseInput.value = state.tokens.some((item) => Number.isInteger(item.string))
       ? state.tokens.map(phraseItemLabel).join("\n")
@@ -1556,6 +1668,76 @@
     });
   }
 
+  function activePhraseChord(tokens, index) {
+    let active = "";
+    for (let cursor = 0; cursor <= index && cursor < (tokens || []).length; cursor += 1) {
+      const chord = normalizeChordSymbol(tokens[cursor]?.chord);
+      if (chord) active = chord;
+    }
+    return active;
+  }
+
+  function renderPhraseChordLane() {
+    const selected = state.tokens[state.selectedPhraseIndex];
+    const activeChord = selected ? activePhraseChord(state.tokens, state.selectedPhraseIndex) : "";
+    elements.phraseChord.disabled = !selected;
+    elements.phraseChord.value = selected?.chordDraft ?? selected?.chord ?? "";
+    const invalidDraft = String(selected?.chordDraft || "").trim();
+    elements.phraseChord.setAttribute("aria-invalid", String(Boolean(invalidDraft)));
+    elements.phraseChordError.hidden = !invalidDraft;
+    elements.phraseChordError.textContent = invalidDraft
+      ? "Use a supported chord such as G, Cm, D7, Fmaj7, Asus4, or C/E."
+      : "";
+    elements.phraseChordSelection.textContent = selected
+      ? `Note ${state.selectedPhraseIndex + 1}${activeChord ? ` · playing over ${activeChord}` : ""}`
+      : "Select a melody note";
+    elements.phraseChordRemove.hidden = !selected?.chord;
+    elements.phraseChordMarkers.replaceChildren();
+    state.tokens.forEach((event, index) => {
+      const chord = normalizeChordSymbol(event.chord);
+      if (!chord) return;
+      const marker = doc.createElement("button");
+      marker.type = "button";
+      marker.className = "phrase-chord-marker";
+      marker.classList.toggle("is-selected", index === state.selectedPhraseIndex);
+      marker.textContent = `${chord} · note ${index + 1}`;
+      marker.setAttribute("aria-label", `Select ${chord} chord change at note ${index + 1}`);
+      marker.addEventListener("click", () => {
+        state.selectedPhraseIndex = index;
+        renderPhraseBuilder();
+        elements.phraseChord.focus();
+      });
+      elements.phraseChordMarkers.appendChild(marker);
+    });
+    if (!elements.phraseChordMarkers.childElementCount) {
+      const empty = doc.createElement("span");
+      empty.className = "field-help";
+      empty.textContent = "No chord markers yet.";
+      elements.phraseChordMarkers.appendChild(empty);
+    }
+  }
+
+  function refreshPhraseChipChordContext() {
+    const previews = resolvePhrasePreview(state.tokens, state.key, state.contourMode);
+    elements.sequence.querySelectorAll(".sequence-chip").forEach((chip, index) => {
+      const event = phraseItem(state.tokens[index]);
+      const activeChord = activePhraseChord(state.tokens, index);
+      chip.classList.toggle("has-chord-change", Boolean(event.chord));
+      chip.setAttribute(
+        "aria-label",
+        `Select ${phraseItemLabel(event)}, ${previews[index]?.pitch || "unresolved pitch"}${activeChord ? `, over ${activeChord}` : ""}`
+      );
+      const existingBadge = chip.querySelector(".sequence-chord");
+      if (existingBadge) existingBadge.remove();
+      if (event.chord) {
+        const badge = doc.createElement("span");
+        badge.className = "sequence-chord";
+        badge.textContent = normalizeChordSymbol(event.chord);
+        chip.appendChild(badge);
+      }
+    });
+  }
+
   function renderPhraseBuilder() {
     elements.sequence.replaceChildren();
     if (!state.tokens.length) {
@@ -1568,12 +1750,14 @@
     state.tokens.forEach((raw, index) => {
       const token = phraseItem(raw);
       const tokenLabel = phraseItemLabel(token);
+      const activeChord = activePhraseChord(state.tokens, index);
       const chip = doc.createElement("button");
       chip.type = "button";
       chip.className = "sequence-chip";
       chip.classList.toggle("is-selected", index === state.selectedPhraseIndex);
+      chip.classList.toggle("has-chord-change", Boolean(token.chord));
       chip.setAttribute("aria-pressed", String(index === state.selectedPhraseIndex));
-      chip.setAttribute("aria-label", `Select ${tokenLabel}, ${previews[index]?.pitch || "unresolved pitch"}`);
+      chip.setAttribute("aria-label", `Select ${tokenLabel}, ${previews[index]?.pitch || "unresolved pitch"}${activeChord ? `, over ${activeChord}` : ""}`);
       chip.dataset.sequenceIndex = String(index);
       const label = doc.createElement("strong");
       label.textContent = tokenLabel;
@@ -1585,8 +1769,15 @@
         renderPhraseBuilder();
       });
       chip.append(label, pitch);
+      if (token.chord) {
+        const chord = doc.createElement("span");
+        chord.className = "sequence-chord";
+        chord.textContent = normalizeChordSymbol(token.chord);
+        chip.appendChild(chord);
+      }
       elements.sequence.appendChild(chip);
     });
+    renderPhraseChordLane();
     const selected = state.tokens[state.selectedPhraseIndex];
     elements.noteEditor.hidden = !selected;
     if (selected) {
@@ -1972,6 +2163,51 @@
     if (imageUrl) state.sourceImageUrl = imageUrl;
     renderStartingPoint();
     renderScoreBuilder();
+  }
+
+  function scoreDraftFromPhrase(tokens = state.tokens) {
+    const previews = resolvePhrasePreview(tokens, state.key, state.contourMode);
+    const draft = scoreUi.createDraft({
+      key: state.key,
+      title: "Typed melody",
+      sourceType: "manual_phrase",
+      rightsLabel: "user_provided"
+    });
+    draft.score.melody = previews.map((event, index) => ({
+      id: tokens[index]?.id || `typed-note-${index + 1}`,
+      measure: Math.floor(index / 4) + 1,
+      beat: index % 4 + 1,
+      durationBeats: 1,
+      pitch: event.pitch,
+      pitchValue: event.pitchValue,
+      origin: "user_edit",
+      tie: "",
+      lyric: "",
+      articulation: ""
+    }));
+    draft.score.harmony = tokens.flatMap((event, index) => {
+      const chord = normalizeChordSymbol(event.chord);
+      return chord
+        ? [{
+            measure: Math.floor(index / 4) + 1,
+            beat: index % 4 + 1,
+            symbol: chord,
+            basis: "user",
+            confidence: 1
+          }]
+        : [];
+    });
+    return draft;
+  }
+
+  function openPhraseInStaffEditor() {
+    syncStateFromFields();
+    const validation = validateTokens(state.tokens, state.key);
+    if (!validation.ok) return showError(validation.message);
+    const invalidChord = state.tokens.find((event) => event.chordDraft);
+    if (invalidChord) return showError("Correct the unsupported chord symbol before opening the Staff Editor.");
+    showError("");
+    hydrateScoreDraft(scoreDraftFromPhrase());
   }
 
   function scoreDraftFromExercise(exercise) {
@@ -3147,6 +3383,9 @@
     if (!task) return fail("Choose what you want to learn first.");
     const validation = validateTokens(state.tokens, state.key);
     if (!validation.ok && (!task.needsMaterial || state.tokens.length)) return fail(validation.message);
+    if (state.tokens.some((event) => event.chordDraft)) {
+      return fail("Correct the unsupported chord symbol before arranging.");
+    }
     if (state.sourceUrl) {
       try {
         const url = new URL(state.sourceUrl);
@@ -3477,10 +3716,44 @@
   elements.voiceMode.addEventListener("change", rebuildArrangementPolicy);
   elements.movementMode.addEventListener("change", rebuildArrangementPolicy);
   elements.phraseInput.addEventListener("input", () => {
-    state.tokens = parsePhraseEvents(elements.phraseInput.value);
+    state.tokens = mergePhraseEdits(parsePhraseEvents(elements.phraseInput.value), state.tokens);
+    state.selectedPhraseIndex = Math.max(0, Math.min(state.selectedPhraseIndex, state.tokens.length - 1));
     renderPhraseBuilder();
     renderStartingPoint();
   });
+  elements.phraseChord.addEventListener("input", () => {
+    const selected = state.tokens[state.selectedPhraseIndex];
+    if (!selected) return;
+    const raw = elements.phraseChord.value.trim();
+    const next = { ...selected };
+    delete next.chord;
+    delete next.chordBasis;
+    delete next.chordDraft;
+    if (raw) {
+      const chord = normalizeChordSymbol(raw);
+      if (chord) {
+        next.chord = chord;
+        next.chordBasis = "user";
+      } else {
+        next.chordDraft = raw;
+      }
+    }
+    state.tokens[state.selectedPhraseIndex] = next;
+    renderPhraseChordLane();
+    refreshPhraseChipChordContext();
+  });
+  elements.phraseChordRemove.addEventListener("click", () => {
+    const selected = state.tokens[state.selectedPhraseIndex];
+    if (!selected) return;
+    const next = { ...selected };
+    delete next.chord;
+    delete next.chordBasis;
+    delete next.chordDraft;
+    state.tokens[state.selectedPhraseIndex] = next;
+    renderPhraseBuilder();
+    elements.phraseChord.focus();
+  });
+  elements.openStaff.addEventListener("click", openPhraseInStaffEditor);
   elements.paletteModeButtons.forEach((button) => button.addEventListener("click", () => {
     state.paletteMode = button.dataset.paletteMode;
     renderPalette();
