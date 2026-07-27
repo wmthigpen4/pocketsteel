@@ -258,10 +258,30 @@ def _recommended_route(
 ) -> dict[str, Any]:
     preferred_types = {
         "single": ("single_note",),
-        "two_voice": ("automatic_harmony", "thirds", "sixths"),
+        "two_voice": (
+            "chord_aware_harmony",
+            "automatic_harmony",
+            "thirds",
+            "sixths",
+        ),
         "three_voice": ("chord_melody",),
-        "mixed": ("mixed_arrangement",),
+        "mixed": ("chord_aware_harmony", "mixed_arrangement"),
     }[preferences.voice_mode]
+    if (
+        preferences.movement_mode == "best_fit"
+        and preferences.voice_mode in {"two_voice", "mixed"}
+    ):
+        chord_aware = next(
+            (
+                route
+                for route in routes
+                if route.get("harmonyType") == "chord_aware_harmony"
+                and route.get("recommended")
+            ),
+            None,
+        )
+        if chord_aware is not None:
+            return chord_aware
     for engine_mode in ("private_learned_beta",):
         match = next(
             (
@@ -337,7 +357,8 @@ def build_arrangement_contract(
         _route_voice_mode(recommended) == preferences.voice_mode
         or (
             preferences.voice_mode == "mixed"
-            and recommended.get("harmonyType") == "mixed_arrangement"
+            and recommended.get("harmonyType")
+            in {"mixed_arrangement", "chord_aware_harmony"}
         )
     )
     for route in unique_routes:
@@ -366,6 +387,8 @@ def build_arrangement_contract(
             "routeId": route["id"],
             "label": route["label"],
             "voiceMode": route["voiceMode"],
+            "harmonyType": route.get("harmonyType"),
+            "harmonyBasis": route.get("harmonyBasis"),
             "movementTypes": list(route["movementTypes"]),
             "recommended": bool(route["recommended"]),
             "differenceReasons": list(route["materialDifferenceReasons"]),

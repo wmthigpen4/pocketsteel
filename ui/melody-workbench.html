@@ -152,7 +152,7 @@
     #studio-score-panel.is-review-only #studio-score-status,
     #studio-score-panel.is-review-only #studio-score-event-editor,
     #studio-score-panel.is-review-only #studio-score-tools { display: none; }
-    .score-quick-edit { max-width: 280px; margin-top: 14px; }
+    .score-quick-edit { display: grid; grid-template-columns: repeat(2, minmax(0, 280px)); align-items: end; gap: 12px; margin-top: 14px; }
     .audio-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .audio-choice > * { border: 1px solid rgba(244, 234, 214, 0.12); border-radius: 14px; background: rgba(5, 7, 7, 0.28); padding: 14px; }
     .audio-file-controls { margin-top: 12px; }
@@ -164,6 +164,11 @@
     .score-toolbar, .score-actions, .capture-actions, .recording-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
     .score-toolbar .field { min-width: 120px; }
     .score-canvas { max-width: 100%; overflow: hidden; border: 1px solid rgba(244, 234, 214, 0.13); border-radius: 14px; background: #fbf3df; color: #1b1710; padding: 8px; }
+    .score-chord-lane { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; border: 1px solid rgba(240, 191, 105, 0.2); border-radius: 12px; background: rgba(240, 191, 105, 0.055); padding: 10px; }
+    .score-chord-lane > strong { margin-right: 4px; color: var(--gold); }
+    .score-chord-change { border: 1px solid rgba(240, 191, 105, 0.3); border-radius: 999px; background: rgba(240, 191, 105, 0.09); color: var(--cream); padding: 6px 10px; cursor: pointer; font-weight: 800; }
+    .score-chord-change small { margin-left: 5px; color: var(--muted); font-weight: 650; }
+    .score-chord-lane__empty { color: var(--muted); font-size: 13px; }
     .score-svg { display: block; min-width: 0; width: 100%; height: auto; }
     .score-stage { display: grid; gap: 8px; }
     .score-lyric-cue { position: sticky; top: 8px; z-index: 3; width: fit-content; max-width: calc(100% - 24px); margin: 0 12px -44px auto; border: 1px solid rgba(240, 191, 105, 0.4); border-radius: 999px; background: rgba(18, 15, 10, 0.93); color: var(--cream); padding: 8px 13px; font-size: 13px; font-weight: 800; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28); }
@@ -775,6 +780,7 @@
           </div></details>
           <div class="score-keyboard" id="studio-score-keyboard" aria-label="Score note keyboard"></div>
           <div class="score-canvas" id="studio-score-canvas" aria-label="Editable melody staff"></div>
+          <div class="score-chord-lane" id="studio-score-chord-lane" aria-label="Editable chord timeline"></div>
           <div class="score-selection-bar" id="studio-score-selection" hidden aria-live="polite">
             <strong id="studio-score-selection-summary">Selected note</strong>
             <div class="score-selection-bar__actions">
@@ -787,6 +793,7 @@
           <div class="score-event-editor" id="studio-score-event-editor" hidden>
             <div class="score-quick-edit">
               <label class="field">Pitch<input id="studio-score-pitch" placeholder="G4"></label>
+              <label class="field">Chord from this beat<input id="studio-score-chord" placeholder="G, D7, Em..."></label>
               <div class="score-actions" aria-label="Quick pitch corrections">
                 <button class="secondary-action" type="button" id="studio-score-pitch-down">Pitch −1</button>
                 <button class="secondary-action" type="button" id="studio-score-pitch-up">Pitch +1</button>
@@ -796,7 +803,6 @@
             </div>
             <p class="field-help" id="studio-score-confidence" aria-live="polite"></p>
             <details class="progressive-panel" id="studio-selected-note-details"><summary>Selected note details</summary><div class="progressive-panel__body field-grid">
-              <label class="field">Chord at this beat<input id="studio-score-chord" placeholder="G, D7, Em..."></label>
               <label class="field">Note length<select id="studio-event-duration"><option value="0.5">Eighth</option><option value="1">Quarter</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></label>
               <label class="field">Lyric or phrase label<input id="studio-score-lyric" maxlength="80"></label>
               <label class="field">Tie<select id="studio-score-tie"><option value="">None</option><option value="start">Start</option><option value="stop">Stop</option></select></label>
@@ -1070,8 +1076,8 @@
   <script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=printed-score-omr-v3"></script>
+  <script src="melody-score.js?v=chord-aware-harmony-v1"></script>
   <script src="song-projects.js?v=amazing-tablature-product-v1-20260724-2"></script>
-  <script src="melody-workbench.js?v=printed-score-omr-v4"></script>
+  <script src="melody-workbench.js?v=chord-aware-harmony-v1"></script>
 </body>
 </html>

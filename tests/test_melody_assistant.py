@@ -559,7 +559,12 @@ def test_chord_context_is_not_invented_and_ranks_chord_melody_grips() -> None:
     assert result is not None
     exercise = result["melody_exercise"]
     assert [route["harmonyType"] for route in exercise["routes"]] == [
-        "single_note", "mixed_arrangement", "thirds", "sixths", "chord_melody"
+        "single_note",
+        "chord_aware_harmony",
+        "mixed_arrangement",
+        "thirds",
+        "sixths",
+        "chord_melody",
     ]
     assert [event["harmonySymbol"] for event in exercise["events"]] == ["G", "G", "G"]
     chord_route = next(route for route in exercise["routes"] if route["harmonyType"] == "chord_melody")

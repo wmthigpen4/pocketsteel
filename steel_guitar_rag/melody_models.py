@@ -14,6 +14,7 @@ SUPPORTED_TEXTURES = {
     "single_note",
     "mixed_arrangement",
     "automatic_harmony",
+    "chord_aware_harmony",
     "thirds",
     "sixths",
     "chord_melody",
@@ -38,6 +39,7 @@ class MelodyInput:
     tie: str = ""
     lyric: str = ""
     chord: str = ""
+    chord_basis: str = ""
     articulation: str = ""
     source_action: dict[str, object] | None = None
 

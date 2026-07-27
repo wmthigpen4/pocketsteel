@@ -6,6 +6,7 @@ import json
 import subprocess
 import struct
 import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from PIL import Image, ImageDraw
 
 from steel_guitar_rag.melody_import import (
     MelodyImportError,
+    _musicxml_chord_symbol,
     import_score_draft,
     normalize_score_draft,
     parse_midi,
@@ -218,6 +220,42 @@ def test_musicxml_import_preserves_rhythm_chords_and_selects_melody_part() -> No
     assert [event["durationBeats"] for event in draft["score"]["melody"]] == [1.0, 2.0]
     assert draft["score"]["harmony"][0]["symbol"] == "G"
     assert draft["review"]["status"] == "needs_review"
+
+
+@pytest.mark.parametrize(
+    ("kind", "expected"),
+    [
+        ("major", "C"),
+        ("minor", "Cm"),
+        ("dominant", "C7"),
+        ("major-seventh", "Cmaj7"),
+        ("minor-seventh", "Cm7"),
+        ("major-sixth", "C6"),
+        ("minor-sixth", "Cm6"),
+        ("diminished", "Cdim"),
+        ("augmented", "Caug"),
+        ("suspended-second", "Csus2"),
+        ("suspended-fourth", "Csus4"),
+    ],
+)
+def test_musicxml_chord_symbols_cover_supported_harmony_kinds(
+    kind: str,
+    expected: str,
+) -> None:
+    node = ET.fromstring(
+        f"<harmony><root><root-step>C</root-step></root><kind>{kind}</kind></harmony>"
+    )
+
+    assert _musicxml_chord_symbol(node) == expected
+
+
+def test_musicxml_chord_symbol_preserves_slash_bass() -> None:
+    node = ET.fromstring(
+        "<harmony><root><root-step>D</root-step></root><kind>dominant</kind>"
+        "<bass><bass-step>F</bass-step><bass-alter>1</bass-alter></bass></harmony>"
+    )
+
+    assert _musicxml_chord_symbol(node) == "D7/F#"
 
 
 def test_mxl_is_decompressed_in_memory_and_rejects_unsafe_archive() -> None:

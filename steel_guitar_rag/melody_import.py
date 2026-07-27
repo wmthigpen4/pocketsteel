@@ -946,9 +946,32 @@ def _musicxml_chord_symbol(node: ET.Element) -> str:
     alter = int(node.findtext("root/root-alter") or 0)
     accidental = "#" if alter == 1 else "b" if alter == -1 else ""
     kind_node = node.find("kind")
-    kind = (kind_node.attrib.get("text") if kind_node is not None else "") or (kind_node.text if kind_node is not None else "") or ""
-    suffix = {"major": "", "minor": "m", "dominant": "7", "major-seventh": "maj7", "minor-seventh": "m7"}.get(kind, kind)
-    return f"{root}{accidental}{suffix}" if root else ""
+    kind = ((kind_node.text if kind_node is not None else "") or "").strip()
+    display_kind = (
+        (kind_node.attrib.get("text") if kind_node is not None else "") or ""
+    ).strip()
+    suffix = {
+        "major": "",
+        "minor": "m",
+        "dominant": "7",
+        "major-seventh": "maj7",
+        "minor-seventh": "m7",
+        "major-sixth": "6",
+        "minor-sixth": "m6",
+        "diminished": "dim",
+        "diminished-seventh": "dim7",
+        "half-diminished": "m7b5",
+        "augmented": "aug",
+        "suspended-second": "sus2",
+        "suspended-fourth": "sus4",
+    }.get(kind, display_kind or kind)
+    symbol = f"{root}{accidental}{suffix}" if root else ""
+    bass = node.findtext("bass/bass-step") or ""
+    bass_alter = int(node.findtext("bass/bass-alter") or 0)
+    bass_accidental = "#" if bass_alter == 1 else "b" if bass_alter == -1 else ""
+    if symbol and bass:
+        symbol = f"{symbol}/{bass}{bass_accidental}"
+    return symbol
 
 
 def _derived_chord_symbol(pitches: Sequence[int]) -> str:

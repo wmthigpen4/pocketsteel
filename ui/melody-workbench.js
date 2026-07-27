@@ -365,7 +365,7 @@
       contourMode: "closest_playable",
       voiceMode: "mixed",
       movementMode: "best_fit",
-      selectedHarmonyType: "mixed_arrangement",
+      selectedHarmonyType: "",
       sourceCopedentId: "",
       targetCopedentId: "emmons-e9-basic",
       targetCopedent: null,
@@ -1103,8 +1103,9 @@
   function preferredStudioRoute(exercise, preferredHarmonyType = "") {
     const routes = exercise?.routes || [];
     return routes.find((route) => route.harmonyType === preferredHarmonyType)
-      || routes.find((route) => route.harmonyType === "mixed_arrangement")
       || routes.find((route) => route.id === exercise?.selectedRouteId)
+      || routes.find((route) => route.harmonyType === "chord_aware_harmony")
+      || routes.find((route) => route.harmonyType === "mixed_arrangement")
       || routes[0]
       || null;
   }
@@ -1309,6 +1310,7 @@
     scoreRedo: $("#studio-score-redo"),
     scoreKeyboard: $("#studio-score-keyboard"),
     scoreCanvas: $("#studio-score-canvas"),
+    scoreChordLane: $("#studio-score-chord-lane"),
     scoreSelection: $("#studio-score-selection"),
     scoreSelectionSummary: $("#studio-score-selection-summary"),
     scoreDeleteSelected: $("#studio-score-delete-selected"),
@@ -1781,6 +1783,51 @@
     });
   }
 
+  function renderChordLane(draft) {
+    if (!elements.scoreChordLane) return;
+    elements.scoreChordLane.replaceChildren();
+    const heading = doc.createElement("strong");
+    heading.textContent = "Chord timeline";
+    elements.scoreChordLane.appendChild(heading);
+    const harmony = [...(draft?.score?.harmony || [])]
+      .filter((item) => String(item.symbol || "").trim())
+      .sort((left, right) => (
+        Number(left.measure) - Number(right.measure)
+        || Number(left.beat) - Number(right.beat)
+      ));
+    if (!harmony.length) {
+      const empty = doc.createElement("span");
+      empty.className = "score-chord-lane__empty";
+      empty.textContent = "No chords yet. Select a note and enter the chord that begins there; key-only thirds and sixths remain available.";
+      elements.scoreChordLane.appendChild(empty);
+      return;
+    }
+    harmony.forEach((change) => {
+      const button = doc.createElement("button");
+      button.type = "button";
+      button.className = "score-chord-change";
+      const basis = ["source", "user", "confirmed"].includes(String(change.basis || "").toLowerCase())
+        ? String(change.basis).toLowerCase()
+        : "suggested";
+      button.append(doc.createTextNode(String(change.symbol)));
+      const detail = doc.createElement("small");
+      detail.textContent = `m${change.measure} · beat ${change.beat} · ${basis}`;
+      button.appendChild(detail);
+      button.setAttribute(
+        "aria-label",
+        `${change.symbol}, measure ${change.measure}, beat ${change.beat}, ${basis} chord`
+      );
+      button.addEventListener("click", () => {
+        const eventIndex = (draft.score.melody || []).findIndex((event) => (
+          Number(event.measure) === Number(change.measure)
+          && Number(event.beat) === Number(change.beat)
+        ));
+        if (eventIndex >= 0) selectScoreEvent(eventIndex);
+      });
+      elements.scoreChordLane.appendChild(button);
+    });
+  }
+
   function renderScoreBuilder() {
     if (!scoreUi || !elements.scoreCanvas) return;
     const draft = ensureScoreDraft();
@@ -1809,6 +1856,7 @@
     elements.scoreNextFlagged.hidden = !isScannedImport || !flaggedIds.length;
     renderScoreKeyboard();
     scoreUi.render(elements.scoreCanvas, draft, state.scoreSelectedIndex, selectScoreEvent);
+    renderChordLane(draft);
     const event = selectedScoreEvent();
     elements.scoreEventEditor.hidden = !event;
     elements.scoreSelection.hidden = !event;
@@ -2771,7 +2819,9 @@
       card.appendChild(movement);
     }
     elements.eventStrip.appendChild(card);
-    const rationale = activeRoute?.harmonyType === "mixed_arrangement" ? gripRationale(event) : null;
+    const rationale = ["mixed_arrangement", "chord_aware_harmony"].includes(
+      activeRoute?.harmonyType
+    ) ? gripRationale(event) : null;
     elements.gripRationale.hidden = !rationale;
     elements.gripRationale.open = false;
     elements.gripReason.textContent = rationale?.reason || "";
@@ -2972,7 +3022,18 @@
 
   function renderRoutes(exercise) {
     elements.routeTabs.replaceChildren();
-    const routes = exercise?.routes || [];
+    const routeOrder = {
+      chord_aware_harmony: 0,
+      thirds: 1,
+      sixths: 2,
+      chord_melody: 3,
+      single_note: 4,
+      mixed_arrangement: 5,
+      deterministic_comparison: 6
+    };
+    const routes = [...(exercise?.routes || [])].sort((left, right) => (
+      (routeOrder[left.harmonyType] ?? 20) - (routeOrder[right.harmonyType] ?? 20)
+    ));
     elements.arrangementChoices.hidden = !routes.length;
     routes.forEach((route) => {
       const button = doc.createElement("button");
@@ -3394,10 +3455,10 @@
     state.movementMode = elements.movementMode.value || "best_fit";
     state.selectedHarmonyType = {
       single: "single_note",
-      two_voice: "automatic_harmony",
+      two_voice: "",
       three_voice: "chord_melody",
-      mixed: "mixed_arrangement"
-    }[state.voiceMode] || "mixed_arrangement";
+      mixed: ""
+    }[state.voiceMode] || "";
     elements.voiceMode.disabled = true;
     elements.movementMode.disabled = true;
     elements.arrangementPolicySummary.textContent = "Rebuilding validated tab, movement, and alternatives…";

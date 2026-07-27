@@ -31,6 +31,7 @@ from steel_guitar_rag.melody_arranger import (
     _active_chords,
     _add_cost,
     _arrangement_roles,
+    _has_authoritative_chord_track,
     _learned_cost_component,
     _learned_style_for_role,
     _mixed_start_cost,
@@ -41,6 +42,8 @@ from steel_guitar_rag.melody_arranger import (
     _recommendation_for,
     arrange_melody_routes,
     build_route,
+    chord_aware_candidate_groups,
+    choose_chord_aware_path,
     choose_path,
     choose_mixed_path,
     harmony_candidate_groups,
@@ -644,6 +647,24 @@ def arrange_melody_routes_with_private_beta(
         route_specs: list[tuple[str, str, str]] = [
             ("single-note", "single_note", "Faithful melody")
         ]
+        has_chords = bool(any(_active_chords(inputs)))
+        if (
+            _has_authoritative_chord_track(inputs)
+            and selected_texture
+            in {
+                "both",
+                "mixed_arrangement",
+                "automatic_harmony",
+                "chord_aware_harmony",
+            }
+        ):
+            route_specs.append(
+                (
+                    "chord-aware-harmony",
+                    "chord_aware_harmony",
+                    "Chord-aware harmony",
+                )
+            )
         if selected_texture in {"both", "mixed_arrangement"}:
             route_specs.append(
                 ("mixed-arrangement", "mixed_arrangement", "Recommended arrangement")
@@ -657,9 +678,25 @@ def arrange_melody_routes_with_private_beta(
                 )
             )
         if selected_texture in {"both", "thirds"}:
-            route_specs.append(("thirds", "thirds", "Diatonic thirds"))
+            route_specs.append(
+                (
+                    "thirds",
+                    "thirds",
+                    "Harmonized thirds"
+                    if has_chords
+                    else "Key-only harmonized thirds",
+                )
+            )
         if selected_texture in {"both", "sixths"}:
-            route_specs.append(("sixths", "sixths", "Diatonic sixths"))
+            route_specs.append(
+                (
+                    "sixths",
+                    "sixths",
+                    "Harmonized sixths"
+                    if has_chords
+                    else "Key-only harmonized sixths",
+                )
+            )
         if selected_texture in {"both", "chord_melody"}:
             route_specs.append(
                 ("chord-melody", "chord_melody", "Chord melody")
@@ -714,7 +751,25 @@ def arrange_melody_routes_with_private_beta(
                 _active_chords(inputs)
             ):
                 continue
-            if harmony_type == "mixed_arrangement":
+            if harmony_type == "chord_aware_harmony":
+                candidate_groups, chord_roles = chord_aware_candidate_groups(
+                    inputs,
+                    resolved_pitches,
+                    key,
+                    meter=meter,
+                    pickup_beats=pickup_beats,
+                    phrase_starts=phrase_starts,
+                    phrase_ends=phrase_ends,
+                    profile=target_profile,
+                    generic_catalogs=generic_catalogs,
+                )
+                path = choose_chord_aware_path(
+                    candidate_groups,
+                    inputs=inputs,
+                    key=key,
+                    roles=chord_roles,
+                )
+            elif harmony_type == "mixed_arrangement":
                 candidate_groups = mixed_candidate_groups(
                     inputs,
                     resolved_pitches,
@@ -821,12 +876,13 @@ def arrange_melody_routes_with_private_beta(
                 routes.extend((learned, deterministic))
                 continue
 
-            candidate_groups = groups_for(harmony_type)
-            path = (
-                choose_path(candidate_groups, inputs=inputs)
-                if candidate_groups and all(candidate_groups)
-                else []
-            )
+            if harmony_type != "chord_aware_harmony":
+                candidate_groups = groups_for(harmony_type)
+                path = (
+                    choose_path(candidate_groups, inputs=inputs)
+                    if candidate_groups and all(candidate_groups)
+                    else []
+                )
             if not path:
                 continue
             routes.append(
@@ -842,7 +898,11 @@ def arrange_melody_routes_with_private_beta(
                     key=key,
                     title=f"{title} — {label}",
                     recommended=harmony_type
-                    in {"mixed_arrangement", "automatic_harmony"},
+                    in {
+                        "chord_aware_harmony",
+                        "mixed_arrangement",
+                        "automatic_harmony",
+                    },
                     meter=meter,
                     pickup_beats=pickup_beats,
                     phrase_starts=phrase_starts,
@@ -888,6 +948,7 @@ def arrange_melody_routes_with_private_beta(
                 "tie": item.tie,
                 "lyric": item.lyric,
                 "chord": item.chord,
+                "chordBasis": item.chord_basis,
                 "articulation": item.articulation,
                 **(
                     {"sourceAction": item.source_action}

@@ -119,15 +119,42 @@ def arrange_melody_routes(
     if not single_path:
         raise ValueError("The melody does not have a mechanically valid standard-E9 path.")
 
+    has_chords = bool(any(_active_chords(inputs)))
+    has_authoritative_chords = _has_authoritative_chord_track(inputs)
     route_specs: list[tuple[str, str, str]] = [("single-note", "single_note", "Faithful melody")]
+    if (
+        has_authoritative_chords
+        and selected_texture
+        in {
+            "both",
+            "mixed_arrangement",
+            "automatic_harmony",
+            "chord_aware_harmony",
+        }
+    ):
+        route_specs.append(
+            ("chord-aware-harmony", "chord_aware_harmony", "Chord-aware harmony")
+        )
     if selected_texture in {"both", "mixed_arrangement"}:
         route_specs.append(("mixed-arrangement", "mixed_arrangement", "Recommended arrangement"))
     if selected_texture == "automatic_harmony":
         route_specs.append(("recommended-harmony", "automatic_harmony", "Recommended harmony"))
     if selected_texture in {"both", "thirds"}:
-        route_specs.append(("thirds", "thirds", "Diatonic thirds"))
+        route_specs.append(
+            (
+                "thirds",
+                "thirds",
+                "Harmonized thirds" if has_chords else "Key-only harmonized thirds",
+            )
+        )
     if selected_texture in {"both", "sixths"}:
-        route_specs.append(("sixths", "sixths", "Diatonic sixths"))
+        route_specs.append(
+            (
+                "sixths",
+                "sixths",
+                "Harmonized sixths" if has_chords else "Key-only harmonized sixths",
+            )
+        )
     if selected_texture in {"both", "chord_melody"}:
         route_specs.append(("chord-melody", "chord_melody", "Chord melody"))
 
@@ -175,7 +202,25 @@ def arrange_melody_routes(
     for suffix, harmony_type, label in route_specs[1:]:
         if harmony_type == "chord_melody" and not any(_active_chords(inputs)):
             continue
-        if harmony_type == "mixed_arrangement":
+        if harmony_type == "chord_aware_harmony":
+            candidate_groups, chord_roles = chord_aware_candidate_groups(
+                inputs,
+                resolved_pitches,
+                key,
+                meter=meter,
+                pickup_beats=pickup_beats,
+                phrase_starts=phrase_starts,
+                phrase_ends=phrase_ends,
+                profile=target_profile,
+                generic_catalogs=generic_catalogs,
+            )
+            path = choose_chord_aware_path(
+                candidate_groups,
+                inputs=inputs,
+                key=key,
+                roles=chord_roles,
+            )
+        elif harmony_type == "mixed_arrangement":
             candidate_groups = mixed_candidate_groups(
                 inputs,
                 resolved_pitches,
@@ -220,7 +265,12 @@ def arrange_melody_routes(
                 candidate_groups=candidate_groups,
                 key=key,
                 title=f"{title} — {label}",
-                recommended=harmony_type in {"mixed_arrangement", "automatic_harmony"},
+                recommended=harmony_type
+                in {
+                    "chord_aware_harmony",
+                    "mixed_arrangement",
+                    "automatic_harmony",
+                },
                 meter=meter,
                 pickup_beats=pickup_beats,
                 phrase_starts=phrase_starts,
@@ -254,6 +304,7 @@ def arrange_melody_routes(
             "tie": item.tie,
             "lyric": item.lyric,
             "chord": item.chord,
+            "chordBasis": item.chord_basis,
             "articulation": item.articulation,
             **({"sourceAction": item.source_action} if item.source_action else {}),
         }
@@ -328,6 +379,11 @@ def parse_melody_inputs(
                 tie=str(record.get("tie") or "")[:20],
                 lyric=str(record.get("lyric") or record.get("phraseLabel") or "")[:80],
                 chord=str(record.get("chord") or "")[:24],
+                chord_basis=str(
+                    record.get("chordBasis")
+                    or record.get("chord_basis")
+                    or ("user" if record.get("chord") else "")
+                )[:20],
                 articulation=str(record.get("articulation") or "")[:20],
                 source_action=source_action,
             )
@@ -622,7 +678,12 @@ def _generic_harmony_catalog(
         )
     )
     candidates: list[PositionCandidate] = []
-    for controls in candidate_control_states(profile):
+    control_states = (
+        _CONTROL_STATES
+        if profile.id == DEFAULT_COPEDENT_ID
+        else candidate_control_states(profile)
+    )
+    for controls in control_states:
         for grip in grips:
             if controls and not any(
                 control_affects_string(profile, control, string)
@@ -672,6 +733,380 @@ def _generic_harmony_catalog(
                     )
                 )
     return _dedupe_candidates(candidates)
+
+
+_STRUCTURAL_HARMONY_ROLES = {
+    "chord_arrival",
+    "resolution",
+    "cadence",
+    "sustained_note",
+}
+_AUTHORITATIVE_CHORD_BASES = {"source", "user", "confirmed"}
+
+
+def _active_chord_bases(inputs: Sequence[MelodyInput]) -> list[str]:
+    active = ""
+    result: list[str] = []
+    for item in inputs:
+        if item.chord:
+            active = item.chord_basis or "user"
+        result.append(active)
+    return result
+
+
+def _has_authoritative_chord_track(inputs: Sequence[MelodyInput]) -> bool:
+    changes = [
+        (item.chord, item.chord_basis or "user")
+        for item in inputs
+        if item.chord
+    ]
+    return bool(changes) and all(
+        basis in _AUTHORITATIVE_CHORD_BASES for _chord, basis in changes
+    )
+
+
+def _supporting_pitch_values(candidate: PositionCandidate) -> tuple[int, ...]:
+    if not candidate.voice_pitches:
+        return ()
+    return tuple(
+        pitch
+        for pitch in candidate.voice_pitches
+        if pitch != candidate.top_pitch
+    )
+
+
+def _supporting_harmony_is_in_chord(
+    candidate: PositionCandidate,
+    chord: str,
+) -> bool:
+    tones = _chord_pitch_classes(chord)
+    if not tones or len(candidate.notes) < 2:
+        return False
+    top_index = max(
+        range(len(candidate.voice_pitches)),
+        key=lambda index: candidate.voice_pitches[index],
+    )
+    return all(
+        _pitch_class(note_name) in tones
+        for index, note_name in enumerate(candidate.note_names)
+        if index != top_index
+    )
+
+
+def _harmony_interval_family(candidate: PositionCandidate) -> str:
+    supporting = _supporting_pitch_values(candidate)
+    if not supporting:
+        return "single"
+    distance = candidate.top_pitch - max(supporting)
+    if distance in {3, 4}:
+        return "third"
+    if distance in {8, 9}:
+        return "sixth"
+    return "chord"
+
+
+def chord_aware_candidate_groups(
+    inputs: Sequence[MelodyInput],
+    resolved_pitches: Sequence[int],
+    key: str,
+    *,
+    meter: str = "4/4",
+    pickup_beats: float = 0.0,
+    phrase_starts: set[int] | None = None,
+    phrase_ends: set[int] | None = None,
+    profile: E9CopedentProfile | None = None,
+    generic_catalogs: dict[str, list[PositionCandidate]] | None = None,
+) -> tuple[list[list[PositionCandidate]], list[str]]:
+    """Build dyad groups that use chords at anchors and scale motion between them."""
+
+    profile = profile or EMMONS_E9
+    if not _has_authoritative_chord_track(inputs):
+        return [], []
+    active_chords = _active_chords(inputs)
+    roles = _arrangement_roles(
+        inputs,
+        active_chords,
+        meter=meter,
+        pickup_beats=pickup_beats,
+        phrase_starts=phrase_starts or {0},
+        phrase_ends=phrase_ends or {len(inputs) - 1},
+    )
+    thirds = harmony_candidate_groups(
+        inputs,
+        resolved_pitches,
+        key,
+        "thirds",
+        profile=profile,
+        generic_catalogs=generic_catalogs,
+    )
+    sixths = harmony_candidate_groups(
+        inputs,
+        resolved_pitches,
+        key,
+        "sixths",
+        profile=profile,
+        generic_catalogs=generic_catalogs,
+    )
+    preferred_families: list[str] = []
+    selected_family = ""
+    previous_chord = ""
+    home_fret = _major_open_fret(key)
+    for index, chord in enumerate(active_chords):
+        if chord and chord != previous_chord:
+            family_options: list[tuple[tuple[int, ...], str]] = []
+            for family, family_group in (
+                ("third", thirds[index]),
+                ("sixth", sixths[index]),
+            ):
+                fitting = [
+                    candidate
+                    for candidate in family_group
+                    if _supporting_harmony_is_in_chord(candidate, chord)
+                ]
+                if fitting:
+                    best = min(
+                        fitting,
+                        key=lambda candidate: (
+                            abs(candidate.fret - home_fret),
+                            len(candidate.controls),
+                            candidate.fret,
+                            tuple(note.string for note in candidate.notes),
+                        ),
+                    )
+                    family_options.append(
+                        (
+                            (
+                                abs(best.fret - home_fret),
+                                len(best.controls),
+                                best.fret,
+                            ),
+                            family,
+                        )
+                    )
+            if family_options:
+                selected_family = min(family_options)[1]
+        preferred_families.append(selected_family)
+        if chord:
+            previous_chord = chord
+    catalogs = generic_catalogs if generic_catalogs is not None else {}
+    catalog_key = f"{key}:dyad"
+    catalog = catalogs.get(catalog_key)
+    if catalog is None:
+        catalog = _generic_harmony_catalog(
+            key,
+            chord_melody=False,
+            profile=profile,
+        )
+        catalogs[catalog_key] = catalog
+
+    groups: list[list[PositionCandidate]] = []
+    for index, (item, target_pitch, chord, role) in enumerate(
+        zip(inputs, resolved_pitches, active_chords, roles)
+    ):
+        scale_candidates = [
+            *thirds[index],
+            *sixths[index],
+        ]
+        preferred_family = preferred_families[index]
+        preferred_scale_candidates = [
+            candidate
+            for candidate in scale_candidates
+            if not preferred_family
+            or _harmony_interval_family(candidate) == preferred_family
+        ]
+        chord_candidates = [
+            candidate
+            for candidate in catalog
+            if candidate.top_pitch == target_pitch
+            and len(candidate.notes) == 2
+            and _supporting_harmony_is_in_chord(candidate, chord)
+        ]
+        if role in _STRUCTURAL_HARMONY_ROLES:
+            structural_pool = (
+                [*preferred_scale_candidates, *chord_candidates]
+                if role == "cadence"
+                else [
+                    candidate
+                    for candidate in [
+                        *preferred_scale_candidates,
+                        *chord_candidates,
+                    ]
+                    if not preferred_family
+                    or _harmony_interval_family(candidate) == preferred_family
+                ]
+            )
+            candidates = [
+                candidate
+                for candidate in _dedupe_candidates(structural_pool)
+                if _supporting_harmony_is_in_chord(candidate, chord)
+            ]
+        else:
+            candidates = _dedupe_candidates(preferred_scale_candidates)
+            if not candidates:
+                candidates = _dedupe_candidates(chord_candidates)
+        if not candidates:
+            candidates = single_note_candidates(item, target_pitch, profile=profile)
+        groups.append(candidates)
+    return groups, roles
+
+
+def choose_chord_aware_path(
+    candidate_groups: Sequence[Sequence[PositionCandidate]],
+    *,
+    inputs: Sequence[MelodyInput],
+    key: str,
+    roles: Sequence[str],
+) -> list[PositionCandidate]:
+    """Choose a connected harmonic-scale line with chord-correct anchors."""
+
+    if not candidate_groups or any(not group for group in candidate_groups):
+        return []
+    active_chords = _active_chords(inputs)
+    home_fret = _major_open_fret(key)
+
+    def chord_pedal_position(chord: str) -> int | None:
+        match = re.match(r"^\s*([A-Ga-g])([#b]?)", chord)
+        if not match:
+            return None
+        root = f"{match.group(1).upper()}{match.group(2)}"
+        return (_pitch_class(root) - _pitch_class("A")) % 12
+
+    def chord_open_position(chord: str) -> int | None:
+        match = re.match(r"^\s*([A-Ga-g])([#b]?)", chord)
+        if not match:
+            return None
+        root = f"{match.group(1).upper()}{match.group(2)}"
+        return _major_open_fret(root)
+
+    def structural_penalty(
+        candidate: PositionCandidate,
+        *,
+        chord: str,
+        role: str,
+    ) -> int:
+        if role not in _STRUCTURAL_HARMONY_ROLES:
+            return 0
+        return 0 if _supporting_harmony_is_in_chord(candidate, chord) else 1
+
+    def transition_motion(
+        previous: PositionCandidate,
+        current: PositionCandidate,
+        *,
+        chord: str,
+        chord_changed: bool,
+        role: str,
+    ) -> int:
+        previous_strings = {note.string for note in previous.notes}
+        current_strings = {note.string for note in current.notes}
+        shared_strings = len(previous_strings & current_strings)
+        fret_distance = abs(current.fret - previous.fret)
+        control_changes = len(set(previous.controls) ^ set(current.controls))
+        string_changes = max(0, len(current.notes) - shared_strings)
+        family_changed = (
+            not chord_changed
+            and _harmony_interval_family(previous) != _harmony_interval_family(current)
+        )
+        if chord_changed:
+            # A chord boundary is a legitimate place to reposition. Do not
+            # distort the preceding scale resolution just to reduce that jump.
+            motion = 0
+        else:
+            motion = (
+                fret_distance * 3
+                + control_changes * 4
+                + string_changes * 3
+                + _voice_leading_cost(previous, current)
+                + (5 if family_changed else 0)
+            )
+        if role == "resolution":
+            motion += control_changes * 3
+        if role == "chord_arrival":
+            open_position = chord_open_position(chord)
+            pedal_position = chord_pedal_position(chord)
+            canonical_distance = (
+                abs(current.fret - open_position)
+                if open_position is not None
+                else 0
+            )
+            if pedal_position is not None:
+                canonical_distance = min(
+                    canonical_distance,
+                    abs(current.fret - pedal_position),
+                )
+            motion += canonical_distance * 2
+        if role == "cadence":
+            pedal_position = chord_pedal_position(chord)
+            if pedal_position is not None:
+                motion += abs(current.fret - pedal_position) * 5
+        return motion
+
+    states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []
+    first: dict[int, tuple[tuple[int, ...], int | None]] = {}
+    for candidate_index, candidate in enumerate(candidate_groups[0]):
+        chord = active_chords[0]
+        family = _harmony_interval_family(candidate)
+        first[candidate_index] = (
+            (
+                structural_penalty(candidate, chord=chord, role=roles[0]),
+                1 if len(candidate.notes) < 2 else 0,
+                1
+                if roles[0] == "chord_arrival"
+                and candidate.family == "target_copedent_enumeration"
+                else 0,
+                abs(candidate.fret - home_fret) * 3 + len(candidate.controls) * 4,
+                0 if family == "sixth" else 1,
+                abs(candidate.top_string - 4),
+            ),
+            None,
+        )
+    states.append(first)
+
+    for event_index in range(1, len(candidate_groups)):
+        current_layer: dict[int, tuple[tuple[int, ...], int | None]] = {}
+        chord = active_chords[event_index]
+        chord_changed = chord != active_chords[event_index - 1]
+        role = roles[event_index]
+        for current_index, current in enumerate(candidate_groups[event_index]):
+            choices: list[tuple[tuple[int, ...], int]] = []
+            for previous_index, (previous_cost, _parent) in states[-1].items():
+                previous = candidate_groups[event_index - 1][previous_index]
+                current_family = _harmony_interval_family(current)
+                transition = (
+                    structural_penalty(current, chord=chord, role=role),
+                    1 if len(current.notes) < 2 else 0,
+                    1
+                    if role == "chord_arrival"
+                    and current.family == "target_copedent_enumeration"
+                    else 0,
+                    transition_motion(
+                        previous,
+                        current,
+                        chord=chord,
+                        chord_changed=chord_changed,
+                        role=role,
+                    ),
+                    0 if current_family in {"third", "sixth"} else 1,
+                    len(current.controls),
+                    abs(current.top_string - previous.top_string),
+                )
+                choices.append((_add_cost(previous_cost, transition), previous_index))
+            current_layer[current_index] = min(
+                choices,
+                key=lambda item: (item[0], item[1]),
+            )
+        states.append(current_layer)
+
+    last_index = min(
+        states[-1],
+        key=lambda index: (states[-1][index][0], index),
+    )
+    path: list[PositionCandidate] = []
+    for event_index in range(len(states) - 1, -1, -1):
+        path.append(candidate_groups[event_index][last_index])
+        parent = states[event_index][last_index][1]
+        if parent is not None:
+            last_index = parent
+    return list(reversed(path))
 
 
 def mixed_candidate_groups(
@@ -1337,6 +1772,7 @@ def build_route(
     source_profile = source_profile or target_profile
     profile = tab_profile_for_e9(target_profile)
     active_chords = _active_chords(inputs)
+    active_chord_bases = _active_chord_bases(inputs)
     roles = _arrangement_roles(
         inputs,
         active_chords,
@@ -1352,7 +1788,7 @@ def build_route(
             path=path,
             profile=target_profile,
         )
-        if harmony_type == "mixed_arrangement"
+        if harmony_type in {"mixed_arrangement", "chord_aware_harmony"}
         else []
     )
     transitions_by_target = {transition["toEventId"]: transition for transition in transitions}
@@ -1429,6 +1865,25 @@ def build_route(
             roles,
             style_family,
         )
+        active_chord = active_chords[index - 1]
+        supporting_values = tuple(
+            sorted(
+                pitch
+                for pitch in mechanical_pitches.values()
+                if pitch != resolved_pitches[index - 1]
+            )
+        )
+        harmony_family = _harmony_interval_family(candidate)
+        harmony_function = (
+            "chord_tone"
+            if active_chord
+            and _supporting_harmony_is_in_chord(candidate, active_chord)
+            and resolved_pitches[index - 1] % 12
+            in _chord_pitch_classes(active_chord)
+            else "diatonic_passing"
+            if len(candidate.notes) > 1
+            else "melody_only"
+        )
         payload.update(
             {
                 "id": event_id,
@@ -1455,6 +1910,15 @@ def build_route(
                 "beat": item.beat,
                 "origin": item.origin,
                 "arrangementRole": role,
+                "activeChord": active_chord,
+                "chordBasis": active_chord_bases[index - 1],
+                "supportingPitchValues": list(supporting_values),
+                "supportingPitches": [
+                    scientific_pitch_for_value(pitch)
+                    for pitch in supporting_values
+                ],
+                "harmonyInterval": harmony_family,
+                "harmonyFunction": harmony_function,
                 "performanceControls": list(candidate.controls),
                 "performanceControlLabels": [
                     control_tab_label(target_profile, control) for control in candidate.controls
@@ -1525,6 +1989,12 @@ def build_route(
                 "realizedVoices": len(candidate.notes),
                 "reason": "The target copedent had no higher-texture candidate that passed melody, harmony, and mechanical validation.",
             }
+        if harmony_type == "chord_aware_harmony" and len(candidate.notes) < 2:
+            payload["textureFallback"] = {
+                "requestedVoices": 2,
+                "realizedVoices": 1,
+                "reason": "No supporting voice passed the pitch, active-chord, register, voice-crossing, and target-copedent mechanical checks.",
+            }
         event_payloads.append(payload)
     tab_example = {
         "id": route_id,
@@ -1540,6 +2010,13 @@ def build_route(
             "sourceCopedentId": source_profile.id,
             "targetCopedentId": target_profile.id,
             "harmonyType": harmony_type,
+            "harmonyBasis": (
+                "chord_track"
+                if harmony_type == "chord_aware_harmony"
+                else "key_diatonic"
+                if harmony_type in {"thirds", "sixths", "automatic_harmony"}
+                else "mixed"
+            ),
             "meter": meter,
             "pickupBeats": pickup_beats,
             "styleFamily": style_family,
@@ -1588,6 +2065,13 @@ def build_route(
         "id": route_id,
         "label": label,
         "harmonyType": harmony_type,
+        "harmonyBasis": (
+            "chord_track"
+            if harmony_type == "chord_aware_harmony"
+            else "key_diatonic"
+            if harmony_type in {"thirds", "sixths", "automatic_harmony"}
+            else "mixed"
+        ),
         "recommended": recommended,
         "recommendation": recommendation + (f" Chord-aware ranking used: {', '.join(chord_symbols)}." if chord_symbols else ""),
         "arrangedFor": target_profile.label,
@@ -2874,6 +3358,7 @@ def _event_explanation(
 def _recommendation_for(harmony_type: str) -> str:
     return {
         "mixed_arrangement": "Recommended: balances single-note motion, diatonic pairs, chord-backed grips, and sparse validated steel movement.",
+        "chord_aware_harmony": "Recommended: keeps the melody on top, uses chord tones at structural notes, and connects them with a moving diatonic harmony voice.",
         "automatic_harmony": "Recommended: mixes validated diatonic thirds and sixths to keep the bar path smooth.",
         "thirds": "Keeps a diatonic third below the melody where a validated E9 grip exists.",
         "sixths": "Keeps a diatonic sixth below the melody where a validated E9 grip exists.",

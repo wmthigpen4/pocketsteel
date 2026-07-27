@@ -52,7 +52,7 @@ assert.equal(studio.createInitialState().pendingReplacement, "");
 assert.equal(studio.createInitialState().scoreEditingEnabled, true);
 assert.equal(studio.createInitialState().voiceMode, "mixed");
 assert.equal(studio.createInitialState().movementMode, "best_fit");
-assert.equal(studio.createInitialState().selectedHarmonyType, "mixed_arrangement");
+assert.equal(studio.createInitialState().selectedHarmonyType, "");
 assert.deepEqual(studio.entryChoicePresentation("song"), {label: "Learn a song", help: "Chord Karaoke"});
 assert.deepEqual(studio.entryChoicePresentation("song", {replacing: true}), {label: "Learn a song", help: "Start a Song Project"});
 assert.equal(studio.printableLessonTitle({title: "Amazing Grace — Complete E9 lesson", material: {song: "Amazing Grace"}}), "Amazing Grace");
@@ -159,8 +159,11 @@ assert.deepEqual(
 );
 assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended arrangement" }), "Recommended arrangement");
 const recommendedRoute = { id: "mixed", harmonyType: "mixed_arrangement", label: "Recommended arrangement" };
+const chordAwareRoute = { id: "chords", harmonyType: "chord_aware_harmony", label: "Chord-aware harmony" };
 const faithfulRoute = { id: "faithful", harmonyType: "single_note", label: "Faithful melody" };
-assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute, recommendedRoute] }), recommendedRoute);
+assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute, recommendedRoute] }), faithfulRoute);
+assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute, recommendedRoute, chordAwareRoute] }), faithfulRoute);
+assert.equal(studio.preferredStudioRoute({ routes: [faithfulRoute, recommendedRoute, chordAwareRoute] }), chordAwareRoute);
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "mixed", routes: [faithfulRoute, recommendedRoute] }, "single_note"), faithfulRoute);
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute] }), faithfulRoute);
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "missing", routes: [faithfulRoute] }), faithfulRoute);
@@ -383,8 +386,11 @@ assert.equal(score.chordChangeAtEvent(draft, draft.score.melody[1]), "G");
 assert.equal(score.chordChangeAtEvent(draft, draft.score.melody[2]), "");
 assert.deepEqual(score.arrangementEvents(draft)[1], {
   token: "G4", pitch: "G4", pitchValue: 67, measure: 2, beat: 1,
-  durationBeats: 2, origin: "user_edit", confidence: 1, tie: "start", lyric: "grace", articulation: "accent", chord: "G"
+  durationBeats: 2, origin: "user_edit", confidence: 1, tie: "start", lyric: "grace", articulation: "accent", chord: "G", chordBasis: "user"
 });
+const suggestedDraft = score.cloneDraft(draft);
+suggestedDraft.score.harmony[0].basis = "derived";
+assert.equal(score.arrangementEvents(suggestedDraft)[1].chordBasis, "suggested");
 const lockedDraft = score.cloneDraft(draft);
 lockedDraft.score.melody[1].lockedPosition = {string: 5, fret: 3, changes: ["A"]};
 assert.deepEqual(score.arrangementEvents(lockedDraft)[1].position, {string: 5, fret: 3, changes: ["A"]});
@@ -506,9 +512,13 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "How many voices?" in html
     assert "How should it move?" in html
     assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-score.js?v=printed-score-omr-v3' in html
+    assert 'melody-score.js?v=chord-aware-harmony-v1' in html
     assert 'song-projects.js?v=amazing-tablature-product-v1-20260724-2' in html
-    assert 'melody-workbench.js?v=printed-score-omr-v4' in html
+    assert 'melody-workbench.js?v=chord-aware-harmony-v1' in html
+    assert 'id="studio-score-chord-lane" aria-label="Editable chord timeline"' in html
+    assert "Chord from this beat" in html
+    assert "Chord timeline" in script
+    assert "chord_aware_harmony: 0" in script
     assert '<option value="2/2">2/2 (cut time)</option>' in html
     assert "Choose the melody staff or voice before arranging." in script
     assert "reader timeout, not evidence that the source needs rescanning" in script
@@ -720,7 +730,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert '>Why this grip?</summary>' in html
     assert 'id="studio-grip-reason"' in html
     assert 'id="studio-grip-facts"' in html
-    assert 'activeRoute?.harmonyType === "mixed_arrangement" ? gripRationale(event) : null' in script
+    assert '["mixed_arrangement", "chord_aware_harmony"].includes(' in script
     assert 'elements.gripRationale.open = false;' in script
     assert 'transitionChoreography(transition, previousEvent, event)' in script
     assert 'transitionSustainedStrings(transition)' in script

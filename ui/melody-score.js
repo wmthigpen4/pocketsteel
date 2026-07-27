@@ -166,11 +166,15 @@
     return next;
   }
 
-  function chordForEvent(draft, event) {
+  function chordEntryForEvent(draft, event) {
     const harmony = [...(draft?.score?.harmony || [])]
       .filter((item) => Number(item.measure) < Number(event.measure) || (Number(item.measure) === Number(event.measure) && Number(item.beat) <= Number(event.beat)))
       .sort((a, b) => Number(a.measure) - Number(b.measure) || Number(a.beat) - Number(b.beat));
-    return harmony.at(-1)?.symbol || "";
+    return harmony.at(-1) || null;
+  }
+
+  function chordForEvent(draft, event) {
+    return chordEntryForEvent(draft, event)?.symbol || "";
   }
 
   function chordChangeAtEvent(draft, event) {
@@ -204,23 +208,32 @@
   }
 
   function arrangementEvents(draft) {
-    return performanceEvents(draft).filter((event) => !event.rest).map((event) => ({
-      token: event.pitch,
-      pitch: event.pitch,
-      pitchValue: event.pitchValue,
-      measure: event.measure,
-      beat: event.beat,
-      durationBeats: event.durationBeats,
-      origin: event.origin || "user_edit",
-      confidence: Number.isFinite(Number(event.confidence))
-        ? Number(event.confidence)
-        : event.origin === "recognized" ? 0.5 : 1,
-      tie: event.tie || "",
-      lyric: event.lyric || "",
-      articulation: event.articulation || "",
-      chord: chordForEvent(draft, event),
-      ...(event.lockedPosition ? { position: { ...event.lockedPosition } } : {})
-    }));
+    return performanceEvents(draft).filter((event) => !event.rest).map((event) => {
+      const harmony = chordEntryForEvent(draft, event);
+      const basis = String(harmony?.basis || "").toLowerCase();
+      return {
+        token: event.pitch,
+        pitch: event.pitch,
+        pitchValue: event.pitchValue,
+        measure: event.measure,
+        beat: event.beat,
+        durationBeats: event.durationBeats,
+        origin: event.origin || "user_edit",
+        confidence: Number.isFinite(Number(event.confidence))
+          ? Number(event.confidence)
+          : event.origin === "recognized" ? 0.5 : 1,
+        tie: event.tie || "",
+        lyric: event.lyric || "",
+        articulation: event.articulation || "",
+        chord: harmony?.symbol || "",
+        chordBasis: ["source", "user", "confirmed"].includes(basis)
+          ? basis
+          : harmony
+            ? "suggested"
+            : "",
+        ...(event.lockedPosition ? { position: { ...event.lockedPosition } } : {})
+      };
+    });
   }
 
   function draftWarnings(draft) {
@@ -633,6 +646,7 @@
     transposeDraft,
     setChordAtEvent,
     chordForEvent,
+    chordEntryForEvent,
     chordChangeAtEvent,
     arrangementEvents,
     performanceEvents,
