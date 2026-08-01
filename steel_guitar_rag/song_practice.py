@@ -428,17 +428,33 @@ def _validated_events(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         if start_ms < previous_start:
             raise SongPracticeError("events must be ordered by startMs")
         previous_start = start_ms
-        events.append(
-            {
-                "id": event_id,
-                "measureId": measure_id,
-                "sectionId": section_id,
-                "chord": chord,
-                "startMs": start_ms,
-                "endMs": end_ms,
-                "role": role,
+        event = {
+            "id": event_id,
+            "measureId": measure_id,
+            "sectionId": section_id,
+            "chord": chord,
+            "startMs": start_ms,
+            "endMs": end_ms,
+            "role": role,
+        }
+        raw_hint = raw_event.get("positionHint")
+        if raw_hint is not None:
+            if not isinstance(raw_hint, Mapping):
+                raise SongPracticeError(f"events[{index - 1}].positionHint must be an object")
+            try:
+                hint_fret = int(raw_hint.get("fret"))
+                hint_strings = tuple(int(value) for value in raw_hint.get("strings", []))
+                hint_controls = tuple(str(value) for value in raw_hint.get("controls", []))
+            except (TypeError, ValueError) as exc:
+                raise SongPracticeError(f"events[{index - 1}].positionHint is invalid") from exc
+            if not 0 <= hint_fret <= MAX_FRET or len(hint_strings) != 3 or len(set(hint_strings)) != 3:
+                raise SongPracticeError(f"events[{index - 1}].positionHint is invalid")
+            event["positionHint"] = {
+                "fret": hint_fret,
+                "strings": list(hint_strings),
+                "controls": list(hint_controls),
             }
-        )
+        events.append(event)
     return events
 
 
@@ -480,6 +496,23 @@ def arrange_song_practice(
             cache[cache_key] = _chord_candidates(chord, copedent_profile)
         groups.append(cache[cache_key] or None)
     selected = _coherent_route(groups)
+    for index, (event, group) in enumerate(zip(events, groups, strict=True)):
+        hint = event.get("positionHint")
+        if not hint or not group:
+            continue
+        hinted_candidate = next(
+            (
+                candidate
+                for candidate in group
+                if candidate.fret == hint["fret"]
+                and list(candidate.strings) == hint["strings"]
+                and set(candidate.controls) == set(hint["controls"])
+            ),
+            None,
+        )
+        if hinted_candidate is None:
+            raise SongPracticeError(f"events[{index}].positionHint is not pitch-valid for {event['chord']}")
+        selected[index] = hinted_candidate
 
     planned_events: list[dict[str, Any]] = []
     warnings: list[str] = []
@@ -615,6 +648,26 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         or any(start not in beat_times for start in starts)
     ):
         return None
+    route_options = track.get("routeOptions") or []
+    if route_options and (
+        not isinstance(route_options, list)
+        or any(
+            not isinstance(option, Mapping)
+            or not str(option.get("id") or "").strip()
+            or not str(option.get("label") or "").strip()
+            or not isinstance(option.get("positions"), list)
+            or len(option["positions"]) != len(starts)
+            for option in route_options
+        )
+    ):
+        return None
+    default_route_id = str(track.get("defaultRouteId") or "")
+    default_route = next((option for option in route_options if option.get("id") == default_route_id), None)
+    if route_options and default_route is None:
+        return None
+    authored_route = list(default_route.get("positions") or []) if default_route else list(track.get("authoredRoute") or [])
+    if authored_route and len(authored_route) != len(starts):
+        return None
     rights_document_url = ""
     rights_document_path = track.get("rightsDocumentPath")
     if rights_document_path:
@@ -648,6 +701,9 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "lyrics": track.get("lyricCues") or [],
         "e9Profile": {"defaultProfileId": "emmons-e9-basic"},
         "loop": {"enabled": False, "startMs": 0, "endMs": 0},
+        "authoredRoute": authored_route,
+        "defaultRouteId": default_route_id,
+        "routeOptions": route_options,
     }
     return {
         "id": track["id"],
@@ -678,6 +734,9 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "chart": track.get("chart") or "",
         "sections": track.get("sections") or [],
         "lyricCues": track.get("lyricCues") or [],
+        "authoredRoute": authored_route,
+        "defaultRouteId": default_route_id,
+        "routeOptions": route_options,
         "noSteel": True,
         "melodyLead": track["melodyLead"],
         "countInBars": track["countInBars"],

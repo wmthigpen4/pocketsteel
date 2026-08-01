@@ -27,10 +27,11 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert "Full song" in player
     assert "Less help" in player
     assert 'id="play-attribution"' in player
+    assert 'id="play-route"' in player
     assert "--gold: #f0bf69" in css
     assert '--lesson: Georgia, "Times New Roman", serif' in css
     assert ".play-fretboard [data-highlight-id=\"play-next\"]" in css
-    assert "filter: grayscale(0.85)" in css
+    assert "filter: grayscale(0.6)" in css
     assert "@media (orientation: landscape) and (max-height: 560px)" in css
 
 
@@ -51,6 +52,9 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "track?.beatTimesMs" in player_js
     assert "track.recordingCredit" in player_js
     assert "track.licenseUrl" in player_js
+    assert "selectedRoute()?.positions || track.authoredRoute" in player_js
+    assert "function selectedRoute" in player_js
+    assert "Move the bar" not in player_js
     assert "Source &amp; license" in songs_js
     assert "setInterval" not in player_js
     assert "function leftAlignSvgStringLabels" in player_js
@@ -74,6 +78,7 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "stringActionLabels" in player_js
     assert '${string}${control ? ` ${control}` : ""}' in player_js
     assert "justify-content: flex-start" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
+    assert 'opacity: 0.8 !important' in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
 
 
 def test_play_songs_javascript_syntax() -> None:

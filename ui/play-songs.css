@@ -131,8 +131,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   padding: clamp(16px, 2.4vw, 24px);
 }
 .play-cue.is-current { border-color: rgba(240, 191, 105, 0.78); background: linear-gradient(145deg, rgba(40, 31, 18, 0.98), rgba(16, 16, 13, 0.96)); }
-.play-cue.is-next { opacity: 0.62; }
-.play-cue.is-next.is-imminent { opacity: 0.88; border-color: rgba(244, 234, 214, 0.3); }
+.play-cue.is-next { opacity: 0.8; }
+.play-cue.is-next.is-imminent { opacity: 0.96; border-color: rgba(244, 234, 214, 0.42); }
 .play-cue__label { margin: 0 0 8px; color: var(--gold); font-size: 11px; font-weight: 850; letter-spacing: 0.12em; text-transform: uppercase; }
 .play-cue.is-next .play-cue__label { color: rgba(244, 234, 214, 0.68); }
 .play-cue__row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
@@ -143,6 +143,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-cue.is-current .play-string { background: var(--gold); color: #1a1005; }
 .play-cue.is-next .play-string { background: rgba(244, 234, 214, 0.08); }
 .play-move { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+.play-cue.is-next .play-move { color: rgba(244, 234, 214, 0.82); font-weight: 750; }
 
 .play-fretboard-shell { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: #090907; }
 .play-fretboard { min-width: 760px; }
@@ -151,16 +152,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-fretboard .pedal-steel-fretboard__position-tools,
 .play-fretboard .pedal-steel-fretboard__learning { display: none !important; }
 .play-fretboard .pedal-steel-fretboard__figure { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
-.play-fretboard [data-highlight-id="play-next"] { opacity: 0.55 !important; filter: grayscale(0.85); }
+.play-fretboard [data-highlight-id="play-next"] { opacity: 0.8 !important; filter: grayscale(0.6); }
+.play-fretboard [data-highlight-id="play-next"] [data-highlight-dot] { fill: #5c625f; stroke: #fff4dc; stroke-opacity: 0.92; }
+.play-fretboard [data-highlight-id="play-next"] .pedal-steel-fretboard__string-action-label { fill: #fff4dc; stroke: #11100d; stroke-width: 2.8px; }
 .play-fretboard [data-highlight-id="play-current"] { opacity: 1 !important; }
 .play-fretboard .pedal-steel-fretboard__string-action-label { font-family: var(--font); }
-.play-fretboard .play-next-grip-caption { fill: #ddd7ca; font: 900 9px/1 var(--font); letter-spacing: 0.08em; paint-order: stroke fill; stroke: #090907; stroke-width: 3px; }
+.play-fretboard .play-next-grip-caption { fill: #fff4dc; font: 900 12px/1 var(--font); letter-spacing: 0.06em; paint-order: stroke fill; stroke: #090907; stroke-width: 4px; }
 
 .play-lyric { min-height: 48px; margin: 10px 0; display: grid; place-items: center; color: var(--cream); font: 650 clamp(20px, 3vw, 30px)/1.2 var(--lesson); text-align: center; }
 .play-controls { display: grid; grid-template-columns: auto auto minmax(180px, 1fr) auto auto auto; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 16px; background: rgba(19, 19, 16, 0.9); padding: 12px; }
 .play-controls input[type="range"] { width: 100%; accent-color: var(--gold); }
 .play-controls label { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 750; }
 .play-controls select { min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: #11100d; color: var(--cream); padding: 0 28px 0 10px; }
+.play-controls .route-control select { min-width: 148px; border-color: rgba(240, 191, 105, 0.54); }
 .play-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
 .play-checkpoints { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
 .play-checkpoint { border: 1px solid rgba(244, 234, 214, 0.13); border-radius: 13px; background: rgba(15, 15, 13, 0.76); color: var(--muted); padding: 10px; text-align: left; cursor: pointer; }

@@ -69,6 +69,13 @@ assert.equal(JSON.stringify(payload).includes("Private title"), false);
 assert.equal(JSON.stringify(payload).includes("private.mp3"), false);
 assert.equal(JSON.stringify(payload).includes("short cue"), false);
 
+const hintedPayload = songs.buildArrangePayload({...project, authoredRoute: [
+  {fret: 3, strings: [4, 5, 6], controls: []},
+  {fret: 8, strings: [4, 5, 6], controls: []}
+]}, {profileId: "emmons-e9-basic"});
+assert.deepEqual(hintedPayload.events[0].positionHint, {fret: 3, strings: [4, 5, 6], controls: []});
+assert.deepEqual(hintedPayload.events[1].positionHint, {fret: 8, strings: [4, 5, 6], controls: []});
+
 const exported = songs.exportProjectJson({...project, audioUrl: "blob:secret"});
 assert.equal(exported.includes("blob:secret"), false);
 assert.equal(exported.includes("private.mp3"), true);

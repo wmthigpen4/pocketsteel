@@ -10,7 +10,7 @@
       "performer": "Kevin MacLeod · Steel Guitar RAG lesson edit",
       "description": "Kevin MacLeod’s recognizable recording, adapted into a complete beginner waltz lesson with a two-bar count-in, synchronized words, and one continuity-first E9 route.",
       "difficulty": "Beginner",
-      "teachingFocus": "Open and pedals-down changes on strings 4–5–6",
+      "teachingFocus": "Connect open, A+B, and lever pockets with deliberate bar movement on strings 4–5–6",
       "tempo": 76,
       "recordingCredit": "“Amazing Grace 2011” Kevin MacLeod (incompetech.com), licensed under CC BY 3.0",
       "publicationState": "private_preview",
@@ -41,6 +41,55 @@
         {"id":"opening","label":"Opening","startBar":1,"endBar":4},
         {"id":"middle","label":"Middle","startBar":5,"endBar":12},
         {"id":"ending","label":"Ending","startBar":13,"endBar":16}
+      ],
+      "defaultRouteId": "movement",
+      "routeOptions": [
+        {
+          "id": "movement",
+          "label": "Move the bar",
+          "description": "Practice common pockets at frets 3, 8, and 10.",
+          "positions": [
+        {"fret":3,"strings":[4,5,6],"controls":[]},
+        {"fret":3,"strings":[4,5,6],"controls":[]},
+        {"fret":8,"strings":[4,5,6],"controls":[]},
+        {"fret":10,"strings":[4,5,6],"controls":["A","B"]},
+        {"fret":10,"strings":[4,5,6],"controls":["A","B"]},
+        {"fret":10,"strings":[4,5,6],"controls":["A","B"]},
+        {"fret":3,"strings":[4,5,6],"controls":["B","E-lower"]},
+        {"fret":3,"strings":[4,5,6],"controls":["B","E-lower"]},
+        {"fret":3,"strings":[4,5,6],"controls":[]},
+        {"fret":3,"strings":[4,5,6],"controls":[]},
+        {"fret":8,"strings":[4,5,6],"controls":[]},
+        {"fret":10,"strings":[4,5,6],"controls":["A","B"]},
+        {"fret":8,"strings":[4,5,6],"controls":["E-lower"]},
+        {"fret":3,"strings":[4,5,6],"controls":["B","E-lower"]},
+        {"fret":3,"strings":[4,5,6],"controls":[]},
+        {"fret":3,"strings":[4,5,6],"controls":[]}
+          ]
+        },
+        {
+          "id": "same-fret",
+          "label": "Stay near fret 3",
+          "description": "Use pedals and levers to keep the bar at fret 3.",
+          "positions": [
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":["A","B"]},
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":["B","E-lower"]},
+            {"fret":3,"strings":[4,5,6],"controls":["B","E-lower"]},
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":["A","B"]},
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":["A"]},
+            {"fret":3,"strings":[4,5,6],"controls":["B","E-lower"]},
+            {"fret":3,"strings":[4,5,6],"controls":[]},
+            {"fret":3,"strings":[4,5,6],"controls":[]}
+          ]
+        }
       ],
       "lyricCues": [
         {"id":"amazing-grace-lyric-1","startMs":3947,"endMs":13421,"startBeat":0,"endBeat":12,"text":"Amazing grace, how sweet the sound"},

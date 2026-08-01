@@ -11,7 +11,7 @@
     currentChord: document.querySelector("#current-chord"), currentGrip: document.querySelector("#current-grip"), currentMove: document.querySelector("#current-move"),
     nextLabel: document.querySelector("#next-chord-label"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMove: document.querySelector("#next-move"),
     fretboard: document.querySelector("#play-fretboard"), lyric: document.querySelector("#play-lyric"), toggle: document.querySelector("#play-toggle"), restart: document.querySelector("#play-restart"),
-    scrub: document.querySelector("#play-scrub"), time: document.querySelector("#play-time"), speed: document.querySelector("#play-speed"), loop: document.querySelector("#play-loop"), volume: document.querySelector("#play-volume"),
+    scrub: document.querySelector("#play-scrub"), time: document.querySelector("#play-time"), speed: document.querySelector("#play-speed"), route: document.querySelector("#play-route"), loop: document.querySelector("#play-loop"), volume: document.querySelector("#play-volume"),
     checkpoints: Array.from(document.querySelectorAll("[data-checkpoint]")), nextCard: document.querySelector(".play-cue.is-next")
   };
   const projectId = decodeURIComponent(global.location.pathname.split("/").filter(Boolean).at(-1) || "");
@@ -23,6 +23,7 @@
   let frame = 0;
   let loopBars = 0;
   let assistanceReduced = false;
+  let selectedRouteId = "";
 
   function showError(message) {
     cancelAnimationFrame(frame);
@@ -259,12 +260,23 @@
     frame = requestAnimationFrame(tick);
   }
 
+  function selectedRoute() {
+    const options = Array.isArray(track?.routeOptions) ? track.routeOptions : [];
+    return options.find((option) => option.id === selectedRouteId) || options[0] || null;
+  }
+
+  function updateRouteDescription() {
+    const option = selectedRoute();
+    elements.route.title = option?.description || "Choose how much bar movement to practice.";
+  }
+
   async function arrangeTrack() {
     chart = songTools.parseSongChart(track.chart, { mode: "letter", key: track.key, meter: track.meter });
     if (chart.errors.length) throw new Error(chart.errors.join(" "));
     const practiceProject = {
       key: track.key, meter: track.meter, style: "classic_country", sections: chart.sections, measures: chart.measures,
-      barStartsMs: track.barStartsMs, durationMs: track.durationMs, audioRef: { kind: "bundled", durationMs: track.durationMs }, syncOffsetMs: 0
+      barStartsMs: track.barStartsMs, durationMs: track.durationMs, audioRef: { kind: "bundled", durationMs: track.durationMs },
+      authoredRoute: selectedRoute()?.positions || track.authoredRoute || [], syncOffsetMs: 0
     };
     const activeCopedent = global.STEEL_RAG_COPEDENTS?.activeContext?.();
     const copedentContext = session?.features?.accountCopedents && activeCopedent?.profileId
@@ -304,6 +316,17 @@
       throw new Error(`${local.title} is stored safely on this device. Chord and timing setup is the next step before Play Along can begin.`);
     }
     if (!track || track.publicationState === "coming_soon") throw new Error("That guided song is still in recording and synchronization review.");
+    const routeOptions = Array.isArray(track.routeOptions) ? track.routeOptions : [];
+    selectedRouteId = track.defaultRouteId || routeOptions[0]?.id || "";
+    elements.route.replaceChildren(...routeOptions.map((routeOption) => {
+      const option = document.createElement("option");
+      option.value = routeOption.id;
+      option.textContent = routeOption.label;
+      return option;
+    }));
+    elements.route.value = selectedRouteId;
+    elements.route.parentElement.hidden = routeOptions.length < 2;
+    updateRouteDescription();
     plan = await arrangeTrack();
     elements.title.textContent = track.title;
     elements.meta.textContent = [track.performer, track.key, track.meter, track.tempo ? `${track.tempo} BPM` : ""].filter(Boolean).join(" · ");
@@ -340,6 +363,21 @@
   elements.restart.addEventListener("click", () => { audio.currentTime = 0; renderState(0, true); });
   elements.scrub.addEventListener("input", () => { audio.currentTime = Number(elements.scrub.value); renderState(audio.currentTime * 1000, true); });
   elements.speed.addEventListener("change", () => { audio.playbackRate = Number(elements.speed.value); audio.preservesPitch = true; });
+  elements.route.addEventListener("change", async () => {
+    audio.pause();
+    selectedRouteId = elements.route.value;
+    updateRouteDescription();
+    elements.route.disabled = true;
+    try {
+      plan = await arrangeTrack();
+      renderedState = "";
+      renderState(audio.currentTime * 1000, true);
+    } catch (error) {
+      showError(error.message || "That fretboard route could not be prepared.");
+    } finally {
+      elements.route.disabled = false;
+    }
+  });
   elements.volume.addEventListener("input", () => { audio.volume = Number(elements.volume.value); });
   elements.loop.addEventListener("change", () => { if (elements.loop.checked && !loopBars) loopBars = 4; });
   elements.checkpoints.forEach((button) => button.addEventListener("click", () => {

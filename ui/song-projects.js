@@ -242,13 +242,17 @@
   }
 
   function buildArrangePayload(project, copedentContext) {
+    const events = buildTimedEvents(project);
+    (project.authoredRoute || []).forEach((positionHint, index) => {
+      if (events[index] && positionHint) events[index].positionHint = positionHint;
+    });
     return {
       schemaVersion: REQUEST_SCHEMA,
       level: "chord_karaoke",
       key: project.key,
       meter: project.meter,
       style: project.style || "classic_country",
-      events: buildTimedEvents(project),
+      events,
       copedentContext: copedentContext || { profileId: "emmons-e9-basic" }
     };
   }

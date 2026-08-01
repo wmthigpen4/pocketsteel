@@ -147,6 +147,21 @@ def test_arranger_rejects_future_levels_and_invalid_timing() -> None:
         arrange_song_practice(request, copedent_profile=get_e9_copedent_profile(), copedent_revision=1)
 
 
+def test_arranger_honors_only_pitch_validated_authored_position_hints() -> None:
+    request = request_for(["G", "C"])
+    request["events"][0]["positionHint"] = {"fret": 10, "strings": [4, 5, 6], "controls": ["A", "B"]}  # type: ignore[index]
+    request["events"][1]["positionHint"] = {"fret": 8, "strings": [4, 5, 6], "controls": []}  # type: ignore[index]
+    plan = arrange_song_practice(request, copedent_profile=get_e9_copedent_profile(), copedent_revision=1)
+    assert [(event["position"]["fret"], event["position"]["controls"]) for event in plan["events"]] == [
+        (10, ["A", "B"]),
+        (8, []),
+    ]
+
+    request["events"][1]["positionHint"] = {"fret": 2, "strings": [4, 5, 6], "controls": []}  # type: ignore[index]
+    with pytest.raises(SongPracticeError, match="not pitch-valid for C"):
+        arrange_song_practice(request, copedent_profile=get_e9_copedent_profile(), copedent_revision=1)
+
+
 def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() -> None:
     catalog = song_practice_catalog()
     assert catalog["schemaVersion"] == "song_practice_catalog_v1"
@@ -185,6 +200,9 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
     )
     assert amazing_grace["beatTimesMs"][6] == amazing_grace["barStartsMs"][0] == 4737
     assert len(amazing_grace["beatTimesMs"]) == 55
+    assert [position["fret"] for position in amazing_grace["authoredRoute"]] == [
+        3, 3, 8, 10, 10, 10, 3, 3, 3, 3, 8, 10, 8, 3, 3, 3,
+    ]
     assert amazing_grace["chart"] == (
         "[Opening] | G | G | C | G | [Middle] G | G | D7 | D7 | G | G | C | G | "
         "[Ending] Em | D7 | G | G |"
