@@ -162,7 +162,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b"song_project_v1" in song_projects_script
 
     for track_name in (
-        "amazing-grace-preview.mp3",
+        "amazing-grace-2011-guide.mp3",
         "when-the-saints-preview.mp3",
         "oh-susanna-preview.mp3",
     ):
@@ -170,6 +170,15 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
         assert status == "200 OK"
         assert headers["Content-Type"] in {"audio/mpeg", "audio/mp3"}
         assert track.startswith(b"ID3")
+
+    status, headers, rights_document = call_app(
+        smoke_app(),
+        "/ui/assets/song-practice/amazing-grace-2011-guide.RIGHTS.md",
+    )
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "text/markdown; charset=utf-8"
+    assert b"Kevin MacLeod" in rights_document
+    assert b"Creative Commons Attribution 3.0 Unported" in rights_document
 
     status, headers, songs = call_app(smoke_app(), "/songs")
     assert status == "200 OK"

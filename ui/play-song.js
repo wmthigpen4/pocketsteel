@@ -7,7 +7,7 @@
   const errorCopy = document.querySelector("#play-error-copy");
   const audio = document.querySelector("#play-audio");
   const elements = {
-    title: document.querySelector("#play-title"), meta: document.querySelector("#play-meta"), bar: document.querySelector("#play-bar"),
+    title: document.querySelector("#play-title"), meta: document.querySelector("#play-meta"), attribution: document.querySelector("#play-attribution"), bar: document.querySelector("#play-bar"),
     currentChord: document.querySelector("#current-chord"), currentGrip: document.querySelector("#current-grip"), currentMove: document.querySelector("#current-move"),
     nextLabel: document.querySelector("#next-chord-label"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMove: document.querySelector("#next-move"),
     fretboard: document.querySelector("#play-fretboard"), lyric: document.querySelector("#play-lyric"), toggle: document.querySelector("#play-toggle"), restart: document.querySelector("#play-restart"),
@@ -120,6 +120,10 @@
   function beatCountdown(current, next, timeMs) {
     const target = current?.endMs ?? next?.startMs;
     if (!Number.isFinite(target)) return "";
+    const authoredBeats = Array.isArray(track?.beatTimesMs) ? track.beatTimesMs : [];
+    if (authoredBeats.length) {
+      return authoredBeats.filter((beat) => beat > timeMs + 1 && beat <= target + 1).length;
+    }
     const reference = current || next;
     return Math.max(0, Math.ceil((target - timeMs) / beatLengthMs(reference)));
   }
@@ -280,6 +284,25 @@
     plan = await arrangeTrack();
     elements.title.textContent = track.title;
     elements.meta.textContent = [track.performer, track.key, track.meter, track.tempo ? `${track.tempo} BPM` : ""].filter(Boolean).join(" · ");
+    elements.attribution.replaceChildren(document.createTextNode(track.recordingCredit || ""));
+    if (track.rightsUrl) {
+      elements.attribution.append(document.createTextNode(" · "));
+      const sourceLink = document.createElement("a");
+      sourceLink.href = track.rightsUrl;
+      sourceLink.target = "_blank";
+      sourceLink.rel = "noreferrer";
+      sourceLink.textContent = "Source";
+      elements.attribution.append(sourceLink);
+    }
+    if (track.licenseUrl) {
+      elements.attribution.append(document.createTextNode(" · "));
+      const licenseLink = document.createElement("a");
+      licenseLink.href = track.licenseUrl;
+      licenseLink.target = "_blank";
+      licenseLink.rel = "noreferrer";
+      licenseLink.textContent = track.license || "License";
+      elements.attribution.append(licenseLink);
+    }
     audio.src = track.audioUrl;
     audio.volume = Number(elements.volume.value);
     audio.playbackRate = Number(elements.speed.value);

@@ -26,6 +26,7 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert "4-bar loop" in player
     assert "Full song" in player
     assert "Less help" in player
+    assert 'id="play-attribution"' in player
     assert "--gold: #f0bf69" in css
     assert '--lesson: Georgia, "Times New Roman", serif' in css
     assert ".play-fretboard [data-highlight-id=\"play-next\"]" in css
@@ -47,6 +48,10 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "XMLHttpRequest" not in import_slice
     assert "sendBeacon" not in import_slice
     assert "audio.currentTime * 1000" in player_js
+    assert "track?.beatTimesMs" in player_js
+    assert "track.recordingCredit" in player_js
+    assert "track.licenseUrl" in player_js
+    assert "Source &amp; license" in songs_js
     assert "setInterval" not in player_js
     assert "function leftAlignSvgStringLabels" in player_js
     assert 'leftAlignSvgStringLabels("play-current")' in player_js

@@ -159,7 +159,6 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
         asset = Path(track["audioUrl"].lstrip("/"))
         assert track["noSteel"] is True
         assert track["melodyLead"] is True
-        assert track["countInBars"] == 1
         assert track["learnerReady"] is True
         assert track["publicationState"] == "private_preview"
         assert asset.stat().st_size < 2 * 1024 * 1024
@@ -167,6 +166,36 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
         assert track["barStartsMs"][0] > 0
         assert track["durationMs"] > track["barStartsMs"][-1]
 
+    amazing_grace = catalog["tracks"][0]
+    assert amazing_grace["id"] == "amazing-grace-kevin-macleod-lesson-v1"
+    assert amazing_grace["performer"] == "Kevin MacLeod · Steel Guitar RAG lesson edit"
+    assert amazing_grace["tempo"] == 76
+    assert amazing_grace["countInBars"] == 2
+    assert amazing_grace["durationMs"] == 42947
+    assert amazing_grace["audioUrl"].endswith("amazing-grace-2011-guide.mp3")
+    assert hashlib.sha256(Path(amazing_grace["audioUrl"].lstrip("/")).read_bytes()).hexdigest() == (
+        "c0126a24458b913168ee5f3f58a0a54f75a32a6dfcd8fa1e23d80ffe8a91e417"
+    )
+    assert amazing_grace["recordingCredit"].startswith("“Amazing Grace 2011” Kevin MacLeod")
+    assert amazing_grace["license"] == "CC BY 3.0"
+    assert amazing_grace["rightsUrl"].startswith("https://commons.wikimedia.org/")
+    assert amazing_grace["rightsDocumentUrl"].endswith("amazing-grace-2011-guide.RIGHTS.md")
+    assert hashlib.sha256(Path(amazing_grace["rightsDocumentUrl"].lstrip("/")).read_bytes()).hexdigest() == (
+        "c7b8b8a4e4c5fd7f0d8c4eb0813d9cf814e34e9d39a19eee9e0ad8fc4df31d7e"
+    )
+    assert amazing_grace["beatTimesMs"][6] == amazing_grace["barStartsMs"][0] == 4737
+    assert len(amazing_grace["beatTimesMs"]) == 55
+    assert amazing_grace["chart"] == (
+        "[Opening] | G | G | C | G | [Middle] G | G | D7 | D7 | G | G | C | G | "
+        "[Ending] Em | D7 | G | G |"
+    )
+    assert [cue["text"] for cue in amazing_grace["lyricCues"]] == [
+        "Amazing grace, how sweet the sound",
+        "That saved a wretch like me",
+        "I once was lost, but now am found",
+        "Was blind, but now I see",
+    ]
+    assert catalog["tracks"][1]["countInBars"] == 1
     assert catalog["tracks"][2]["publicationState"] == "coming_soon"
     assert catalog["tracks"][2]["recordingCredit"] == "Grant Raymond Barrett · CC BY 3.0"
 
@@ -181,4 +210,5 @@ def test_curated_registry_exposes_playable_projects_and_withholds_unreviewed_tra
     amazing_grace = get_curated_practice_project("amazing-grace-guided")
     assert amazing_grace is not None
     assert amazing_grace["lyricCues"][0]["text"].startswith("Amazing grace")
+    assert amazing_grace["practiceProject"]["timeline"]["beatTimesMs"] == amazing_grace["beatTimesMs"]
     assert get_curated_practice_project("hard-times-guided") is None

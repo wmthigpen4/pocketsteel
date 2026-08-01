@@ -127,7 +127,7 @@
       <p class="song-card__description">${escapeHtml(track.description || "Follow a prepared chord route with synchronized audio.")}</p>
       <ul class="song-card__facts">${facts.map((fact) => `<li>${escapeHtml(fact)}</li>`).join("")}</ul>
       <p class="song-card__focus"><strong>Teaching focus:</strong> ${escapeHtml(track.teachingFocus || "Smooth chord changes")}</p>
-      <p class="song-card__credit">${escapeHtml(track.recordingCredit || track.performerCredits || "")}</p>
+      <p class="song-card__credit">${escapeHtml(track.recordingCredit || track.performerCredits || "")}${track.rightsUrl ? ` · <a href="${escapeHtml(track.rightsUrl)}" target="_blank" rel="noreferrer">Source &amp; license</a>` : ""}</p>
       <div class="song-card__actions">${available ? `<a class="songs-button is-primary" href="/play/${encodeURIComponent(track.projectId || track.id)}">Play Along</a>` : `<button class="songs-button" type="button" disabled>Track in review</button>`}</div>
     </article>`;
   }

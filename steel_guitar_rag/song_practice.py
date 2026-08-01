@@ -607,6 +607,26 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
     starts = track.get("barStartsMs")
     if not isinstance(starts, list) or not starts or any(not isinstance(value, int) or value < 0 for value in starts):
         return None
+    beat_times = track.get("beatTimesMs") or []
+    if beat_times and (
+        not isinstance(beat_times, list)
+        or any(not isinstance(value, int) or value < 0 for value in beat_times)
+        or beat_times != sorted(set(beat_times))
+        or any(start not in beat_times for start in starts)
+    ):
+        return None
+    rights_document_url = ""
+    rights_document_path = track.get("rightsDocumentPath")
+    if rights_document_path:
+        rights_asset = (_REPO_ROOT / str(rights_document_path)).resolve()
+        try:
+            rights_asset.relative_to((_REPO_ROOT / "ui" / "assets" / "song-practice").resolve())
+            rights_digest = hashlib.sha256(rights_asset.read_bytes()).hexdigest()
+        except (OSError, ValueError):
+            return None
+        if rights_digest != track.get("rightsDocumentChecksumSha256"):
+            return None
+        rights_document_url = "/" + str(rights_document_path).lstrip("/")
     project_id = track.get("projectId") or track["id"]
     audio_url = "/" + str(track["audioPath"]).lstrip("/")
     practice_project = {
@@ -619,6 +639,7 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         },
         "timeline": {
             "meter": track["meter"],
+            "beatTimesMs": beat_times,
             "barStartsMs": starts,
             "chart": track.get("chart") or "",
             "confirmationState": "confirmed",
@@ -638,6 +659,11 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "teachingFocus": track.get("teachingFocus") or "Smooth chord changes",
         "tempo": track.get("tempo"),
         "recordingCredit": track.get("recordingCredit") or track["performerCredits"],
+        "rightsUrl": track.get("rightsUrl") or "",
+        "rightsDocumentUrl": rights_document_url,
+        "license": track.get("license") or "",
+        "licenseUrl": track.get("licenseUrl") or "",
+        "modifications": track.get("modifications") or "",
         "publicationState": track.get("publicationState") or "private_preview",
         "compositionSource": track["compositionSource"],
         "compositionStatus": track["compositionStatus"],
@@ -647,6 +673,7 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "durationMs": track["durationMs"],
         "key": track["key"],
         "meter": track["meter"],
+        "beatTimesMs": beat_times,
         "barStartsMs": starts,
         "chart": track.get("chart") or "",
         "sections": track.get("sections") or [],
