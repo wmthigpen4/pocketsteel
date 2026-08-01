@@ -56,8 +56,14 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "function leftAlignSvgStringLabels" in player_js
     assert 'leftAlignSvgStringLabels("play-current")' in player_js
     assert 'leftAlignSvgStringLabels("play-next")' in player_js
-    assert "function sameGrip" in player_js
-    assert "sharedGrip ? null" in player_js
+    assert "function sameFret" in player_js
+    assert "function separateSameFretNextGrip" in player_js
+    assert 'positionDisplay(next, "play-next", "next", 2)' in player_js
+    assert 'group.setAttribute("transform", `translate(${offset} 0)`)' in player_js
+    assert 'caption.textContent = "NEXT · SAME FRET"' in player_js
+    assert "renderFretboard(current, next)" in player_js
+    assert "const isPickup" in player_js
+    assert "Pickup · Bar 1" in player_js
     assert "note.changes" in player_js
     assert '[String(string), controlsByString.get(Number(string))]' in player_js
     assert '.replace(/^(\\d+)(?=\\D)/, "$1 ")' in player_js

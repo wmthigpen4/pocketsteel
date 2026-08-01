@@ -36,16 +36,17 @@
       "beatTimesMs": [0, 789, 1579, 2368, 3158, 3947, 4737, 5526, 6316, 7105, 7895, 8684, 9474, 10263, 11053, 11842, 12632, 13421, 14211, 15000, 15789, 16579, 17368, 18158, 18947, 19737, 20526, 21316, 22105, 22895, 23684, 24474, 25263, 26053, 26842, 27632, 28421, 29211, 30000, 30789, 31579, 32368, 33158, 33947, 34737, 35526, 36316, 37105, 37895, 38684, 39474, 40263, 41053, 41842, 42632],
       "barStartsMs": [4737, 7105, 9474, 11842, 14211, 16579, 18947, 21316, 23684, 26053, 28421, 30789, 33158, 35526, 37895, 40263],
       "chart": "[Opening] | G | G | C | G | [Middle] G | G | D7 | D7 | G | G | C | G | [Ending] Em | D7 | G | G |",
+      "lyricAlignment": "Phrase text begins on the audible melody pickup at count-in beat six (3947 ms), one beat before the first full-bar downbeat.",
       "sections": [
         {"id":"opening","label":"Opening","startBar":1,"endBar":4},
         {"id":"middle","label":"Middle","startBar":5,"endBar":12},
         {"id":"ending","label":"Ending","startBar":13,"endBar":16}
       ],
       "lyricCues": [
-        {"id":"amazing-grace-lyric-1","startMs":4737,"endMs":14211,"startBeat":0,"endBeat":12,"text":"Amazing grace, how sweet the sound"},
-        {"id":"amazing-grace-lyric-2","startMs":14211,"endMs":23684,"startBeat":12,"endBeat":24,"text":"That saved a wretch like me"},
-        {"id":"amazing-grace-lyric-3","startMs":23684,"endMs":33158,"startBeat":24,"endBeat":36,"text":"I once was lost, but now am found"},
-        {"id":"amazing-grace-lyric-4","startMs":33158,"endMs":42632,"startBeat":36,"endBeat":48,"text":"Was blind, but now I see"}
+        {"id":"amazing-grace-lyric-1","startMs":3947,"endMs":13421,"startBeat":0,"endBeat":12,"text":"Amazing grace, how sweet the sound"},
+        {"id":"amazing-grace-lyric-2","startMs":13421,"endMs":22895,"startBeat":12,"endBeat":24,"text":"That saved a wretch like me"},
+        {"id":"amazing-grace-lyric-3","startMs":22895,"endMs":32368,"startBeat":24,"endBeat":36,"text":"I once was lost, but now am found"},
+        {"id":"amazing-grace-lyric-4","startMs":32368,"endMs":42632,"startBeat":36,"endBeat":48,"text":"Was blind, but now I see"}
       ],
       "noSteel": true,
       "melodyLead": true,

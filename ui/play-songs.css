@@ -154,6 +154,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-fretboard [data-highlight-id="play-next"] { opacity: 0.55 !important; filter: grayscale(0.85); }
 .play-fretboard [data-highlight-id="play-current"] { opacity: 1 !important; }
 .play-fretboard .pedal-steel-fretboard__string-action-label { font-family: var(--font); }
+.play-fretboard .play-next-grip-caption { fill: #ddd7ca; font: 900 9px/1 var(--font); letter-spacing: 0.08em; paint-order: stroke fill; stroke: #090907; stroke-width: 3px; }
 
 .play-lyric { min-height: 48px; margin: 10px 0; display: grid; place-items: center; color: var(--cream); font: 650 clamp(20px, 3vw, 30px)/1.2 var(--lesson); text-align: center; }
 .play-controls { display: grid; grid-template-columns: auto auto minmax(180px, 1fr) auto auto auto; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 16px; background: rgba(19, 19, 16, 0.9); padding: 12px; }

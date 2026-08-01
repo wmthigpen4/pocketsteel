@@ -195,6 +195,9 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
         "I once was lost, but now am found",
         "Was blind, but now I see",
     ]
+    assert [cue["startMs"] for cue in amazing_grace["lyricCues"]] == [3947, 13421, 22895, 32368]
+    assert amazing_grace["lyricCues"][0]["startMs"] == amazing_grace["beatTimesMs"][5]
+    assert amazing_grace["lyricCues"][0]["startMs"] < amazing_grace["barStartsMs"][0]
     assert catalog["tracks"][1]["countInBars"] == 1
     assert catalog["tracks"][2]["publicationState"] == "coming_soon"
     assert catalog["tracks"][2]["recordingCredit"] == "Grant Raymond Barrett · CC BY 3.0"

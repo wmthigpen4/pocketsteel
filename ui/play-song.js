@@ -171,14 +171,34 @@
     });
   }
 
-  function sameGrip(left, right) {
-    return Boolean(left && right && left.fret === right.fret && JSON.stringify(left.strings || []) === JSON.stringify(right.strings || []));
+  function sameFret(left, right) {
+    return Boolean(left && right && left.fret === right.fret);
+  }
+
+  function separateSameFretNextGrip(position) {
+    const group = elements.fretboard.querySelector('[data-highlight-id="play-next"]');
+    const firstDot = group?.querySelector("[data-highlight-dot]");
+    if (!group || !firstDot) return;
+    const dotX = Number(firstDot.getAttribute("x"));
+    const dotY = Number(firstDot.getAttribute("y"));
+    const dotWidth = Number(firstDot.getAttribute("width"));
+    const offset = dotX > 1050 ? -52 : 52;
+    group.classList.add("is-same-fret-next");
+    group.setAttribute("transform", `translate(${offset} 0)`);
+    group.setAttribute("aria-label", `Upcoming grip at the same fret ${position?.fret}`);
+    const caption = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    caption.setAttribute("class", "play-next-grip-caption");
+    caption.setAttribute("x", String(dotX + (dotWidth / 2)));
+    caption.setAttribute("y", String(dotY - 6));
+    caption.setAttribute("text-anchor", "middle");
+    caption.textContent = "NEXT · SAME FRET";
+    group.append(caption);
   }
 
   function renderFretboard(current, next) {
     if (!global.STEEL_RAG_FRETBOARD?.mountPedalSteelFretboard) return;
-    const sharedGrip = sameGrip(current?.position, next?.position);
-    const positions = [positionDisplay(current, "play-current", "current", 1), sharedGrip ? null : positionDisplay(next, "play-next", "next", 2)].filter(Boolean);
+    const sharedFret = sameFret(current?.position, next?.position);
+    const positions = [positionDisplay(current, "play-current", "current", 1), positionDisplay(next, "play-next", "next", 2)].filter(Boolean);
     if (!positions.length) { elements.fretboard.innerHTML = ""; return; }
     global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
       title: "Play Along route", maxFret: 15, stringCount: 10, positions,
@@ -186,16 +206,19 @@
       showHighlightLabels: false, showStringActionLabels: true, highlightStyle: "prominent", query: { key: track.key }
     });
     leftAlignSvgStringLabels("play-current");
-    if (!sharedGrip) leftAlignSvgStringLabels("play-next");
+    leftAlignSvgStringLabels("play-next");
+    if (sharedFret) separateSameFretNextGrip(next?.position);
   }
 
   function renderState(timeMs, force = false) {
     const events = plan?.events || [];
     if (!events.length) return;
     const timeline = songTools.activeTimelineState(events, timeMs);
-    const current = timeline.current;
-    const next = timeline.next || (!current ? events[0] : null);
-    const stateKey = `${current?.id || "count-in"}:${next?.id || "end"}:${assistanceReduced}`;
+    const pickupStartMs = Number(track?.lyricCues?.[0]?.startMs);
+    const isPickup = !timeline.current && timeline.next === events[0] && Number.isFinite(pickupStartMs) && timeMs >= pickupStartMs;
+    const current = isPickup ? { ...events[0], startMs: pickupStartMs, isPickup: true } : timeline.current;
+    const next = isPickup ? events[1] || null : timeline.next || (!current ? events[0] : null);
+    const stateKey = `${current?.id || "count-in"}:${next?.id || "end"}:${isPickup ? "pickup" : "bar"}:${assistanceReduced}`;
     const beats = beatCountdown(current, next, timeMs);
     if (force || stateKey !== renderedState) {
       renderedState = stateKey;
@@ -206,8 +229,8 @@
       elements.nextGrip.innerHTML = assistanceReduced ? "" : gripMarkup(next?.position);
       elements.nextMove.textContent = assistanceReduced ? "" : movementInstruction(current, next);
       const currentBar = barNumber(current || next);
-      elements.bar.textContent = current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";
-      renderFretboard(current || next, current ? next : events[1]);
+      elements.bar.textContent = current?.isPickup ? `Pickup · Bar 1 of ${chart.measures.length}` : current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";
+      renderFretboard(current, next);
     }
     elements.nextLabel.textContent = next ? `Next${beats ? ` · ${beats} beat${beats === 1 ? "" : "s"}` : ""}` : "End";
     elements.nextCard.classList.toggle("is-imminent", Boolean(next && beats <= 2));
