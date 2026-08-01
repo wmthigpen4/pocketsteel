@@ -549,7 +549,7 @@
     if (!songTools) throw new Error("The song timeline could not load.");
     session = await fetch("/api/session", { headers: accessHeaders() }).then((response) => response.json());
     const catalogRequest = fetch("/api/song-practice/catalog", { headers: accessHeaders() });
-    await configurePlayAlongCopedent();
+    if (projectId.startsWith("local-")) await configurePlayAlongCopedent();
     const response = await catalogRequest;
     const catalog = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(catalog.error || "The guided song catalog could not load.");

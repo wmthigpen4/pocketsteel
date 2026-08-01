@@ -68,6 +68,7 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "app.hidden = false" in player_js
     assert 'responseMode: "play_along_lessons"' in player_js
     assert "const catalogRequest = fetch" in player_js
+    assert 'if (projectId.startsWith("local-")) await configurePlayAlongCopedent();' in player_js
     assert "prepareTrackShell();" in player_js
     assert "global.STEEL_RAG_COPEDENTS?.requestContext?.()" in player_js
     assert "session?.features?.accountCopedents && requestContext?.profileId" in player_js
