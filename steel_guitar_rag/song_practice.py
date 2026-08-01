@@ -64,9 +64,6 @@ _GRIPS: tuple[tuple[int, ...], ...] = (
     (5, 8, 10),
     (4, 5, 8),
     (5, 6, 10),
-    (3, 4, 5, 6),
-    (4, 5, 6, 8),
-    (5, 6, 8, 10),
 )
 
 _CURATED_ORDER = {
@@ -214,7 +211,7 @@ def parse_chord_symbol(symbol: object) -> ParsedChord | None:
 def _candidate_base_cost(candidate: ChordCandidate) -> float:
     center_cost = abs(candidate.fret - 6) * 0.12
     control_cost = sum(0.65 if control in {"A", "B"} else 1.8 for control in candidate.controls)
-    grip_cost = 0.0 if candidate.strings in _GRIPS[:4] else 0.45
+    grip_cost = 0.0 if candidate.strings == (4, 5, 6) else 0.55
     shell_cost = 0.35 if candidate.completeness == "shell" else 0.0
     return round(center_cost + control_cost + grip_cost + shell_cost, 4)
 

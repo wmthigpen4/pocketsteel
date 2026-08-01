@@ -116,6 +116,12 @@ def test_arranger_is_deterministic_uses_familiar_route_and_never_invents_unsuppo
     assert "manual" in first["events"][3]["warning"]
     assert first["events"][4]["status"] == "ready"
     assert "Slash bass B" in first["events"][4]["disclosure"]
+    assert all(
+        len(event["position"]["strings"]) == 3
+        for event in first["events"]
+        if event["status"] == "ready"
+    )
+    assert first["events"][0]["position"]["strings"] == [4, 5, 6]
     assert "transitions" not in first
     assert "solo" not in first
     assert "melody" not in first
