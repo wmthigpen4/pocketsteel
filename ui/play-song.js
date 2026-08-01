@@ -65,8 +65,9 @@
     return new Map((position?.notes || []).map((note) => [Number(note.string), noteControlLabel(note)]));
   }
 
-  function gripMarkup(position) {
+  function gripMarkup(position, showStrings = true) {
     if (!position) return "";
+    if (!showStrings) return `<span>Fret ${position.fret}</span>`;
     const controlsByString = stringControlMap(position);
     const strings = (position.strings || []).map((string) => {
       const control = controlsByString.get(Number(string));
@@ -224,7 +225,7 @@
     if (force || stateKey !== renderedState) {
       renderedState = stateKey;
       elements.currentChord.textContent = current?.chord || "—";
-      elements.currentGrip.innerHTML = assistanceReduced ? "" : gripMarkup(current?.position);
+      elements.currentGrip.innerHTML = assistanceReduced ? "" : gripMarkup(current?.position, false);
       elements.currentMove.textContent = assistanceReduced ? "Listen and make the change." : currentInstruction(current);
       elements.nextChord.textContent = next?.chord || "End";
       elements.nextGrip.innerHTML = assistanceReduced ? "" : gripMarkup(next?.position);
