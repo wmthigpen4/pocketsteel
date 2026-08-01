@@ -104,24 +104,42 @@ Verified:
 
 ## Protected-preview status
 
-Pending exact-commit release creation and Lane 12 activation. The prior
-Play Songs handoff documents that LaunchDaemon activation requires a local
-macOS administrator password. Codex will create and preflight the immutable
-release after commit, but will not collect or handle that password.
+The runtime implementation is committed as
+`6933998d9a65c63ff32f74350f43b9c8951215d7`. Its immutable detached release
+exists at `/Users/cory/.steel-rag/releases/6933998d-play-along-melody`, and the
+documented LaunchDaemon preflight passed for that exact commit.
+
+Activation is blocked by the local macOS administrator-password boundary.
+`sudo -n true` reports `a password is required`; Codex did not collect, request,
+or handle the credential. The existing loopback protected service still
+reports version `1ba8b849`, `/` returns 302, the canonical home returns 200,
+and `/play/amazing-grace-guided` returns 404. Protected browser smoke therefore
+has not run for this release.
+
+The exact activation command is:
+
+```bash
+STEEL_RAG_REPO_DIR=/Users/cory/.steel-rag/releases/6933998d-play-along-melody \
+STEEL_RAG_DATA_DIR='/Users/cory/Documents/Steel Guitar RAG' \
+STEEL_RAG_EXPECTED_GIT_SHA=6933998d9a65c63ff32f74350f43b9c8951215d7 \
+deploy/macos/install-private-preview-launchdaemon.sh activate
+```
+
+After activation, verify the local version and run authenticated browser smoke
+at:
+`https://app.steelguitarrag.com/play/amazing-grace-guided?v=play-along-6933998d-20260801`.
 
 ## Risks
 
 Medium-low in application code. The route uses existing hard pitch,
 top-voice, chord-support, and mechanical validation, and the complete suite is
-green. The remaining operational risk is that the protected origin may still
-run an older immutable release until a local administrator authorizes
-activation.
+green. The protected origin is confirmed to still run an older immutable
+release until a local administrator authorizes activation.
 
 ## Human decision needed
 
-No product decision is needed. A local administrator may need to authorize
-the protected-preview LaunchDaemon activation if the documented password gate
-appears again.
+No product decision is needed. A local administrator must authorize the exact
+protected-preview LaunchDaemon activation command above.
 
 ## Safe-to-stage exact file list
 
@@ -147,9 +165,8 @@ appears again.
 
 ## Recommended next lane
 
-Lane 01 should make the exact-path commit, then Lane 12 should create the
-immutable release, verify its preflight, activate it if authorization is
-available, and run authenticated protected browser smoke.
+Lane 12 should authorize the preflighted exact release, verify version
+`6933998d`, and run authenticated protected browser smoke.
 
 ## Commit readiness
 
