@@ -216,6 +216,19 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
     assert [cue["startMs"] for cue in amazing_grace["lyricCues"]] == [3947, 13421, 22895, 32368]
     assert amazing_grace["lyricCues"][0]["startMs"] == amazing_grace["beatTimesMs"][5]
     assert amazing_grace["lyricCues"][0]["startMs"] < amazing_grace["barStartsMs"][0]
+    melody = amazing_grace["melodyTimeline"]
+    assert len(melody) == 35
+    assert [(event["pitch"], event["startMs"], event["chord"]) for event in melody[:3]] == [
+        ("D4", 3947, "G"),
+        ("G4", 4737, "G"),
+        ("B4", 6316, "G"),
+    ]
+    assert melody[2]["endMs"] == melody[3]["startMs"] == 6710
+    assert melody[-1]["pitch"] == "G4" and melody[-1]["bar"] == 15
+    assert all(event["confirmationState"] == "confirmed" for event in melody)
+    assert amazing_grace["practiceProject"]["timeline"]["melodyEvents"] == melody
+    assert amazing_grace["melodySource"]["catalogId"] == "amazing-grace-new-britain"
+    assert amazing_grace["melodySource"]["reviewStatus"] == "confirmed"
     assert catalog["tracks"][1]["countInBars"] == 1
     assert catalog["tracks"][2]["publicationState"] == "coming_soon"
     assert catalog["tracks"][2]["recordingCredit"] == "Grant Raymond Barrett · CC BY 3.0"

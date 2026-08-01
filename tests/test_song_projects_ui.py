@@ -57,6 +57,9 @@ assert.deepEqual(timed.map((event) => [event.chord, event.startMs, event.endMs])
 assert.equal(songs.activeTimelineState(timed, 1200).current.chord, "C");
 assert.equal(songs.activeTimelineState(timed, 50).next.chord, "G");
 assert.equal(songs.activeTimelineState(timed, 5000).current.chord, "D7");
+assert.equal(songs.activeTimelineState(timed, 1099).current.chord, "G");
+assert.equal(songs.activeTimelineState(timed, 1100).current.chord, "C");
+assert.equal(songs.activeTimelineState(timed, 1179).current.chord, "C");
 
 const payload = songs.buildArrangePayload(project, {profileId: "day-e9-basic"});
 assert.equal(payload.schemaVersion, songs.REQUEST_SCHEMA);

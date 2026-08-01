@@ -28,9 +28,16 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert "Less help" in player
     assert 'id="play-attribution"' in player
     assert 'id="play-route"' in player
+    assert 'id="play-objective"' in player
+    assert 'id="current-melody"' in player
+    assert 'id="next-melody"' in player
+    assert 'id="play-why"' in player
+    assert "Why this position?" in player
     assert "--gold: #f0bf69" in css
     assert '--lesson: Georgia, "Times New Roman", serif' in css
     assert ".play-fretboard [data-highlight-id=\"play-next\"]" in css
+    assert ".play-fretboard .play-melody-tag" in css
+    assert ".play-why" in css
     assert "filter: grayscale(0.6)" in css
     assert "@media (orientation: landscape) and (max-height: 560px)" in css
 
@@ -52,8 +59,8 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "track?.beatTimesMs" in player_js
     assert "track.recordingCredit" in player_js
     assert "track.licenseUrl" in player_js
-    assert "selectedRoute()?.positions || track.authoredRoute" in player_js
-    assert "function selectedRoute" in player_js
+    assert "route?.positions || track.authoredRoute" in player_js
+    assert "function selectedChordRoute" in player_js
     assert "Move the bar" not in player_js
     assert "Source &amp; license" in songs_js
     assert "setInterval" not in player_js
@@ -62,10 +69,23 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert 'leftAlignSvgStringLabels("play-next")' in player_js
     assert "function sameFret" in player_js
     assert "function separateSameFretNextGrip" in player_js
-    assert 'positionDisplay(next, "play-next", "next", 2)' in player_js
+    assert 'positionDisplay(visibleNext, "play-next", "next", 2)' in player_js
+    assert "const visibleNext = assistanceReduced ? null : next" in player_js
     assert 'group.setAttribute("transform", `translate(${offset} 0)`)' in player_js
     assert 'caption.textContent = "NEXT · SAME FRET"' in player_js
     assert "renderFretboard(current, next)" in player_js
+    assert 'fetch("/api/amazing-tablature/arrange"' in player_js
+    assert "track?.melodyTimeline" in player_js
+    assert 'label: "Follow the Melody"' in player_js
+    assert '"Chord Foundation · Move the Bar"' in player_js
+    assert '"Chord Foundation · Stay Near Fret 3"' in player_js
+    assert 'label: "Full Chord Melody · Advanced"' in player_js
+    assert "payload?.playAlongLessons" in player_js
+    assert 'playAlongOpeningChordMelodyEvents: 3' in player_js
+    assert "lessonPlans" in player_js
+    assert "position.melodyString" in player_js
+    assert "★ MELODY" in player_js
+    assert "renderWhyDetails(current)" in player_js
     assert "const isPickup" in player_js
     assert "Pickup · Bar 1" in player_js
     assert "note.changes" in player_js

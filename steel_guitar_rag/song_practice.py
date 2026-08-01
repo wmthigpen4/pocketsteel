@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 from typing import Any, Mapping, Sequence
 
+from steel_guitar_rag.melody_import import import_score_draft
 from steel_guitar_rag.copedent_transfer import (
     absolute_pitch_for_profile,
     candidate_control_states,
@@ -71,6 +72,105 @@ _CURATED_ORDER = {
     "when-the-saints-guided": 2,
     "hard-times-guided": 3,
 }
+
+_AMAZING_GRACE_PROJECT_ID = "amazing-grace-guided"
+_AMAZING_GRACE_MELODY_CATALOG_ID = "amazing-grace-new-britain"
+
+
+def _chart_bar_chords(chart: object) -> list[str]:
+    bars: list[str] = []
+    for raw_bar in str(chart or "").split("|"):
+        chord = re.sub(r"\[[^\]]+\]", "", raw_bar).strip()
+        if chord:
+            bars.append(chord)
+    return bars
+
+
+def _interpolated_beat_time(beat_times: Sequence[int], beat_index: float, duration_ms: int) -> int:
+    lower = int(beat_index)
+    fraction = float(beat_index) - lower
+    if lower >= len(beat_times):
+        return int(duration_ms)
+    if not fraction or lower + 1 >= len(beat_times):
+        return int(beat_times[lower])
+    return round(beat_times[lower] + ((beat_times[lower + 1] - beat_times[lower]) * fraction))
+
+
+def _amazing_grace_melody_timeline(track: Mapping[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if str(track.get("projectId") or track.get("id") or "") != _AMAZING_GRACE_PROJECT_ID:
+        return [], {}
+    draft = import_score_draft({"sourceType": "catalog", "catalogId": _AMAZING_GRACE_MELODY_CATALOG_ID})
+    source = draft["source"]
+    melody = draft["score"]["melody"]
+    beat_times = list(track.get("beatTimesMs") or [])
+    duration_ms = int(track["durationMs"])
+    bar_chords = _chart_bar_chords(track.get("chart"))
+    sections = list(track.get("sections") or [])
+    lyric_cues = list(track.get("lyricCues") or [])
+    if len(melody) != 35 or len(beat_times) < 51 or len(bar_chords) < 15:
+        raise SongPracticeError("Amazing Grace melody timing is incomplete")
+
+    timeline: list[dict[str, Any]] = []
+    for index, event in enumerate(melody, start=1):
+        measure = int(event["measure"])
+        beat = float(event["beat"])
+        duration_beats = float(event["durationBeats"])
+        is_pickup = measure == 1
+        bar = 1 if is_pickup else measure - 1
+        base_beat_index = 5 if is_pickup else 6 + ((measure - 2) * 3)
+        start_beat_index = base_beat_index + (beat - 1)
+        end_beat_index = start_beat_index + duration_beats
+        start_ms = _interpolated_beat_time(beat_times, start_beat_index, duration_ms)
+        end_ms = _interpolated_beat_time(beat_times, end_beat_index, duration_ms)
+        active_chord = bar_chords[min(max(bar - 1, 0), len(bar_chords) - 1)]
+        section = next(
+            (
+                item
+                for item in sections
+                if int(item.get("startBar") or 1) <= bar <= int(item.get("endBar") or bar)
+            ),
+            None,
+        )
+        phrase = next(
+            (
+                str(cue.get("text") or "")
+                for cue in lyric_cues
+                if int(cue.get("startMs") or 0) <= start_ms < int(cue.get("endMs") or 0)
+            ),
+            "",
+        )
+        pitch = str(event["pitch"])
+        timeline.append(
+            {
+                "id": f"amazing-grace-melody-{index}",
+                "token": pitch,
+                "pitch": pitch,
+                "pitchValue": int(event["pitchValue"]),
+                "durationBeats": duration_beats,
+                "measure": measure,
+                "beat": beat,
+                "bar": bar,
+                "isPickup": is_pickup,
+                "startMs": start_ms,
+                "endMs": end_ms,
+                "chord": active_chord,
+                "sectionId": str((section or {}).get("id") or "opening"),
+                "phrase": phrase,
+                "origin": "reviewed_teaching_version",
+                "confirmationState": "confirmed",
+            }
+        )
+    return timeline, {
+        "catalogId": _AMAZING_GRACE_MELODY_CATALOG_ID,
+        "title": source.get("title") or "Amazing Grace",
+        "subtitle": source.get("subtitle") or "Complete verse melody · NEW BRITAIN",
+        "url": source.get("url") or "",
+        "attribution": source.get("attribution") or "",
+        "rightsLabel": source.get("rightsLabel") or "public_domain",
+        "accuracy": source.get("accuracy") or "interpretive",
+        "accuracyConfidence": source.get("accuracyConfidence") or "high",
+        "reviewStatus": draft.get("review", {}).get("status") or "confirmed",
+    }
 
 _PENDING_CURATED_LESSONS: tuple[dict[str, Any], ...] = (
     {
@@ -593,6 +693,142 @@ def arrange_song_practice(
     }
 
 
+def _play_along_melody_position(event: Mapping[str, Any], chord_symbol: str) -> dict[str, Any] | None:
+    raw_notes = event.get("notes")
+    if not isinstance(raw_notes, list) or not raw_notes:
+        return None
+    pitch_by_string = event.get("mechanicalPitchesByString") or {}
+    note_by_string = event.get("mechanicalNotesByString") or {}
+    notes: list[dict[str, Any]] = []
+    for raw_note in raw_notes:
+        string = int(raw_note["string"])
+        pitch = int(pitch_by_string[str(string)])
+        changes = [str(change) for change in raw_note.get("changes") or []]
+        notes.append(
+            {
+                "string": string,
+                "fret": int(raw_note["fret"]),
+                "pitch": pitch,
+                "pitchLabel": scientific_pitch_for_value(pitch),
+                "note": str(note_by_string.get(str(string)) or CANONICAL_NOTES[pitch % 12]),
+                "changes": changes,
+                "changeLabels": changes,
+            }
+        )
+    melody_pitch = int(event["pitchValue"])
+    melody_note = next((note for note in notes if note["pitch"] == melody_pitch), None)
+    if melody_note is None or melody_pitch != max(note["pitch"] for note in notes):
+        raise SongPracticeError("Amazing Tablature did not keep the exact melody as the highest voice")
+    parsed_chord = parse_chord_symbol(chord_symbol)
+    strings = [note["string"] for note in notes]
+    return {
+        "id": str(event.get("renderablePositionId") or event.get("id") or ""),
+        "status": "validated",
+        "validation": ["exact_melody_pitch", "top_voice", "mechanical_controls"],
+        "root": parsed_chord.root if parsed_chord else chord_symbol,
+        "quality": parsed_chord.quality if parsed_chord else "major",
+        "fret": notes[0]["fret"],
+        "strings": strings,
+        "grip": str(event.get("canonicalGrip") or "-".join(str(string) for string in strings)),
+        "controls": [str(control) for control in event.get("performanceControls") or []],
+        "controlLabels": [str(control) for control in event.get("performanceControlLabels") or []],
+        "pedals": [str(control) for control in event.get("pedalControls") or []],
+        "levers": [str(control) for control in event.get("leverControls") or []],
+        "notes": notes,
+        "melodyString": melody_note["string"],
+        "melodyPitchValue": melody_pitch,
+        "melodyPitchLabel": str(event.get("resolvedPitch") or scientific_pitch_for_value(melody_pitch)),
+        "instruction": str(event.get("explanation") or "Exact melody position validated by Amazing Tablature."),
+    }
+
+
+def build_play_along_melody_lessons(
+    exercise: Mapping[str, Any],
+    timeline: Sequence[Mapping[str, Any]],
+    *,
+    opening_chord_melody_events: int = 0,
+) -> dict[str, Any]:
+    """Join reviewed audio-clock events to validated Amazing Tablature routes."""
+
+    source_events = [dict(event) for event in timeline]
+    if not source_events or len(source_events) > MAX_EVENTS:
+        raise SongPracticeError("playAlongTimeline must contain confirmed melody events")
+    routes = exercise.get("publicRoutes") or exercise.get("routes") or []
+    if not isinstance(routes, list):
+        raise SongPracticeError("Amazing Tablature routes are unavailable")
+    routes_by_type = {
+        str(route.get("harmonyType")): route
+        for route in routes
+        if isinstance(route, Mapping)
+    }
+    mixed = routes_by_type.get("mixed_arrangement")
+    chord_melody = routes_by_type.get("chord_melody")
+    if mixed is None or chord_melody is None:
+        raise SongPracticeError("Amazing Tablature did not return both melody lesson routes")
+
+    opening_count = max(0, min(int(opening_chord_melody_events), len(source_events)))
+    lesson_specs = (
+        ("follow-melody", mixed, opening_count),
+        ("full-chord-melody", chord_melody, 0),
+    )
+    lessons: list[dict[str, Any]] = []
+    for lesson_id, route, use_opening_count in lesson_specs:
+        route_events = list(route.get("events") or [])
+        chord_events = list(chord_melody.get("events") or [])
+        if len(route_events) != len(source_events) or len(chord_events) != len(source_events):
+            raise SongPracticeError("Amazing Tablature did not preserve every reviewed melody event")
+        joined: list[dict[str, Any]] = []
+        for index, source in enumerate(source_events):
+            arranged = dict(chord_events[index] if index < use_opening_count else route_events[index])
+            expected_pitch = int(source["pitchValue"])
+            if int(arranged["pitchValue"]) != expected_pitch:
+                raise SongPracticeError("Amazing Tablature changed a reviewed melody pitch or register")
+            chord = str(source.get("chord") or arranged.get("harmonySymbol") or arranged.get("activeChord") or "")
+            position = _play_along_melody_position(arranged, chord)
+            alternatives = []
+            for alternative in arranged.get("alternatePositions") or []:
+                pitch_values = [int(value) for value in alternative.get("pitchValues") or []]
+                if pitch_values and max(pitch_values) == expected_pitch:
+                    alternatives.append(dict(alternative))
+            joined_event = dict(arranged)
+            joined_event.update(
+                {
+                    "id": str(source.get("id") or arranged.get("id") or f"melody-event-{index + 1}"),
+                    "chord": chord,
+                    "startMs": int(source["startMs"]),
+                    "endMs": int(source["endMs"]),
+                    "durationBeats": float(source["durationBeats"]),
+                    "measure": int(source["measure"]),
+                    "beat": float(source["beat"]),
+                    "bar": int(source["bar"]),
+                    "isPickup": bool(source.get("isPickup")),
+                    "sectionId": str(source.get("sectionId") or ""),
+                    "phrase": str(source.get("phrase") or ""),
+                    "position": position,
+                    "supportingPitches": list(arranged.get("supportingPitches") or []),
+                    "alternatives": alternatives[:2],
+                }
+            )
+            if index == 2 and position and position["grip"] == "3-4-5":
+                joined_event["selectionReason"] = (
+                    "Strings 3–4–5 put B4 above G4 and D4. Staying on 4–5–6 at fret 3 "
+                    "would leave G4 on top."
+                )
+            joined.append(joined_event)
+        lessons.append(
+            {
+                "id": lesson_id,
+                "route": {
+                    "id": str(route.get("id") or lesson_id),
+                    "label": str(route.get("label") or lesson_id),
+                    "recommendation": str(route.get("recommendation") or ""),
+                },
+                "events": joined,
+            }
+        )
+    return {"schemaVersion": "play_along_melody_lessons_v1", "lessons": lessons}
+
+
 def _manifest_payload() -> dict[str, Any]:
     try:
         payload = json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
@@ -682,6 +918,10 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         rights_document_url = "/" + str(rights_document_path).lstrip("/")
     project_id = track.get("projectId") or track["id"]
     audio_url = "/" + str(track["audioPath"]).lstrip("/")
+    try:
+        melody_timeline, melody_source = _amazing_grace_melody_timeline(track)
+    except (KeyError, OSError, TypeError, ValueError, SongPracticeError):
+        return None
     practice_project = {
         "schemaVersion": "practice_project_v1",
         "id": project_id,
@@ -695,6 +935,7 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
             "beatTimesMs": beat_times,
             "barStartsMs": starts,
             "chart": track.get("chart") or "",
+            "melodyEvents": melody_timeline,
             "confirmationState": "confirmed",
         },
         "sections": track.get("sections") or [],
@@ -704,6 +945,7 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "authoredRoute": authored_route,
         "defaultRouteId": default_route_id,
         "routeOptions": route_options,
+        "melodySource": melody_source,
     }
     return {
         "id": track["id"],
@@ -734,6 +976,8 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "chart": track.get("chart") or "",
         "sections": track.get("sections") or [],
         "lyricCues": track.get("lyricCues") or [],
+        "melodyTimeline": melody_timeline,
+        "melodySource": melody_source,
         "authoredRoute": authored_route,
         "defaultRouteId": default_route_id,
         "routeOptions": route_options,

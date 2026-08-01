@@ -121,6 +121,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-heading .play-attribution { max-width: 760px; color: rgba(244, 234, 214, 0.5); font-size: 10px; line-height: 1.35; }
 .play-attribution a, .song-card__credit a { color: inherit; text-underline-offset: 2px; }
 .play-bar-readout { color: var(--gold); font-size: 13px; font-weight: 800; }
+.play-objective { margin: -3px 0 10px; color: var(--gold); font-size: 12px; font-weight: 800; letter-spacing: 0.015em; }
 
 .play-cue-deck { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr); gap: 12px; margin-bottom: 12px; }
 .play-cue {
@@ -142,6 +143,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-string { min-width: 30px; height: 28px; display: inline-flex; align-items: center; justify-content: flex-start; border-radius: 999px; border: 1px solid currentColor; padding: 0 9px; text-align: left; white-space: nowrap; }
 .play-cue.is-current .play-string { background: var(--gold); color: #1a1005; }
 .play-cue.is-next .play-string { background: rgba(244, 234, 214, 0.08); }
+.play-melody-cue { margin: 10px 0 0; color: var(--gold); font-size: 12px; font-weight: 900; letter-spacing: 0.035em; text-transform: uppercase; }
+.play-cue.is-next .play-melody-cue { color: rgba(244, 234, 214, 0.78); }
 .play-move { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
 .play-cue.is-next .play-move { color: rgba(244, 234, 214, 0.82); font-weight: 750; }
 
@@ -158,6 +161,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-fretboard [data-highlight-id="play-current"] { opacity: 1 !important; }
 .play-fretboard .pedal-steel-fretboard__string-action-label { font-family: var(--font); }
 .play-fretboard .play-next-grip-caption { fill: #fff4dc; font: 900 12px/1 var(--font); letter-spacing: 0.06em; paint-order: stroke fill; stroke: #090907; stroke-width: 4px; }
+.play-fretboard .play-melody-tag rect { fill: #18130b; stroke: #f0bf69; stroke-width: 1.5px; }
+.play-fretboard .play-melody-tag text { fill: #fff4dc; font: 900 11px/1 var(--font); letter-spacing: 0.035em; paint-order: stroke fill; stroke: #18130b; stroke-width: 3px; }
+.play-fretboard [data-highlight-id="play-next"] .play-melody-tag rect { fill: #363b38; stroke: #fff4dc; }
+
+.play-why { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr); gap: 18px; margin-top: 10px; border: 1px solid rgba(240, 191, 105, 0.5); border-radius: 16px; background: linear-gradient(145deg, rgba(39, 30, 18, 0.98), rgba(17, 17, 14, 0.98)); padding: 16px 18px; box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28); }
+.play-why__eyebrow { margin: 0 0 5px; color: var(--gold); font-size: 10px; font-weight: 900; letter-spacing: 0.11em; text-transform: uppercase; }
+.play-why h2 { margin: 0; font: 650 24px/1.05 var(--lesson); }
+.play-why__main > p:not(.play-why__eyebrow) { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.play-why__movement { color: var(--cream) !important; font-weight: 750; }
+.play-why__facts { display: grid; gap: 7px; margin: 0; }
+.play-why__facts div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; border-bottom: 1px solid rgba(244, 234, 214, 0.1); padding-bottom: 7px; }
+.play-why__facts dt { color: rgba(244, 234, 214, 0.55); font-size: 10px; font-weight: 850; letter-spacing: 0.07em; text-transform: uppercase; }
+.play-why__facts dd { margin: 0; color: var(--cream); font-size: 12px; font-weight: 750; }
+.play-why__alternatives { grid-column: 1 / -1; border-top: 1px solid rgba(244, 234, 214, 0.12); padding-top: 11px; }
+.play-why__alternatives h3 { margin: 0 0 8px; color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+#play-why-alternative-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.play-why-alternative { border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 11px; background: rgba(8, 8, 7, 0.4); padding: 9px 11px; }
+.play-why-alternative strong, .play-why-alternative span { display: block; }
+.play-why-alternative strong { color: var(--cream); font-size: 12px; }
+.play-why-alternative span { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.4; }
 
 .play-lyric { min-height: 48px; margin: 10px 0; display: grid; place-items: center; color: var(--cream); font: 650 clamp(20px, 3vw, 30px)/1.2 var(--lesson); text-align: center; }
 .play-controls { display: grid; grid-template-columns: auto auto minmax(180px, 1fr) auto auto auto; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 16px; background: rgba(19, 19, 16, 0.9); padding: 12px; }
@@ -181,9 +204,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (max-width: 699px) {
-  .songs-header, .songs-main { width: min(calc(100% - 24px), 1160px); }
-  .songs-header { align-items: flex-start; padding: 16px 0; }
-  .songs-nav { display: grid; }
+  body { overflow-x: hidden; }
+  .songs-header, .songs-main { width: min(calc(100vw - 24px), 1160px); }
+  .songs-header { display: grid; grid-template-columns: 1fr; align-items: start; padding: 16px 0; }
+  .songs-nav { justify-content: flex-start; }
+  .play-main { width: min(calc(100vw - 24px), 1240px); }
+  .play-cue-deck { grid-template-columns: 1fr; }
+  .play-cue.is-next { padding-block: 14px; }
+  .play-cue__row { align-items: flex-start; flex-wrap: wrap; }
+  .play-cue__row .play-grip { flex: 1 1 100%; }
+  .play-fretboard-shell { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .play-controls { grid-template-columns: 1fr 1fr; }
+  .play-controls #play-scrub, .play-controls .route-control { grid-column: 1 / -1; }
+  .play-controls .route-control select { min-width: 0; width: 100%; }
+  .play-checkpoints { grid-template-columns: 1fr 1fr; }
   .songs-section-heading, .track-import-row, .local-track { grid-template-columns: 1fr; display: grid; align-items: start; }
   .track-import-row .songs-button { width: 100%; }
   .local-track__actions { justify-content: flex-start; }
@@ -195,6 +229,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .play-heading { margin-bottom: 7px; }
   .play-heading h1 { font-size: 22px; }
   .play-heading p, .songs-brand span { display: none; }
+  .play-objective { margin: -2px 0 5px; font-size: 10px; }
   .play-cue-deck { grid-template-columns: minmax(0, 1.35fr) minmax(220px, .65fr); margin-bottom: 7px; }
   .play-cue { padding: 10px 14px; }
   .play-cue__chord { font-size: clamp(36px, 8vh, 54px); }
@@ -205,4 +240,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .play-lyric { min-height: 31px; margin: 3px 0; font-size: 19px; }
   .play-controls { padding: 7px; }
   .play-checkpoints { display: none; }
+  .play-why { position: fixed; right: 9px; bottom: 9px; left: 9px; z-index: 20; max-height: 45vh; grid-template-columns: minmax(0, 1.15fr) minmax(250px, .85fr); overflow: auto; margin: 0; padding: 12px 14px; }
+  .play-why h2 { font-size: 20px; }
+  .play-why__alternatives { display: none; }
 }

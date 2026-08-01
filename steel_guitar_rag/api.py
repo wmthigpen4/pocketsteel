@@ -128,6 +128,7 @@ from steel_guitar_rag.lesson_studio import LessonStudioError, build_lesson_respo
 from steel_guitar_rag.song_practice import (
     SongPracticeError,
     arrange_song_practice,
+    build_play_along_melody_lessons,
     configured_song_practice_enabled,
     song_practice_catalog,
 )
@@ -973,6 +974,16 @@ class RetrievalApi:
             try:
                 request_payload = self._read_json_body(environ)
                 arrangement_request = dict(request_payload)
+                play_along_timeline = arrangement_request.pop(
+                    "playAlongTimeline",
+                    arrangement_request.pop("play_along_timeline", None),
+                )
+                opening_chord_melody_events = arrangement_request.pop(
+                    "playAlongOpeningChordMelodyEvents",
+                    arrangement_request.pop("play_along_opening_chord_melody_events", 0),
+                )
+                if play_along_timeline is not None and not isinstance(play_along_timeline, list):
+                    raise MelodyExerciseError("playAlongTimeline must be an array")
                 if not arrangement_request.get("melody") and isinstance(
                     arrangement_request.get("events"), list
                 ):
@@ -1029,6 +1040,15 @@ class RetrievalApi:
                 "tabExample": selected_route["tabExample"],
                 "fretboard": selected_route["fretboard"],
             }
+            if play_along_timeline is not None:
+                try:
+                    response["playAlongLessons"] = build_play_along_melody_lessons(
+                        exercise,
+                        play_along_timeline,
+                        opening_chord_melody_events=int(opening_chord_melody_events),
+                    )
+                except (SongPracticeError, ValueError, TypeError) as exc:
+                    return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
             response.update(copedent_context_metadata(profile, revision))
             return self._json_response(
                 start_response,

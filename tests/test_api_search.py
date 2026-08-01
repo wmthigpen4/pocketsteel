@@ -60,6 +60,7 @@ from steel_guitar_rag.cloudflare_access import (
 )
 from steel_guitar_rag.rag_guardrails import INJECTION_WARNING
 from steel_guitar_rag.retrieval_modes import RetrievalMode, RetrievalModeConfig
+from steel_guitar_rag.song_practice import song_practice_catalog
 from scripts.serve_answer_smoke import build_app
 from scripts.serve_v2_rerank_smoke import create_v2_api_app
 
@@ -4396,6 +4397,88 @@ def test_amazing_tablature_endpoint_returns_shared_voice_movement_contract() -> 
     assert payload["tabExample"]["validation"]["ok"] is True
     assert len(payload["tabExample"]["events"]) == len(payload["fretboard"]["positions"]) == 3
     assert all(route["materiallyDistinct"] for route in payload["melodyExercise"]["routes"])
+
+
+def test_amazing_grace_play_along_preserves_reviewed_melody_and_golden_opening_grips() -> None:
+    track = song_practice_catalog()["tracks"][0]
+    melody = track["melodyTimeline"]
+    status, _, payload = call_app(
+        "/api/amazing-tablature/arrange",
+        method="POST",
+        json_body={
+            "kind": "song_arrangement_lesson",
+            "key": track["key"],
+            "meter": track["meter"],
+            "pickupBeats": 1,
+            "wholeSong": True,
+            "texture": "both",
+            "sourceProvided": True,
+            "accuracy": "exact",
+            "accuracyConfidence": "high",
+            "playAlongTimeline": melody,
+            "playAlongOpeningChordMelodyEvents": 3,
+            "melody": [
+                {
+                    "token": event["pitch"],
+                    "pitch": event["pitch"],
+                    "pitchValue": event["pitchValue"],
+                    "durationBeats": event["durationBeats"],
+                    "measure": event["measure"],
+                    "beat": event["beat"],
+                    "chord": event["chord"],
+                    "origin": event["origin"],
+                }
+                for event in melody
+            ],
+            "copedentContext": {"profileId": "emmons-e9-basic"},
+        },
+        melody_exercise_enabled=True,
+    )
+
+    assert status == "200 OK"
+    routes = {route["harmonyType"]: route for route in payload["melodyExercise"]["publicRoutes"]}
+    assert len(routes["mixed_arrangement"]["events"]) == len(routes["chord_melody"]["events"]) == 35
+    chord_melody = routes["chord_melody"]["events"]
+    assert [event["canonicalGrip"] for event in chord_melody[:3]] == ["5-6-8", "4-5-6", "3-4-5"]
+    assert [event["notes"][0]["fret"] for event in chord_melody[:3]] == [3, 3, 3]
+    for route_id in ("mixed_arrangement", "chord_melody"):
+        for expected, arranged in zip(melody, routes[route_id]["events"], strict=True):
+            assert arranged["pitchValue"] == expected["pitchValue"]
+            assert arranged["pitchValue"] == max(arranged["mechanicalPitchesByString"].values())
+    lessons = {lesson["id"]: lesson for lesson in payload["playAlongLessons"]["lessons"]}
+    assert payload["playAlongLessons"]["schemaVersion"] == "play_along_melody_lessons_v1"
+    assert list(lessons) == ["follow-melody", "full-chord-melody"]
+    assert [event["position"]["grip"] for event in lessons["follow-melody"]["events"][:3]] == [
+        "5-6-8",
+        "4-5-6",
+        "3-4-5",
+    ]
+    assert [event["position"]["fret"] for event in lessons["follow-melody"]["events"][:3]] == [3, 3, 3]
+    assert "would leave G4 on top" in lessons["follow-melody"]["events"][2]["selectionReason"]
+    assert {len(event["position"]["notes"]) for event in lessons["follow-melody"]["events"]} == {1, 2, 3}
+    assert {len(event["position"]["notes"]) for event in lessons["full-chord-melody"]["events"]} == {3}
+    assert {event["arrangementRole"] for event in lessons["follow-melody"]["events"]} >= {
+        "pickup",
+        "sustained_note",
+        "passing_tone",
+        "tension",
+        "resolution",
+    }
+    assert any("stay at the same fret" in event["movement"] for event in lessons["follow-melody"]["events"])
+    assert any("move the bar" in event["movement"] for event in lessons["follow-melody"]["events"])
+    for lesson in lessons.values():
+        assert len(lesson["events"]) == 35
+        for expected, event in zip(melody, lesson["events"], strict=True):
+            assert (event["startMs"], event["endMs"], event["pitchValue"]) == (
+                expected["startMs"],
+                expected["endMs"],
+                expected["pitchValue"],
+            )
+            assert event["position"]["melodyPitchValue"] == max(
+                note["pitch"] for note in event["position"]["notes"]
+            )
+            for alternative in event["alternatives"]:
+                assert max(alternative["pitchValues"]) == expected["pitchValue"]
 
 
 def test_api_answer_preserves_recording_attribution_for_melody_lesson() -> None:
