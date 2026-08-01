@@ -120,6 +120,7 @@ def test_v2_local_dev_mode_still_allows_dev_smoke_access(monkeypatch: Any) -> No
         "authenticated": True,
         "role": "beta_user",
         "authProvider": "local_dev",
+        "features": {"songPractice": True},
     }
     assert local_preview_url(host="127.0.0.1", port=8781, answer_auth_mode="local_dev").endswith(
         "?access=beta_user"
@@ -146,6 +147,7 @@ def test_v2_production_cloudflare_access_session_reports_provider(monkeypatch: A
         "authenticated": True,
         "role": "beta_user",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
     assert "email" not in payload
     assert "access=beta_user" not in local_preview_url(

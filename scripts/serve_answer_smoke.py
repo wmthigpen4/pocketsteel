@@ -134,6 +134,10 @@ def build_app(
 
         if path == "/":
             return redirect_response(start_response, "/ui/steel-guitar-rag-mock.html")
+        if path in {"/songs", "/songs/"}:
+            path = "/ui/songs.html"
+        elif path.startswith("/play/") and len(path.removeprefix("/play/").strip("/")) > 0:
+            path = "/ui/play-song.html"
         if path in {"/ui", "/ui/"}:
             path = "/ui/steel-guitar-rag-mock.html"
         if path.startswith("/brand/"):

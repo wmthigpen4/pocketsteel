@@ -2,10 +2,14 @@
 
 ## Product boundary
 
-Song Practice is the deterministic song-learning path inside Melody Studio. A
-browser-local `song_project_v1` owns the recording relationship and the master
-timeline. The server receives musical timing and copedent context only; it does
-not receive, store, inspect, identify, or log the recording.
+**Play Songs** is the dedicated performance path in Steel Guitar RAG. **Songs**
+names the catalog and **Play Along** names synchronized playback. Melody Studio
+remains the separate arrangement-authoring workspace.
+
+A versioned `practice_project_v1` owns the recording relationship and master
+timeline for bundled and local sources. The server receives musical timing and
+copedent context only; it does not receive, store, inspect, identify, or log a
+device-only recording.
 
 Stage 1 is **Chord Karaoke**. Stages 2–5 remain unavailable until the preceding
 stage has completed automated smoke and user smoke:
@@ -22,14 +26,23 @@ melody on top of the Level 4 solo.
 ## Feature gate
 
 - Environment flag: `STEEL_RAG_ENABLE_SONG_PRACTICE`
-- Default: off
+- Default: on; an explicit false value disables the capability
 - Session capability: `features.songPractice`
-- The flag controls the Learn a song entry choice, pilot catalog, and arrange
-  endpoint. It does not change the existing Melody Studio feature flags.
+- The flag controls the Songs catalog and arrange endpoint. It does not change
+  the existing Melody Studio feature flags.
+
+## Navigation contract
+
+- The app home keeps Fretboard Explorer, Melody Studio, Lessons, and Steel
+  Guitar Q&A in their established order.
+- A full-width Play Songs entry appears before those four cards.
+- `/songs` lists curated lessons before device-only tracks.
+- `/play/<projectId>` opens the dedicated landscape-first player.
+- Back from Play Along returns to Songs; back from Songs returns home.
 
 ## Browser project contract
 
-`song_project_v1` contains:
+`practice_project_v1` contains:
 
 - `id`, `schemaVersion`, `createdAt`, and `updatedAt`
 - key and meter
@@ -39,14 +52,16 @@ melody on top of the Level 4 solo.
 - optional section cue phrases, each no longer than 80 characters
 - role markers
 - selected style and chosen plan
-- either a built-in track ID or non-retained local-file identity
+- `audio.kind` of `bundled` or `local`
+- confirmed beat/bar timestamps, meter, and timed chord cues
+- synchronized sections and optional lyric cues
+- a generated continuity-first E9 route and loop settings
 - provenance and version metadata
 
-The local-file identity is limited to filename, byte size, last-modified time,
-and measured duration. Audio bytes, object URLs, decoded samples, and media
-blobs are forbidden in IndexedDB and JSON exports. Reopening a local project
-requires the user to select the recording again. The browser checks all four
-identity fields before accepting the relink.
+Device audio is stored in the Origin Private File System. IndexedDB and JSON
+exports contain metadata only. Imported audio is never sent in a network
+request. The device library supports removal and metadata-only export; relink
+and analysis/correction build on this same project contract.
 
 ## Learner path and advanced builder boundary
 
@@ -142,11 +157,12 @@ item is exposed only when all of the following are present and valid:
 - `melodyLead: true`, a positive count-in bar count, and `learnerReady: true`
 - an audio file below the repository's 2 MiB tracked-file limit
 
-The three Stage 1 pilots are Amazing Grace, When the Saints Go Marching In,
-and Oh! Susanna. Generated preview masters remain internal-preview assets until
-the exact manifest and masters receive public-launch rights review. A public-
-domain composition never implies that an unrelated modern recording is free
-to use.
+The starter registry contains Amazing Grace, When the Saints Go Marching In,
+and Hard Times Come Again No More. Amazing Grace and When the Saints are
+playable in the private application. Hard Times remains visibly in recording
+and synchronization review until its CC BY master, attribution, chord map, and
+lyrics have completed the same learner-ready gate. A public-domain composition
+never implies that an unrelated modern recording is free to use.
 
 ## Deferred work
 

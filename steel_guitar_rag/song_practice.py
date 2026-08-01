@@ -69,6 +69,44 @@ _GRIPS: tuple[tuple[int, ...], ...] = (
     (5, 6, 8, 10),
 )
 
+_CURATED_ORDER = {
+    "amazing-grace-guided": 1,
+    "when-the-saints-guided": 2,
+    "hard-times-guided": 3,
+}
+
+_PENDING_CURATED_LESSONS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "hard-times-cc-by-v1",
+        "projectId": "hard-times-guided",
+        "title": "Hard Times Come Again No More",
+        "performer": "Grant Raymond Barrett",
+        "description": "A lyrical Stephen Foster song selected for a future complete-song E9 lesson.",
+        "difficulty": "Beginner",
+        "teachingFocus": "Long phrases, I–IV–V movement, and steady bar control",
+        "key": "G",
+        "meter": "4/4",
+        "tempo": None,
+        "durationMs": 145946,
+        "recordingCredit": "Grant Raymond Barrett · CC BY 3.0",
+        "rightsUrl": "https://commons.wikimedia.org/wiki/File:02_Hard_Times_Come_Again_No_More.ogg",
+        "publicationState": "coming_soon",
+        "learnerReady": False,
+        "noSteel": True,
+        "melodyLead": True,
+        "practiceProject": {
+            "schemaVersion": "practice_project_v1",
+            "id": "hard-times-guided",
+            "audio": {"kind": "bundled", "durationMs": 145946, "availability": "review"},
+            "timeline": {"meter": "4/4", "barStartsMs": [], "chords": [], "confirmationState": "review"},
+            "sections": [],
+            "lyrics": [],
+            "e9Profile": {"defaultProfileId": "emmons-e9-basic"},
+            "loop": {"enabled": False, "startMs": 0, "endMs": 0},
+        },
+    },
+)
+
 
 class SongPracticeError(ValueError):
     """Raised when a Song Practice request cannot be planned safely."""
@@ -104,7 +142,10 @@ class ChordCandidate:
 
 
 def configured_song_practice_enabled() -> bool:
-    return os.environ.get(ENABLE_SONG_PRACTICE_ENV, "").strip().lower() in {
+    configured = os.environ.get(ENABLE_SONG_PRACTICE_ENV)
+    if configured is None:
+        return True
+    return configured.strip().lower() in {
         "1",
         "true",
         "yes",
@@ -569,9 +610,38 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
     starts = track.get("barStartsMs")
     if not isinstance(starts, list) or not starts or any(not isinstance(value, int) or value < 0 for value in starts):
         return None
+    project_id = track.get("projectId") or track["id"]
+    audio_url = "/" + str(track["audioPath"]).lstrip("/")
+    practice_project = {
+        "schemaVersion": "practice_project_v1",
+        "id": project_id,
+        "audio": {
+            "kind": "bundled",
+            "url": audio_url,
+            "durationMs": track["durationMs"],
+        },
+        "timeline": {
+            "meter": track["meter"],
+            "barStartsMs": starts,
+            "chart": track.get("chart") or "",
+            "confirmationState": "confirmed",
+        },
+        "sections": track.get("sections") or [],
+        "lyrics": track.get("lyricCues") or [],
+        "e9Profile": {"defaultProfileId": "emmons-e9-basic"},
+        "loop": {"enabled": False, "startMs": 0, "endMs": 0},
+    }
     return {
         "id": track["id"],
+        "projectId": project_id,
         "title": track["title"],
+        "performer": track.get("performer") or track["performerCredits"],
+        "description": track.get("description") or "Follow a prepared chord route with synchronized audio.",
+        "difficulty": track.get("difficulty") or "Beginner",
+        "teachingFocus": track.get("teachingFocus") or "Smooth chord changes",
+        "tempo": track.get("tempo"),
+        "recordingCredit": track.get("recordingCredit") or track["performerCredits"],
+        "publicationState": track.get("publicationState") or "private_preview",
         "compositionSource": track["compositionSource"],
         "compositionStatus": track["compositionStatus"],
         "arrangementOwner": track["arrangementOwner"],
@@ -582,22 +652,43 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "meter": track["meter"],
         "barStartsMs": starts,
         "chart": track.get("chart") or "",
+        "sections": track.get("sections") or [],
+        "lyricCues": track.get("lyricCues") or [],
         "noSteel": True,
         "melodyLead": track["melodyLead"],
         "countInBars": track["countInBars"],
         "learnerReady": track["learnerReady"],
-        "audioUrl": "/" + str(track["audioPath"]).lstrip("/"),
+        "audioUrl": audio_url,
+        "practiceProject": practice_project,
         "launchStatus": track["launchStatus"],
     }
 
 
-def song_practice_catalog() -> dict[str, Any]:
+def list_curated_lessons() -> list[dict[str, Any]]:
     manifest = _manifest_payload()
     tracks = [validated for item in manifest["tracks"] if (validated := _validated_track(item))]
+    selected = [
+        track
+        for track in tracks
+        if track["projectId"] in {"amazing-grace-guided", "when-the-saints-guided"}
+    ]
+    selected.extend(dict(item) for item in _PENDING_CURATED_LESSONS)
+    return sorted(selected, key=lambda item: _CURATED_ORDER.get(str(item.get("projectId")), 999))
+
+
+def get_curated_practice_project(project_id: str) -> dict[str, Any] | None:
+    normalized = str(project_id or "").strip()
+    for lesson in list_curated_lessons():
+        if lesson.get("projectId") == normalized or lesson.get("id") == normalized:
+            return None if lesson.get("publicationState") == "coming_soon" else lesson
+    return None
+
+
+def song_practice_catalog() -> dict[str, Any]:
     return {
         "schemaVersion": CATALOG_SCHEMA,
-        "tracks": tracks,
+        "tracks": list_curated_lessons(),
         "rightsNotice": (
-            "These app-owned preview masters are feature-gated. Public launch requires review of the exact masters and provenance records."
+            "Curated masters are loaded only when opened. Device imports remain local to this browser."
         ),
     }

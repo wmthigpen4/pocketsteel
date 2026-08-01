@@ -1,0 +1,67 @@
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
+    songs = (REPO_ROOT / "ui" / "songs.html").read_text(encoding="utf-8")
+    player = (REPO_ROOT / "ui" / "play-song.html").read_text(encoding="utf-8")
+    css = (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
+
+    assert "Steel Guitar RAG" in songs and "Steel Guitar RAG" in player
+    assert "Pocket Steel" not in songs + player + css
+    assert "Starter Songs" in songs
+    assert "My Tracks" in songs
+    assert "Add Your Track" in songs
+    assert "Audio stays in this browser" in songs
+    assert 'class="play-cue is-current"' in player
+    assert 'class="play-cue is-next"' in player
+    assert player.index('class="play-cue is-current"') < player.index('class="play-cue is-next"')
+    assert "Preview grips" in player
+    assert "2-bar loop" in player
+    assert "4-bar loop" in player
+    assert "Full song" in player
+    assert "Less help" in player
+    assert "--gold: #f0bf69" in css
+    assert '--lesson: Georgia, "Times New Roman", serif' in css
+    assert ".play-fretboard [data-highlight-id=\"play-next\"]" in css
+    assert "filter: grayscale(1)" in css
+    assert "@media (orientation: landscape) and (max-height: 560px)" in css
+
+
+def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
+    songs_js = (REPO_ROOT / "ui" / "songs.js").read_text(encoding="utf-8")
+    player_js = (REPO_ROOT / "ui" / "play-song.js").read_text(encoding="utf-8")
+
+    assert "navigator.storage.getDirectory" in songs_js
+    assert 'storage: "opfs"' in songs_js
+    assert 'uploaded: false, networkAllowed: false' in songs_js
+    assert "MAX_BYTES = 250 * 1024 * 1024" in songs_js
+    assert "MAX_DURATION_SECONDS = 15 * 60" in songs_js
+    import_slice = songs_js[songs_js.index("async function importTrack"):songs_js.index("function songCard")]
+    assert "fetch(" not in import_slice
+    assert "XMLHttpRequest" not in import_slice
+    assert "sendBeacon" not in import_slice
+    assert "audio.currentTime * 1000" in player_js
+    assert "setInterval" not in player_js
+    assert 'addSvgControlTag("play-current"' in player_js
+    assert 'addSvgControlTag("play-next"' in player_js
+    assert "showStringActionLabels: true" in player_js
+    assert "stringActionLabels" in player_js
+    assert "controls ?" in player_js
+
+
+def test_play_songs_javascript_syntax() -> None:
+    for path in ("ui/songs.js", "ui/play-song.js"):
+        result = subprocess.run(
+            ["node", "--check", path],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr

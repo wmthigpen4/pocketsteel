@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play Along · Steel Guitar RAG</title>
+  <link rel="stylesheet" href="/ui/play-songs.css?v=play-songs-20260801-1">
+</head>
+<body>
+  <header class="songs-header">
+    <a class="songs-brand" href="/songs" aria-label="Back to Songs"><span>Steel Guitar RAG</span><strong>Play Along</strong></a>
+    <nav class="songs-nav" aria-label="Page navigation"><a href="/songs">Songs</a><a href="/ui/steel-guitar-rag-mock.html">Home</a></nav>
+  </header>
+  <main class="play-main" id="play-app" hidden>
+    <div class="play-heading">
+      <div><h1 id="play-title">Loading song…</h1><p id="play-meta"></p></div>
+      <div class="play-bar-readout" id="play-bar">Count-in</div>
+    </div>
+    <section class="play-cue-deck" aria-label="Current and upcoming chord">
+      <article class="play-cue is-current" aria-labelledby="current-chord-label">
+        <p class="play-cue__label" id="current-chord-label">Now</p>
+        <div class="play-cue__row"><h2 class="play-cue__chord" id="current-chord">—</h2><div class="play-grip" id="current-grip"></div></div>
+        <p class="play-move" id="current-move">Listen for the count-in.</p>
+      </article>
+      <article class="play-cue is-next" aria-labelledby="next-chord-label">
+        <p class="play-cue__label" id="next-chord-label">Next</p>
+        <div class="play-cue__row"><h2 class="play-cue__chord" id="next-chord">—</h2><div class="play-grip" id="next-grip"></div></div>
+        <p class="play-move" id="next-move">Get ready.</p>
+      </article>
+    </section>
+    <section class="play-fretboard-shell" aria-label="Recommended E9 fretboard route">
+      <div class="play-fretboard" id="play-fretboard"></div>
+    </section>
+    <p class="play-lyric" id="play-lyric" aria-live="polite"></p>
+    <div class="play-controls">
+      <button class="songs-button is-primary" id="play-toggle" type="button">▶ Play</button>
+      <button class="songs-button is-quiet" id="play-restart" type="button">Restart</button>
+      <input id="play-scrub" type="range" min="0" max="1" value="0" step="0.01" aria-label="Song position">
+      <span class="play-time" id="play-time">0:00 / 0:00</span>
+      <label>Speed <select id="play-speed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option></select></label>
+      <label class="loop-control"><input id="play-loop" type="checkbox"> Loop 4 bars</label>
+      <label class="backing-control">Backing <input id="play-volume" type="range" min="0" max="1" value="0.9" step="0.05"></label>
+    </div>
+    <div class="play-checkpoints" aria-label="Lesson checkpoints">
+      <button class="play-checkpoint" data-checkpoint="preview"><strong>Preview grips</strong><small>Pause and study the route</small></button>
+      <button class="play-checkpoint" data-checkpoint="2"><strong>2-bar loop</strong><small>Connect one move</small></button>
+      <button class="play-checkpoint" data-checkpoint="4"><strong>4-bar loop</strong><small>Build the phrase</small></button>
+      <button class="play-checkpoint is-active" data-checkpoint="full"><strong>Full song</strong><small>Play the complete form</small></button>
+      <button class="play-checkpoint" data-checkpoint="less"><strong>Less help</strong><small>Trust your ears</small></button>
+    </div>
+    <audio id="play-audio" preload="metadata"></audio>
+  </main>
+  <section class="play-error" id="play-error" hidden><h1>Play Along is not ready.</h1><p id="play-error-copy"></p><a class="songs-button" href="/songs">Back to Songs</a></section>
+  <script src="/ui/copedent-grid-model.js?v=account-copedent-stage1"></script>
+  <script src="/ui/copedent-store.js?v=account-copedent-stage1"></script>
+  <script src="/ui/pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>
+  <script src="/ui/pedal-steel-fretboard.js?v=play-songs-20260801-1"></script>
+  <script src="/ui/song-projects.js?v=play-songs-20260801-1"></script>
+  <script src="/ui/play-song.js?v=play-songs-20260801-5"></script>
+</body>
+</html>

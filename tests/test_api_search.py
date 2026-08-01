@@ -617,6 +617,7 @@ def test_api_session_local_dev_query_access_beta_user() -> None:
         "authenticated": True,
         "role": "beta_user",
         "authProvider": "local_dev",
+        "features": {"songPractice": True},
     }
 
 
@@ -1152,6 +1153,7 @@ def test_api_session_production_cloudflare_ignores_query_access(monkeypatch: Any
         "authenticated": False,
         "role": "anonymous",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
 
 
@@ -1619,6 +1621,7 @@ def test_api_session_cloudflare_access_blocks_missing_jwt_as_anonymous(monkeypat
         "authenticated": False,
         "role": "anonymous",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
 
 
@@ -1719,6 +1722,7 @@ def test_api_session_cloudflare_access_blocks_invalid_jwt_as_anonymous(monkeypat
         "authenticated": False,
         "role": "anonymous",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
 
 
@@ -1800,6 +1804,7 @@ def test_api_session_cloudflare_access_valid_beta_email(monkeypatch: Any) -> Non
         "authenticated": True,
         "role": "beta_user",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
     assert "email" not in payload
 
@@ -1824,6 +1829,7 @@ def test_api_session_cloudflare_access_valid_beta_cookie_unlocks(monkeypatch: An
         "authenticated": True,
         "role": "beta_user",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
     assert "email" not in payload
 
@@ -1909,6 +1915,7 @@ def test_api_session_cloudflare_access_valid_admin_email(monkeypatch: Any) -> No
         "authenticated": True,
         "role": "admin",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
     assert "email" not in payload
 
@@ -1933,6 +1940,7 @@ def test_api_session_cloudflare_access_valid_admin_cookie_unlocks(monkeypatch: A
         "authenticated": True,
         "role": "admin",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
     assert "email" not in payload
 
@@ -1977,6 +1985,7 @@ def test_api_session_cloudflare_access_invalid_cookie_stays_anonymous(monkeypatc
         "authenticated": False,
         "role": "anonymous",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
 
 
@@ -2050,6 +2059,7 @@ def test_api_session_cloudflare_access_unlisted_valid_email_is_anonymous(monkeyp
         "authenticated": False,
         "role": "anonymous",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
     assert "email" not in payload
 
@@ -2211,6 +2221,7 @@ def test_api_session_local_dev_mock_still_works_when_provider_is_cloudflare(monk
         "authenticated": True,
         "role": "beta_user",
         "authProvider": "local_dev",
+        "features": {"songPractice": True},
     }
 
 
@@ -4669,7 +4680,11 @@ def test_custom_copedent_drives_explorer_and_blocks_incompatible_lesson_mechanic
 def test_api_session_exposes_melody_feature_and_version_stays_minimal() -> None:
     status, _, session = call_app("/api/session", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"
-    assert session["features"] == {"melodyExercise": True, "melodyCatalog": True}
+    assert session["features"] == {
+        "melodyExercise": True,
+        "melodyCatalog": True,
+        "songPractice": True,
+    }
 
     status, _, version = call_app("/api/version", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"
@@ -4701,6 +4716,7 @@ def test_api_session_exposes_private_amazing_tablature_beta_when_validated() -> 
         "melodyExercise": True,
         "melodyCatalog": True,
         "amazingTablaturePrivateBeta": True,
+        "songPractice": True,
     }
 
 
@@ -4716,7 +4732,7 @@ def test_song_practice_api_is_authenticated_flag_gated_private_and_no_store() ->
     assert [track["title"] for track in payload["tracks"]] == [
         "Amazing Grace",
         "When the Saints Go Marching In",
-        "Oh! Susanna",
+        "Hard Times Come Again No More",
     ]
 
     request = {
@@ -4902,7 +4918,12 @@ def test_session_exposes_both_melody_features_and_version_stays_minimal() -> Non
         melody_import_enabled=True,
     )
     assert status == "200 OK"
-    assert session["features"] == {"melodyExercise": True, "melodyCatalog": True, "melodyImport": True}
+    assert session["features"] == {
+        "melodyExercise": True,
+        "melodyCatalog": True,
+        "melodyImport": True,
+        "songPractice": True,
+    }
 
     status, _, version = call_app(
         "/api/version",

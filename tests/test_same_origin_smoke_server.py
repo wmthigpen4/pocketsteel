@@ -72,7 +72,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b'<script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>' in html
     assert b'<script src="melody-score.js?v=updated-score-artwork-20260714-1"></script>' in html
     assert b'<script src="landing-home.js?v=landing-bubble-labels-20260713"></script>' in html
-    assert b'<link rel="stylesheet" href="workspace-shell.css?v=qa-cta-link-20260715">' in html
+    assert b'<link rel="stylesheet" href="workspace-shell.css?v=play-songs-home-20260801-1">' in html
 
     status, headers, score_asset = call_app(smoke_app(), "/ui/assets/landing/melody-score.png")
     assert status == "200 OK"
@@ -170,6 +170,27 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
         assert status == "200 OK"
         assert headers["Content-Type"] in {"audio/mpeg", "audio/mp3"}
         assert track.startswith(b"ID3")
+
+    status, headers, songs = call_app(smoke_app(), "/songs")
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert b"Starter Songs" in songs
+    assert b"My Tracks" in songs
+
+    status, headers, player = call_app(smoke_app(), "/play/amazing-grace-guided")
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert b"Current and upcoming chord" in player
+    assert b"pedal-steel-fretboard.js" in player
+
+    for asset_path, marker in (
+        ("/ui/play-songs.css", b".play-cue-deck"),
+        ("/ui/songs.js", b"navigator.storage"),
+        ("/ui/play-song.js", b"activeTimelineState"),
+    ):
+        status, _, asset = call_app(smoke_app(), asset_path)
+        assert status == "200 OK"
+        assert marker in asset
 
     status, headers, lessons = call_app(smoke_app(), "/ui/lesson-workbench.html")
     assert status == "200 OK"
@@ -379,6 +400,7 @@ def test_smoke_api_honors_cloudflare_auth_env_for_session(monkeypatch: Any) -> N
         "authenticated": False,
         "role": "anonymous",
         "authProvider": "cloudflare_access",
+        "features": {"songPractice": True},
     }
 
 
@@ -417,6 +439,7 @@ def test_smoke_api_defaults_to_local_dev_when_auth_env_missing(monkeypatch: Any)
         "authenticated": True,
         "role": "beta_user",
         "authProvider": "local_dev",
+        "features": {"songPractice": True},
     }
 
 

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play Songs · Steel Guitar RAG</title>
+  <link rel="stylesheet" href="/ui/play-songs.css?v=play-songs-20260801-1">
+</head>
+<body>
+  <header class="songs-header">
+    <a class="songs-brand" href="/ui/steel-guitar-rag-mock.html" aria-label="Return to Steel Guitar RAG home">
+      <span>Steel Guitar RAG</span>
+      <strong>Play Songs</strong>
+    </a>
+    <nav class="songs-nav" aria-label="Page navigation">
+      <a href="/ui/steel-guitar-rag-mock.html">Home</a>
+      <a href="/ui/melody-workbench.html">Melody Studio</a>
+    </nav>
+  </header>
+  <main class="songs-main">
+    <section class="songs-hero" aria-labelledby="songs-title">
+      <p class="songs-kicker">Guided song practice</p>
+      <h1 id="songs-title">Choose a song and start playing.</h1>
+      <p>The recording, chord changes, and recommended E9 route stay together. Slow down or loop a phrase without rebuilding the lesson.</p>
+    </section>
+
+    <section class="songs-section" aria-labelledby="starter-songs-title">
+      <div class="songs-section-heading"><div><h2 id="starter-songs-title">Starter Songs</h2><p>Curated songs open ready to play. The first lesson is designed for a beginner on standard ten-string E9.</p></div></div>
+      <div class="songs-grid" id="curated-song-list" aria-live="polite"></div>
+      <p class="songs-status" id="songs-status" role="status"></p>
+    </section>
+
+    <section class="songs-section" aria-labelledby="my-tracks-title">
+      <div class="songs-section-heading"><div><h2 id="my-tracks-title">My Tracks</h2><p>Bring a track from this device. Audio stays in this browser and is never sent to Steel Guitar RAG or a third party.</p></div></div>
+      <div class="my-tracks-panel">
+        <div class="track-import-row">
+          <div><strong>Add a recording from your device</strong><p>MP3, M4A/AAC, or WAV · up to 15 minutes or 250 MB. You can remove it or export its metadata at any time.</p></div>
+          <button class="songs-button is-primary" id="add-local-track" type="button">Add Your Track</button>
+          <input id="local-track-file" type="file" accept="audio/mpeg,audio/mp4,audio/aac,audio/wav,.mp3,.m4a,.aac,.wav" hidden>
+        </div>
+        <div class="local-track-list" id="local-track-list"></div>
+      </div>
+    </section>
+  </main>
+  <script src="/ui/songs.js?v=play-songs-20260801-2"></script>
+</body>
+</html>

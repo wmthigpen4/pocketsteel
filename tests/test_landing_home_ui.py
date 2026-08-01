@@ -24,7 +24,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=qa-cta-link-20260715"' in html
+    assert 'href="workspace-shell.css?v=play-songs-home-20260801-1"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -39,7 +39,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
     assert "home-backstage-strip" not in home
 
 
-def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> None:
+def test_landing_home_adds_play_songs_without_replacing_existing_workspaces() -> None:
     html = HTML_PATH.read_text(encoding="utf-8")
     home = _home_markup()
 
@@ -51,6 +51,15 @@ def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> Non
     for href, label in expected_links.items():
         assert home.count(f'href="{href}"') == 1
         assert label in home
+
+    assert home.count('href="/songs"') == 1
+    assert home.count('href="/play/amazing-grace-guided"') == 1
+    assert "New · Guided song practice" in home
+    assert "Play Songs" in home
+    assert "Browse Songs" in home
+    assert "Play Amazing Grace" in home
+    assert home.index("home-song-feature") < home.index("home-product-grid")
+    assert home.index("Fretboard Explorer") < home.index("Melody Studio") < home.index("Lessons") < home.index("Steel Guitar Q&amp;A")
 
     assert 'id="ask-the-brain"' in home
     assert "Visualize E9 positions, grips, intervals, scales, harmony, and movement across the neck." in home
@@ -67,6 +76,15 @@ def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> Non
     assert "openBackstageForAccessState();" in html
     assert "Last Updated" not in home
     assert "Not connected" not in home
+
+
+def test_play_songs_feature_uses_existing_shell_tokens_and_two_column_card_order() -> None:
+    css = CSS_PATH.read_text(encoding="utf-8")
+    assert ".home-song-feature" in css
+    assert "border: 1px solid rgba(255, 177, 43, 0.92);" in css
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in css
+    assert ".home-song-feature__actions" in css
+    assert "@media (max-width: 699px)" in css
 
 
 def test_landing_workspace_cards_include_compact_tool_previews() -> None:

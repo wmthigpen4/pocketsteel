@@ -13,6 +13,8 @@ from steel_guitar_rag.song_practice import (
     arrange_song_practice,
     configured_song_practice_enabled,
     parse_chord_symbol,
+    get_curated_practice_project,
+    list_curated_lessons,
     song_practice_catalog,
 )
 
@@ -39,8 +41,10 @@ def request_for(chords: list[str]) -> dict[str, object]:
     }
 
 
-def test_song_practice_flag_defaults_off(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_song_practice_launches_by_default_and_can_be_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(ENABLE_SONG_PRACTICE_ENV, raising=False)
+    assert configured_song_practice_enabled() is True
+    monkeypatch.setenv(ENABLE_SONG_PRACTICE_ENV, "false")
     assert configured_song_practice_enabled() is False
     monkeypatch.setenv(ENABLE_SONG_PRACTICE_ENV, "true")
     assert configured_song_practice_enabled() is True
@@ -143,16 +147,32 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
     assert [track["title"] for track in catalog["tracks"]] == [
         "Amazing Grace",
         "When the Saints Go Marching In",
-        "Oh! Susanna",
+        "Hard Times Come Again No More",
     ]
-    for track in catalog["tracks"]:
+    for track in catalog["tracks"][:2]:
         asset = Path(track["audioUrl"].lstrip("/"))
         assert track["noSteel"] is True
         assert track["melodyLead"] is True
         assert track["countInBars"] == 1
         assert track["learnerReady"] is True
-        assert track["launchStatus"] == "internal_preview_exact_master_rights_review_required"
+        assert track["publicationState"] == "private_preview"
         assert asset.stat().st_size < 2 * 1024 * 1024
         assert hashlib.sha256(asset.read_bytes()).hexdigest()
         assert track["barStartsMs"][0] > 0
         assert track["durationMs"] > track["barStartsMs"][-1]
+
+    assert catalog["tracks"][2]["publicationState"] == "coming_soon"
+    assert catalog["tracks"][2]["recordingCredit"] == "Grant Raymond Barrett · CC BY 3.0"
+
+
+def test_curated_registry_exposes_playable_projects_and_withholds_unreviewed_track() -> None:
+    lessons = list_curated_lessons()
+    assert [lesson["projectId"] for lesson in lessons] == [
+        "amazing-grace-guided",
+        "when-the-saints-guided",
+        "hard-times-guided",
+    ]
+    amazing_grace = get_curated_practice_project("amazing-grace-guided")
+    assert amazing_grace is not None
+    assert amazing_grace["lyricCues"][0]["text"].startswith("Amazing grace")
+    assert get_curated_practice_project("hard-times-guided") is None
