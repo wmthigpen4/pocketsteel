@@ -75,6 +75,7 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "play-control-tag" not in player_js
     assert "play-string-control-tag" not in player_js
     assert "showStringActionLabels: true" in player_js
+    assert 'maxFret: 24' in player_js
     assert "stringActionLabels" in player_js
     assert '${string}${control ? ` ${control}` : ""}' in player_js
     assert "justify-content: flex-start" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")

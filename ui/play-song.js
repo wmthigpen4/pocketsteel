@@ -202,7 +202,7 @@
     const positions = [positionDisplay(current, "play-current", "current", 1), positionDisplay(next, "play-next", "next", 2)].filter(Boolean);
     if (!positions.length) { elements.fretboard.innerHTML = ""; return; }
     global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
-      title: "Play Along route", maxFret: 15, stringCount: 10, positions,
+      title: "Play Along route", maxFret: 24, stringCount: 10, positions,
       selectedPositionId: positions[0].id, hidePositionTools: true, hideFilterControls: true, hideLegend: true,
       showHighlightLabels: false, showStringActionLabels: true, highlightStyle: "prominent", query: { key: track.key }
     });
