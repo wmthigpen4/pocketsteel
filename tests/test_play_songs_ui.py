@@ -29,7 +29,7 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert "--gold: #f0bf69" in css
     assert '--lesson: Georgia, "Times New Roman", serif' in css
     assert ".play-fretboard [data-highlight-id=\"play-next\"]" in css
-    assert "filter: grayscale(1)" in css
+    assert "filter: grayscale(0.85)" in css
     assert "@media (orientation: landscape) and (max-height: 560px)" in css
 
 
@@ -48,11 +48,21 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "sendBeacon" not in import_slice
     assert "audio.currentTime * 1000" in player_js
     assert "setInterval" not in player_js
-    assert 'addSvgControlTag("play-current"' in player_js
-    assert 'addSvgControlTag("play-next"' in player_js
+    assert "function leftAlignSvgStringLabels" in player_js
+    assert 'leftAlignSvgStringLabels("play-current")' in player_js
+    assert 'leftAlignSvgStringLabels("play-next")' in player_js
+    assert "function sameGrip" in player_js
+    assert "sharedGrip ? null" in player_js
+    assert "note.changes" in player_js
+    assert '[String(string), controlsByString.get(Number(string))]' in player_js
+    assert '.replace(/^(\\d+)(?=\\D)/, "$1 ")' in player_js
+    assert 'label.setAttribute("text-anchor", "start")' in player_js
+    assert "play-control-tag" not in player_js
+    assert "play-string-control-tag" not in player_js
     assert "showStringActionLabels: true" in player_js
     assert "stringActionLabels" in player_js
-    assert "controls ?" in player_js
+    assert '${string}${control ? ` ${control}` : ""}' in player_js
+    assert "justify-content: flex-start" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
 
 
 def test_play_songs_javascript_syntax() -> None:

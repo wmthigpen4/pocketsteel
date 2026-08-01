@@ -44,28 +44,46 @@
     return headers;
   }
 
-  function controlLabel(position) {
-    const controls = Array.isArray(position?.controls) && position.controls.length
-      ? position.controls
-      : [...(position?.pedals || []), ...(position?.levers || [])];
-    const compact = controls.map((value) => {
-      const text = String(value || "").trim();
-      const token = text.toLowerCase();
-      if (/^a(?:\s+pedal|\s*\(p1\))?$/.test(token)) return "A";
-      if (/^b(?:\s+pedal|\s*\(p2\))?$/.test(token)) return "B";
-      if (/^c(?:\s+pedal|\s*\(p3\))?$/.test(token)) return "C";
-      if (token.includes("e-lower") || token.includes("e lower")) return "E";
-      if (token === "f" || token.includes("f lever") || token.includes("e-raise")) return "F";
-      return text.replace(/\s+(?:pedal|lever).*$/i, "");
-    }).filter(Boolean);
-    return Array.from(new Set(compact)).join("+");
+  function compactControlToken(value) {
+    const text = String(value || "").trim();
+    const token = text.toLowerCase();
+    if (/^a(?:\s+pedal|\s*\(p1\))?$/.test(token)) return "A";
+    if (/^b(?:\s+pedal|\s*\(p2\))?$/.test(token)) return "B";
+    if (/^c(?:\s+pedal|\s*\(p3\))?$/.test(token)) return "C";
+    if (token.includes("e-lower") || token.includes("e lower")) return "E";
+    if (token === "f" || token.includes("f lever") || token.includes("e-raise")) return "F";
+    return text.replace(/\s+(?:pedal|lever).*$/i, "");
   }
 
-  function gripMarkup(position, muted = false) {
+  function noteControlLabel(note) {
+    const changes = Array.isArray(note?.changes) && note.changes.length ? note.changes : (note?.changeLabels || []);
+    return Array.from(new Set(changes.map(compactControlToken).filter(Boolean))).join("+");
+  }
+
+  function stringControlMap(position) {
+    return new Map((position?.notes || []).map((note) => [Number(note.string), noteControlLabel(note)]));
+  }
+
+  function gripMarkup(position) {
     if (!position) return "";
-    const strings = (position.strings || []).map((string) => `<span class="play-string">${string}</span>`).join("");
-    const controls = controlLabel(position);
-    return `<span>Fret ${position.fret}</span>${strings}${controls ? `<span class="play-control${muted ? " is-muted" : ""}">${controls}</span>` : ""}`;
+    const controlsByString = stringControlMap(position);
+    const strings = (position.strings || []).map((string) => {
+      const control = controlsByString.get(Number(string));
+      return `<span class="play-string">${string}${control ? ` ${control}` : ""}</span>`;
+    }).join("");
+    return `<span>Fret ${position.fret}</span>${strings}`;
+  }
+
+  function controlChangesByString(from, to) {
+    const fromMap = stringControlMap(from);
+    const toMap = stringControlMap(to);
+    const strings = Array.from(new Set([...(from?.strings || []), ...(to?.strings || [])])).sort((left, right) => left - right);
+    return strings.flatMap((string) => {
+      const before = fromMap.get(Number(string)) || "";
+      const after = toMap.get(Number(string)) || "";
+      if (before === after) return [];
+      return [`${string}: ${after || `release ${before}`}`];
+    });
   }
 
   function movementInstruction(current, next) {
@@ -73,20 +91,21 @@
     const to = next?.position;
     if (!from) return to ? `Get ready at fret ${to.fret}.` : "Listen for the count-in.";
     if (!to) return "Hold the ending and listen.";
-    const fromControls = controlLabel(from);
-    const toControls = controlLabel(to);
     const fretMove = from.fret === to.fret ? `Stay at fret ${from.fret}` : `Slide ${from.fret}→${to.fret}`;
-    let controlMove = "repick";
-    if (fromControls !== toControls) controlMove = toControls ? `press ${toControls}` : `release ${fromControls}`;
-    else if (toControls) controlMove = `keep ${toControls}`;
+    const stringChanges = controlChangesByString(from, to);
+    const controlMove = stringChanges.length ? stringChanges.join(" · ") : "repick";
     return `${fretMove} · ${controlMove}`;
   }
 
   function currentInstruction(current) {
     const position = current?.position;
     if (!position) return "Listen for the count-in.";
-    const controls = controlLabel(position);
-    return `Play strings ${(position.strings || []).join(" · ")}${controls ? ` · ${controls} down` : ""}`;
+    const controlsByString = stringControlMap(position);
+    const actions = (position.strings || []).flatMap((string) => {
+      const control = controlsByString.get(Number(string));
+      return control ? [`${string}: ${control}`] : [];
+    });
+    return `Play strings ${(position.strings || []).join(" · ")}${actions.length ? ` · ${actions.join(" · ")}` : ""}`;
   }
 
   function beatLengthMs(event) {
@@ -119,6 +138,7 @@
   function positionDisplay(event, id, role, sortOrder) {
     const position = event?.position;
     if (!position) return null;
+    const controlsByString = stringControlMap(position);
     const notes = Object.fromEntries((position.notes || []).map((note) => [String(note.string), note.note]));
     const intervals = Object.fromEntries((position.notes || []).map((note) => [String(note.string), "chord tone"]));
     return {
@@ -126,44 +146,43 @@
       fret: position.fret, strings: position.strings, grip: position.grip, pedals: position.pedals || [], levers: position.levers || [],
       colorRole: role === "current" ? position.controls?.length ? undefined : "open" : "advanced", role, family: "song_practice", tier: "starter",
       visibleByDefault: true, sortOrder, notes, intervals, explanationShort: position.instruction, validationStatus: "pitch_validated",
-      stringActionLabels: Object.fromEntries((position.strings || []).map((string) => [String(string), String(string)]))
+      stringActionLabels: Object.fromEntries((position.strings || []).map((string) => [
+        String(string),
+        [String(string), controlsByString.get(Number(string))].filter(Boolean).join(" ")
+      ]))
     };
   }
 
-  function addSvgControlTag(id, label, muted) {
-    if (!label) return;
+  function leftAlignSvgStringLabels(id) {
     const group = elements.fretboard.querySelector(`[data-highlight-id="${id}"]`);
-    const svg = group?.ownerSVGElement;
-    if (!group || !svg || typeof group.getBBox !== "function") return;
-    let box;
-    try { box = group.getBBox(); } catch (_error) { return; }
-    const namespace = "http://www.w3.org/2000/svg";
-    const tag = document.createElementNS(namespace, "g");
-    tag.setAttribute("class", "play-control-tag");
-    tag.setAttribute("aria-label", `${muted ? "Upcoming" : "Current"} controls ${label}`);
-    const width = Math.max(38, 15 + (label.length * 8));
-    const x = Math.min(1154 - width, box.x + box.width + 6);
-    const y = box.y + (box.height / 2) - 12;
-    const rect = document.createElementNS(namespace, "rect");
-    rect.setAttribute("x", String(x)); rect.setAttribute("y", String(y)); rect.setAttribute("width", String(width)); rect.setAttribute("height", "24"); rect.setAttribute("rx", "12");
-    rect.setAttribute("fill", muted ? "#77756e" : "#17130d"); rect.setAttribute("stroke", muted ? "#c8c3b8" : "#fff4dc"); rect.setAttribute("stroke-opacity", muted ? "0.45" : "0.72");
-    const text = document.createElementNS(namespace, "text");
-    text.setAttribute("x", String(x + (width / 2))); text.setAttribute("y", String(y + 16)); text.setAttribute("text-anchor", "middle"); text.setAttribute("fill", muted ? "#eeeae1" : "#fff4dc"); text.textContent = label;
-    tag.append(rect, text);
-    svg.append(tag);
+    if (!group) return;
+    group.querySelectorAll(".pedal-steel-fretboard__string-action-label").forEach((label) => {
+      const string = label.getAttribute("data-string-action-label-string");
+      const dot = group.querySelector(`[data-highlight-dot][data-highlight-string="${string}"]`);
+      if (!dot) return;
+      const dotX = Number(dot.getAttribute("x"));
+      label.textContent = String(label.textContent || "").replace(/^(\d+)(?=\D)/, "$1 ");
+      label.setAttribute("x", String(dotX + 7));
+      label.setAttribute("text-anchor", "start");
+    });
+  }
+
+  function sameGrip(left, right) {
+    return Boolean(left && right && left.fret === right.fret && JSON.stringify(left.strings || []) === JSON.stringify(right.strings || []));
   }
 
   function renderFretboard(current, next) {
     if (!global.STEEL_RAG_FRETBOARD?.mountPedalSteelFretboard) return;
-    const positions = [positionDisplay(current, "play-current", "current", 1), positionDisplay(next, "play-next", "next", 2)].filter(Boolean);
+    const sharedGrip = sameGrip(current?.position, next?.position);
+    const positions = [positionDisplay(current, "play-current", "current", 1), sharedGrip ? null : positionDisplay(next, "play-next", "next", 2)].filter(Boolean);
     if (!positions.length) { elements.fretboard.innerHTML = ""; return; }
     global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
       title: "Play Along route", maxFret: 15, stringCount: 10, positions,
       selectedPositionId: positions[0].id, hidePositionTools: true, hideFilterControls: true, hideLegend: true,
       showHighlightLabels: false, showStringActionLabels: true, highlightStyle: "prominent", query: { key: track.key }
     });
-    addSvgControlTag("play-current", controlLabel(current?.position), false);
-    addSvgControlTag("play-next", controlLabel(next?.position), true);
+    leftAlignSvgStringLabels("play-current");
+    if (!sharedGrip) leftAlignSvgStringLabels("play-next");
   }
 
   function renderState(timeMs, force = false) {
@@ -180,13 +199,13 @@
       elements.currentGrip.innerHTML = assistanceReduced ? "" : gripMarkup(current?.position);
       elements.currentMove.textContent = assistanceReduced ? "Listen and make the change." : currentInstruction(current);
       elements.nextChord.textContent = next?.chord || "End";
-      elements.nextGrip.innerHTML = assistanceReduced ? "" : gripMarkup(next?.position, true);
+      elements.nextGrip.innerHTML = assistanceReduced ? "" : gripMarkup(next?.position);
       elements.nextMove.textContent = assistanceReduced ? "" : movementInstruction(current, next);
       const currentBar = barNumber(current || next);
       elements.bar.textContent = current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";
       renderFretboard(current || next, current ? next : events[1]);
     }
-    elements.nextLabel.textContent = next ? `Next${controlLabel(next.position) ? `: ${controlLabel(next.position)}` : ""}${beats ? ` · ${beats} beat${beats === 1 ? "" : "s"}` : ""}` : "End";
+    elements.nextLabel.textContent = next ? `Next${beats ? ` · ${beats} beat${beats === 1 ? "" : "s"}` : ""}` : "End";
     elements.nextCard.classList.toggle("is-imminent", Boolean(next && beats <= 2));
     elements.lyric.textContent = assistanceReduced ? "" : lyricAt(timeMs);
   }
