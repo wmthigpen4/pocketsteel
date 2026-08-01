@@ -57,6 +57,9 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "sendBeacon" not in import_slice
     assert "audio.currentTime * 1000" in player_js
     assert "track?.beatTimesMs" in player_js
+    assert "await global.STEEL_RAG_COPEDENTS?.configureAccount?.(session" in player_js
+    assert "global.STEEL_RAG_COPEDENTS?.requestContext?.()" in player_js
+    assert "session?.features?.accountCopedents && requestContext?.profileId" in player_js
     assert "track.recordingCredit" in player_js
     assert "track.licenseUrl" in player_js
     assert "route?.positions || track.authoredRoute" in player_js

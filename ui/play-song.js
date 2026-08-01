@@ -395,9 +395,9 @@
   }
 
   function activeCopedentContext() {
-    const activeCopedent = global.STEEL_RAG_COPEDENTS?.activeContext?.();
-    return session?.features?.accountCopedents && activeCopedent?.profileId
-      ? activeCopedent
+    const requestContext = global.STEEL_RAG_COPEDENTS?.requestContext?.();
+    return session?.features?.accountCopedents && requestContext?.profileId
+      ? requestContext
       : { profileId: "emmons-e9-basic" };
   }
 
@@ -478,6 +478,9 @@
   async function initialize() {
     if (!songTools) throw new Error("The song timeline could not load.");
     session = await fetch("/api/session", { headers: accessHeaders() }).then((response) => response.json());
+    await global.STEEL_RAG_COPEDENTS?.configureAccount?.(session, {
+      accessRole: ["beta_user", "admin"].includes(session?.role) ? session.role : ""
+    });
     const response = await fetch("/api/song-practice/catalog", { headers: accessHeaders() });
     const catalog = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(catalog.error || "The guided song catalog could not load.");
