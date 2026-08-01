@@ -40,6 +40,8 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert ".play-why" in css
     assert "filter: grayscale(0.6)" in css
     assert "@media (orientation: landscape) and (max-height: 560px)" in css
+    assert ".play-fretboard svg { max-height: 205px; }" in css
+    assert ".play-controls .backing-control, .play-controls .loop-control { display: none; }" in css
 
 
 def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
@@ -57,7 +59,16 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "sendBeacon" not in import_slice
     assert "audio.currentTime * 1000" in player_js
     assert "track?.beatTimesMs" in player_js
-    assert "await global.STEEL_RAG_COPEDENTS?.configureAccount?.(session" in player_js
+    assert "ACCOUNT_COPEDENT_STARTUP_BUDGET_MS = 1500" in player_js
+    assert "async function configurePlayAlongCopedent" in player_js
+    assert "await Promise.race" in player_js
+    assert "await global.STEEL_RAG_COPEDENTS?.configureAccount?.(session" not in player_js
+    assert "playAlongCopedentContext" in player_js
+    assert "function showLoadingState" in player_js
+    assert "app.hidden = false" in player_js
+    assert 'responseMode: "play_along_lessons"' in player_js
+    assert "const catalogRequest = fetch" in player_js
+    assert "prepareTrackShell();" in player_js
     assert "global.STEEL_RAG_COPEDENTS?.requestContext?.()" in player_js
     assert "session?.features?.accountCopedents && requestContext?.profileId" in player_js
     assert "track.recordingCredit" in player_js

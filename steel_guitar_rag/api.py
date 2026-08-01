@@ -974,6 +974,15 @@ class RetrievalApi:
             try:
                 request_payload = self._read_json_body(environ)
                 arrangement_request = dict(request_payload)
+                response_mode = str(
+                    arrangement_request.pop(
+                        "responseMode",
+                        arrangement_request.pop("response_mode", "full"),
+                    )
+                    or "full"
+                )
+                if response_mode not in {"full", "play_along_lessons"}:
+                    raise MelodyExerciseError("responseMode must be full or play_along_lessons")
                 play_along_timeline = arrangement_request.pop(
                     "playAlongTimeline",
                     arrangement_request.pop("play_along_timeline", None),
@@ -1027,28 +1036,43 @@ class RetrievalApi:
                 )
                 return self._json_response(start_response, status, {"error": str(exc)})
             exercise = result["melody_exercise"]
-            selected_route = next(
-                route
-                for route in exercise["routes"]
-                if route["id"] == exercise["selectedRouteId"]
-            )
-            response = {
-                "schemaVersion": exercise["arrangementContract"]["schemaVersion"],
-                "arrangement": exercise["arrangementContract"],
-                "melodyExercise": exercise,
-                "tabs": list(result.get("tabs") or ()),
-                "tabExample": selected_route["tabExample"],
-                "fretboard": selected_route["fretboard"],
-            }
+            play_along_lessons = None
             if play_along_timeline is not None:
                 try:
-                    response["playAlongLessons"] = build_play_along_melody_lessons(
+                    play_along_lessons = build_play_along_melody_lessons(
                         exercise,
                         play_along_timeline,
                         opening_chord_melody_events=int(opening_chord_melody_events),
                     )
                 except (SongPracticeError, ValueError, TypeError) as exc:
                     return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+            if response_mode == "play_along_lessons":
+                if play_along_lessons is None:
+                    return self._json_response(
+                        start_response,
+                        "400 Bad Request",
+                        {"error": "playAlongTimeline is required for play_along_lessons"},
+                    )
+                response = {
+                    "schemaVersion": "play_along_response_v1",
+                    "playAlongLessons": play_along_lessons,
+                }
+            else:
+                selected_route = next(
+                    route
+                    for route in exercise["routes"]
+                    if route["id"] == exercise["selectedRouteId"]
+                )
+                response = {
+                    "schemaVersion": exercise["arrangementContract"]["schemaVersion"],
+                    "arrangement": exercise["arrangementContract"],
+                    "melodyExercise": exercise,
+                    "tabs": list(result.get("tabs") or ()),
+                    "tabExample": selected_route["tabExample"],
+                    "fretboard": selected_route["fretboard"],
+                }
+                if play_along_lessons is not None:
+                    response["playAlongLessons"] = play_along_lessons
             response.update(copedent_context_metadata(profile, revision))
             return self._json_response(
                 start_response,

@@ -2,6 +2,8 @@
   "use strict";
 
   const songTools = global.STEEL_RAG_SONG_PROJECTS;
+  const ACCOUNT_COPEDENT_STARTUP_BUDGET_MS = 1500;
+  const DEFAULT_PLAY_ALONG_COPEDENT = Object.freeze({ profileId: "emmons-e9-basic" });
   const app = document.querySelector("#play-app");
   const errorPanel = document.querySelector("#play-error");
   const errorCopy = document.querySelector("#play-error-copy");
@@ -17,6 +19,7 @@
     whyMelody: document.querySelector("#play-why-melody"), whyDegree: document.querySelector("#play-why-degree"), whyRole: document.querySelector("#play-why-role"), whySupport: document.querySelector("#play-why-support"), whyPosition: document.querySelector("#play-why-position"),
     whyAlternatives: document.querySelector("#play-why-alternatives"), whyAlternativeList: document.querySelector("#play-why-alternative-list")
   };
+  const startupControls = [elements.toggle, elements.restart, elements.scrub, elements.speed, elements.route, elements.loop, ...elements.checkpoints];
   const projectId = decodeURIComponent(global.location.pathname.split("/").filter(Boolean).at(-1) || "");
   let track = null;
   let plan = null;
@@ -28,6 +31,7 @@
   let assistanceReduced = false;
   let selectedLessonId = "";
   let lessons = [];
+  let playAlongCopedentContext = DEFAULT_PLAY_ALONG_COPEDENT;
   const lessonPlans = new Map();
 
   function showError(message) {
@@ -35,6 +39,20 @@
     app.hidden = true;
     errorPanel.hidden = false;
     errorCopy.textContent = message;
+  }
+
+  function setPlayerReady(ready) {
+    startupControls.forEach((control) => { control.disabled = !ready; });
+  }
+
+  function showLoadingState() {
+    setPlayerReady(false);
+    app.hidden = false;
+    elements.objective.textContent = "Preparing the reviewed melody route…";
+    elements.currentChord.textContent = "…";
+    elements.currentMove.textContent = "Loading the synchronized fretboard guidance.";
+    elements.nextChord.textContent = "…";
+    elements.nextMove.textContent = "The recording will be ready with the route.";
   }
 
   function formatTime(seconds) {
@@ -395,10 +413,32 @@
   }
 
   function activeCopedentContext() {
+    return { ...playAlongCopedentContext };
+  }
+
+  async function configurePlayAlongCopedent() {
+    const configureAccount = global.STEEL_RAG_COPEDENTS?.configureAccount;
+    if (typeof configureAccount !== "function") return;
+    let timeoutId = 0;
+    const startupBudget = new Promise((resolve) => {
+      timeoutId = global.setTimeout(resolve, ACCOUNT_COPEDENT_STARTUP_BUDGET_MS);
+    });
+    try {
+      await Promise.race([
+        configureAccount(session, {
+          accessRole: ["beta_user", "admin"].includes(session?.role) ? session.role : ""
+        }),
+        startupBudget
+      ]);
+    } catch (error) {
+      global.console?.warn?.("Account copedent sync is unavailable; Play Along will use standard E9 for this session.", error);
+    } finally {
+      global.clearTimeout(timeoutId);
+    }
     const requestContext = global.STEEL_RAG_COPEDENTS?.requestContext?.();
-    return session?.features?.accountCopedents && requestContext?.profileId
-      ? requestContext
-      : { profileId: "emmons-e9-basic" };
+    playAlongCopedentContext = session?.features?.accountCopedents && requestContext?.profileId
+      ? { ...requestContext }
+      : DEFAULT_PLAY_ALONG_COPEDENT;
   }
 
   function selectedChordRoute(lesson = activeLesson()) {
@@ -419,6 +459,7 @@
       kind: "song_arrangement_lesson", key: track.key, meter: track.meter, pickupBeats: 1,
       wholeSong: true, texture: "both", sourceProvided: true, accuracy: "exact", accuracyConfidence: "high",
       accuracyNote: "Reviewed public-domain melody aligned to the confirmed Play Along beat grid.",
+      responseMode: "play_along_lessons",
       playAlongTimeline: melody,
       playAlongOpeningChordMelodyEvents: 3,
       melody: melody.map((event) => ({
@@ -475,13 +516,41 @@
     });
   }
 
+  function prepareTrackShell() {
+    elements.title.textContent = track.title;
+    elements.meta.textContent = [track.performer, track.key, track.meter, track.tempo ? `${track.tempo} BPM` : ""].filter(Boolean).join(" · ");
+    elements.attribution.replaceChildren(document.createTextNode(track.recordingCredit || ""));
+    if (track.rightsUrl) {
+      elements.attribution.append(document.createTextNode(" · "));
+      const sourceLink = document.createElement("a");
+      sourceLink.href = track.rightsUrl;
+      sourceLink.target = "_blank";
+      sourceLink.rel = "noreferrer";
+      sourceLink.textContent = "Source";
+      elements.attribution.append(sourceLink);
+    }
+    if (track.licenseUrl) {
+      elements.attribution.append(document.createTextNode(" · "));
+      const licenseLink = document.createElement("a");
+      licenseLink.href = track.licenseUrl;
+      licenseLink.target = "_blank";
+      licenseLink.rel = "noreferrer";
+      licenseLink.textContent = track.license || "License";
+      elements.attribution.append(licenseLink);
+    }
+    audio.src = track.audioUrl;
+    audio.volume = Number(elements.volume.value);
+    audio.playbackRate = Number(elements.speed.value);
+    audio.preservesPitch = true;
+    audio.addEventListener("loadedmetadata", () => { elements.scrub.max = String(audio.duration); }, { once: true });
+  }
+
   async function initialize() {
     if (!songTools) throw new Error("The song timeline could not load.");
     session = await fetch("/api/session", { headers: accessHeaders() }).then((response) => response.json());
-    await global.STEEL_RAG_COPEDENTS?.configureAccount?.(session, {
-      accessRole: ["beta_user", "admin"].includes(session?.role) ? session.role : ""
-    });
-    const response = await fetch("/api/song-practice/catalog", { headers: accessHeaders() });
+    const catalogRequest = fetch("/api/song-practice/catalog", { headers: accessHeaders() });
+    await configurePlayAlongCopedent();
+    const response = await catalogRequest;
     const catalog = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(catalog.error || "The guided song catalog could not load.");
     track = (catalog.tracks || []).find((item) => (item.projectId || item.id) === projectId);
@@ -493,6 +562,7 @@
     if (!track || track.publicationState === "coming_soon") throw new Error("That guided song is still in recording and synchronization review.");
     chart = songTools.parseSongChart(track.chart, { mode: "letter", key: track.key, meter: track.meter });
     if (chart.errors.length) throw new Error(chart.errors.join(" "));
+    prepareTrackShell();
     try {
       await arrangeMelodyLessons();
     } catch (error) {
@@ -529,33 +599,7 @@
     elements.route.parentElement.hidden = lessons.length < 2;
     updateLessonDescription();
     await loadActiveLessonPlan();
-    elements.title.textContent = track.title;
-    elements.meta.textContent = [track.performer, track.key, track.meter, track.tempo ? `${track.tempo} BPM` : ""].filter(Boolean).join(" · ");
-    elements.attribution.replaceChildren(document.createTextNode(track.recordingCredit || ""));
-    if (track.rightsUrl) {
-      elements.attribution.append(document.createTextNode(" · "));
-      const sourceLink = document.createElement("a");
-      sourceLink.href = track.rightsUrl;
-      sourceLink.target = "_blank";
-      sourceLink.rel = "noreferrer";
-      sourceLink.textContent = "Source";
-      elements.attribution.append(sourceLink);
-    }
-    if (track.licenseUrl) {
-      elements.attribution.append(document.createTextNode(" · "));
-      const licenseLink = document.createElement("a");
-      licenseLink.href = track.licenseUrl;
-      licenseLink.target = "_blank";
-      licenseLink.rel = "noreferrer";
-      licenseLink.textContent = track.license || "License";
-      elements.attribution.append(licenseLink);
-    }
-    audio.src = track.audioUrl;
-    audio.volume = Number(elements.volume.value);
-    audio.playbackRate = Number(elements.speed.value);
-    audio.preservesPitch = true;
-    audio.addEventListener("loadedmetadata", () => { elements.scrub.max = String(audio.duration); });
-    app.hidden = false;
+    setPlayerReady(true);
     renderState(0, true);
     frame = requestAnimationFrame(tick);
   }
@@ -592,5 +636,6 @@
     renderState(audio.currentTime * 1000, true);
   }));
 
+  showLoadingState();
   initialize().catch((error) => showError(error.message || "Play Along could not start."));
 })(window);

@@ -224,21 +224,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (orientation: landscape) and (max-height: 560px) {
-  .songs-header { min-height: 54px; }
-  .play-main { width: min(100% - 18px, 1240px); padding-top: 4px; }
-  .play-heading { margin-bottom: 7px; }
+  .songs-header { min-height: 36px; }
+  .songs-brand strong { font-size: 18px; }
+  .songs-nav a { min-height: 32px; padding-inline: 11px; font-size: 12px; }
+  .play-main { width: min(100% - 18px, 1240px); padding-top: 2px; }
+  .play-heading { margin-bottom: 4px; }
   .play-heading h1 { font-size: 22px; }
   .play-heading p, .songs-brand span { display: none; }
-  .play-objective { margin: -2px 0 5px; font-size: 10px; }
-  .play-cue-deck { grid-template-columns: minmax(0, 1.35fr) minmax(220px, .65fr); margin-bottom: 7px; }
-  .play-cue { padding: 10px 14px; }
+  .play-objective { margin: -2px 0 3px; font-size: 10px; }
+  .play-cue-deck { grid-template-columns: minmax(0, 1.35fr) minmax(220px, .65fr); margin-bottom: 5px; }
+  .play-cue { padding: 7px 12px; }
+  .play-cue__label { margin-bottom: 4px; }
   .play-cue__chord { font-size: clamp(36px, 8vh, 54px); }
   .play-cue.is-next .play-cue__chord { font-size: 34px; }
-  .play-move { margin-top: 5px; }
+  .play-melody-cue, .play-move { margin-top: 3px; }
   .play-fretboard { min-width: 690px; }
-  .play-fretboard svg { max-height: 225px; }
-  .play-lyric { min-height: 31px; margin: 3px 0; font-size: 19px; }
-  .play-controls { padding: 7px; }
+  .play-fretboard svg { max-height: 205px; }
+  .play-lyric { min-height: 27px; margin: 2px 0; font-size: 18px; }
+  .play-controls { grid-template-columns: auto auto minmax(120px, 1fr) auto auto minmax(150px, auto); padding: 5px; }
+  .play-controls .backing-control, .play-controls .loop-control { display: none; }
+  .play-controls select { min-height: 36px; }
   .play-checkpoints { display: none; }
   .play-why { position: fixed; right: 9px; bottom: 9px; left: 9px; z-index: 20; max-height: 45vh; grid-template-columns: minmax(0, 1.15fr) minmax(250px, .85fr); overflow: auto; margin: 0; padding: 12px 14px; }
   .play-why h2 { font-size: 20px; }

@@ -4399,6 +4399,54 @@ def test_amazing_tablature_endpoint_returns_shared_voice_movement_contract() -> 
     assert all(route["materiallyDistinct"] for route in payload["melodyExercise"]["routes"])
 
 
+def test_amazing_tablature_endpoint_can_return_compact_play_along_lessons() -> None:
+    melody = song_practice_catalog()["tracks"][0]["melodyTimeline"][:3]
+    status, headers, payload = call_app(
+        "/api/amazing-tablature/arrange",
+        method="POST",
+        json_body={
+            "kind": "song_arrangement_lesson",
+            "key": "G",
+            "meter": "3/4",
+            "wholeSong": True,
+            "texture": "both",
+            "sourceProvided": True,
+            "responseMode": "play_along_lessons",
+            "playAlongTimeline": melody,
+            "playAlongOpeningChordMelodyEvents": 3,
+            "melody": [
+                {
+                    "token": event["pitch"],
+                    "pitch": event["pitch"],
+                    "pitchValue": event["pitchValue"],
+                    "durationBeats": event["durationBeats"],
+                    "measure": event["measure"],
+                    "beat": event["beat"],
+                    "chord": event["chord"],
+                    "origin": event["origin"],
+                }
+                for event in melody
+            ],
+            "copedentContext": {"profileId": "emmons-e9-basic"},
+        },
+        melody_exercise_enabled=True,
+    )
+
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert payload["schemaVersion"] == "play_along_response_v1"
+    assert payload["playAlongLessons"]["schemaVersion"] == "play_along_melody_lessons_v1"
+    assert [lesson["id"] for lesson in payload["playAlongLessons"]["lessons"]] == [
+        "follow-melody",
+        "full-chord-melody",
+    ]
+    assert all(len(lesson["events"]) == 3 for lesson in payload["playAlongLessons"]["lessons"])
+    assert "melodyExercise" not in payload
+    assert "arrangement" not in payload
+    assert "tabExample" not in payload
+    assert "fretboard" not in payload
+
+
 def test_amazing_grace_play_along_preserves_reviewed_melody_and_golden_opening_grips() -> None:
     track = song_practice_catalog()["tracks"][0]
     melody = track["melodyTimeline"]
