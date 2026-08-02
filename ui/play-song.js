@@ -2,6 +2,7 @@
   "use strict";
 
   const songTools = global.STEEL_RAG_SONG_PROJECTS;
+  const practiceTools = global.STEEL_RAG_PRACTICE;
   const ACCOUNT_COPEDENT_STARTUP_BUDGET_MS = 1500;
   const DEFAULT_PLAY_ALONG_COPEDENT = Object.freeze({ profileId: "emmons-e9-basic" });
   const app = document.querySelector("#play-app");
@@ -15,11 +16,13 @@
     fretboard: document.querySelector("#play-fretboard"), lyric: document.querySelector("#play-lyric"), toggle: document.querySelector("#play-toggle"), restart: document.querySelector("#play-restart"),
     scrub: document.querySelector("#play-scrub"), time: document.querySelector("#play-time"), speed: document.querySelector("#play-speed"), route: document.querySelector("#play-route"), loop: document.querySelector("#play-loop"), volume: document.querySelector("#play-volume"),
     checkpoints: Array.from(document.querySelectorAll("[data-checkpoint]")), nextCard: document.querySelector(".play-cue.is-next"),
+    chordDisplay: document.querySelector("#chord-display"), openSongMap: document.querySelector("#open-song-map"), songMapDialog: document.querySelector("#song-map-dialog"), songMap: document.querySelector("#song-map"), songMapLoop: document.querySelector("#song-map-loop"), closeSongMap: document.querySelector("#close-song-map"),
+    countIn: document.querySelector("#play-count-in"), metronome: document.querySelector("#play-metronome"),
     why: document.querySelector("#play-why"), whyTitle: document.querySelector("#play-why-title"), whyCopy: document.querySelector("#play-why-copy"), whyMovement: document.querySelector("#play-why-movement"),
     whyMelody: document.querySelector("#play-why-melody"), whyDegree: document.querySelector("#play-why-degree"), whyRole: document.querySelector("#play-why-role"), whySupport: document.querySelector("#play-why-support"), whyPosition: document.querySelector("#play-why-position"),
     whyAlternatives: document.querySelector("#play-why-alternatives"), whyAlternativeList: document.querySelector("#play-why-alternative-list")
   };
-  const startupControls = [elements.toggle, elements.restart, elements.scrub, elements.speed, elements.route, elements.loop, ...elements.checkpoints];
+  const startupControls = [elements.toggle, elements.restart, elements.scrub, elements.speed, elements.route, elements.loop, elements.chordDisplay, elements.openSongMap, elements.countIn, elements.metronome, ...elements.checkpoints];
   const projectId = decodeURIComponent(global.location.pathname.split("/").filter(Boolean).at(-1) || "");
   let track = null;
   let plan = null;
@@ -27,8 +30,16 @@
   let session = null;
   let renderedState = "";
   let frame = 0;
-  let loopBars = 0;
+  let loopRange = null;
   let assistanceReduced = false;
+  let practiceMode = "full";
+  let practiceSession = null;
+  let transport = null;
+  let localAudioUrl = "";
+  let practiceBars = [];
+  let loopSelection = [];
+  let sessionSaveTimer = 0;
+  let lastSessionPositionSave = 0;
   let selectedLessonId = "";
   let lessons = [];
   let playAlongCopedentContext = DEFAULT_PLAY_ALONG_COPEDENT;
@@ -58,6 +69,20 @@
   function formatTime(seconds) {
     const safe = Math.max(0, Number(seconds || 0));
     return `${Math.floor(safe / 60)}:${String(Math.floor(safe % 60)).padStart(2, "0")}`;
+  }
+
+  function displayedChord(symbol) {
+    return practiceTools?.chordForDisplay(symbol, track?.key, practiceSession?.chordDisplay || "letters") || symbol;
+  }
+
+  function queueSessionSave(force = false) {
+    if (!practiceSession || !track) return;
+    const write = () => {
+      practiceSession = { ...practiceSession, mode: practiceMode, speed: Number(elements.speed.value), volume: Number(elements.volume.value), loopStartBar: loopRange?.startBar ?? null, loopEndBar: loopRange?.endBar ?? null, countIn: elements.countIn.checked, metronome: elements.metronome.checked, lastPositionMs: Math.round(audio.currentTime * 1000), updatedAt: new Date().toISOString() };
+      practiceTools.saveSession(practiceSession).catch((error) => global.console?.warn?.("Practice settings could not be saved.", error));
+    };
+    global.clearTimeout(sessionSaveTimer);
+    if (force) write(); else sessionSaveTimer = global.setTimeout(write, 180);
   }
 
   function accessHeaders(json = false) {
@@ -358,12 +383,12 @@
     const beats = beatCountdown(current, next, timeMs);
     if (force || stateKey !== renderedState) {
       renderedState = stateKey;
-      elements.currentChord.textContent = current?.chord || "—";
+      elements.currentChord.textContent = current?.status === "rest" ? "N.C." : displayedChord(current?.chord || "—");
       elements.currentGrip.innerHTML = assistanceReduced ? "" : gripMarkup(current?.position, false);
       elements.currentMelody.textContent = assistanceReduced ? "" : melodyCueText(current);
       elements.currentMelody.hidden = !elements.currentMelody.textContent;
       elements.currentMove.textContent = assistanceReduced ? "Listen and make the change." : currentInstruction(current);
-      elements.nextChord.textContent = next?.chord || "End";
+      elements.nextChord.textContent = next ? displayedChord(next.chord) : "End";
       elements.nextGrip.innerHTML = assistanceReduced ? "" : gripMarkup(next?.position);
       elements.nextMelody.textContent = assistanceReduced ? "" : melodyCueText(next);
       elements.nextMelody.hidden = !elements.nextMelody.textContent;
@@ -372,6 +397,7 @@
       elements.bar.textContent = current?.isPickup ? `Pickup · Bar 1 of ${chart.measures.length}` : current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";
       renderFretboard(current, next);
       renderWhyDetails(current);
+      renderSongMapActive(currentBar);
     }
     elements.nextLabel.textContent = next ? `Next${beats ? ` · ${beatLabel(beats)}` : ""}` : "End";
     elements.nextCard.classList.toggle("is-imminent", Boolean(next && beats <= 2));
@@ -379,13 +405,47 @@
     elements.why.hidden = !(audio.paused && isMelodyLesson() && current?.position?.melodyPitchLabel && !assistanceReduced);
   }
 
-  function loopBounds(timeMs) {
-    if (!loopBars || !chart?.measures?.length) return null;
-    const starts = track.barStartsMs || [];
-    let index = starts.findLastIndex((start) => start <= timeMs);
-    if (index < 0) index = 0;
-    const groupStart = Math.floor(index / loopBars) * loopBars;
-    return { startMs: starts[groupStart] || 0, endMs: starts[Math.min(starts.length, groupStart + loopBars)] || track.durationMs };
+  function currentBarIndex(timeMs = audio.currentTime * 1000) {
+    return Math.max(0, (track?.barStartsMs || []).findLastIndex((start) => start <= timeMs));
+  }
+
+  function ensureLoopRange() {
+    if (loopRange) return loopRange;
+    const index = currentBarIndex();
+    loopRange = practiceTools.barsToLoopRange(track, index + 1, Math.min((track.barStartsMs || []).length, index + 2));
+    transport?.setLoop(loopRange, true);
+    return loopRange;
+  }
+
+  function renderSongMapActive(barNumberValue) {
+    elements.songMap?.querySelectorAll("[data-map-bar]").forEach((button) => {
+      const active = Number(button.dataset.mapBar) === Number(barNumberValue);
+      button.classList.toggle("is-active", active);
+      if (active && elements.songMapDialog?.open) button.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  }
+
+  function renderSongMap() {
+    if (!elements.songMap) return;
+    practiceBars = practiceTools.projectBars(track, plan);
+    elements.songMap.replaceChildren(...practiceBars.map((bar) => {
+      const button = document.createElement("button");
+      button.type = "button"; button.className = "song-map-bar"; button.dataset.mapBar = String(bar.barNumber);
+      if (loopRange && bar.barNumber >= loopRange.startBar && bar.barNumber <= loopRange.endBar) button.classList.add("is-looped");
+      const chordMarkup = bar.chords.length ? bar.chords.map((chord) => `<span style="--start:${chord.startFraction};--length:${chord.durationFraction}">${displayedChord(chord.symbol)}</span>`).join("") : "<span>N.C.</span>";
+      const move = bar.firstMove ? `Fret ${bar.firstMove.fret}${bar.firstMove.controls?.length ? ` · ${bar.firstMove.controls.join("+")}` : ""}` : "Listen";
+      button.innerHTML = `<small>Bar ${bar.barNumber}</small><strong>${chordMarkup}</strong><em>${move}</em>`;
+      button.setAttribute("aria-label", `Bar ${bar.barNumber}, ${bar.chords.map((item) => displayedChord(item.symbol)).join(", ") || "no chord"}. Seek without autoplay.`);
+      button.onclick = () => {
+        if (elements.songMapLoop.dataset.selecting === "true") {
+          loopSelection.push(bar.barNumber);
+          if (loopSelection.length === 1) { elements.songMapLoop.textContent = `Choose end (starts ${bar.barNumber})`; button.classList.add("is-loop-anchor"); }
+          else { loopRange = practiceTools.barsToLoopRange(track, Math.min(...loopSelection), Math.max(...loopSelection)); elements.loop.checked = true; practiceMode = "loop"; transport.setLoop(loopRange, true); elements.songMapLoop.dataset.selecting = "false"; elements.songMapLoop.textContent = "Set Loop"; loopSelection = []; updateModeButtons(); renderSongMap(); queueSessionSave(); }
+        } else { transport.pause(); transport.seek(bar.startMs); renderState(bar.startMs, true); }
+      };
+      return button;
+    }));
+    renderSongMapActive(currentBarIndex() + 1);
   }
 
   function restEventAt(timeMs, next) {
@@ -400,15 +460,12 @@
   }
 
   function tick() {
-    const timeMs = audio.currentTime * 1000;
+    const timeMs = transport ? transport.update() : audio.currentTime * 1000;
     renderState(timeMs);
     if (!elements.scrub.matches(":active")) elements.scrub.value = String(audio.currentTime || 0);
     elements.time.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration || track?.durationMs / 1000)}`;
     elements.toggle.textContent = audio.paused ? "▶ Play" : "Pause";
-    if (elements.loop.checked) {
-      const bounds = loopBounds(timeMs);
-      if (bounds && timeMs >= bounds.endMs - 30) audio.currentTime = bounds.startMs / 1000;
-    }
+    if (practiceSession && timeMs - lastSessionPositionSave > 5000) { lastSessionPositionSave = timeMs; queueSessionSave(); }
     frame = requestAnimationFrame(tick);
   }
 
@@ -450,6 +507,21 @@
     const lesson = activeLesson();
     elements.route.title = lesson?.description || "Choose what this Play Along lesson teaches.";
     elements.objective.textContent = lesson?.objective || "Follow the reviewed E9 route.";
+  }
+
+  function updateModeButtons() {
+    elements.checkpoints.forEach((button) => button.classList.toggle("is-active", button.dataset.checkpoint === practiceMode));
+    document.querySelector("#preview-step-controls").hidden = practiceMode !== "preview";
+    elements.loop.checked = practiceMode === "loop" && Boolean(loopRange);
+    transport?.setLoop(loopRange, elements.loop.checked);
+  }
+
+  function stepGrip(direction) {
+    const events = plan?.events || [];
+    if (!events.length) return;
+    const currentIndex = Math.max(0, events.findLastIndex((event) => Number(event.startMs) <= audio.currentTime * 1000 + 1));
+    const nextIndex = Math.max(0, Math.min(events.length - 1, currentIndex + direction));
+    transport.pause(); transport.seek(events[nextIndex].startMs); renderState(events[nextIndex].startMs, true); queueSessionSave();
   }
 
   async function arrangeMelodyLessons() {
@@ -503,17 +575,23 @@
   }
 
   async function localProject(id) {
-    return new Promise((resolve, reject) => {
-      const request = global.indexedDB.open("steel-guitar-rag-practice", 1);
-      request.onsuccess = () => {
-        const database = request.result;
-        if (!database.objectStoreNames.contains("practiceProjects")) { database.close(); resolve(null); return; }
-        const read = database.transaction("practiceProjects", "readonly").objectStore("practiceProjects").get(id);
-        read.onsuccess = () => { database.close(); resolve(read.result || null); };
-        read.onerror = () => { database.close(); reject(read.error); };
-      };
-      request.onerror = () => reject(request.error);
-    });
+    return practiceTools.loadProject(id);
+  }
+
+  async function trackFromLocalProject(project) {
+    const timeline = project.timeline || {};
+    const chords = Array.isArray(timeline.chords) ? timeline.chords : [];
+    if (!chords.length || !Array.isArray(timeline.barStartsMs) || !timeline.barStartsMs.length) throw new Error(`${project.title} still needs chord and timing review.`);
+    const file = await practiceTools.readAudio(project.audio?.opfsPath || `${project.id}.audio`).catch(() => null);
+    if (!file) throw new Error("The local recording is missing. Return to Songs and relink the original file with the same fingerprint.");
+    localAudioUrl = URL.createObjectURL(file);
+    return {
+      id: project.id, projectId: project.id, title: project.title, performer: "On-device recording", key: timeline.key || "G", meter: timeline.meter || "4/4", tempo: Number(timeline.tempo || 100),
+      durationMs: Number(project.audio.durationMs), barStartsMs: timeline.barStartsMs.map(Number), beatTimesMs: (timeline.beatTimesMs || []).map(Number),
+      chart: `[Detected song] | ${chords.map((chord) => chord.symbol || "N.C.").join(" | ")} |`, audioUrl: localAudioUrl, playAlongReady: true,
+      routeOptions: [{ id: "movement", label: "Move the Bar", description: "Follow a practical E9 chord route generated from your reviewed chart." }], defaultRouteId: "movement",
+      recordingCredit: "Stored and analyzed only on this device", authoredCountIn: Boolean(timeline.authoredCountIn), localProject: true
+    };
   }
 
   function prepareTrackShell() {
@@ -538,15 +616,15 @@
       licenseLink.textContent = track.license || "License";
       elements.attribution.append(licenseLink);
     }
-    audio.src = track.audioUrl;
-    audio.volume = Number(elements.volume.value);
-    audio.playbackRate = Number(elements.speed.value);
-    audio.preservesPitch = true;
+    transport = global.usePracticeTransport({ audio, track });
+    transport.load(track.audioUrl, track);
+    transport.setVolume(Number(elements.volume.value));
+    transport.setRate(Number(elements.speed.value));
     audio.addEventListener("loadedmetadata", () => { elements.scrub.max = String(audio.duration); }, { once: true });
   }
 
   async function initialize() {
-    if (!songTools) throw new Error("The song timeline could not load.");
+    if (!songTools || !practiceTools || !global.usePracticeTransport) throw new Error("The song timeline could not load.");
     session = await fetch("/api/session", { headers: accessHeaders() }).then((response) => response.json());
     const catalogRequest = fetch("/api/song-practice/catalog", { headers: accessHeaders() });
     if (projectId.startsWith("local-")) await configurePlayAlongCopedent();
@@ -557,7 +635,7 @@
     if (!track && projectId.startsWith("local-")) {
       const local = await localProject(projectId);
       if (!local) throw new Error("That device-only track is no longer stored in this browser.");
-      throw new Error(`${local.title} is stored safely on this device. Chord and timing setup is the next step before Play Along can begin.`);
+      track = await trackFromLocalProject(local);
     }
     if (!track || track.playAlongReady !== true) {
       throw new Error(track?.availabilityReason || "That guided song is still in recording and synchronization review.");
@@ -565,6 +643,20 @@
     chart = songTools.parseSongChart(track.chart, { mode: "letter", key: track.key, meter: track.meter });
     if (chart.errors.length) throw new Error(chart.errors.join(" "));
     prepareTrackShell();
+    practiceSession = { ...practiceTools.sessionDefaults(projectId), ...(await practiceTools.loadSession(projectId) || {}) };
+    if (practiceSession.lastPositionMs >= track.durationMs - 1000) practiceSession.lastPositionMs = 0;
+    elements.speed.value = String(practiceSession.speed || 1);
+    elements.volume.value = String(Number.isFinite(Number(practiceSession.volume)) ? practiceSession.volume : 0.9);
+    elements.countIn.checked = Boolean(practiceSession.countIn);
+    elements.metronome.checked = Boolean(practiceSession.metronome);
+    elements.chordDisplay.textContent = practiceSession.chordDisplay === "nns" ? "Chords" : "NNS";
+    elements.chordDisplay.setAttribute("aria-pressed", String(practiceSession.chordDisplay === "nns"));
+    practiceMode = ["preview", "loop", "full", "less"].includes(practiceSession.mode) ? practiceSession.mode : "full";
+    assistanceReduced = practiceMode === "less";
+    transport.setRate(elements.speed.value); transport.setVolume(elements.volume.value); transport.setCountIn(elements.countIn.checked); transport.setMetronome(elements.metronome.checked);
+    if (practiceSession.loopStartBar && practiceSession.loopEndBar) { loopRange = practiceTools.barsToLoopRange(track, practiceSession.loopStartBar, practiceSession.loopEndBar); }
+    elements.loop.checked = practiceMode === "loop" && Boolean(loopRange);
+    transport.setLoop(loopRange, elements.loop.checked);
     try {
       await arrangeMelodyLessons();
     } catch (error) {
@@ -601,17 +693,20 @@
     elements.route.parentElement.hidden = lessons.length < 2;
     updateLessonDescription();
     await loadActiveLessonPlan();
+    renderSongMap();
+    updateModeButtons();
     setPlayerReady(true);
-    renderState(0, true);
+    transport.seek(practiceSession.lastPositionMs || 0);
+    renderState(practiceSession.lastPositionMs || 0, true);
     frame = requestAnimationFrame(tick);
   }
 
-  elements.toggle.addEventListener("click", async () => { if (audio.paused) await audio.play(); else audio.pause(); });
-  elements.restart.addEventListener("click", () => { audio.currentTime = 0; renderState(0, true); });
-  elements.scrub.addEventListener("input", () => { audio.currentTime = Number(elements.scrub.value); renderState(audio.currentTime * 1000, true); });
-  elements.speed.addEventListener("change", () => { audio.playbackRate = Number(elements.speed.value); audio.preservesPitch = true; });
+  elements.toggle.addEventListener("click", async () => { if (audio.paused && !transport.pendingCountIn) await transport.play(); else transport.pause(); });
+  elements.restart.addEventListener("click", () => { transport.pause(); transport.seek(0); renderState(0, true); queueSessionSave(); });
+  elements.scrub.addEventListener("input", () => { transport.seek(Number(elements.scrub.value) * 1000); renderState(audio.currentTime * 1000, true); queueSessionSave(); });
+  elements.speed.addEventListener("change", () => { transport.setRate(elements.speed.value); queueSessionSave(); });
   elements.route.addEventListener("change", async () => {
-    audio.pause();
+    transport.pause();
     selectedLessonId = elements.route.value;
     updateLessonDescription();
     elements.route.disabled = true;
@@ -619,24 +714,46 @@
       await loadActiveLessonPlan();
       renderedState = "";
       renderState(audio.currentTime * 1000, true);
+      renderSongMap();
     } catch (error) {
       showError(error.message || "That Play Along lesson could not be prepared.");
     } finally {
       elements.route.disabled = false;
     }
   });
-  elements.volume.addEventListener("input", () => { audio.volume = Number(elements.volume.value); });
-  elements.loop.addEventListener("change", () => { if (elements.loop.checked && !loopBars) loopBars = 4; });
+  elements.volume.addEventListener("input", () => { transport.setVolume(elements.volume.value); queueSessionSave(); });
+  elements.countIn.addEventListener("change", () => { transport.setCountIn(elements.countIn.checked); queueSessionSave(); });
+  elements.metronome.addEventListener("change", () => { transport.setMetronome(elements.metronome.checked); queueSessionSave(); });
+  elements.loop.addEventListener("change", () => {
+    if (elements.loop.checked) { ensureLoopRange(); practiceMode = "loop"; }
+    else if (practiceMode === "loop") practiceMode = "full";
+    updateModeButtons(); renderSongMap(); queueSessionSave();
+  });
+  elements.chordDisplay.addEventListener("click", () => {
+    const nns = practiceSession.chordDisplay !== "nns";
+    practiceSession.chordDisplay = nns ? "nns" : "letters";
+    elements.chordDisplay.textContent = nns ? "Chords" : "NNS";
+    elements.chordDisplay.setAttribute("aria-pressed", String(nns));
+    renderedState = ""; renderState(audio.currentTime * 1000, true); renderSongMap(); queueSessionSave();
+  });
+  elements.openSongMap.addEventListener("click", () => { renderSongMap(); elements.songMapDialog.showModal(); });
+  elements.closeSongMap.addEventListener("click", () => elements.songMapDialog.close());
+  elements.songMapLoop.addEventListener("click", () => { loopSelection = []; elements.songMapLoop.dataset.selecting = "true"; elements.songMapLoop.textContent = "Choose start bar"; });
+  document.querySelector("#previous-grip").addEventListener("click", () => stepGrip(-1));
+  document.querySelector("#next-grip").addEventListener("click", () => stepGrip(1));
   elements.checkpoints.forEach((button) => button.addEventListener("click", () => {
-    elements.checkpoints.forEach((item) => item.classList.toggle("is-active", item === button));
     const value = button.dataset.checkpoint;
-    if (value === "preview") { audio.pause(); audio.currentTime = Number(plan?.events?.[0]?.startMs || track?.barStartsMs?.[0] || 0) / 1000; loopBars = 0; assistanceReduced = false; }
-    else if (value === "full") { loopBars = 0; elements.loop.checked = false; assistanceReduced = false; }
-    else if (value === "less") { loopBars = 0; elements.loop.checked = false; assistanceReduced = true; }
-    else { loopBars = Number(value); elements.loop.checked = true; assistanceReduced = false; }
+    transport.cancelPending(); practiceMode = value;
+    if (value === "preview") { transport.pause(); transport.seek(Number(plan?.events?.[0]?.startMs || track?.barStartsMs?.[0] || 0)); assistanceReduced = false; }
+    else if (value === "loop") { ensureLoopRange(); assistanceReduced = false; transport.seek(loopRange.startMs); }
+    else if (value === "less") assistanceReduced = true;
+    else assistanceReduced = false;
+    updateModeButtons(); renderSongMap(); queueSessionSave();
     renderedState = "";
     renderState(audio.currentTime * 1000, true);
   }));
+
+  global.addEventListener("beforeunload", () => { queueSessionSave(true); transport?.destroy(); if (localAudioUrl) URL.revokeObjectURL(localAudioUrl); });
 
   showLoadingState();
   initialize().catch((error) => showError(error.message || "Play Along could not start."));

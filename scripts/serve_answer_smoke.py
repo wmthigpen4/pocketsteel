@@ -138,6 +138,8 @@ def build_app(
             path = "/ui/songs.html"
         elif path.startswith("/play/") and len(path.removeprefix("/play/").strip("/")) > 0:
             path = "/ui/play-song.html"
+        elif path.startswith("/setup/") and len(path.removeprefix("/setup/").strip("/")) > 0:
+            path = "/ui/setup-song.html"
         if path in {"/ui", "/ui/"}:
             path = "/ui/steel-guitar-rag-mock.html"
         if path.startswith("/brand/"):

@@ -13,6 +13,7 @@
       <strong>Play Songs</strong>
     </a>
     <nav class="songs-nav" aria-label="Page navigation">
+      <button class="songs-button is-primary" id="add-song-header" type="button">Add a Song</button>
       <a href="/ui/steel-guitar-rag-mock.html">Home</a>
       <a href="/ui/melody-workbench.html">Melody Studio</a>
     </nav>
@@ -35,13 +36,32 @@
       <div class="my-tracks-panel">
         <div class="track-import-row">
           <div><strong>Add a recording from your device</strong><p>MP3, M4A/AAC, or WAV · up to 15 minutes or 250 MB. You can remove it or export its metadata at any time.</p></div>
-          <button class="songs-button is-primary" id="add-local-track" type="button">Add Your Track</button>
+          <button class="songs-button is-primary" id="add-local-track" type="button">Add a Song</button>
           <input id="local-track-file" type="file" accept="audio/mpeg,audio/mp4,audio/aac,audio/wav,.mp3,.m4a,.aac,.wav" hidden>
         </div>
         <div class="local-track-list" id="local-track-list"></div>
       </div>
     </section>
   </main>
-  <script src="/ui/songs.js?v=play-songs-20260802-1"></script>
+  <dialog class="practice-dialog" id="import-progress" aria-labelledby="import-progress-title">
+    <div class="practice-dialog__body">
+      <p class="songs-kicker">Local song analysis</p>
+      <h2 id="import-progress-title">Preparing audio</h2>
+      <p id="import-progress-detail">Your recording stays on this device.</p>
+      <ol class="analysis-stages" id="analysis-stages">
+        <li data-stage="Preparing audio">Preparing audio</li>
+        <li data-stage="Detecting beats, meter, key, and chords">Detecting beats, meter, key, and chords</li>
+        <li data-stage="Building the steel route">Building the steel route</li>
+        <li data-stage="Saving on this device">Saving on this device</li>
+        <li data-stage="Ready to review">Ready to review</li>
+      </ol>
+      <button class="songs-button is-quiet" id="cancel-import" type="button">Cancel</button>
+    </div>
+  </dialog>
+  <dialog class="practice-dialog" id="duplicate-dialog" aria-labelledby="duplicate-title">
+    <div class="practice-dialog__body"><p class="songs-kicker">Already on this device</p><h2 id="duplicate-title">This recording already has a project.</h2><p>Open the existing song to preserve its chord and timing corrections.</p><div class="practice-dialog__actions"><button class="songs-button is-primary" id="open-existing" type="button">Open Existing Song</button><button class="songs-button is-quiet" id="cancel-duplicate" type="button">Cancel</button></div></div>
+  </dialog>
+  <script src="/ui/practice-tools.js?v=play-songs-20260802-1"></script>
+  <script src="/ui/songs.js?v=play-songs-20260802-2"></script>
 </body>
 </html>

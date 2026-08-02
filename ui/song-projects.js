@@ -10,6 +10,7 @@
   const FLAT_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
   const SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11];
   const MAX_CUE_LENGTH = 80;
+  const REST_SYMBOL = "__REST__";
 
   function nowIso() {
     return new Date().toISOString();
@@ -22,6 +23,7 @@
 
   function normalizeLetterChord(value) {
     const raw = String(value || "").trim().replace(/♯/g, "#").replace(/♭/g, "b");
+    if (/^(?:N\.?C\.?|NO\s+CHORD|REST)$/i.test(raw)) return REST_SYMBOL;
     const match = raw.match(/^([A-Ga-g])([#b]?)([A-Za-z0-9()+#b°ø-]*)(?:\/([A-Ga-g])([#b]?))?$/);
     if (!match) return null;
     const root = `${match[1].toUpperCase()}${match[2]}`;
@@ -109,7 +111,7 @@
       }
       const displayChords = content.split(/\s+/).filter(Boolean);
       const resolvedChords = displayChords.map((symbol) => mode === "nashville" ? nashvilleToLetter(symbol, key) : normalizeLetterChord(symbol));
-      const invalid = displayChords.filter((_symbol, index) => !resolvedChords[index]);
+      const invalid = displayChords.filter((_symbol, index) => resolvedChords[index] == null);
       if (invalid.length) {
         errors.push(`Bar ${measures.length + 1}: invalid chord symbol${invalid.length === 1 ? "" : "s"} ${invalid.join(", ")}.`);
         return;
@@ -124,7 +126,7 @@
           resolvedChords: [...resolvedChords],
           chordFractions: resolvedChords.map((_item, index) => index / resolvedChords.length),
           needsReview: resolvedChords.length > 1,
-          role: "comp"
+          role: resolvedChords.every((chord) => chord === REST_SYMBOL) ? "rest" : "comp"
         });
       }
     });
@@ -157,10 +159,10 @@
           id: `${measure.id}-chord-${chordIndex + 1}`,
           measureId: measure.id,
           sectionId: measure.sectionId,
-          chord,
+          chord: chord === REST_SYMBOL ? "" : chord,
           startMs: Math.round(barStart + ((barEnd - barStart) * startFraction)),
           endMs: Math.round(barStart + ((barEnd - barStart) * endFraction)),
-          role: measure.role || "comp"
+          role: chord === REST_SYMBOL ? "rest" : (measure.role || "comp")
         });
       });
     });

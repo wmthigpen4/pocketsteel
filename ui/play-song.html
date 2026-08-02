@@ -14,7 +14,7 @@
   <main class="play-main" id="play-app" hidden>
     <div class="play-heading">
       <div><h1 id="play-title">Loading song…</h1><p id="play-meta"></p><p class="play-attribution" id="play-attribution"></p></div>
-      <div class="play-bar-readout" id="play-bar">Count-in</div>
+      <div class="play-heading__tools"><button class="songs-button is-quiet" id="chord-display" type="button" aria-pressed="false">NNS</button><button class="songs-button is-quiet" id="open-song-map" type="button">Song Map</button><div class="play-bar-readout" id="play-bar">Count-in</div></div>
     </div>
     <p class="play-objective" id="play-objective">Keep the melody as the highest note.</p>
     <section class="play-cue-deck" aria-label="Current and upcoming chord">
@@ -59,26 +59,31 @@
       <button class="songs-button is-quiet" id="play-restart" type="button">Restart</button>
       <input id="play-scrub" type="range" min="0" max="1" value="0" step="0.01" aria-label="Song position">
       <span class="play-time" id="play-time">0:00 / 0:00</span>
-      <label>Speed <select id="play-speed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option></select></label>
+      <label>Speed <select id="play-speed"><option value="0.5">50%</option><option value="0.6">60%</option><option value="0.75">75%</option><option value="0.9">90%</option><option value="1" selected>100%</option></select></label>
       <label class="route-control" hidden>Lesson <select id="play-route" aria-label="Play Along lesson"></select></label>
-      <label class="loop-control"><input id="play-loop" type="checkbox"> Loop 4 bars</label>
+      <label class="loop-control"><input id="play-loop" type="checkbox"> Loop A–B</label>
       <label class="backing-control">Backing <input id="play-volume" type="range" min="0" max="1" value="0.9" step="0.05"></label>
+      <label class="count-control"><input id="play-count-in" type="checkbox"> Count-in</label>
+      <label class="metronome-control"><input id="play-metronome" type="checkbox"> Metronome</label>
     </div>
     <div class="play-checkpoints" aria-label="Lesson checkpoints">
       <button class="play-checkpoint" data-checkpoint="preview"><strong>Preview grips</strong><small>Pause and study the route</small></button>
-      <button class="play-checkpoint" data-checkpoint="2"><strong>2-bar loop</strong><small>Connect one move</small></button>
-      <button class="play-checkpoint" data-checkpoint="4"><strong>4-bar loop</strong><small>Build the phrase</small></button>
+      <button class="play-checkpoint" data-checkpoint="loop"><strong>Loop</strong><small>Repeat the saved bar range</small></button>
       <button class="play-checkpoint is-active" data-checkpoint="full"><strong>Full song</strong><small>Play the complete form</small></button>
       <button class="play-checkpoint" data-checkpoint="less"><strong>Less help</strong><small>Trust your ears</small></button>
     </div>
+    <div class="preview-step-controls" id="preview-step-controls" hidden><button class="songs-button is-quiet" id="previous-grip" type="button">← Previous grip</button><button class="songs-button is-quiet" id="next-grip" type="button">Next grip →</button></div>
     <audio id="play-audio" preload="metadata"></audio>
   </main>
+  <dialog class="song-map-dialog" id="song-map-dialog" aria-labelledby="song-map-title"><div class="song-map-dialog__head"><div><p class="songs-kicker">Whole-song navigation</p><h2 id="song-map-title">Song Map</h2><p id="song-map-help">Tap a bar to seek. Set Loop uses two taps for an inclusive A–B range.</p></div><div class="song-map-actions"><button class="songs-button" id="song-map-loop" type="button">Set Loop</button><button class="songs-button is-quiet" id="close-song-map" type="button">Close</button></div></div><div class="song-map" id="song-map"></div></dialog>
   <section class="play-error" id="play-error" hidden><h1>Play Along is not ready.</h1><p id="play-error-copy"></p><a class="songs-button" href="/songs">Back to Songs</a></section>
   <script src="/ui/copedent-grid-model.js?v=account-copedent-stage1"></script>
   <script src="/ui/copedent-store.js?v=account-copedent-stage1"></script>
   <script src="/ui/pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>
   <script src="/ui/pedal-steel-fretboard.js?v=play-songs-20260801-1"></script>
   <script src="/ui/song-projects.js?v=play-songs-20260801-2"></script>
-  <script src="/ui/play-song.js?v=play-songs-20260802-1"></script>
+  <script src="/ui/practice-tools.js?v=play-songs-20260802-1"></script>
+  <script src="/ui/practice-transport.js?v=play-songs-20260802-1"></script>
+  <script src="/ui/play-song.js?v=play-songs-20260802-2"></script>
 </body>
 </html>

@@ -192,9 +192,15 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b"Current and upcoming chord" in player
     assert b"pedal-steel-fretboard.js" in player
 
+    status, headers, setup = call_app(smoke_app(), "/setup/local-example")
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert b"Review Song" in setup
+
     for asset_path, marker in (
         ("/ui/play-songs.css", b".play-cue-deck"),
-        ("/ui/songs.js", b"navigator.storage"),
+        ("/ui/songs.js", b"practice-analysis-worker.js"),
+        ("/ui/practice-tools.js", b"navigator.storage"),
         ("/ui/play-song.js", b"activeTimelineState"),
     ):
         status, _, asset = call_app(smoke_app(), asset_path)

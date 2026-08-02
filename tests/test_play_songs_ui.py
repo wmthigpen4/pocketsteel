@@ -16,16 +16,18 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert "Pocket Steel" not in songs + player + css
     assert "Starter Songs" in songs
     assert "My Tracks" in songs
-    assert "Add Your Track" in songs
+    assert "Add a Song" in songs
     assert "Audio stays in this browser" in songs
     assert 'class="play-cue is-current"' in player
     assert 'class="play-cue is-next"' in player
     assert player.index('class="play-cue is-current"') < player.index('class="play-cue is-next"')
     assert "Preview grips" in player
-    assert "2-bar loop" in player
-    assert "4-bar loop" in player
+    assert "Repeat the saved bar range" in player
     assert "Full song" in player
     assert "Less help" in player
+    assert "Song Map" in player
+    assert ">NNS<" in player
+    assert "Count-in" in player and "Metronome" in player
     assert 'id="play-attribution"' in player
     assert 'id="play-route"' in player
     assert 'id="play-objective"' in player
@@ -41,14 +43,15 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert "filter: grayscale(0.6)" in css
     assert "@media (orientation: landscape) and (max-height: 560px)" in css
     assert ".play-fretboard svg { max-height: 205px; }" in css
-    assert ".play-controls .backing-control, .play-controls .loop-control { display: none; }" in css
+    assert ".song-map-dialog" in css
 
 
 def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     songs_js = (REPO_ROOT / "ui" / "songs.js").read_text(encoding="utf-8")
     player_js = (REPO_ROOT / "ui" / "play-song.js").read_text(encoding="utf-8")
+    tools_js = (REPO_ROOT / "ui" / "practice-tools.js").read_text(encoding="utf-8")
 
-    assert "navigator.storage.getDirectory" in songs_js
+    assert "navigator.storage.getDirectory" in tools_js
     assert 'storage: "opfs"' in songs_js
     assert 'uploaded: false, networkAllowed: false' in songs_js
     assert "MAX_BYTES = 250 * 1024 * 1024" in songs_js
@@ -122,7 +125,10 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
 
 
 def test_play_songs_javascript_syntax() -> None:
-    for path in ("ui/songs.js", "ui/play-song.js"):
+    for path in (
+        "ui/songs.js", "ui/setup-song.js", "ui/play-song.js", "ui/practice-tools.js",
+        "ui/practice-transport.js", "ui/practice-analysis-worker.js",
+    ):
         result = subprocess.run(
             ["node", "--check", path],
             cwd=REPO_ROOT,
