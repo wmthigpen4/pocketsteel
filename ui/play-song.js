@@ -10,7 +10,7 @@
   const errorCopy = document.querySelector("#play-error-copy");
   const audio = document.querySelector("#play-audio");
   const elements = {
-    title: document.querySelector("#play-title"), meta: document.querySelector("#play-meta"), attribution: document.querySelector("#play-attribution"), bar: document.querySelector("#play-bar"),
+    title: document.querySelector("#play-title"), key: document.querySelector("#play-key"), meta: document.querySelector("#play-meta"), attribution: document.querySelector("#play-attribution"), bar: document.querySelector("#play-bar"),
     objective: document.querySelector("#play-objective"), currentChord: document.querySelector("#current-chord"), currentGrip: document.querySelector("#current-grip"), currentMelody: document.querySelector("#current-melody"), currentMove: document.querySelector("#current-move"),
     nextLabel: document.querySelector("#next-chord-label"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMelody: document.querySelector("#next-melody"), nextMove: document.querySelector("#next-move"),
     fretboard: document.querySelector("#play-fretboard"), lyric: document.querySelector("#play-lyric"), toggle: document.querySelector("#play-toggle"), restart: document.querySelector("#play-restart"),
@@ -128,13 +128,13 @@
 
   function gripMarkup(position, showStrings = true) {
     if (!position) return "";
-    if (!showStrings) return `<span>Fret ${position.fret}</span>`;
+    if (!showStrings) return `<span class="play-grip__fret">Fret ${position.fret}</span>`;
     const controlsByString = stringControlMap(position);
     const strings = (position.strings || []).map((string) => {
       const control = controlsByString.get(Number(string));
       return `<span class="play-string">${string}${control ? ` ${control}` : ""}</span>`;
     }).join("");
-    return `<span>Fret ${position.fret}</span>${strings}`;
+    return `<span class="play-grip__fret">Fret ${position.fret}</span><span class="play-grip__strings" aria-label="Strings ${(position.strings || []).join(", ")}">${strings}</span>`;
   }
 
   function controlChangesByString(from, to) {
@@ -288,6 +288,25 @@
     return Boolean(left && right && left.fret === right.fret);
   }
 
+  function samePosition(left, right) {
+    if (!sameFret(left, right)) return false;
+    const signature = (position) => JSON.stringify({
+      strings: (position?.strings || []).map(Number),
+      controls: displayControlLabels(position?.controlLabels || position?.controls || []).sort()
+    });
+    return signature(left) === signature(right);
+  }
+
+  function renderOffsetX(group) {
+    return Number(group?.getAttribute("data-highlight-render-offset-x")) || 0;
+  }
+
+  function centerSameFretCurrentGrip() {
+    const group = elements.fretboard.querySelector('[data-highlight-id="play-current"]');
+    if (!group) return;
+    group.setAttribute("transform", `translate(${-renderOffsetX(group)} 0)`);
+  }
+
   function separateSameFretNextGrip(position) {
     const group = elements.fretboard.querySelector('[data-highlight-id="play-next"]');
     const firstDot = group?.querySelector("[data-highlight-dot]");
@@ -295,7 +314,8 @@
     const dotX = Number(firstDot.getAttribute("x"));
     const dotY = Number(firstDot.getAttribute("y"));
     const dotWidth = Number(firstDot.getAttribute("width"));
-    const offset = dotX > 1050 ? -76 : 76;
+    const sideOffset = dotX > 1050 ? -76 : 76;
+    const offset = sideOffset - renderOffsetX(group);
     group.classList.add("is-same-fret-next");
     group.setAttribute("transform", `translate(${offset} 0)`);
     group.setAttribute("aria-label", `Upcoming grip at the same fret ${position?.fret}`);
@@ -310,7 +330,7 @@
 
   function renderFretboard(current, next) {
     if (!global.STEEL_RAG_FRETBOARD?.mountPedalSteelFretboard) return;
-    const visibleNext = assistanceReduced ? null : next;
+    const visibleNext = assistanceReduced || samePosition(current?.position, next?.position) ? null : next;
     const sharedFret = sameFret(current?.position, visibleNext?.position);
     const positions = [positionDisplay(current, "play-current", "current", 1), positionDisplay(visibleNext, "play-next", "next", 2)].filter(Boolean);
     if (!positions.length) { elements.fretboard.innerHTML = ""; return; }
@@ -321,7 +341,10 @@
     });
     leftAlignSvgStringLabels("play-current");
     leftAlignSvgStringLabels("play-next");
-    if (sharedFret) separateSameFretNextGrip(visibleNext?.position);
+    if (sharedFret) {
+      centerSameFretCurrentGrip();
+      separateSameFretNextGrip(visibleNext?.position);
+    }
     addMelodyVoiceTag("play-current", current?.position, "current", sharedFret);
     addMelodyVoiceTag("play-next", visibleNext?.position, "next");
   }
@@ -601,7 +624,8 @@
 
   function prepareTrackShell() {
     elements.title.textContent = track.title;
-    elements.meta.textContent = [track.performer, track.key, track.meter, track.tempo ? `${track.tempo} BPM` : ""].filter(Boolean).join(" · ");
+    elements.key.textContent = track.key || "—";
+    elements.meta.textContent = [track.performer, track.meter, track.tempo ? `${track.tempo} BPM` : ""].filter(Boolean).join(" · ");
     elements.attribution.replaceChildren(document.createTextNode(track.recordingCredit || ""));
     if (track.rightsUrl) {
       elements.attribution.append(document.createTextNode(" · "));
@@ -745,7 +769,7 @@
   elements.closeSongMap.addEventListener("click", () => elements.songMapDialog.close());
   elements.songMapLoop.addEventListener("click", () => { loopSelection = []; elements.songMapLoop.dataset.selecting = "true"; elements.songMapLoop.textContent = "Choose start bar"; });
   document.querySelector("#previous-grip").addEventListener("click", () => stepGrip(-1));
-  document.querySelector("#next-grip").addEventListener("click", () => stepGrip(1));
+  document.querySelector("#next-grip-step").addEventListener("click", () => stepGrip(1));
   elements.checkpoints.forEach((button) => button.addEventListener("click", () => {
     const value = button.dataset.checkpoint;
     transport.cancelPending(); practiceMode = value;

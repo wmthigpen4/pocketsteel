@@ -29,6 +29,7 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert ">NNS<" in player
     assert "Count-in" in player and "Metronome" in player
     assert 'id="play-attribution"' in player
+    assert 'id="play-key"' in player
     assert 'id="play-route"' in player
     assert 'id="play-objective"' in player
     assert 'id="current-melody"' in player
@@ -89,9 +90,12 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert 'leftAlignSvgStringLabels("play-current")' in player_js
     assert 'leftAlignSvgStringLabels("play-next")' in player_js
     assert "function sameFret" in player_js
+    assert "function samePosition" in player_js
+    assert "centerSameFretCurrentGrip();" in player_js
     assert "function separateSameFretNextGrip" in player_js
     assert 'positionDisplay(visibleNext, "play-next", "next", 2)' in player_js
-    assert "const visibleNext = assistanceReduced ? null : next" in player_js
+    assert "const visibleNext = assistanceReduced || samePosition(current?.position, next?.position) ? null : next" in player_js
+    assert 'const offset = sideOffset - renderOffsetX(group);' in player_js
     assert 'group.setAttribute("transform", `translate(${offset} 0)`)' in player_js
     assert 'caption.textContent = "NEXT · SAME FRET"' in player_js
     assert "renderFretboard(current, next)" in player_js
@@ -120,7 +124,10 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "gripMarkup(current?.position, false)" in player_js
     assert "stringActionLabels" in player_js
     assert '${string}${control ? ` ${control}` : ""}' in player_js
+    assert 'class="play-grip__strings"' in player_js
     assert "justify-content: flex-start" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
+    assert "grid-template-columns: repeat(2, minmax(0, 430px))" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
+    assert "flex-direction: column" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
     assert 'opacity: 0.8 !important' in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
 
 

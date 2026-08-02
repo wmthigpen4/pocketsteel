@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Play Along · Steel Guitar RAG</title>
-  <link rel="stylesheet" href="/ui/play-songs.css?v=play-songs-20260801-13">
+  <link rel="stylesheet" href="/ui/play-songs-layout-20260802.css?v=compact-cues-1">
 </head>
 <body>
   <header class="songs-header">
@@ -13,7 +13,7 @@
   </header>
   <main class="play-main" id="play-app" hidden>
     <div class="play-heading">
-      <div><h1 id="play-title">Loading song…</h1><p id="play-meta"></p><p class="play-attribution" id="play-attribution"></p></div>
+      <div class="play-heading__identity"><h1 id="play-title">Loading song…</h1><div class="play-context"><span class="play-key-badge">Key of <strong id="play-key">—</strong></span><p id="play-meta"></p></div><p class="play-attribution" id="play-attribution"></p></div>
       <div class="play-heading__tools"><button class="songs-button is-quiet" id="chord-display" type="button" aria-pressed="false">NNS</button><button class="songs-button is-quiet" id="open-song-map" type="button">Song Map</button><div class="play-bar-readout" id="play-bar">Count-in</div></div>
     </div>
     <p class="play-objective" id="play-objective">Keep the melody as the highest note.</p>
@@ -72,7 +72,7 @@
       <button class="play-checkpoint is-active" data-checkpoint="full"><strong>Full song</strong><small>Play the complete form</small></button>
       <button class="play-checkpoint" data-checkpoint="less"><strong>Less help</strong><small>Trust your ears</small></button>
     </div>
-    <div class="preview-step-controls" id="preview-step-controls" hidden><button class="songs-button is-quiet" id="previous-grip" type="button">← Previous grip</button><button class="songs-button is-quiet" id="next-grip" type="button">Next grip →</button></div>
+    <div class="preview-step-controls" id="preview-step-controls" hidden><button class="songs-button is-quiet" id="previous-grip" type="button">← Previous grip</button><button class="songs-button is-quiet" id="next-grip-step" type="button">Next grip →</button></div>
     <audio id="play-audio" preload="metadata"></audio>
   </main>
   <dialog class="song-map-dialog" id="song-map-dialog" aria-labelledby="song-map-title"><div class="song-map-dialog__head"><div><p class="songs-kicker">Whole-song navigation</p><h2 id="song-map-title">Song Map</h2><p id="song-map-help">Tap a bar to seek. Set Loop uses two taps for an inclusive A–B range.</p></div><div class="song-map-actions"><button class="songs-button" id="song-map-loop" type="button">Set Loop</button><button class="songs-button is-quiet" id="close-song-map" type="button">Close</button></div></div><div class="song-map" id="song-map"></div></dialog>
@@ -84,6 +84,6 @@
   <script src="/ui/song-projects.js?v=play-songs-20260801-2"></script>
   <script src="/ui/practice-tools-20260802.js?v=control-labels-1"></script>
   <script src="/ui/practice-transport.js?v=play-songs-20260802-1"></script>
-  <script src="/ui/play-song-20260802.js?v=control-labels-1"></script>
+  <script src="/ui/play-song-layout-20260802.js?v=compact-cues-1"></script>
 </body>
 </html>
