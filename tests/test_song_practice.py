@@ -165,12 +165,8 @@ def test_arranger_honors_only_pitch_validated_authored_position_hints() -> None:
 def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() -> None:
     catalog = song_practice_catalog()
     assert catalog["schemaVersion"] == "song_practice_catalog_v1"
-    assert [track["title"] for track in catalog["tracks"]] == [
-        "Amazing Grace",
-        "When the Saints Go Marching In",
-        "Hard Times Come Again No More",
-    ]
-    for track in catalog["tracks"][:2]:
+    assert [track["title"] for track in catalog["tracks"]] == ["Amazing Grace"]
+    for track in catalog["tracks"]:
         asset = Path(track["audioUrl"].lstrip("/"))
         assert track["noSteel"] is True
         assert track["melodyLead"] is True
@@ -231,24 +227,9 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
     assert amazing_grace["practiceProject"]["timeline"]["melodyEvents"] == melody
     assert amazing_grace["melodySource"]["catalogId"] == "amazing-grace-new-britain"
     assert amazing_grace["melodySource"]["reviewStatus"] == "confirmed"
-    saints = catalog["tracks"][1]
-    assert saints["countInBars"] == 1
-    assert saints["playAlongReady"] is False
-    assert saints["availabilityLabel"] == "Track & lesson in review"
-    assert "recording rights" in saints["availabilityReason"]
-    assert catalog["tracks"][2]["publicationState"] == "coming_soon"
-    assert catalog["tracks"][2]["playAlongReady"] is False
-    assert catalog["tracks"][2]["availabilityLabel"] == "Track in review"
-    assert catalog["tracks"][2]["recordingCredit"] == "Grant Raymond Barrett · CC BY 3.0"
-
-
 def test_curated_registry_exposes_playable_projects_and_withholds_unreviewed_track() -> None:
     lessons = list_curated_lessons()
-    assert [lesson["projectId"] for lesson in lessons] == [
-        "amazing-grace-guided",
-        "when-the-saints-guided",
-        "hard-times-guided",
-    ]
+    assert [lesson["projectId"] for lesson in lessons] == ["amazing-grace-guided"]
     amazing_grace = get_curated_practice_project("amazing-grace-guided")
     assert amazing_grace is not None
     assert amazing_grace["lyricCues"][0]["text"].startswith("Amazing grace")

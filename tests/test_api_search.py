@@ -4860,11 +4860,7 @@ def test_song_practice_api_is_authenticated_flag_gated_private_and_no_store() ->
     assert status == "200 OK"
     assert headers["Cache-Control"] == "no-store"
     assert payload["schemaVersion"] == "song_practice_catalog_v1"
-    assert [track["title"] for track in payload["tracks"]] == [
-        "Amazing Grace",
-        "When the Saints Go Marching In",
-        "Hard Times Come Again No More",
-    ]
+    assert [track["title"] for track in payload["tracks"]] == ["Amazing Grace"]
 
     request = {
         "schemaVersion": "song_practice_request_v1",

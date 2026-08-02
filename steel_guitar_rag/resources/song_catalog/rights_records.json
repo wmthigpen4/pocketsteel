@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "song_rights_registry_v1",
+  "rightsRecords": [
+    {
+      "schemaVersion": "song_rights_record_v1",
+      "id": "amazing-grace-kevin-macleod-cc-by-3",
+      "title": "Amazing Grace 2011 — Kevin MacLeod lesson edit",
+      "compositionStatus": "Traditional public-domain composition",
+      "masterStatus": "CC BY 3.0 licensed master and attributed lesson adaptation",
+      "licenseLabel": "Creative Commons Attribution 3.0 Unported",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Amazing_Grace_2011_(ISRC_USUAN1100820).mp3",
+      "territories": "Worldwide under the CC BY 3.0 license terms",
+      "term": "License grant is not revocable provided its terms are followed",
+      "attribution": "“Amazing Grace 2011” Kevin MacLeod (incompetech.com), licensed under CC BY 3.0; Steel Guitar RAG lesson edit",
+      "localDocumentPath": "ui/assets/song-practice/amazing-grace-2011-guide.RIGHTS.md",
+      "localDocumentSha256": "c7b8b8a4e4c5fd7f0d8c4eb0813d9cf814e34e9d39a19eee9e0ad8fc4df31d7e",
+      "allowedUses": {
+        "bundleMaster": true,
+        "onDemandPlayback": true,
+        "synchronizedInstruction": true,
+        "displayLyrics": true,
+        "derivedChordAndTab": true,
+        "loopAndSeek": true,
+        "speedChange": true,
+        "offlineCache": true,
+        "artistMarketing": true
+      },
+      "approval": {
+        "status": "publication_approved",
+        "reviewedOn": "2026-08-01",
+        "reviewer": "Steel Guitar RAG publication review",
+        "reference": "ui/assets/song-practice/amazing-grace-2011-guide.RIGHTS.md#sha256-c7b8b8a4e4c5fd7f0d8c4eb0813d9cf814e34e9d39a19eee9e0ad8fc4df31d7e"
+      }
+    },
+    {
+      "schemaVersion": "song_rights_record_v1",
+      "id": "hard-times-grant-barrett-cc-by-3",
+      "title": "Hard Times Come Again No More — Grant Raymond Barrett recording",
+      "compositionStatus": "Stephen Foster composition published in 1854; public domain in the United States",
+      "masterStatus": "Copyright holder published the exact recording under CC BY 3.0",
+      "licenseLabel": "Creative Commons Attribution 3.0 Unported",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:02_Hard_Times_Come_Again_No_More.ogg",
+      "territories": "Worldwide under the CC BY 3.0 license terms",
+      "term": "License grant is not revocable provided its terms are followed",
+      "attribution": "“Hard Times Come Again No More” performed by Grant Raymond Barrett, licensed under CC BY 3.0",
+      "allowedUses": {
+        "bundleMaster": true,
+        "onDemandPlayback": true,
+        "synchronizedInstruction": true,
+        "displayLyrics": true,
+        "derivedChordAndTab": true,
+        "loopAndSeek": true,
+        "speedChange": true,
+        "offlineCache": true,
+        "artistMarketing": true
+      },
+      "approval": {
+        "status": "verified_candidate_use",
+        "reviewedOn": "2026-08-02",
+        "reviewer": "Steel Guitar RAG candidate rights review",
+        "reference": "https://commons.wikimedia.org/w/index.php?title=File:02_Hard_Times_Come_Again_No_More.ogg&oldid=877125619"
+      }
+    },
+    {
+      "schemaVersion": "song_rights_record_v1",
+      "id": "steel-rag-deterministic-preview-review",
+      "title": "Steel Guitar RAG deterministic song-practice previews",
+      "compositionStatus": "Public-domain source melodies only",
+      "masterStatus": "App-generated preview; exact publication provenance review incomplete",
+      "licenseLabel": "Internal preview only",
+      "licenseUrl": "",
+      "sourceUrl": "repo://scripts/build_song_practice_tracks.py",
+      "territories": "Internal review only",
+      "term": "Not approved for catalog publication",
+      "attribution": "Steel Guitar RAG deterministic renderer",
+      "allowedUses": {
+        "bundleMaster": false,
+        "onDemandPlayback": false,
+        "synchronizedInstruction": false,
+        "displayLyrics": false,
+        "derivedChordAndTab": false,
+        "loopAndSeek": false,
+        "speedChange": false,
+        "offlineCache": false,
+        "artistMarketing": false
+      },
+      "approval": {
+        "status": "pending",
+        "reviewedOn": "",
+        "reviewer": "",
+        "reference": ""
+      }
+    }
+  ]
+}

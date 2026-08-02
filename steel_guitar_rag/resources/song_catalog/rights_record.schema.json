@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.steelguitarrag.com/schemas/song_rights_record_v1.json",
+  "title": "Steel Guitar RAG song rights record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "id", "title", "compositionStatus", "masterStatus",
+    "licenseLabel", "sourceUrl", "territories", "term", "attribution",
+    "allowedUses", "approval"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "song_rights_record_v1"},
+    "id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "compositionStatus": {"type": "string", "minLength": 1},
+    "masterStatus": {"type": "string", "minLength": 1},
+    "licenseLabel": {"type": "string", "minLength": 1},
+    "licenseUrl": {"type": "string"},
+    "sourceUrl": {"type": "string", "minLength": 1},
+    "territories": {"type": "string", "minLength": 1},
+    "term": {"type": "string", "minLength": 1},
+    "attribution": {"type": "string", "minLength": 1},
+    "localDocumentPath": {"type": "string"},
+    "localDocumentSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "allowedUses": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundleMaster", "onDemandPlayback", "synchronizedInstruction",
+        "displayLyrics", "derivedChordAndTab", "loopAndSeek", "speedChange",
+        "offlineCache", "artistMarketing"
+      ],
+      "properties": {
+        "bundleMaster": {"type": ["boolean", "string"]},
+        "onDemandPlayback": {"type": ["boolean", "string"]},
+        "synchronizedInstruction": {"type": ["boolean", "string"]},
+        "displayLyrics": {"type": ["boolean", "string"]},
+        "derivedChordAndTab": {"type": ["boolean", "string"]},
+        "loopAndSeek": {"type": ["boolean", "string"]},
+        "speedChange": {"type": ["boolean", "string"]},
+        "offlineCache": {"type": ["boolean", "string"]},
+        "artistMarketing": {"type": ["boolean", "string"]}
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reviewedOn", "reviewer", "reference"],
+      "properties": {
+        "status": {"enum": ["pending", "verified_candidate_use", "publication_approved", "rejected"]},
+        "reviewedOn": {"type": "string"},
+        "reviewer": {"type": "string"},
+        "reference": {"type": "string"}
+      }
+    }
+  }
+}

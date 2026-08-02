@@ -157,12 +157,24 @@ item is exposed only when all of the following are present and valid:
 - `melodyLead: true`, a positive count-in bar count, and `learnerReady: true`
 - an audio file below the repository's 2 MiB tracked-file limit
 
-The starter registry contains Amazing Grace, When the Saints Go Marching In,
-and Hard Times Come Again No More. Amazing Grace and When the Saints are
-playable in the private application. Hard Times remains visibly in recording
-and synchronization review until its CC BY master, attribution, chord map, and
-lyrics have completed the same learner-ready gate. A public-domain composition
-never implies that an unrelated modern recording is free to use.
+The public Starter Songs registry contains published, playable lessons only.
+Amazing Grace is the golden end-to-end fixture. When the Saints Go Marching In,
+Hard Times Come Again No More, and future prospects remain in the non-public
+candidate pipeline until screening, rights, master, timeline, E9 lesson, QA,
+and publication gates have all passed. A public-domain composition never
+implies that an unrelated modern recording is free to use.
+
+The internal candidate and rights registries live under
+`steel_guitar_rag/resources/song_catalog/`. Validate them and print the exact
+next gate for every candidate with:
+
+```bash
+.venv/bin/python scripts/song_catalog_pipeline.py --check
+```
+
+Setting `learnerReady` in the audio manifest is insufficient. The public catalog
+also requires a matching `published` candidate whose complete gate sequence and
+publication-approved rights record validate successfully.
 
 ## Deferred work
 

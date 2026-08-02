@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.steelguitarrag.com/schemas/song_candidate_v1.json",
+  "title": "Steel Guitar RAG Play Songs candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "id", "title", "artist", "acquisitionLane",
+    "teachingHypothesis", "rightsRecordId", "state", "score", "recording", "gates"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "song_candidate_v1"},
+    "id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "artist": {"type": "string", "minLength": 1},
+    "acquisitionLane": {"enum": ["owned", "open_license", "direct_artist", "commercial_catalog"]},
+    "teachingHypothesis": {"type": "string", "minLength": 1},
+    "rightsRecordId": {"type": "string", "minLength": 1},
+    "state": {
+      "enum": [
+        "identified", "screened", "rights_inquiry", "rights_cleared",
+        "master_approved", "timeline_authored", "e9_lesson_authored",
+        "qa_passed", "published", "on_hold", "rejected"
+      ]
+    },
+    "publicationProjectId": {"type": "string"},
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["learnerDemand", "steelTeachingValue", "recordingSuitability", "rightsFeasibility", "authoringCost"],
+      "properties": {
+        "learnerDemand": {"type": "integer", "minimum": 0, "maximum": 100},
+        "steelTeachingValue": {"type": "integer", "minimum": 0, "maximum": 100},
+        "recordingSuitability": {"type": "integer", "minimum": 0, "maximum": 100},
+        "rightsFeasibility": {"type": "integer", "minimum": 0, "maximum": 100},
+        "authoringCost": {"type": "integer", "minimum": 0, "maximum": 100}
+      }
+    },
+    "recording": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceUrl", "checksumSha256", "codec", "durationMs", "technicalNotes"],
+      "properties": {
+        "sourceUrl": {"type": "string", "minLength": 1},
+        "assetPath": {"type": "string"},
+        "checksumSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "codec": {"type": "string", "minLength": 1},
+        "durationMs": {"type": "integer", "minimum": 1},
+        "technicalNotes": {"type": "string"}
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["screening", "rights", "master", "timeline", "e9Lesson", "qa", "publication"],
+      "properties": {
+        "screening": {"$ref": "#/$defs/gate"},
+        "rights": {"$ref": "#/$defs/gate"},
+        "master": {"$ref": "#/$defs/gate"},
+        "timeline": {"$ref": "#/$defs/gate"},
+        "e9Lesson": {"$ref": "#/$defs/gate"},
+        "qa": {"$ref": "#/$defs/gate"},
+        "publication": {"$ref": "#/$defs/gate"}
+      }
+    }
+  },
+  "$defs": {
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reviewer", "reviewedOn", "evidence"],
+      "properties": {
+        "status": {"enum": ["pending", "approved", "rejected"]},
+        "reviewer": {"type": "string"},
+        "reviewedOn": {"type": "string"},
+        "evidence": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

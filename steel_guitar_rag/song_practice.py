@@ -15,6 +15,7 @@ import re
 from typing import Any, Mapping, Sequence
 
 from steel_guitar_rag.melody_import import import_score_draft
+from steel_guitar_rag.song_catalog_pipeline import SongCatalogPipelineError, published_project_ids
 from steel_guitar_rag.copedent_transfer import (
     absolute_pitch_for_profile,
     candidate_control_states,
@@ -171,42 +172,6 @@ def _amazing_grace_melody_timeline(track: Mapping[str, Any]) -> tuple[list[dict[
         "accuracyConfidence": source.get("accuracyConfidence") or "high",
         "reviewStatus": draft.get("review", {}).get("status") or "confirmed",
     }
-
-_PENDING_CURATED_LESSONS: tuple[dict[str, Any], ...] = (
-    {
-        "id": "hard-times-cc-by-v1",
-        "projectId": "hard-times-guided",
-        "title": "Hard Times Come Again No More",
-        "performer": "Grant Raymond Barrett",
-        "description": "A lyrical Stephen Foster song selected for a future complete-song E9 lesson.",
-        "difficulty": "Beginner",
-        "teachingFocus": "Long phrases, I–IV–V movement, and steady bar control",
-        "key": "G",
-        "meter": "4/4",
-        "tempo": None,
-        "durationMs": 145946,
-        "recordingCredit": "Grant Raymond Barrett · CC BY 3.0",
-        "rightsUrl": "https://commons.wikimedia.org/wiki/File:02_Hard_Times_Come_Again_No_More.ogg",
-        "publicationState": "coming_soon",
-        "learnerReady": False,
-        "playAlongReady": False,
-        "availabilityLabel": "Track in review",
-        "availabilityReason": "The recording, synchronized timeline, and beginner E9 route are not yet approved together.",
-        "noSteel": True,
-        "melodyLead": True,
-        "practiceProject": {
-            "schemaVersion": "practice_project_v1",
-            "id": "hard-times-guided",
-            "audio": {"kind": "bundled", "durationMs": 145946, "availability": "review"},
-            "timeline": {"meter": "4/4", "barStartsMs": [], "chords": [], "confirmationState": "review"},
-            "sections": [],
-            "lyrics": [],
-            "e9Profile": {"defaultProfileId": "emmons-e9-basic"},
-            "loop": {"enabled": False, "startMs": 0, "endMs": 0},
-        },
-    },
-)
-
 
 class SongPracticeError(ValueError):
     """Raised when a Song Practice request cannot be planned safely."""
@@ -1025,13 +990,16 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
 def list_curated_lessons() -> list[dict[str, Any]]:
     manifest = _manifest_payload()
     tracks = [validated for item in manifest["tracks"] if (validated := _validated_track(item))]
-    selected = [
+    try:
+        approved_projects = published_project_ids()
+    except SongCatalogPipelineError as exc:
+        raise SongPracticeError("song catalog publication registry is invalid") from exc
+    published = [
         track
         for track in tracks
-        if track["projectId"] in {"amazing-grace-guided", "when-the-saints-guided"}
+        if track.get("playAlongReady") is True and track.get("projectId") in approved_projects
     ]
-    selected.extend(dict(item) for item in _PENDING_CURATED_LESSONS)
-    return sorted(selected, key=lambda item: _CURATED_ORDER.get(str(item.get("projectId")), 999))
+    return sorted(published, key=lambda item: _CURATED_ORDER.get(str(item.get("projectId")), 999))
 
 
 def get_curated_practice_project(project_id: str) -> dict[str, Any] | None:

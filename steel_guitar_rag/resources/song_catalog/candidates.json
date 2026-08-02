@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "song_candidate_registry_v1",
+  "candidates": [
+    {
+      "schemaVersion": "song_candidate_v1",
+      "id": "amazing-grace-kevin-macleod-lesson",
+      "title": "Amazing Grace",
+      "artist": "Kevin MacLeod · Steel Guitar RAG lesson edit",
+      "acquisitionLane": "open_license",
+      "teachingHypothesis": "A recognizable complete verse can teach chord foundations, intentional bar movement, and exact melody-on-top choices in one beginner lesson.",
+      "rightsRecordId": "amazing-grace-kevin-macleod-cc-by-3",
+      "state": "published",
+      "publicationProjectId": "amazing-grace-guided",
+      "score": {
+        "learnerDemand": 72,
+        "steelTeachingValue": 92,
+        "recordingSuitability": 88,
+        "rightsFeasibility": 100,
+        "authoringCost": 88
+      },
+      "recording": {
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Amazing_Grace_2011_(ISRC_USUAN1100820).mp3",
+        "assetPath": "ui/assets/song-practice/amazing-grace-2011-guide.mp3",
+        "checksumSha256": "c0126a24458b913168ee5f3f58a0a54f75a32a6dfcd8fa1e23d80ffe8a91e417",
+        "codec": "mp3",
+        "durationMs": 42947,
+        "technicalNotes": "Reviewed 16-bar lesson edit in G, 3/4, 76 BPM with two-bar count-in and no competing steel part."
+      },
+      "gates": {
+        "screening": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG product review",
+          "reviewedOn": "2026-08-01",
+          "evidence": ["Recognizable master, complete teaching form, and explicit beginner lesson purpose"]
+        },
+        "rights": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG publication review",
+          "reviewedOn": "2026-08-01",
+          "evidence": ["amazing-grace-kevin-macleod-cc-by-3 publication-approved rights record"]
+        },
+        "master": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG musical review",
+          "reviewedOn": "2026-08-01",
+          "evidence": ["SHA-256-pinned lesson edit; audible melody and accompaniment; no competing steel"]
+        },
+        "timeline": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG musical review",
+          "reviewedOn": "2026-08-01",
+          "evidence": ["55 beat timestamps, 16 bar starts, chord chart, four lyric cues, and 35 exact melody events"]
+        },
+        "e9Lesson": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG steel lesson review",
+          "reviewedOn": "2026-08-01",
+          "evidence": ["Follow Melody, two Chord Foundation routes, and Full Chord Melody validated against standard ten-string E9"]
+        },
+        "qa": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG QA",
+          "reviewedOn": "2026-08-01",
+          "evidence": ["Golden song-practice fixtures and protected mobile landscape playback smoke"]
+        },
+        "publication": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG publication review",
+          "reviewedOn": "2026-08-01",
+          "evidence": ["Public project amazing-grace-guided is the only learner-ready curated lesson"]
+        }
+      }
+    },
+    {
+      "schemaVersion": "song_candidate_v1",
+      "id": "hard-times-grant-barrett-candidate",
+      "title": "Hard Times Come Again No More",
+      "artist": "Grant Raymond Barrett",
+      "acquisitionLane": "open_license",
+      "teachingHypothesis": "The complete lyrical form could teach long phrases, I–IV–V movement, and controlled bar travel if the recording passes musical audition.",
+      "rightsRecordId": "hard-times-grant-barrett-cc-by-3",
+      "state": "rights_cleared",
+      "score": {
+        "learnerDemand": 58,
+        "steelTeachingValue": 84,
+        "recordingSuitability": 68,
+        "rightsFeasibility": 96,
+        "authoringCost": 56
+      },
+      "recording": {
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:02_Hard_Times_Come_Again_No_More.ogg",
+        "checksumSha256": "1b426cde50c02809a4463403b2076dae43df64944dbce25880fbb23daab579a8",
+        "codec": "ogg-vorbis-stereo-44100hz",
+        "durationMs": 145946,
+        "technicalNotes": "Exact Commons master downloaded to ignored staging and fingerprinted. Stereo Vorbis, 44.1 kHz, 97 kbps, with a 3.08-second silent tail. Musical master approval remains deliberately pending."
+      },
+      "gates": {
+        "screening": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG candidate review",
+          "reviewedOn": "2026-08-02",
+          "evidence": ["Complete public-domain composition, plausible beginner teaching focus, and exact downloadable master"]
+        },
+        "rights": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG candidate rights review",
+          "reviewedOn": "2026-08-02",
+          "evidence": ["Copyright holder published exact master under CC BY 3.0 on Wikimedia Commons"]
+        },
+        "master": {
+          "status": "pending",
+          "reviewer": "",
+          "reviewedOn": "",
+          "evidence": [],
+          "notes": "Requires full musical audition for recognizability, arrangement quality, tempo clarity, vocal/melody usefulness, and absence of competing steel before any authoring."
+        },
+        "timeline": {"status": "pending", "reviewer": "", "reviewedOn": "", "evidence": []},
+        "e9Lesson": {"status": "pending", "reviewer": "", "reviewedOn": "", "evidence": []},
+        "qa": {"status": "pending", "reviewer": "", "reviewedOn": "", "evidence": []},
+        "publication": {"status": "pending", "reviewer": "", "reviewedOn": "", "evidence": []}
+      }
+    },
+    {
+      "schemaVersion": "song_candidate_v1",
+      "id": "when-the-saints-synthetic-preview",
+      "title": "When the Saints Go Marching In",
+      "artist": "Steel Guitar RAG deterministic preview",
+      "acquisitionLane": "owned",
+      "teachingHypothesis": "A familiar I–IV–V refrain could teach clean chord changes, but this generated master does not meet the catalog audio standard.",
+      "rightsRecordId": "steel-rag-deterministic-preview-review",
+      "state": "rejected",
+      "score": {
+        "learnerDemand": 64,
+        "steelTeachingValue": 76,
+        "recordingSuitability": 18,
+        "rightsFeasibility": 50,
+        "authoringCost": 72
+      },
+      "recording": {
+        "sourceUrl": "repo://scripts/build_song_practice_tracks.py",
+        "assetPath": "ui/assets/song-practice/when-the-saints-preview.mp3",
+        "checksumSha256": "08aeb59219f14541a5526f02a688d1a27594a12626ec8a6d18dcdf3db3cf7cbb",
+        "codec": "mp3",
+        "durationMs": 36500,
+        "technicalNotes": "Deterministic synthesized melody-and-accompaniment preview. Retained as an internal historical fixture only."
+      },
+      "gates": {
+        "screening": {
+          "status": "approved",
+          "reviewer": "Steel Guitar RAG candidate review",
+          "reviewedOn": "2026-08-01",
+          "evidence": ["Familiar song and useful I–IV–V teaching hypothesis"]
+        },
+        "rights": {
+          "status": "pending",
+          "reviewer": "",
+          "reviewedOn": "",
+          "evidence": [],
+          "notes": "Exact publication provenance was never approved."
+        },
+        "master": {
+          "status": "rejected",
+          "reviewer": "Steel Guitar RAG product review",
+          "reviewedOn": "2026-08-02",
+          "evidence": ["User evaluation found the synthesized preview musically unsuitable and unrecognizable as a catalog-quality lesson"],
+          "notes": "Do not restore this master to the public catalog."
+        },
+        "timeline": {"status": "pending", "reviewer": "", "reviewedOn": "", "evidence": []},
+        "e9Lesson": {"status": "pending", "reviewer": "", "reviewedOn": "", "evidence": []},
+        "qa": {"status": "pending", "reviewer": "", "reviewedOn": "", "evidence": []},
+        "publication": {"status": "pending", "reviewer": "", "reviewedOn": "", "evidence": []}
+      }
+    }
+  ]
+}
