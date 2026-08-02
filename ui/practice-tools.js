@@ -179,6 +179,19 @@
     return `${NASHVILLE_DEGREES[(chordPitch - keyPitch + 12) % 12]}${nashvilleSuffix(chordMatch[3])}`;
   }
 
+  function controlLabelForDisplay(value) {
+    const label = String(value || "").trim().replace(
+      /\s*\((?:p(?:edal)?\s*\d+|[lr]k[lrv]\d*(?:\.(?:half|full))?)\)/gi,
+      ""
+    ).replace(/\s{2,}/g, " ").trim();
+    const standardPedal = /^([abc])(?:\s+pedal)?$/i.exec(label);
+    return standardPedal ? standardPedal[1].toUpperCase() : label;
+  }
+
+  function controlLabelsForDisplay(values) {
+    return Array.from(new Set((Array.isArray(values) ? values : []).map(controlLabelForDisplay).filter(Boolean)));
+  }
+
   function meterBeats(track) {
     return Math.max(1, Number(String(track?.meter || "4/4").split("/")[0]) || 4);
   }
@@ -195,6 +208,7 @@
         durationFraction: Math.min(1, (Math.min(endMs, Number(event.endMs)) - Math.max(startMs, Number(event.startMs))) / Math.max(1, endMs - startMs))
       }));
       const firstPosition = events.find((event) => Number(event.startMs) < endMs && Number(event.endMs) > startMs)?.position;
+      const firstControls = firstPosition?.controlLabels || firstPosition?.controls || [];
       return {
         barNumber: index + 1,
         startTick: index * meterBeats(track) * 960,
@@ -205,7 +219,7 @@
         firstMove: firstPosition ? {
           fret: firstPosition.fret,
           strings: firstPosition.strings || [],
-          controls: firstPosition.controlLabels || firstPosition.controls || []
+          controls: controlLabelsForDisplay(firstControls)
         } : null
       };
     });
@@ -247,7 +261,8 @@
     openDatabase, listProjects, loadProject, saveProject, deleteProject,
     loadSession, saveSession, sessionDefaults,
     writeAudio, readAudio, removeAudio, hasAudio, fingerprintFile, findProjectByFingerprint,
-    chordForDisplay, projectBars, barsToLoopRange, countBasedLoopRange, beatTimesForTrack, meterBeats
+    chordForDisplay, controlLabelForDisplay, controlLabelsForDisplay,
+    projectBars, barsToLoopRange, countBasedLoopRange, beatTimesForTrack, meterBeats
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;

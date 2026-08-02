@@ -102,7 +102,7 @@
   }
 
   function compactControlToken(value) {
-    const text = String(value || "").trim();
+    const text = practiceTools?.controlLabelForDisplay(value) || String(value || "").trim();
     const token = text.toLowerCase();
     if (/^a(?:\s+pedal|\s*\(p1\))?$/.test(token)) return "A";
     if (/^b(?:\s+pedal|\s*\(p2\))?$/.test(token)) return "B";
@@ -110,6 +110,11 @@
     if (token.includes("e-lower") || token.includes("e lower")) return "E";
     if (token === "f" || token.includes("f lever") || token.includes("e-raise")) return "F";
     return text.replace(/\s+(?:pedal|lever).*$/i, "");
+  }
+
+  function displayControlLabels(values) {
+    return practiceTools?.controlLabelsForDisplay(values)
+      || Array.from(new Set((Array.isArray(values) ? values : []).map(compactControlToken).filter(Boolean)));
   }
 
   function noteControlLabel(note) {
@@ -329,7 +334,7 @@
 
   function alternativeTradeoff(alternative, current) {
     const fret = Number(alternative?.fret);
-    const controls = alternative?.controlLabels || alternative?.controls || [];
+    const controls = displayControlLabels(alternative?.controlLabels || alternative?.controls || []);
     const distance = Number.isFinite(fret) && Number.isFinite(Number(current?.position?.fret))
       ? Math.abs(fret - Number(current.position.fret))
       : 0;
@@ -358,7 +363,7 @@
       const card = document.createElement("div");
       card.className = "play-why-alternative";
       const stringsForAlternative = alternative.strings || (alternative.notes || []).map((note) => note.string);
-      const controls = alternative.controlLabels || alternative.controls || [];
+      const controls = displayControlLabels(alternative.controlLabels || alternative.controls || []);
       const title = document.createElement("strong");
       title.textContent = `Fret ${alternative.fret} · strings ${stringsForAlternative.join("–")}${controls.length ? ` · ${controls.join("+")}` : " · open"} · top ${position.melodyPitchLabel}`;
       const tradeoff = document.createElement("span");

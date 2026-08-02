@@ -20,7 +20,7 @@ def test_nns_projection_loop_ranges_and_crossing_chords() -> None:
       const track = {key:'G',meter:'3/4',durationMs:9000,barStartsMs:[0,3000,6000]};
       const plan = {events:[
         {id:'a',chord:'G',startMs:0,endMs:3000,position:{fret:3,strings:[4,5,6],controls:[]}},
-        {id:'b',chord:'C',startMs:2500,endMs:6500,position:{fret:8,strings:[4,5,6],controls:['A']}},
+        {id:'b',chord:'C',startMs:2500,endMs:6500,position:{fret:8,strings:[4,5,6],controls:['P1','P2','LKL1','LKR'],controlLabels:['A (P1)','B (P2)','F (LKL1)','E (LKR)']}},
         {id:'c',chord:'',startMs:6500,endMs:9000,status:'rest'}
       ]};
       console.log(JSON.stringify({nns:[tools.chordForDisplay('G','G','nns'),tools.chordForDisplay('C','G','nns'),tools.chordForDisplay('D7','G','nns'),tools.chordForDisplay('N.C.','G','nns')],loop:tools.barsToLoopRange(track,2,3),legacyLoop:tools.countBasedLoopRange(track,3500,2),bars:tools.projectBars(track,plan),beats:tools.beatTimesForTrack(track)}));
@@ -31,6 +31,9 @@ def test_nns_projection_loop_ranges_and_crossing_chords() -> None:
     assert len(payload["bars"]) == 3
     assert payload["bars"][1]["startTick"] == 2880
     assert [item["symbol"] for item in payload["bars"][1]["chords"]] == ["C"]
+    assert payload["bars"][1]["firstMove"]["controls"] == ["A", "B", "F", "E"]
+    assert "P1" not in json.dumps(payload["bars"])
+    assert "P2" not in json.dumps(payload["bars"])
     assert [item["symbol"] for item in payload["bars"][2]["chords"]] == ["C", "N.C."]
     assert payload["beats"] == [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
 
