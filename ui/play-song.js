@@ -559,7 +559,9 @@
       if (!local) throw new Error("That device-only track is no longer stored in this browser.");
       throw new Error(`${local.title} is stored safely on this device. Chord and timing setup is the next step before Play Along can begin.`);
     }
-    if (!track || track.publicationState === "coming_soon") throw new Error("That guided song is still in recording and synchronization review.");
+    if (!track || track.playAlongReady !== true) {
+      throw new Error(track?.availabilityReason || "That guided song is still in recording and synchronization review.");
+    }
     chart = songTools.parseSongChart(track.chart, { mode: "letter", key: track.key, meter: track.meter });
     if (chart.errors.length) throw new Error(chart.errors.join(" "));
     prepareTrackShell();

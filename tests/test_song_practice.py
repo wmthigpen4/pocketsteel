@@ -182,6 +182,8 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
         assert track["durationMs"] > track["barStartsMs"][-1]
 
     amazing_grace = catalog["tracks"][0]
+    assert amazing_grace["playAlongReady"] is True
+    assert amazing_grace["availabilityLabel"] == "Play Along"
     assert amazing_grace["id"] == "amazing-grace-kevin-macleod-lesson-v1"
     assert amazing_grace["performer"] == "Kevin MacLeod · Steel Guitar RAG lesson edit"
     assert amazing_grace["tempo"] == 76
@@ -229,8 +231,14 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
     assert amazing_grace["practiceProject"]["timeline"]["melodyEvents"] == melody
     assert amazing_grace["melodySource"]["catalogId"] == "amazing-grace-new-britain"
     assert amazing_grace["melodySource"]["reviewStatus"] == "confirmed"
-    assert catalog["tracks"][1]["countInBars"] == 1
+    saints = catalog["tracks"][1]
+    assert saints["countInBars"] == 1
+    assert saints["playAlongReady"] is False
+    assert saints["availabilityLabel"] == "Track & lesson in review"
+    assert "recording rights" in saints["availabilityReason"]
     assert catalog["tracks"][2]["publicationState"] == "coming_soon"
+    assert catalog["tracks"][2]["playAlongReady"] is False
+    assert catalog["tracks"][2]["availabilityLabel"] == "Track in review"
     assert catalog["tracks"][2]["recordingCredit"] == "Grant Raymond Barrett · CC BY 3.0"
 
 
@@ -245,4 +253,5 @@ def test_curated_registry_exposes_playable_projects_and_withholds_unreviewed_tra
     assert amazing_grace is not None
     assert amazing_grace["lyricCues"][0]["text"].startswith("Amazing grace")
     assert amazing_grace["practiceProject"]["timeline"]["beatTimesMs"] == amazing_grace["beatTimesMs"]
+    assert get_curated_practice_project("when-the-saints-guided") is None
     assert get_curated_practice_project("hard-times-guided") is None

@@ -118,7 +118,8 @@
   }
 
   function songCard(track, index) {
-    const available = track.publicationState !== "coming_soon";
+    const available = track.playAlongReady === true;
+    const availabilityLabel = track.availabilityLabel || "Lesson in review";
     const facts = [track.key, track.meter, track.tempo ? `${track.tempo} BPM` : "", formatDuration(track.durationMs), track.difficulty].filter(Boolean);
     return `<article class="song-card${index === 0 ? " is-starter" : ""}">
       <div class="song-card__topline"><span>${index === 0 ? "Start here" : "Guided song"}</span><span>${escapeHtml(track.difficulty || "Beginner")}</span></div>
@@ -128,7 +129,7 @@
       <ul class="song-card__facts">${facts.map((fact) => `<li>${escapeHtml(fact)}</li>`).join("")}</ul>
       <p class="song-card__focus"><strong>Teaching focus:</strong> ${escapeHtml(track.teachingFocus || "Smooth chord changes")}</p>
       <p class="song-card__credit">${escapeHtml(track.recordingCredit || track.performerCredits || "")}${track.rightsUrl ? ` · <a href="${escapeHtml(track.rightsUrl)}" target="_blank" rel="noreferrer">Source &amp; license</a>` : ""}</p>
-      <div class="song-card__actions">${available ? `<a class="songs-button is-primary" href="/play/${encodeURIComponent(track.projectId || track.id)}">Play Along</a>` : `<button class="songs-button" type="button" disabled>Track in review</button>`}</div>
+      <div class="song-card__actions">${available ? `<a class="songs-button is-primary" href="/play/${encodeURIComponent(track.projectId || track.id)}">Play Along</a>` : `<button class="songs-button" type="button" disabled title="${escapeHtml(track.availabilityReason || "This lesson is still being prepared.")}">${escapeHtml(availabilityLabel)}</button>`}</div>
     </article>`;
   }
 

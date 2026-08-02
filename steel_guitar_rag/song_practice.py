@@ -189,6 +189,9 @@ _PENDING_CURATED_LESSONS: tuple[dict[str, Any], ...] = (
         "rightsUrl": "https://commons.wikimedia.org/wiki/File:02_Hard_Times_Come_Again_No_More.ogg",
         "publicationState": "coming_soon",
         "learnerReady": False,
+        "playAlongReady": False,
+        "availabilityLabel": "Track in review",
+        "availabilityReason": "The recording, synchronized timeline, and beginner E9 route are not yet approved together.",
         "noSteel": True,
         "melodyLead": True,
         "practiceProject": {
@@ -922,6 +925,31 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         melody_timeline, melody_source = _amazing_grace_melody_timeline(track)
     except (KeyError, OSError, TypeError, ValueError, SongPracticeError):
         return None
+    readiness_issues: list[str] = []
+    launch_status = str(track["launchStatus"])
+    if "review_required" in launch_status:
+        readiness_issues.append("recording rights")
+    if not (melody_timeline or authored_route or route_options):
+        readiness_issues.append("beginner E9 route")
+    if not track.get("chart") or not starts:
+        readiness_issues.append("synchronized chord timeline")
+    play_along_ready = bool(
+        track["learnerReady"]
+        and track.get("publicationState") != "coming_soon"
+        and not readiness_issues
+    )
+    if play_along_ready:
+        availability_label = "Play Along"
+        availability_reason = ""
+    elif "recording rights" in readiness_issues and "beginner E9 route" in readiness_issues:
+        availability_label = "Track & lesson in review"
+        availability_reason = "The recording rights and beginner E9 route must be approved before this lesson opens."
+    elif "recording rights" in readiness_issues:
+        availability_label = "Track in review"
+        availability_reason = "The recording rights must be approved before this lesson opens."
+    else:
+        availability_label = "Lesson in review"
+        availability_reason = "The synchronized beginner E9 lesson must be approved before this song opens."
     practice_project = {
         "schemaVersion": "practice_project_v1",
         "id": project_id,
@@ -963,6 +991,9 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "licenseUrl": track.get("licenseUrl") or "",
         "modifications": track.get("modifications") or "",
         "publicationState": track.get("publicationState") or "private_preview",
+        "playAlongReady": play_along_ready,
+        "availabilityLabel": availability_label,
+        "availabilityReason": availability_reason,
         "compositionSource": track["compositionSource"],
         "compositionStatus": track["compositionStatus"],
         "arrangementOwner": track["arrangementOwner"],
@@ -1007,7 +1038,7 @@ def get_curated_practice_project(project_id: str) -> dict[str, Any] | None:
     normalized = str(project_id or "").strip()
     for lesson in list_curated_lessons():
         if lesson.get("projectId") == normalized or lesson.get("id") == normalized:
-            return None if lesson.get("publicationState") == "coming_soon" else lesson
+            return lesson if lesson.get("playAlongReady") is True else None
     return None
 
 

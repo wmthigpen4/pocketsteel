@@ -78,6 +78,9 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "function selectedChordRoute" in player_js
     assert "Move the bar" not in player_js
     assert "Source &amp; license" in songs_js
+    assert 'track.playAlongReady === true' in songs_js
+    assert "track.availabilityLabel" in songs_js
+    assert 'track.playAlongReady !== true' in player_js
     assert "setInterval" not in player_js
     assert "function leftAlignSvgStringLabels" in player_js
     assert 'leftAlignSvgStringLabels("play-current")' in player_js
