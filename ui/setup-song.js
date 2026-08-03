@@ -33,6 +33,7 @@
   let showingPreview = false;
   let analysisRunning = false;
   let reviewChordDisplay = "letters";
+  let keyChangeRequest = 0;
 
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]); }
   function reviewMapElement() { return document.querySelector("#review-song-map"); }
@@ -459,17 +460,27 @@
 
   async function handleKeyChange() {
     const fields = controls();
+    const requestedKey = fields.key.value;
+    const requestedMode = fields.keyMode.value;
     if (Number(project.timeline.analysisVersion || 1) < 2 || !project.timeline.analysisState) {
-      project.timeline.key = fields.key.value; project.timeline.keyMode = fields.keyMode.value; queueSave(); analysisBadges(); return;
+      project.timeline.key = requestedKey; project.timeline.keyMode = requestedMode; queueSave(); analysisBadges(); renderReview(); return;
     }
+    const request = ++keyChangeRequest;
+    const previousTimeline = project.timeline;
+    project.timeline = { ...previousTimeline, key: requestedKey, keyMode: requestedMode };
+    analysisBadges(); renderReview(); updateConfirmation();
     try {
-      reanalyzeStatus.textContent = "Rechecking chords in the selected key…";
-      const updated = await analysisClient.redecode(project.timeline, fields.key.value, fields.keyMode.value, (_stage, detail) => { reanalyzeStatus.textContent = detail; });
+      reanalyzePanel.hidden = false;
+      reanalyzeStatus.textContent = `Song Map is now shown in ${requestedKey} ${requestedMode}. Rechecking chord choices…`;
+      const updated = await analysisClient.redecode(previousTimeline, requestedKey, requestedMode, (_stage, detail) => { if (request === keyChangeRequest) reanalyzeStatus.textContent = detail; });
+      if (request !== keyChangeRequest) return;
       project.timeline = { ...updated, confirmationState: "detected" };
       selectedBar = 0; analysisBadges(); renderReview(); updateConfirmation(); await persist();
-      reanalyzeStatus.textContent = "Chord context updated from retained local candidate scores.";
-      reanalyzePanel.hidden = false;
-    } catch (error) { reanalyzeStatus.textContent = error.message; setControlsFromTimeline(); }
+      reanalyzeStatus.textContent = `Song Map updated for ${requestedKey} ${requestedMode}. The audio was not transposed.`;
+    } catch (error) {
+      if (request !== keyChangeRequest) return;
+      project.timeline = previousTimeline; reanalyzeStatus.textContent = error.message; setControlsFromTimeline(); analysisBadges(); renderReview(); updateConfirmation();
+    }
   }
 
   async function initialize() {
@@ -511,6 +522,7 @@
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     app.hidden = false;
     if (needsUpgrade) await upgradeLegacyAnalysis();
+    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 1 && !(project.timeline.chords || []).some((chord) => String(chord.id || "").startsWith("reviewed-chord-"))) await handleKeyChange();
     else { renderReview(); updateConfirmation(); }
   }
 

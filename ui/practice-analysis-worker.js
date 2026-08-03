@@ -14,6 +14,7 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
+  const QUALITY_CALIBRATION_VERSION = 1;
   const METER_OPTIONS = [
     { meter: "2/4", beats: 2 },
     { meter: "3/4", beats: 3 },
@@ -292,8 +293,22 @@
     return { root: NOTE_NAMES.indexOf(match[1]), quality: match[2] === "m" ? "minor" : match[2] || "major" };
   }
 
+  function calibrateExtendedQualities(candidates) {
+    const rawScore = (candidate) => Number(candidate?.rawScore ?? candidate?.score ?? -0.4);
+    return candidates.map((candidate) => {
+      const parsed = parseSymbol(candidate.symbol);
+      if (!["7", "m7"].includes(parsed.quality)) return { ...candidate, rawScore: rawScore(candidate) };
+      const triadQuality = parsed.quality === "7" ? "major" : "minor";
+      const triadSymbol = symbolFor(parsed.root, triadQuality);
+      const triad = candidates.find((item) => item.symbol === triadSymbol);
+      const extensionGain = rawScore(candidate) - rawScore(triad);
+      const weakExtensionPenalty = Math.max(0, 0.12 - extensionGain) * 1.5;
+      return { ...candidate, rawScore: rawScore(candidate), score: round(rawScore(candidate) - weakExtensionPenalty) };
+    });
+  }
+
   function chordCandidates(chroma, energy = 1, silenceThreshold = 0) {
-    const candidates = [];
+    let candidates = [];
     for (let root = 0; root < 12; root += 1) {
       for (const [quality, intervals] of Object.entries(QUALITY_INTERVALS)) {
         const template = Array(12).fill(0.035);
@@ -306,6 +321,7 @@
     }
     const relativeEnergy = silenceThreshold > 0 ? energy / silenceThreshold : 10;
     candidates.push({ symbol: "N.C.", root: null, quality: "none", score: relativeEnergy < 1 ? 0.96 - 0.18 * relativeEnergy : Math.max(0.02, 0.24 / relativeEnergy) });
+    candidates = calibrateExtendedQualities(candidates);
     candidates.sort((left, right) => right.score - left.score);
     const top = candidates[0], next = candidates[1] || top;
     const confidence = clamp(0.28 + (top.score - next.score) * 3.8 + (top.score - 0.68) * 1.25, 0.05, 0.99);
@@ -655,6 +671,7 @@
   function retainedState(bars, rhythm, key, decoded) {
     return {
       version: ANALYSIS_VERSION,
+      qualityCalibrationVersion: QUALITY_CALIBRATION_VERSION,
       tuningCents: Math.round(rhythm.tuningSemitones * 100),
       bars: bars.map((bar, index) => ({
         bar: bar.bar, startMs: bar.startMs, endMs: bar.endMs, repeatedSectionGroup: decoded.repeatGroups[index] || null,
@@ -670,7 +687,7 @@
   function hydrateRetainedBars(analysis) {
     return (analysis.analysisState?.bars || []).map((bar) => {
       const make = (item) => {
-        const candidates = item.candidates || [];
+        const candidates = calibrateExtendedQualities(item.candidates || []).sort((left, right) => right.score - left.score);
         const top = candidates[0] || { symbol: "N.C.", score: 0 };
         const next = candidates[1] || top;
         return { chroma: item.chroma, energy: item.energy, scored: { top, candidates, confidence: clamp(0.28 + (top.score - next.score) * 3.8, 0.05, 0.99) } };
@@ -685,7 +702,20 @@
     const key = { key: requestedKey, keyMode: requestedMode === "minor" ? "minor" : "major", root: keyRoot, confidence: Number(analysis.keyConfidence || 0.5), alternatives: analysis.analysisState.keyAlternatives || [] };
     const bars = hydrateRetainedBars(analysis);
     const decoded = decodeBars(bars, key, analysis.barStartsMs, Number(analysis.durationMs || bars.at(-1)?.endMs || 0));
-    return { ...analysis, key: key.key, keyMode: key.keyMode, chords: decoded.chords, possibleModulations: decoded.possibleModulations };
+    const calibratedBars = analysis.analysisState.bars.map((bar, index) => ({
+      ...bar,
+      full: { ...bar.full, candidates: bars[index].full.scored.candidates },
+      first: { ...bar.first, candidates: bars[index].first.scored.candidates },
+      second: { ...bar.second, candidates: bars[index].second.scored.candidates }
+    }));
+    return {
+      ...analysis,
+      key: key.key,
+      keyMode: key.keyMode,
+      chords: decoded.chords,
+      possibleModulations: decoded.possibleModulations,
+      analysisState: { ...analysis.analysisState, qualityCalibrationVersion: QUALITY_CALIBRATION_VERSION, bars: calibratedBars }
+    };
   }
 
   function analyzePcm(input, sampleRate, durationMs, options = {}, notify = () => {}) {
@@ -718,7 +748,7 @@
   }
 
   const api = {
-    ANALYSIS_VERSION, NOTE_NAMES, downsample, onsetEnvelope, tempoCandidates, trackDynamicBeats,
+    ANALYSIS_VERSION, QUALITY_CALIBRATION_VERSION, NOTE_NAMES, downsample, onsetEnvelope, tempoCandidates, trackDynamicBeats,
     estimateTuning, spectralFrame, estimateKey, chordCandidates, keyPrior, transitionPrior,
     decodeSequence, findRepeatedBars, decodeBars, confidenceFor, barEvidence, scoreMeter, rhythmAnalysis, analyzePcm, redecodeAnalysis
   };

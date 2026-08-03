@@ -171,6 +171,7 @@ def test_play_songs_javascript_syntax() -> None:
 
 def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> None:
     setup_js = (REPO_ROOT / "ui" / "setup-song.js").read_text(encoding="utf-8")
+    setup_html = (REPO_ROOT / "ui" / "setup-song.html").read_text(encoding="utf-8")
 
     assert "Legacy Song Map" not in setup_js
     assert "Legacy chord map shown" not in setup_js
@@ -198,3 +199,7 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert 'tools.saveSession(practiceSession)' in setup_js
     assert "Chord names (editing)" in setup_js
     assert "Nashville number" in setup_js
+    assert "project.timeline = { ...previousTimeline, key: requestedKey, keyMode: requestedMode }" in setup_js
+    assert "Song Map updated for ${requestedKey} ${requestedMode}. The audio was not transposed." in setup_js
+    assert "qualityCalibrationVersion" in (REPO_ROOT / "ui" / "practice-analysis-worker.js").read_text(encoding="utf-8")
+    assert "Updates chord context and NNS; it does not transpose the audio." in setup_html

@@ -139,6 +139,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .setup-actions .songs-button { min-width: 166px; padding-inline: 20px; }
 .setup-summary { display: grid; grid-template-columns: minmax(220px,1.8fr) repeat(4,minmax(105px,1fr)); gap: 10px; margin: 28px 0 12px; }
 .setup-summary label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 750; }
+.setup-summary label small { color: rgba(244, 234, 214, 0.62); font-size: 10px; font-weight: 650; line-height: 1.35; }
 .setup-summary input, .setup-summary select, .review-editor input { min-height: 42px; border: 1px solid var(--line); border-radius: 10px; background: #0b0a08; color: var(--cream); padding: 0 10px; }
 .analysis-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 10px 0 12px; }
 .analysis-summary span { display: grid; gap: 3px; border: 1px solid rgba(244,234,214,.11); border-radius: 12px; background: rgba(19,19,16,.72); padding: 10px 12px; }

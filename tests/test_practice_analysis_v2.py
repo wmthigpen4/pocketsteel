@@ -55,6 +55,29 @@ def test_key_and_core_country_chord_vocabulary() -> None:
     assert payload["keys"]["minor"]["keyMode"] == "minor"
 
 
+def test_seventh_quality_requires_added_seventh_evidence() -> None:
+    payload = run_node(
+        r"""
+        const a=require('./ui/practice-analysis-worker.js');
+        const weak=[1,0,0,0,.82,0,0,.72,0,0,.18,0];
+        const clear=[1,0,0,0,.82,0,0,.64,0,0,.76,0];
+        const oldAnalysis={
+          analysisVersion:2,durationMs:4000,key:'C',keyMode:'major',keyConfidence:.8,
+          barStartsMs:[0,2000],
+          analysisState:{bars:Array.from({length:2},(_,index)=>({
+            bar:index+1,startMs:index*2000,endMs:(index+1)*2000,
+            full:{chroma:weak,energy:.5,candidates:[{symbol:'C7',score:.91},{symbol:'C',score:.86},{symbol:'N.C.',score:.02}]},
+            first:{chroma:weak,energy:.5,candidates:[{symbol:'C7',score:.91},{symbol:'C',score:.86},{symbol:'N.C.',score:.02}]},
+            second:{chroma:weak,energy:.5,candidates:[{symbol:'C7',score:.91},{symbol:'C',score:.86},{symbol:'N.C.',score:.02}]}
+          }))}
+        };
+        const refreshed=a.redecodeAnalysis(oldAnalysis,'C','major');
+        console.log(JSON.stringify({weak:a.chordCandidates(weak).top.symbol,clear:a.chordCandidates(clear).top.symbol,refreshed:refreshed.chords.map(chord=>chord.symbol),version:refreshed.analysisState.qualityCalibrationVersion}));
+        """
+    )
+    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "version": 1}
+
+
 def test_context_decoder_removes_weak_tonic_minor_but_keeps_sustained_borrowed_chord() -> None:
     payload = run_node(
         r"""

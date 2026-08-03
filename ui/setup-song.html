@@ -12,7 +12,7 @@
     <section class="setup-heading"><div class="setup-heading__copy"><p class="songs-kicker">Local song analysis</p><h1 id="setup-title">Review Song</h1><p class="setup-track-name" id="setup-track-name">Detected song</p><p class="setup-heading__description">Check the detected chords before you practice. Select any bar to listen or make a correction.</p></div><div class="setup-actions"><a class="songs-button is-primary" id="start-play" href="#">Start Play Along</a><button class="songs-button is-primary" id="confirm-play" type="button" hidden>Confirm and Play</button></div></section>
     <section class="setup-summary" aria-label="Detected song details">
       <label>Title <input id="setup-song-title" type="text" maxlength="120"></label>
-      <label>Key <select id="setup-key"><option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select></label>
+      <label>Song key <select id="setup-key"><option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select><small>Updates chord context and NNS; it does not transpose the audio.</small></label>
       <label>Mode <select id="setup-key-mode"><option value="major">Major</option><option value="minor">Minor</option></select></label>
       <label>Tempo <input id="setup-tempo" type="number" min="40" max="240" step="1"> BPM</label>
       <label>Meter <select id="setup-meter"><option>2/4</option><option>3/4</option><option>4/4</option><option>6/8</option></select></label>
