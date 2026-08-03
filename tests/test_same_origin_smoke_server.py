@@ -197,8 +197,9 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"Review Song" in setup
     assert b"practice-reference-validation-v1.js" in setup
-    assert b"setup-song-review-v2-11.js" in setup
-    assert b"play-songs-review-v5.css" in setup
+    assert b"setup-song-review-v2-12.js" in setup
+    assert b"play-songs-review-v6.css" in setup
+    assert b"practice-tools-review-teaching-1.js" in setup
 
     for asset_path, marker in (
         ("/ui/play-songs.css", b".play-cue-deck"),

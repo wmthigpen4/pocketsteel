@@ -21,9 +21,15 @@
 ## Files Changed
 
 - `ui/practice-tools.js`
+- `ui/practice-tools-review-teaching-1.js`
 - `ui/setup-song.js`
+- `ui/setup-song-review-v2-12.js`
 - `ui/setup-song.html`
 - `ui/play-songs.css`
+- `ui/play-songs-review-v6.css`
+- `ui/songs.html`
+- `ui/play-song.html`
+- `tests/test_same_origin_smoke_server.py`
 - `tests/test_practice_tools.py`
 - `tests/test_play_songs_ui.py`
 - `docs/handoffs/task-completions/2026-08-03-1134-06-song-review-teaching-and-public-check.md`
@@ -61,11 +67,17 @@
 ## Safe-to-Stage Exact Files
 
 - `ui/practice-tools.js`
+- `ui/practice-tools-review-teaching-1.js`
 - `ui/setup-song.js`
+- `ui/setup-song-review-v2-12.js`
 - `ui/setup-song.html`
 - `ui/play-songs.css`
+- `ui/play-songs-review-v6.css`
+- `ui/songs.html`
+- `ui/play-song.html`
 - `tests/test_practice_tools.py`
 - `tests/test_play_songs_ui.py`
+- `tests/test_same_origin_smoke_server.py`
 - `docs/handoffs/task-completions/2026-08-03-1134-06-song-review-teaching-and-public-check.md`
 
 ## Files That Must Not Be Staged
