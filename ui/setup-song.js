@@ -20,6 +20,7 @@
   let saveTimer = 0;
   let selectedBar = 0;
   let pendingAnalysis = null;
+  let showingPreview = false;
   let analysisRunning = false;
 
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]); }
@@ -29,14 +30,26 @@
   function percent(value) { return Number.isFinite(Number(value)) ? `${Math.round(Number(value) * 100)}%` : "—"; }
   function showError(message) { app.hidden = true; errorPanel.hidden = false; errorCopy.textContent = message; }
   function controls() { return { key: document.querySelector("#setup-key"), keyMode: document.querySelector("#setup-key-mode"), tempo: document.querySelector("#setup-tempo"), meter: document.querySelector("#setup-meter") }; }
-  function barCount() { return project.timeline?.barStartsMs?.length || Math.max(0, ...(project.timeline?.chords || []).map((chord) => Number(chord.bar || 0))); }
-  function eventsForBar(bar) { return (project.timeline?.chords || []).filter((chord) => Number(chord.bar) === bar).sort((left, right) => Number(left.startFraction || 0) - Number(right.startFraction || 0)); }
+  function activeTimeline() { return showingPreview && pendingAnalysis ? pendingAnalysis : project.timeline; }
+  function legacyTimeline() { return Number(activeTimeline()?.analysisVersion || 1) < 2; }
+  function barCount() { const timeline = activeTimeline(); return timeline?.barStartsMs?.length || Math.max(0, ...(timeline?.chords || []).map((chord) => Number(chord.bar || 0))); }
+  function eventsForBar(bar) { return (activeTimeline()?.chords || []).filter((chord) => Number(chord.bar) === bar).sort((left, right) => Number(left.startFraction || 0) - Number(right.startFraction || 0)); }
   function eventNeedsAttention(event) { return Boolean(event.needsAttention ?? (!event.reviewed || Number(event.confidence) < 0.68)); }
-  function barNeedsAttention(bar) { const events = eventsForBar(bar); return !events.length || events.some(eventNeedsAttention); }
+  function barNeedsAttention(bar) { if (legacyTimeline()) return false; const events = eventsForBar(bar); return !events.length || events.some(eventNeedsAttention); }
   function allReviewed() { return Array.from({ length: barCount() }, (_item, index) => index + 1).every((bar) => !barNeedsAttention(bar)); }
 
   function updateConfirmation() {
     const attention = Array.from({ length: barCount() }, (_item, index) => index + 1).filter(barNeedsAttention).length;
+    if (showingPreview) {
+      confirmButton.hidden = true;
+      status.textContent = `${attention} preview bar${attention === 1 ? "" : "s"} need attention. This preview has not replaced your saved map.`;
+      return;
+    }
+    if (legacyTimeline()) {
+      confirmButton.hidden = true;
+      status.textContent = "Legacy chord map shown. Run the improved analysis to create confidence-based review results.";
+      return;
+    }
     confirmButton.hidden = attention > 0;
     status.textContent = attention
       ? `${attention} bar${attention === 1 ? "" : "s"} need attention. You can still start Play Along with the detected map.`
@@ -89,7 +102,7 @@
 
   function matchingBarsFor(group, excludingBar) {
     if (!group) return [];
-    return Array.from(new Set((project.timeline.chords || []).filter((event) => event.repeatedSectionGroup === group && Number(event.bar) !== excludingBar).map((event) => Number(event.bar))));
+    return Array.from(new Set((activeTimeline().chords || []).filter((event) => event.repeatedSectionGroup === group && Number(event.bar) !== excludingBar).map((event) => Number(event.bar))));
   }
 
   function replaceBarChords(bar, symbols, sourceEvents = eventsForBar(bar)) {
@@ -131,19 +144,21 @@
 
   function mapButtonForBar(bar) {
     const events = eventsForBar(bar);
+    const legacy = legacyTimeline();
     const needsAttention = barNeedsAttention(bar);
     const symbols = events.map((event) => event.symbol || "N.C.").join(" · ") || "N.C.";
+    const stateLabel = legacy ? "Legacy detection" : needsAttention ? "Needs attention" : "Accepted";
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `review-map-bar ${needsAttention ? "needs-attention" : "is-accepted"}${bar === selectedBar ? " is-selected" : ""}`;
+    button.className = `review-map-bar ${legacy ? "is-legacy" : needsAttention ? "needs-attention" : "is-accepted"}${bar === selectedBar ? " is-selected" : ""}`;
     button.dataset.bar = String(bar);
     button.setAttribute("aria-pressed", String(bar === selectedBar));
-    button.setAttribute("aria-label", `Bar ${bar}, ${symbols}, ${needsAttention ? "needs attention" : "accepted"}. Select to review without autoplay.`);
-    button.innerHTML = `<span>Bar ${bar}</span><strong>${escapeHtml(symbols)}</strong><small>${percent(barConfidence(bar))} · ${needsAttention ? "Needs attention" : "Accepted"}</small>`;
+    button.setAttribute("aria-label", `Bar ${bar}, ${symbols}, ${stateLabel}. Select to review without autoplay.`);
+    button.innerHTML = `<span>Bar ${bar}</span><strong>${escapeHtml(symbols)}</strong><small>${legacy ? stateLabel : `${percent(barConfidence(bar))} · ${stateLabel}`}</small>`;
     button.onclick = () => {
       selectedBar = bar;
       audio.pause();
-      audio.currentTime = Number(project.timeline.barStartsMs?.[bar - 1] || events[0]?.startMs || 0) / 1000;
+      audio.currentTime = Number(activeTimeline().barStartsMs?.[bar - 1] || events[0]?.startMs || 0) / 1000;
       renderReview();
       reviewEditorElement()?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     };
@@ -155,40 +170,44 @@
     if (!editor) throw new Error("The visual chord editor is unavailable. Reload the page and try again.");
     const bar = selectedBar;
     const events = eventsForBar(bar);
-    const startMs = Number(project.timeline.barStartsMs?.[bar - 1] || events[0]?.startMs || 0);
+    const timeline = activeTimeline();
+    const legacy = legacyTimeline();
+    const editable = !showingPreview;
+    const startMs = Number(timeline.barStartsMs?.[bar - 1] || events[0]?.startMs || 0);
     const needsAttention = barNeedsAttention(bar);
     const reasons = Array.from(new Set(events.flatMap((event) => event.reviewReasons || [])));
     const matches = matchingBarsFor(events[0]?.repeatedSectionGroup, bar);
+    const stateLabel = showingPreview ? (needsAttention ? "Preview · Needs attention" : "Preview · Auto-accepted") : legacy ? "Legacy detection" : needsAttention ? "Needs attention" : "Accepted";
     editor.innerHTML = `
       <div class="review-editor__head">
         <div><p class="songs-kicker">Selected measure</p><h3>Bar ${bar}</h3></div>
-        <span class="review-editor__status ${needsAttention ? "needs-attention" : "is-accepted"}">${percent(barConfidence(bar))} confidence · ${needsAttention ? "Needs attention" : "Accepted"}</span>
+        <span class="review-editor__status ${legacy ? "is-legacy" : needsAttention ? "needs-attention" : "is-accepted"}">${legacy ? stateLabel : `${percent(barConfidence(bar))} confidence · ${stateLabel}`}</span>
       </div>
       <div class="review-editor__fields">
-        <label>Chord${events.length === 2 ? "s" : ""}<input data-chord type="text" value="${escapeHtml(events.map((event) => event.symbol || "N.C.").join(" "))}" aria-label="Chord${events.length === 2 ? "s" : ""} for bar ${bar}"><small>Enter one chord, or two chords separated by a space.</small></label>
-        <label>Bar downbeat<input data-time type="number" min="0" max="${project.audio.durationMs}" step="10" value="${Math.round(startMs)}" aria-label="Downbeat milliseconds for bar ${bar}"><small>${formatTime(startMs)} into the recording</small></label>
+        <label>Chord${events.length === 2 ? "s" : ""}<input data-chord type="text" value="${escapeHtml(events.map((event) => event.symbol || "N.C.").join(" "))}" aria-label="Chord${events.length === 2 ? "s" : ""} for bar ${bar}"${editable ? "" : " disabled"}><small>${editable ? "Enter one chord, or two chords separated by a space." : "Accept the preview before making corrections."}</small></label>
+        <label>Bar downbeat<input data-time type="number" min="0" max="${project.audio.durationMs}" step="10" value="${Math.round(startMs)}" aria-label="Downbeat milliseconds for bar ${bar}"${editable ? "" : " disabled"}><small>${formatTime(startMs)} into the recording</small></label>
       </div>
-      <p class="review-editor__reason">${escapeHtml(reasons.join(" ") || "No analysis concern was recorded for this bar.")}</p>
+      <p class="review-editor__reason">${escapeHtml(legacy ? "This bar came from the earlier extractor and has no v2 confidence decision." : reasons.join(" ") || "Strong audio and song-context agreement.")}</p>
       <div class="review-editor__actions">
         <button class="songs-button" data-play-bar type="button">Play from bar ${bar}</button>
-        <button class="songs-button is-primary" data-accept-bar type="button">${needsAttention ? "Accept this bar" : "Mark for review"}</button>
-        ${matches.length ? `<button class="songs-button is-quiet" data-apply-repeat type="button">Apply chord to ${matches.length} matching bar${matches.length === 1 ? "" : "s"}</button>` : ""}
+        ${editable && !legacy ? `<button class="songs-button is-primary" data-accept-bar type="button">${needsAttention ? "Accept this bar" : "Mark for review"}</button>` : ""}
+        ${editable && !legacy && matches.length ? `<button class="songs-button is-quiet" data-apply-repeat type="button">Apply chord to ${matches.length} matching bar${matches.length === 1 ? "" : "s"}</button>` : ""}
       </div>`;
     editor.querySelector("[data-play-bar]").onclick = () => {
-      audio.currentTime = Number(project.timeline.barStartsMs?.[bar - 1] || 0) / 1000;
+      audio.currentTime = Number(timeline.barStartsMs?.[bar - 1] || 0) / 1000;
       audio.play().catch(() => {});
     };
-    editor.querySelector("[data-chord]").onchange = (event) => {
+    if (editable) editor.querySelector("[data-chord]").onchange = (event) => {
       replaceBarChords(bar, event.target.value.split(/\s+/)); renderReview(); updateConfirmation(); queueSave();
     };
-    editor.querySelector("[data-time]").onchange = (event) => {
+    if (editable) editor.querySelector("[data-time]").onchange = (event) => {
       const starts = project.timeline.barStartsMs;
       const lower = bar > 1 ? Number(starts[bar - 2]) + 25 : 0;
       const upper = bar < starts.length ? Number(starts[bar]) - 25 : Number(project.audio.durationMs);
       starts[bar - 1] = Math.round(Math.max(lower, Math.min(upper, Number(event.target.value))));
       acceptBar(bar); rebuildEventTimes(); rebuildBeatTimes(); renderReview(); updateConfirmation(); queueSave();
     };
-    editor.querySelector("[data-accept-bar]").onclick = () => {
+    if (editor.querySelector("[data-accept-bar]")) editor.querySelector("[data-accept-bar]").onclick = () => {
       if (needsAttention) acceptBar(bar);
       else eventsForBar(bar).forEach((event) => { event.reviewed = false; event.needsAttention = true; });
       renderReview(); updateConfirmation(); queueSave();
@@ -201,6 +220,20 @@
     if (!map) throw new Error("The visual song map is unavailable. Reload the page and try again.");
     const count = barCount();
     if (!selectedBar || selectedBar > count) selectedBar = Array.from({ length: count }, (_item, index) => index + 1).find(barNeedsAttention) || 1;
+    const heading = document.querySelector("#review-heading");
+    const description = document.querySelector("#review-description");
+    const reviewAll = document.querySelector("#review-all");
+    if (showingPreview) {
+      heading.textContent = "Improved Analysis Preview";
+      description.textContent = "This is the new key-aware map. Coral bars need review; amber bars were accepted automatically. Nothing is saved until you choose Use this analysis.";
+    } else if (legacyTimeline()) {
+      heading.textContent = "Legacy Song Map";
+      description.textContent = "This map came from the earlier extractor. Run the improved analysis above to see confidence-based results before replacing it.";
+    } else {
+      heading.textContent = "Song Map";
+      description.textContent = "See the whole progression at once. Amber bars are accepted; coral bars need attention. Select any bar to hear and correct it.";
+    }
+    reviewAll.hidden = showingPreview || legacyTimeline();
     map.replaceChildren(...Array.from({ length: count }, (_item, index) => mapButtonForBar(index + 1)));
     renderEditor();
   }
@@ -234,7 +267,7 @@
 
   async function runFreshAnalysis() {
     if (analysisRunning) return;
-    analysisRunning = true; pendingAnalysis = null; reanalyzePreview.hidden = true;
+    analysisRunning = true; pendingAnalysis = null; showingPreview = false; reanalyzePreview.hidden = true;
     reanalyzeButton.disabled = true; previewRhythmButton.disabled = true;
     try {
       const fields = controls();
@@ -250,7 +283,8 @@
       const commonChords = [...chordCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 7).map(([symbol, count]) => `${symbol} (${count})`).join(", ");
       document.querySelector("#reanalyze-preview-copy").textContent = `Preview: ${pendingAnalysis.key} ${pendingAnalysis.keyMode} · ${pendingAnalysis.meter} · ${pendingAnalysis.tempo} BPM · ${attention} attention bar${attention === 1 ? "" : "s"}. Common chords: ${commonChords || "N.C."}.`;
       reanalyzePreview.hidden = false;
-      reanalyzeStatus.textContent = "Preview ready. Your current map is unchanged.";
+      showingPreview = true; selectedBar = 0; renderReview(); updateConfirmation();
+      reanalyzeStatus.textContent = "Preview ready below. Your saved map is unchanged.";
     } catch (error) {
       reanalyzeStatus.textContent = error.message || "The fresh analysis could not be completed.";
     } finally {
@@ -262,7 +296,7 @@
     if (!pendingAnalysis) return;
     const confirmationState = "detected";
     project.timeline = { ...pendingAnalysis, confirmationState };
-    pendingAnalysis = null;
+    pendingAnalysis = null; showingPreview = false;
     selectedBar = 0; setControlsFromTimeline(); analysisBadges(); configureReanalysis(); renderReview(); updateConfirmation(); await persist();
     reanalyzeStatus.textContent = "The improved local analysis is now this project's editable map.";
   }
@@ -309,7 +343,7 @@
     reanalyzeButton.onclick = runFreshAnalysis;
     previewRhythmButton.onclick = runFreshAnalysis;
     document.querySelector("#accept-reanalysis").onclick = acceptReanalysis;
-    document.querySelector("#discard-reanalysis").onclick = () => { pendingAnalysis = null; reanalyzePreview.hidden = true; reanalyzeStatus.textContent = "Current map kept."; setControlsFromTimeline(); configureReanalysis(); };
+    document.querySelector("#discard-reanalysis").onclick = () => { pendingAnalysis = null; showingPreview = false; selectedBar = 0; reanalyzePreview.hidden = true; reanalyzeStatus.textContent = "Current map kept."; setControlsFromTimeline(); configureReanalysis(); renderReview(); updateConfirmation(); };
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     renderReview(); updateConfirmation(); app.hidden = false;
   }

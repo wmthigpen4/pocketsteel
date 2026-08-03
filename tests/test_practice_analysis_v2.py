@@ -180,6 +180,8 @@ def test_v2_contract_keeps_project_schema_and_audio_local() -> None:
     worker = WORKER.read_text(encoding="utf-8")
     assert 'schemaVersion: "practice_project_v1"' in songs
     assert "analysisVersion: ANALYSIS_VERSION" in worker
+    assert "function sequenceMarginConfidence" in worker
+    assert "sequenceConfidence: contextConfidence" in worker
     assert "startFraction" in worker and "analysisState" in worker
     assert "project.timeline.barStartsMs" in setup
     assert "project.timeline.barStartsMs = project.timeline.chords" not in setup

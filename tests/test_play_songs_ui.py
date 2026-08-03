@@ -154,3 +154,13 @@ def test_play_songs_javascript_syntax() -> None:
             check=False,
         )
         assert result.returncode == 0, result.stderr
+
+
+def test_review_distinguishes_legacy_map_from_unsaved_v2_preview() -> None:
+    setup_js = (REPO_ROOT / "ui" / "setup-song.js").read_text(encoding="utf-8")
+
+    assert "Legacy Song Map" in setup_js
+    assert "Improved Analysis Preview" in setup_js
+    assert "function activeTimeline()" in setup_js
+    assert "if (legacyTimeline()) return false" in setup_js
+    assert "This preview has not replaced your saved map" in setup_js

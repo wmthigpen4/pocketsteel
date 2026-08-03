@@ -452,6 +452,24 @@
     return round(clamp(confidence, 0.05, 0.98));
   }
 
+  function sequenceMarginConfidence(evidences, decoded, index, key) {
+    const evidence = evidences[index];
+    const selected = decoded[index];
+    const previous = decoded[index - 1] || null;
+    const next = decoded[index + 1] || null;
+    const localScore = (symbol) => {
+      let score = 3.4 * candidateScore(evidence, symbol) + keyPrior(symbol, key);
+      if (previous) score += 0.72 * transitionPrior(previous, symbol, key);
+      if (next) score += 0.72 * transitionPrior(symbol, next, key);
+      return score;
+    };
+    const selectedScore = localScore(selected);
+    const rivals = Array.from(new Set(evidence.candidates.slice(0, 18).map((candidate) => candidate.symbol).filter((symbol) => symbol !== selected)));
+    const rivalScore = rivals.length ? Math.max(...rivals.map(localScore)) : selectedScore;
+    const margin = selectedScore - rivalScore;
+    return round(clamp(0.58 + margin * 0.78, 0.12, 0.97));
+  }
+
   function barEvidence(beatEvidence, barStartsMs, durationMs, beatsPerBar, silenceThreshold) {
     return barStartsMs.map((startMs, barIndex) => {
       const endMs = Number(barStartsMs[barIndex + 1] ?? durationMs);
@@ -491,6 +509,8 @@
     const fullEvidence = bars.map((bar) => bar.full.scored);
     let decodedBars = decodeSequence(fullEvidence, key);
     decodedBars = decodeSequence(fullEvidence, key, repeatBarConsensusBonus(decodedBars, repeatGroups));
+    const fullSequenceConfidence = decodedBars.map((_symbol, index) => sequenceMarginConfidence(fullEvidence, decodedBars, index, key));
+    const halfSequenceConfidence = halfDecoded.map((_symbol, index) => sequenceMarginConfidence(halfEvidence, halfDecoded, index, key));
     const chords = [];
     bars.forEach((bar, barIndex) => {
       const firstSymbol = halfDecoded[barIndex * 2];
@@ -507,10 +527,13 @@
         const rawCandidate = evidence.top.symbol;
         const contextualAdjusted = rawCandidate !== symbol;
         let confidence = confidenceFor(evidence, symbol, contextualAdjusted);
+        const contextConfidence = split ? halfSequenceConfidence[barIndex * 2 + chordIndex] : fullSequenceConfidence[barIndex];
+        confidence = Math.max(confidence, contextConfidence);
         if (!split && firstSymbol === secondSymbol) confidence += 0.1;
         if (repeatGroups[barIndex]) confidence += 0.06;
         if (keyPrior(symbol, key) >= 0.3) confidence += 0.06;
-        const stableInKey = firstSymbol === secondSymbol && keyPrior(symbol, key) >= 0.3;
+        const inKey = keyPrior(symbol, key) > 0;
+        const stableInKey = firstSymbol === secondSymbol && inKey;
         if (!contextualAdjusted && stableInKey) confidence = Math.max(confidence, 0.8);
         if (contextualAdjusted && stableInKey) confidence = Math.max(confidence, repeatGroups[barIndex] ? 0.78 : 0.72);
         confidence = round(clamp(confidence, 0.05, 0.98));
@@ -521,12 +544,16 @@
         if (!reasons.length) reasons.push("Strong audio and song-context agreement.");
         const startMs = Math.round(bar.startMs + (bar.endMs - bar.startMs) * startFraction);
         const endMs = Math.round(bar.startMs + (bar.endMs - bar.startMs) * endFraction);
-        const reviewed = (confidence >= 0.78 && !contextualAdjusted) || (confidence >= 0.72 && contextualAdjusted && stableInKey);
+        const reviewed = symbol === "N.C."
+          ? confidence >= 0.82 && !contextualAdjusted
+          : inKey
+            ? confidence >= 0.78 || (stableInKey && confidence >= 0.72)
+            : (!contextualAdjusted && confidence >= 0.84) || (contextConfidence >= 0.88 && confidence >= 0.82);
         chords.push({
           id: `detected-chord-${bar.bar}-${chordIndex + 1}`, bar: bar.bar, startFraction, startMs, endMs,
           symbol, rawCandidate, finalSymbol: symbol,
           alternatives: evidence.candidates.filter((candidate) => candidate.symbol !== symbol).slice(0, 3).map((candidate) => ({ symbol: candidate.symbol, score: candidate.score })),
-          confidence, contextualAdjusted, reviewReasons: reasons, repeatedSectionGroup: repeatGroups[barIndex] || null,
+          confidence, contextualAdjusted, sequenceConfidence: contextConfidence, reviewReasons: reasons, repeatedSectionGroup: repeatGroups[barIndex] || null,
           reviewed, needsAttention: !reviewed
         });
       });
