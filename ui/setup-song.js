@@ -195,6 +195,13 @@
     return "";
   }
 
+  function seventhEvidenceTeaching(events) {
+    const event = events.find((item) => /(?:m7|7)$/.test(String(item.symbol || "")) && Number.isFinite(Number(item.seventhCoreRatio)));
+    if (!event) return "";
+    const ratio = Math.round(Number(event.seventhCoreRatio) * 100);
+    return `Audio ♭7 evidence is ${ratio}% as strong as the core chord tones. A seventh label is kept only when that note has direct audio support.`;
+  }
+
   function renderNotationToggle() {
     const nns = reviewChordDisplay === "nns";
     showChordsButton.setAttribute("aria-pressed", String(!nns));
@@ -249,6 +256,7 @@
     const keyContext = keyContextForBar(bar, timeline);
     const displayedChords = events.map((event) => chordForReview(event.symbol, bar)).join(" · ") || "No chord";
     const teaching = selectedChordTeaching(events, displayedChords, bar);
+    const seventhTeaching = seventhEvidenceTeaching(events);
     const explorerTargets = events.map((event) => explorerTargetForChord(event.symbol, bar)).filter(Boolean);
     const keyOptions = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"].map((key) => `<option${key === keyContext.key ? " selected" : ""}>${key}</option>`).join("");
     const startsKeyRegion = keyContext.region.startBar === bar;
@@ -270,6 +278,7 @@
         <label>Section mode<select data-section-mode aria-label="Section mode for bar ${bar}"${editable ? "" : " disabled"}><option value="major"${keyContext.keyMode === "major" ? " selected" : ""}>Major</option><option value="minor"${keyContext.keyMode === "minor" ? " selected" : ""}>Minor</option></select><small>${startsKeyRegion ? `This section starts at bar ${keyContext.region.startBar}.` : `Current section starts at bar ${keyContext.region.startBar}.`}</small></label>
       </div>
       ${teaching ? `<p class="review-editor__teaching">${escapeHtml(teaching)}</p>` : ""}
+      ${seventhTeaching ? `<p class="review-editor__teaching" data-seventh-evidence>${escapeHtml(seventhTeaching)}</p>` : ""}
       <p class="review-editor__reason">${escapeHtml(reasons.join(" ") || "Strong audio and song-context agreement.")}</p>
       <div class="review-editor__actions">
         <button class="songs-button" data-play-bar type="button">Play from bar ${bar}</button>
@@ -594,7 +603,7 @@
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     app.hidden = false;
     if (needsUpgrade) await upgradeLegacyAnalysis();
-    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 4) await handleKeyChange();
+    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 5) await handleKeyChange();
     else { renderReview(); updateConfirmation(); }
   }
 

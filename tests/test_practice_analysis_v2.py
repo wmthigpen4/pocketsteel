@@ -77,7 +77,7 @@ def test_seventh_quality_requires_added_seventh_evidence() -> None:
         console.log(JSON.stringify({weak:a.chordCandidates(weak).top.symbol,clear:a.chordCandidates(clear).top.symbol,refreshed:refreshed.chords.map(chord=>chord.symbol),contextual:[...new Set(contextual)],version:refreshed.analysisState.qualityCalibrationVersion}));
         """
     )
-    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 4}
+    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 5}
 
 
 def test_detects_stable_g_c_a_key_regions_and_keeps_plain_dominants_as_triads() -> None:

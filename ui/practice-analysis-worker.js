@@ -14,7 +14,7 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 4;
+  const QUALITY_CALIBRATION_VERSION = 5;
   const MIN_EXTENSION_GAIN = 0.09;
   const MIN_SEVENTH_CORE_RATIO = 0.8;
   const MIN_KEY_REGION_BARS = 6;
@@ -311,7 +311,15 @@
       const directEvidence = seventhEvidence >= Math.max(0.08, coreEvidence * MIN_SEVENTH_CORE_RATIO);
       const supported = extensionGain >= MIN_EXTENSION_GAIN && directEvidence;
       const score = supported ? rawScore(candidate) : Math.min(rawScore(candidate), rawScore(triad) - 0.05);
-      return { ...candidate, rawScore: rawScore(candidate), score: round(score), extensionSupported: supported };
+      return {
+        ...candidate,
+        rawScore: rawScore(candidate),
+        score: round(score),
+        extensionSupported: supported,
+        extensionGain: round(extensionGain),
+        seventhEvidence: round(seventhEvidence),
+        seventhCoreRatio: round(seventhEvidence / Math.max(0.001, coreEvidence))
+      };
     });
   }
 
@@ -602,6 +610,7 @@
         const evidence = split ? [bar.first.scored, bar.second.scored][chordIndex] : bar.full.scored;
         const rawCandidate = evidence.top.symbol;
         const contextualAdjusted = rawCandidate !== symbol;
+        const selectedCandidate = evidence.candidates.find((candidate) => candidate.symbol === symbol);
         let confidence = confidenceFor(evidence, symbol, contextualAdjusted);
         const contextConfidence = split ? halfSequenceConfidence[barIndex * 2 + chordIndex] : fullSequenceConfidence[barIndex];
         confidence = Math.max(confidence, contextConfidence);
@@ -630,6 +639,9 @@
           symbol, rawCandidate, finalSymbol: symbol,
           alternatives: evidence.candidates.filter((candidate) => candidate.symbol !== symbol).slice(0, 3).map((candidate) => ({ symbol: candidate.symbol, score: candidate.score })),
           confidence, contextualAdjusted, sequenceConfidence: contextConfidence, reviewReasons: reasons, repeatedSectionGroup: repeatGroups[barIndex] || null,
+          extensionSupported: selectedCandidate?.extensionSupported,
+          extensionGain: selectedCandidate?.extensionGain,
+          seventhCoreRatio: selectedCandidate?.seventhCoreRatio,
           reviewed, needsAttention: !reviewed
         });
       });
