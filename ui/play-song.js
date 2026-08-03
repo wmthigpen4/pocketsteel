@@ -198,7 +198,16 @@
     if (current?.isRest) return "Rest · listen.";
     if (!position) return "Listen for the count-in.";
     const strings = position.strings || [];
-    return strings.length === 1 ? `Pick string ${strings[0]}` : `Play strings ${strings.join(" · ")}`;
+    const instruction = strings.length === 1 ? `Pick string ${strings[0]}` : `Play strings ${strings.join(" · ")}`;
+    const controls = new Set((position.controls || []).map(compactControlToken));
+    const stringFive = (position.notes || []).find((note) => Number(note.string) === 5);
+    const stringTen = (position.notes || []).find((note) => Number(note.string) === 10);
+    const cRaisesFive = (stringFive?.changes || []).map(compactControlToken).includes("C");
+    const tenStaysOpen = stringTen && !(stringTen.changes || []).length;
+    if (position.quality === "minor7" && controls.has("C") && !controls.has("A") && cRaisesFive && tenStaysOpen) {
+      return `${instruction}. C is intentional: it raises string 5 while leaving string 10 at the ♭7.`;
+    }
+    return instruction;
   }
 
   function melodyCueText(event) {

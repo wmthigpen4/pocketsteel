@@ -288,6 +288,35 @@ def _candidate_key(candidate: ChordCandidate) -> tuple[object, ...]:
     return candidate.fret, candidate.strings, candidate.controls, candidate.pitches
 
 
+def _prefer_a_over_c_for_fifth_string_only(
+    profile: E9CopedentProfile,
+    grip: tuple[int, ...],
+    controls: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Use A when C only duplicates A's string-5 raise on the played grip.
+
+    The controls are not interchangeable when string 10 is played: A also
+    raises string 10, while C leaves it available as a chord tone.
+    """
+    controls_by_id = profile.controls_by_id()
+    if "C" not in controls or "A" in controls or "A" not in controls_by_id:
+        return controls
+    c_strings = tuple(
+        string for string in grip if control_affects_string(profile, "C", string)
+    )
+    if c_strings != (5,):
+        return controls
+    replacement_ids = (set(controls) - {"C"}) | {"A"}
+    replacement = tuple(control for control in controls_by_id if control in replacement_ids)
+    original_pitches = tuple(
+        absolute_pitch_for_profile(profile, string, 0, controls) for string in grip
+    )
+    replacement_pitches = tuple(
+        absolute_pitch_for_profile(profile, string, 0, replacement) for string in grip
+    )
+    return replacement if replacement_pitches == original_pitches else controls
+
+
 def _chord_candidates(chord: ParsedChord, profile: E9CopedentProfile) -> list[ChordCandidate]:
     tone_pcs = chord.tone_pitch_classes
     required_pcs = chord.required_pitch_classes
@@ -301,6 +330,7 @@ def _chord_candidates(chord: ParsedChord, profile: E9CopedentProfile) -> list[Ch
             )
             if raw_controls and not controls:
                 continue
+            controls = _prefer_a_over_c_for_fifth_string_only(profile, grip, controls)
             for fret in range(MAX_FRET + 1):
                 pitches = tuple(
                     absolute_pitch_for_profile(profile, string, fret, controls)

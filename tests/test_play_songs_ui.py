@@ -109,6 +109,7 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "function separateSameFretNextGrip" in player_js
     assert 'positionDisplay(visibleNext, "play-next", "next", 2)' in player_js
     assert "const visibleNext = assistanceReduced || samePosition(current?.position, next?.position) ? null : next" in player_js
+    assert "C is intentional: it raises string 5 while leaving string 10 at the ♭7." in player_js
     assert 'const offset = sideOffset - renderOffsetX(group);' in player_js
     assert 'group.setAttribute("transform", `translate(${offset} 0)`)' in player_js
     assert 'caption.textContent = "NEXT · SAME FRET"' in player_js

@@ -16,6 +16,7 @@ from steel_guitar_rag.song_practice import (
     get_curated_practice_project,
     list_curated_lessons,
     song_practice_catalog,
+    _chord_candidates,
 )
 
 
@@ -125,6 +126,36 @@ def test_arranger_is_deterministic_uses_familiar_route_and_never_invents_unsuppo
     assert "transitions" not in first
     assert "solo" not in first
     assert "melody" not in first
+
+
+def test_a_is_preferred_for_equivalent_string_five_raise_but_c_preserves_minor_seventh() -> None:
+    profile = get_e9_copedent_profile()
+    minor = parse_chord_symbol("F#m")
+    minor_seven = parse_chord_symbol("F#m7")
+    assert minor is not None and minor_seven is not None
+
+    minor_candidates = _chord_candidates(minor, profile)
+    assert not any(
+        "C" in candidate.controls
+        and 4 not in candidate.strings
+        and 10 not in candidate.strings
+        for candidate in minor_candidates
+    )
+    assert any(
+        candidate.fret == 5 and candidate.controls == ("A",)
+        for candidate in minor_candidates
+    )
+
+    minor_seven_plan = arrange_song_practice(
+        request_for(["F#m7"]), copedent_profile=profile, copedent_revision=1
+    )
+    position = minor_seven_plan["events"][0]["position"]
+    assert position["fret"] == 5
+    assert position["strings"] == [5, 8, 10]
+    assert position["controls"] == ["C"]
+    notes = {note["string"]: note for note in position["notes"]}
+    assert notes[5]["changes"] == ["C"] and notes[5]["note"] == "F#"
+    assert notes[10]["changes"] == [] and notes[10]["note"] == "E"
 
 
 @pytest.mark.parametrize("forbidden", ["audio", "audioBytes", "filename", "songTitle", "artist", "cueText", "lyrics"])
