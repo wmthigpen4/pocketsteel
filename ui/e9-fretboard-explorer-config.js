@@ -100,6 +100,10 @@
     { id: "drill", label: "Drill", description: "Click a matching cell and get deterministic practice feedback." },
     { id: "sync", label: "Event sync", description: "Step through safe deterministic events and focus the matching cell." },
   ];
+  const NOTE_TARGET_MODES = [
+    { id: "scale", label: "Notes in scale", description: "Choose from the notes in the selected scale." },
+    { id: "intervals", label: "Intervals from root", description: "Choose any chromatic interval measured from the selected key root, including ♭7." },
+  ];
   const CHORD_FINDER_ROOT_OPTIONS = [
     "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B",
   ];
@@ -174,6 +178,7 @@
     NOTATION_MODES,
     PITCH_REGISTER_MODES,
     NOTE_WORKFLOWS,
+    NOTE_TARGET_MODES,
     CHORD_FINDER_ROOT_OPTIONS,
     CHORD_FINDER_QUALITY_LABELS,
     CHORD_FINDER_QUALITY_ORDER,
