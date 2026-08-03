@@ -18,9 +18,9 @@
       <label>Meter <select id="setup-meter"><option>2/4</option><option>3/4</option><option>4/4</option><option>6/8</option></select></label>
     </section>
     <section class="analysis-summary" id="analysis-summary" aria-label="Analysis confidence"></section>
-    <section class="reanalyze-panel" id="reanalyze-panel">
-      <div><strong id="reanalyze-title">Improved local analysis is available.</strong><p id="reanalyze-copy">Nothing changes until you accept a fresh preview.</p></div>
-      <div class="reanalyze-panel__actions"><button class="songs-button" id="reanalyze-v2" type="button">Reanalyze with improved method</button><button class="songs-button" id="preview-rhythm" type="button" hidden>Preview new timing</button></div>
+    <section class="reanalyze-panel" id="reanalyze-panel" hidden>
+      <div><strong id="reanalyze-title">Updating Song Map</strong><p id="reanalyze-copy">Applying the current local analysis method.</p></div>
+      <div class="reanalyze-panel__actions"><button class="songs-button" id="reanalyze-v2" type="button" hidden>Try update again</button><button class="songs-button" id="preview-rhythm" type="button" hidden>Preview new timing</button></div>
       <p class="reanalyze-panel__status" id="reanalyze-status" role="status"></p>
       <div class="reanalyze-preview" id="reanalyze-preview" hidden><strong id="reanalyze-preview-copy"></strong><div><button class="songs-button is-primary" id="accept-reanalysis" type="button">Use this analysis</button><button class="songs-button is-quiet" id="discard-reanalysis" type="button">Keep current map</button></div></div>
     </section>
@@ -41,6 +41,6 @@
   <script src="/ui/practice-tools-20260802.js?v=key-aware-v2-20260803"></script>
   <script src="/ui/practice-analysis-client-key-aware-v2-8.js?v=20260803"></script>
   <script src="/ui/practice-reference-validation-v1.js?v=20260803"></script>
-  <script src="/ui/setup-song-review-v2-10.js?v=20260803"></script>
+  <script src="/ui/setup-song-review-v2-11.js?v=20260803"></script>
 </body>
 </html>

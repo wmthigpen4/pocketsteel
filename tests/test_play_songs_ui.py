@@ -162,10 +162,16 @@ def test_play_songs_javascript_syntax() -> None:
         assert result.returncode == 0, result.stderr
 
 
-def test_review_distinguishes_legacy_map_from_unsaved_v2_preview() -> None:
+def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> None:
     setup_js = (REPO_ROOT / "ui" / "setup-song.js").read_text(encoding="utf-8")
 
-    assert "Legacy Song Map" in setup_js
+    assert "Legacy Song Map" not in setup_js
+    assert "Legacy chord map shown" not in setup_js
+    assert "function upgradeLegacyAnalysis()" in setup_js
+    assert "if (needsUpgrade) await upgradeLegacyAnalysis()" in setup_js
+    assert 'project.timeline = { ...result.analysis, confirmationState: "detected" }' in setup_js
+    assert 'setUpgradeVisibility(true)' in setup_js
+    assert 'The older map is not offered as an alternative.' in setup_js
     assert "Improved Analysis Preview" in setup_js
     assert "function activeTimeline()" in setup_js
     assert "if (legacyTimeline()) return false" in setup_js

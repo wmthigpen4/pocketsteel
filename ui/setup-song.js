@@ -17,6 +17,10 @@
   const reanalyzePreview = document.querySelector("#reanalyze-preview");
   const referencePanel = document.querySelector("#reference-panel");
   const referenceStatus = document.querySelector("#reference-status");
+  const setupSummary = document.querySelector(".setup-summary");
+  const analysisSummary = document.querySelector("#analysis-summary");
+  const reviewPanel = document.querySelector(".review-panel");
+  const startPlayButton = document.querySelector("#start-play");
   const showChordsButton = document.querySelector("#review-show-chords");
   const showNnsButton = document.querySelector("#review-show-nns");
   let project = null;
@@ -51,11 +55,6 @@
     if (showingPreview) {
       confirmButton.hidden = true;
       status.textContent = `${attention} preview bar${attention === 1 ? "" : "s"} need attention. This preview has not replaced your saved map.`;
-      return;
-    }
-    if (legacyTimeline()) {
-      confirmButton.hidden = true;
-      status.textContent = "Legacy chord map shown. Run the improved analysis to create confidence-based review results.";
       return;
     }
     confirmButton.hidden = attention > 0;
@@ -172,18 +171,17 @@
 
   function mapButtonForBar(bar) {
     const events = eventsForBar(bar);
-    const legacy = legacyTimeline();
     const needsAttention = barNeedsAttention(bar);
     const symbols = events.map((event) => chordForReview(event.symbol)).join(" · ") || "N.C.";
     const externalState = barExternalState(bar);
-    const stateLabel = legacy ? "Legacy detection" : needsAttention ? "Needs attention" : externalState || "Accepted";
+    const stateLabel = needsAttention ? "Needs attention" : externalState || "Accepted";
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `review-map-bar ${legacy ? "is-legacy" : needsAttention ? "needs-attention" : "is-accepted"}${bar === selectedBar ? " is-selected" : ""}`;
+    button.className = `review-map-bar ${needsAttention ? "needs-attention" : "is-accepted"}${bar === selectedBar ? " is-selected" : ""}`;
     button.dataset.bar = String(bar);
     button.setAttribute("aria-pressed", String(bar === selectedBar));
     button.setAttribute("aria-label", `Bar ${bar}, ${symbols}, ${stateLabel}. Select to review without autoplay.`);
-    button.innerHTML = `<span>Bar ${bar}</span><strong>${escapeHtml(symbols)}</strong><small>${legacy ? stateLabel : `${percent(barConfidence(bar))} · ${stateLabel}`}</small>`;
+    button.innerHTML = `<span>Bar ${bar}</span><strong>${escapeHtml(symbols)}</strong><small>${percent(barConfidence(bar))} · ${stateLabel}</small>`;
     button.onclick = () => {
       selectedBar = bar;
       audio.pause();
@@ -200,7 +198,6 @@
     const bar = selectedBar;
     const events = eventsForBar(bar);
     const timeline = activeTimeline();
-    const legacy = legacyTimeline();
     const editable = !showingPreview;
     const startMs = Number(timeline.barStartsMs?.[bar - 1] || events[0]?.startMs || 0);
     const needsAttention = barNeedsAttention(bar);
@@ -209,22 +206,22 @@
     const chordNames = events.map((event) => event.symbol || "N.C.").join(" ");
     const displayedChords = events.map((event) => chordForReview(event.symbol)).join(" · ") || "N.C.";
     const externalState = barExternalState(bar);
-    const stateLabel = showingPreview ? (needsAttention ? "Preview · Needs attention" : externalState ? `Preview · ${externalState}` : "Preview · Auto-accepted") : legacy ? "Legacy detection" : needsAttention ? "Needs attention" : externalState || "Accepted";
+    const stateLabel = showingPreview ? (needsAttention ? "Preview · Needs attention" : externalState ? `Preview · ${externalState}` : "Preview · Auto-accepted") : needsAttention ? "Needs attention" : externalState || "Accepted";
     editor.innerHTML = `
       <div class="review-editor__head">
         <div><p class="songs-kicker">Selected measure</p><h3>Bar ${bar}</h3></div>
-        <span class="review-editor__status ${legacy ? "is-legacy" : needsAttention ? "needs-attention" : "is-accepted"}">${legacy ? stateLabel : `${percent(barConfidence(bar))} confidence · ${stateLabel}`}</span>
+        <span class="review-editor__status ${needsAttention ? "needs-attention" : "is-accepted"}">${percent(barConfidence(bar))} confidence · ${stateLabel}</span>
       </div>
       ${reviewChordDisplay === "nns" ? `<p class="review-editor__notation"><span>Nashville number${events.length === 2 ? "s" : ""}</span><strong>${escapeHtml(displayedChords)}</strong></p>` : ""}
       <div class="review-editor__fields">
         <label>${reviewChordDisplay === "nns" ? "Chord names (editing)" : `Chord${events.length === 2 ? "s" : ""}`}<input data-chord type="text" value="${escapeHtml(chordNames)}" aria-label="Chord${events.length === 2 ? "s" : ""} for bar ${bar}"${editable ? "" : " disabled"}><small>${editable ? "Enter one chord, or two chords separated by a space." : "Accept the preview before making corrections."}</small></label>
         <label>Bar downbeat<input data-time type="number" min="0" max="${project.audio.durationMs}" step="10" value="${Math.round(startMs)}" aria-label="Downbeat milliseconds for bar ${bar}"${editable ? "" : " disabled"}><small>${formatTime(startMs)} into the recording</small></label>
       </div>
-      <p class="review-editor__reason">${escapeHtml(legacy ? "This bar came from the earlier extractor and has no v2 confidence decision." : reasons.join(" ") || "Strong audio and song-context agreement.")}</p>
+      <p class="review-editor__reason">${escapeHtml(reasons.join(" ") || "Strong audio and song-context agreement.")}</p>
       <div class="review-editor__actions">
         <button class="songs-button" data-play-bar type="button">Play from bar ${bar}</button>
-        ${editable && !legacy ? `<button class="songs-button is-primary" data-accept-bar type="button">${needsAttention ? "Accept this bar" : "Mark for review"}</button>` : ""}
-        ${editable && !legacy && matches.length ? `<button class="songs-button is-quiet" data-apply-repeat type="button">Apply chord to ${matches.length} matching bar${matches.length === 1 ? "" : "s"}</button>` : ""}
+        ${editable ? `<button class="songs-button is-primary" data-accept-bar type="button">${needsAttention ? "Accept this bar" : "Mark for review"}</button>` : ""}
+        ${editable && matches.length ? `<button class="songs-button is-quiet" data-apply-repeat type="button">Apply chord to ${matches.length} matching bar${matches.length === 1 ? "" : "s"}</button>` : ""}
       </div>`;
     editor.querySelector("[data-play-bar]").onclick = () => {
       audio.currentTime = Number(timeline.barStartsMs?.[bar - 1] || 0) / 1000;
@@ -259,15 +256,12 @@
     if (showingPreview) {
       heading.textContent = "Improved Analysis Preview";
       description.textContent = "This is the new key-aware map. Coral bars need review; amber bars were accepted automatically. Nothing is saved until you choose Use this analysis.";
-    } else if (legacyTimeline()) {
-      heading.textContent = "Legacy Song Map";
-      description.textContent = "This map came from the earlier extractor. Run the improved analysis above to see confidence-based results before replacing it.";
     } else {
       heading.textContent = "Song Map";
       description.textContent = "See the whole progression at once. Amber bars are accepted; coral bars need attention. Select any bar to hear and correct it.";
     }
-    reviewAll.hidden = showingPreview || legacyTimeline();
-    referencePanel.hidden = legacyTimeline();
+    reviewAll.hidden = showingPreview;
+    referencePanel.hidden = false;
     renderNotationToggle();
     map.replaceChildren(...Array.from({ length: count }, (_item, index) => mapButtonForBar(index + 1)));
     renderEditor();
@@ -331,14 +325,54 @@
   }
 
   function configureReanalysis() {
-    const legacy = Number(project.timeline?.analysisVersion || 1) < 2;
-    reanalyzePanel.hidden = !legacy;
-    reanalyzeButton.hidden = !legacy;
+    reanalyzePanel.hidden = true;
+    reanalyzeButton.hidden = true;
     previewRhythmButton.hidden = true;
     reanalyzePreview.hidden = true;
-    if (legacy) {
-      document.querySelector("#reanalyze-title").textContent = "Improved local analysis is available.";
-      document.querySelector("#reanalyze-copy").textContent = "Preview key-aware chords without overwriting your current corrections.";
+  }
+
+  function setUpgradeVisibility(upgrading) {
+    setupSummary.hidden = upgrading;
+    analysisSummary.hidden = upgrading;
+    audio.hidden = upgrading;
+    reviewPanel.hidden = upgrading;
+    referencePanel.hidden = true;
+    startPlayButton.hidden = upgrading;
+    confirmButton.hidden = true;
+  }
+
+  async function upgradeLegacyAnalysis() {
+    if (analysisRunning) return;
+    analysisRunning = true; pendingAnalysis = null; showingPreview = false;
+    setUpgradeVisibility(true);
+    reanalyzePanel.hidden = false;
+    reanalyzeButton.hidden = true;
+    previewRhythmButton.hidden = true;
+    reanalyzePreview.hidden = true;
+    document.querySelector("#reanalyze-title").textContent = "Updating Song Map";
+    document.querySelector("#reanalyze-copy").textContent = "Replacing the earlier chord analysis with the current key-aware method. Your audio stays on this device.";
+    reanalyzeStatus.textContent = "Preparing the local recording…";
+    try {
+      const result = await analysisClient.analyzeFile(audioFile, {
+        tempoHint: Number(project.timeline.tempo),
+        keyHint: project.timeline.key,
+        keyModeHint: project.timeline.keyMode || "major"
+      }, (stage, detail) => { reanalyzeStatus.textContent = `${stage}: ${detail}`; });
+      project.timeline = { ...result.analysis, confirmationState: "detected" };
+      selectedBar = 0;
+      await persist();
+      setControlsFromTimeline(); analysisBadges(); configureReanalysis();
+      setUpgradeVisibility(false); renderReview(); updateConfirmation();
+      status.textContent = "Song Map updated with the current local analysis method. Review the highlighted bars before playing.";
+    } catch (error) {
+      document.querySelector("#reanalyze-title").textContent = "Song Map update did not finish";
+      document.querySelector("#reanalyze-copy").textContent = "The older map is not offered as an alternative. Try the current local analysis again.";
+      reanalyzeStatus.textContent = error.message || "The current local analysis could not be completed.";
+      reanalyzeButton.textContent = "Try update again";
+      reanalyzeButton.hidden = false;
+    } finally {
+      analysisRunning = false;
+      reanalyzeButton.disabled = false;
     }
   }
 
@@ -355,10 +389,7 @@
     reanalyzeButton.disabled = true; previewRhythmButton.disabled = true;
     try {
       const fields = controls();
-      const legacy = Number(project.timeline?.analysisVersion || 1) < 2;
-      const options = previewRhythmButton.hidden
-        ? (legacy ? { tempoHint: Number(project.timeline.tempo), keyHint: project.timeline.key, keyModeHint: project.timeline.keyMode || "major" } : {})
-        : { tempo: Number(fields.tempo.value), meter: fields.meter.value, keyHint: fields.key.value, keyModeHint: fields.keyMode.value };
+      const options = { tempo: Number(fields.tempo.value), meter: fields.meter.value, keyHint: fields.key.value, keyModeHint: fields.keyMode.value };
       const result = await analysisClient.analyzeFile(audioFile, options, (stage, detail) => { reanalyzeStatus.textContent = `${stage}: ${detail}`; });
       pendingAnalysis = result.analysis;
       document.querySelector("#reanalyze-preview-copy").textContent = previewSummary(pendingAnalysis);
@@ -409,7 +440,10 @@
     document.querySelector("#setup-track-name").textContent = project.title;
     document.querySelector("#setup-song-title").value = project.title;
     document.querySelector("#start-play").href = `/play/${encodeURIComponent(project.id)}`;
-    setControlsFromTimeline(); analysisBadges(); configureReanalysis();
+    const needsUpgrade = Number(project.timeline?.analysisVersion || 1) < 2;
+    setControlsFromTimeline();
+    if (!needsUpgrade) analysisBadges();
+    configureReanalysis();
     document.querySelector("#setup-song-title").addEventListener("input", (event) => {
       document.querySelector("#setup-track-name").textContent = event.target.value.trim() || "Untitled song";
       queueSave();
@@ -422,7 +456,7 @@
       Array.from({ length: barCount() }, (_item, index) => index + 1).filter(barNeedsAttention).forEach(acceptBar);
       renderReview(); updateConfirmation(); queueSave();
     };
-    reanalyzeButton.onclick = runFreshAnalysis;
+    reanalyzeButton.onclick = upgradeLegacyAnalysis;
     previewRhythmButton.onclick = runFreshAnalysis;
     document.querySelector("#accept-reanalysis").onclick = acceptReanalysis;
     document.querySelector("#discard-reanalysis").onclick = () => { pendingAnalysis = null; showingPreview = false; selectedBar = 0; reanalyzePreview.hidden = true; reanalyzeStatus.textContent = "Current map kept."; setControlsFromTimeline(); configureReanalysis(); renderReview(); updateConfirmation(); };
@@ -430,7 +464,9 @@
     showChordsButton.onclick = () => setReviewChordDisplay("letters").catch((error) => { status.textContent = error.message; });
     showNnsButton.onclick = () => setReviewChordDisplay("nns").catch((error) => { status.textContent = error.message; });
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
-    renderReview(); updateConfirmation(); app.hidden = false;
+    app.hidden = false;
+    if (needsUpgrade) await upgradeLegacyAnalysis();
+    else { renderReview(); updateConfirmation(); }
   }
 
   global.addEventListener("beforeunload", () => { if (objectUrl) URL.revokeObjectURL(objectUrl); });

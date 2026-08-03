@@ -186,7 +186,10 @@ def test_v2_contract_keeps_project_schema_and_audio_local() -> None:
     assert "project.timeline.barStartsMs" in setup
     assert "project.timeline.barStartsMs = project.timeline.chords" not in setup
     assert "timelineChords" in player and "chartBars" in player
-    assert "Reanalyze with improved method" in (REPO_ROOT / "ui/setup-song.html").read_text(encoding="utf-8")
+    setup_html = (REPO_ROOT / "ui/setup-song.html").read_text(encoding="utf-8")
+    assert "Reanalyze with improved method" not in setup_html
+    assert "Updating Song Map" in setup_html
+    assert "if (needsUpgrade) await upgradeLegacyAnalysis()" in setup
     assert "fetch(" not in client
     assert "XMLHttpRequest" not in client
     assert "fetch(" not in worker and "XMLHttpRequest" not in worker and "importScripts" not in worker
