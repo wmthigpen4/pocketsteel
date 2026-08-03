@@ -17,7 +17,10 @@
   const reanalyzePreview = document.querySelector("#reanalyze-preview");
   const referencePanel = document.querySelector("#reference-panel");
   const referenceStatus = document.querySelector("#reference-status");
+  const showChordsButton = document.querySelector("#review-show-chords");
+  const showNnsButton = document.querySelector("#review-show-nns");
   let project = null;
+  let practiceSession = null;
   let audioFile = null;
   let objectUrl = "";
   let saveTimer = 0;
@@ -25,6 +28,7 @@
   let pendingAnalysis = null;
   let showingPreview = false;
   let analysisRunning = false;
+  let reviewChordDisplay = "letters";
 
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]); }
   function reviewMapElement() { return document.querySelector("#review-song-map"); }
@@ -37,6 +41,7 @@
   function legacyTimeline() { return Number(activeTimeline()?.analysisVersion || 1) < 2; }
   function barCount() { const timeline = activeTimeline(); return timeline?.barStartsMs?.length || Math.max(0, ...(timeline?.chords || []).map((chord) => Number(chord.bar || 0))); }
   function eventsForBar(bar) { return (activeTimeline()?.chords || []).filter((chord) => Number(chord.bar) === bar).sort((left, right) => Number(left.startFraction || 0) - Number(right.startFraction || 0)); }
+  function chordForReview(symbol) { return tools.chordForDisplay(symbol || "N.C.", activeTimeline()?.key || project?.timeline?.key, reviewChordDisplay); }
   function eventNeedsAttention(event) { return Boolean(event.needsAttention ?? (!event.reviewed || Number(event.confidence) < 0.68)); }
   function barNeedsAttention(bar) { if (legacyTimeline()) return false; const events = eventsForBar(bar); return !events.length || events.some(eventNeedsAttention); }
   function allReviewed() { return Array.from({ length: barCount() }, (_item, index) => index + 1).every((bar) => !barNeedsAttention(bar)); }
@@ -152,11 +157,24 @@
     return "";
   }
 
+  function renderNotationToggle() {
+    const nns = reviewChordDisplay === "nns";
+    showChordsButton.setAttribute("aria-pressed", String(!nns));
+    showNnsButton.setAttribute("aria-pressed", String(nns));
+  }
+
+  async function setReviewChordDisplay(display) {
+    reviewChordDisplay = display === "nns" ? "nns" : "letters";
+    practiceSession = { ...practiceSession, chordDisplay: reviewChordDisplay, updatedAt: new Date().toISOString() };
+    renderReview();
+    await tools.saveSession(practiceSession);
+  }
+
   function mapButtonForBar(bar) {
     const events = eventsForBar(bar);
     const legacy = legacyTimeline();
     const needsAttention = barNeedsAttention(bar);
-    const symbols = events.map((event) => event.symbol || "N.C.").join(" · ") || "N.C.";
+    const symbols = events.map((event) => chordForReview(event.symbol)).join(" · ") || "N.C.";
     const externalState = barExternalState(bar);
     const stateLabel = legacy ? "Legacy detection" : needsAttention ? "Needs attention" : externalState || "Accepted";
     const button = document.createElement("button");
@@ -188,6 +206,8 @@
     const needsAttention = barNeedsAttention(bar);
     const reasons = Array.from(new Set(events.flatMap((event) => event.reviewReasons || [])));
     const matches = matchingBarsFor(events[0]?.repeatedSectionGroup, bar);
+    const chordNames = events.map((event) => event.symbol || "N.C.").join(" ");
+    const displayedChords = events.map((event) => chordForReview(event.symbol)).join(" · ") || "N.C.";
     const externalState = barExternalState(bar);
     const stateLabel = showingPreview ? (needsAttention ? "Preview · Needs attention" : externalState ? `Preview · ${externalState}` : "Preview · Auto-accepted") : legacy ? "Legacy detection" : needsAttention ? "Needs attention" : externalState || "Accepted";
     editor.innerHTML = `
@@ -195,8 +215,9 @@
         <div><p class="songs-kicker">Selected measure</p><h3>Bar ${bar}</h3></div>
         <span class="review-editor__status ${legacy ? "is-legacy" : needsAttention ? "needs-attention" : "is-accepted"}">${legacy ? stateLabel : `${percent(barConfidence(bar))} confidence · ${stateLabel}`}</span>
       </div>
+      ${reviewChordDisplay === "nns" ? `<p class="review-editor__notation"><span>Nashville number${events.length === 2 ? "s" : ""}</span><strong>${escapeHtml(displayedChords)}</strong></p>` : ""}
       <div class="review-editor__fields">
-        <label>Chord${events.length === 2 ? "s" : ""}<input data-chord type="text" value="${escapeHtml(events.map((event) => event.symbol || "N.C.").join(" "))}" aria-label="Chord${events.length === 2 ? "s" : ""} for bar ${bar}"${editable ? "" : " disabled"}><small>${editable ? "Enter one chord, or two chords separated by a space." : "Accept the preview before making corrections."}</small></label>
+        <label>${reviewChordDisplay === "nns" ? "Chord names (editing)" : `Chord${events.length === 2 ? "s" : ""}`}<input data-chord type="text" value="${escapeHtml(chordNames)}" aria-label="Chord${events.length === 2 ? "s" : ""} for bar ${bar}"${editable ? "" : " disabled"}><small>${editable ? "Enter one chord, or two chords separated by a space." : "Accept the preview before making corrections."}</small></label>
         <label>Bar downbeat<input data-time type="number" min="0" max="${project.audio.durationMs}" step="10" value="${Math.round(startMs)}" aria-label="Downbeat milliseconds for bar ${bar}"${editable ? "" : " disabled"}><small>${formatTime(startMs)} into the recording</small></label>
       </div>
       <p class="review-editor__reason">${escapeHtml(legacy ? "This bar came from the earlier extractor and has no v2 confidence decision." : reasons.join(" ") || "Strong audio and song-context agreement.")}</p>
@@ -247,6 +268,7 @@
     }
     reviewAll.hidden = showingPreview || legacyTimeline();
     referencePanel.hidden = legacyTimeline();
+    renderNotationToggle();
     map.replaceChildren(...Array.from({ length: count }, (_item, index) => mapButtonForBar(index + 1)));
     renderEditor();
   }
@@ -380,6 +402,8 @@
     audioFile = await tools.readAudio(project.audio?.opfsPath || `${project.id}.audio`).catch(() => null);
     if (!audioFile) throw new Error("The local recording is missing. Return to Songs and relink the original file with the same fingerprint.");
     if (!analysisClient) throw new Error("Local analysis controls are unavailable. Reload the page and try again.");
+    practiceSession = { ...tools.sessionDefaults(projectId), ...(await tools.loadSession(projectId) || {}) };
+    reviewChordDisplay = practiceSession.chordDisplay === "nns" ? "nns" : "letters";
     objectUrl = URL.createObjectURL(audioFile); audio.src = objectUrl;
     document.querySelector("#setup-title").textContent = "Review Song";
     document.querySelector("#setup-track-name").textContent = project.title;
@@ -403,6 +427,8 @@
     document.querySelector("#accept-reanalysis").onclick = acceptReanalysis;
     document.querySelector("#discard-reanalysis").onclick = () => { pendingAnalysis = null; showingPreview = false; selectedBar = 0; reanalyzePreview.hidden = true; reanalyzeStatus.textContent = "Current map kept."; setControlsFromTimeline(); configureReanalysis(); renderReview(); updateConfirmation(); };
     document.querySelector("#validate-reference").onclick = async () => { try { await applyReferenceValidation(); } catch (error) { referenceStatus.textContent = error.message; } };
+    showChordsButton.onclick = () => setReviewChordDisplay("letters").catch((error) => { status.textContent = error.message; });
+    showNnsButton.onclick = () => setReviewChordDisplay("nns").catch((error) => { status.textContent = error.message; });
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     renderReview(); updateConfirmation(); app.hidden = false;
   }

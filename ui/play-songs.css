@@ -171,6 +171,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .reference-panel__actions p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .review-panel { display: grid; grid-template-columns: minmax(0,1fr) minmax(280px,330px); gap: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); padding: clamp(18px,3vw,28px); }
 .review-panel > .songs-section-heading { grid-column: 1 / -1; }
+.review-notation-toggle { display: inline-grid; grid-template-columns: repeat(2,auto); overflow: hidden; border: 1px solid rgba(244,234,214,.2); border-radius: 999px; background: #0b0a08; padding: 3px; }
+.review-notation-toggle button { min-height: 34px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); padding: 0 13px; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; }
+.review-notation-toggle button[aria-pressed="true"] { background: var(--gold); color: #1b1207; }
 .review-song-map { display: grid; grid-template-columns: repeat(4,minmax(105px,1fr)); align-content: start; gap: 9px; max-height: 580px; overflow: auto; padding: 2px 8px 2px 2px; scrollbar-color: rgba(240,191,105,.42) transparent; }
 .review-map-bar { min-height: 104px; display: grid; align-content: space-between; gap: 8px; border: 1px solid rgba(244,234,214,.14); border-radius: 14px; background: #15130f; color: var(--cream); padding: 12px; text-align: left; cursor: pointer; }
 .review-map-bar > span { color: var(--gold); font-size: 11px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
@@ -188,6 +191,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .review-editor__status.needs-attention { color: #ef946d; }
 .review-editor__status.is-legacy { color: rgba(244,234,214,.58); }
 .review-editor__fields { display: grid; gap: 11px; }
+.review-editor__notation { display: grid; gap: 3px; margin: -3px 0 0; border: 1px solid rgba(240,191,105,.3); border-radius: 12px; background: rgba(240,191,105,.07); padding: 10px 12px; }
+.review-editor__notation span { color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.review-editor__notation strong { color: var(--cream); font: 650 27px/1 var(--lesson); }
 .review-editor__fields label { display: grid; gap: 6px; color: var(--cream); font-size: 12px; font-weight: 800; }
 .review-editor__fields small, .review-editor__reason { color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.4; }
 .review-editor__reason { margin: 0; border-top: 1px solid rgba(244,234,214,.1); padding-top: 12px; }

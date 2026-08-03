@@ -31,6 +31,8 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert 'id="review-editor"' in setup
     assert 'id="reference-panel"' in setup
     assert 'id="validate-reference"' in setup
+    assert 'id="review-show-chords"' in setup
+    assert 'id="review-show-nns"' in setup
     assert "The app does not fetch this page" in setup
     assert "coral bars need attention" in setup
     assert ">NNS<" in player
@@ -170,3 +172,8 @@ def test_review_distinguishes_legacy_map_from_unsaved_v2_preview() -> None:
     assert "This preview has not replaced your saved map" in setup_js
     assert 'loadProviderReference("user-supplied"' in setup_js
     assert "Reference-confirmed" in setup_js
+    assert "function chordForReview" in setup_js
+    assert 'tools.chordForDisplay' in setup_js
+    assert 'tools.saveSession(practiceSession)' in setup_js
+    assert "Chord names (editing)" in setup_js
+    assert "Nashville number" in setup_js
