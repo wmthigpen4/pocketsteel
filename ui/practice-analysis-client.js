@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const WORKER_URL = "/ui/practice-analysis-worker-relative-major-v7.js";
+  const WORKER_URL = "/ui/practice-analysis-worker-functional-regions-v8.js";
 
   async function decodeAudio(file) {
     const bytes = await file.arrayBuffer();

@@ -14,7 +14,7 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 7;
+  const QUALITY_CALIBRATION_VERSION = 8;
   const MIN_EXTENSION_GAIN = 0.09;
   const MIN_SEVENTH_CORE_RATIO = 0.8;
   const MIN_KEY_REGION_BARS = 6;
@@ -272,14 +272,7 @@
       for (const mode of ["major", "minor"]) {
         const key = { root, key: NOTE_NAMES[root], keyMode: mode };
         const contextFit = mean(harmonicEvidence.map((evidence) => Math.max(...evidence.map((candidate) => keyPrior(candidate.symbol, key)))));
-        const primaryFit = mean(harmonicEvidence.map((evidence) => {
-          const parsed = parseSymbol(evidence[0]?.symbol);
-          if (parsed.root == null) return 0;
-          const interval = degree(parsed.root, key.root);
-          const quality = parsed.quality === "7" ? "major" : parsed.quality === "m7" ? "minor" : parsed.quality;
-          if (mode === "major") return [0, 5, 7].includes(interval) && quality === "major" ? 1 : 0;
-          return (interval === 0 || interval === 5) && quality === "minor" || interval === 7 && ["minor", "major"].includes(quality) ? 1 : 0;
-        }));
+        const primaryFit = mean(harmonicEvidence.map((evidence) => primaryHarmonyFit(evidence[0]?.symbol, key)));
         const hintBonus = hint.key === key.key && (!hint.keyMode || hint.keyMode === mode) ? 0.045 : 0;
         const profile = mode === "major" ? MAJOR_PROFILE : MINOR_PROFILE;
         candidates.push({ root, key: key.key, mode, score: profileScore(average, root, profile) + contextFit * 0.18 + primaryFit * 0.08 + hintBonus + (mode === "major" ? 0.008 : 0) });
@@ -370,6 +363,14 @@
   }
 
   function degree(root, keyRoot) { return root == null ? null : (root - keyRoot + 12) % 12; }
+  function primaryHarmonyFit(symbol, key) {
+    const parsed = parseSymbol(symbol);
+    if (parsed.root == null) return 0;
+    const interval = degree(parsed.root, key.root);
+    const quality = parsed.quality === "7" ? "major" : parsed.quality === "m7" ? "minor" : parsed.quality;
+    if (key.keyMode === "major") return [0, 5, 7].includes(interval) && quality === "major" ? 1 : 0;
+    return ((interval === 0 || interval === 5) && quality === "minor") || (interval === 7 && ["minor", "major"].includes(quality)) ? 1 : 0;
+  }
   function keyPrior(symbol, key) {
     const parsed = parseSymbol(symbol);
     if (parsed.root == null) return symbol === "N.C." ? -0.02 : -0.5;
@@ -553,7 +554,8 @@
     const candidates = (bar.full.scored.candidates || []).filter((candidate) => candidate.symbol !== "N.C.").slice(0, 18);
     const chordFit = candidates.length ? Math.max(...candidates.map((candidate) => Number(candidate.score) + keyPrior(candidate.symbol, key) * 0.72)) : -0.4;
     const profile = key.keyMode === "minor" ? MINOR_PROFILE : MAJOR_PROFILE;
-    return chordFit + profileScore(bar.full.chroma, key.root, profile) * 0.24;
+    const primaryFit = primaryHarmonyFit(bar.full.scored.top?.symbol, key);
+    return chordFit + profileScore(bar.full.chroma, key.root, profile) * 0.24 + primaryFit * 0.12;
   }
 
   function normalizeKeyRegions(regions, barCount, fallbackKey) {
