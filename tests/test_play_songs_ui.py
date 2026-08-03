@@ -175,8 +175,8 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
 
     assert "Legacy Song Map" not in setup_js
     assert "Legacy chord map shown" not in setup_js
-    assert "function upgradeLegacyAnalysis()" in setup_js
-    assert "if (needsUpgrade) await upgradeLegacyAnalysis()" in setup_js
+    assert "function upgradeLegacyAnalysis(useExistingKeyHint = true)" in setup_js
+    assert "if (needsUpgrade) await upgradeLegacyAnalysis(true)" in setup_js
     assert 'project.timeline = { ...result.analysis, confirmationState: "detected" }' in setup_js
     assert 'setUpgradeVisibility(true)' in setup_js
     assert 'The older map is not offered as an alternative.' in setup_js
@@ -211,10 +211,11 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert "preserveManualChordEdits" in setup_js
     assert "seventhEvidenceTeaching" in setup_js
     assert "Audio ♭7 evidence" in setup_js
-    assert 'qualityCalibrationVersion || 0) < 6) await handleKeyChange()' in setup_js
+    assert 'qualityCalibrationVersion || 0) < 7) await upgradeLegacyAnalysis(false)' in setup_js
     assert "New key ·" in setup_js
     assert 'event.symbol === "N.C." ? "No chord"' in setup_js
     assert 'NO\\s+CHORD' in setup_js
+    assert "calibrateRelativeMinorQualities" in (REPO_ROOT / "ui" / "practice-analysis-worker.js").read_text(encoding="utf-8")
 
 
 def test_play_along_uses_active_section_key_for_nns_and_key_markers() -> None:

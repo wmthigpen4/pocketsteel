@@ -464,7 +464,7 @@
     confirmButton.hidden = true;
   }
 
-  async function upgradeLegacyAnalysis() {
+  async function upgradeLegacyAnalysis(useExistingKeyHint = true) {
     if (analysisRunning) return;
     analysisRunning = true; pendingAnalysis = null; showingPreview = false;
     setUpgradeVisibility(true);
@@ -478,8 +478,7 @@
     try {
       const result = await analysisClient.analyzeFile(audioFile, {
         tempoHint: Number(project.timeline.tempo),
-        keyHint: project.timeline.key,
-        keyModeHint: project.timeline.keyMode || "major"
+        ...(useExistingKeyHint ? { keyHint: project.timeline.key, keyModeHint: project.timeline.keyMode || "major" } : {})
       }, (stage, detail) => { reanalyzeStatus.textContent = `${stage}: ${detail}`; });
       project.timeline = { ...result.analysis, confirmationState: "detected" };
       selectedBar = 0;
@@ -594,7 +593,7 @@
       Array.from({ length: barCount() }, (_item, index) => index + 1).filter(barNeedsAttention).forEach(acceptBar);
       renderReview(); updateConfirmation(); queueSave();
     };
-    reanalyzeButton.onclick = upgradeLegacyAnalysis;
+    reanalyzeButton.onclick = () => upgradeLegacyAnalysis(needsUpgrade);
     previewRhythmButton.onclick = runFreshAnalysis;
     document.querySelector("#accept-reanalysis").onclick = acceptReanalysis;
     document.querySelector("#discard-reanalysis").onclick = () => { pendingAnalysis = null; showingPreview = false; selectedBar = 0; reanalyzePreview.hidden = true; reanalyzeStatus.textContent = "Current map kept."; setControlsFromTimeline(); configureReanalysis(); renderReview(); updateConfirmation(); };
@@ -603,8 +602,8 @@
     showNnsButton.onclick = () => setReviewChordDisplay("nns").catch((error) => { status.textContent = error.message; });
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     app.hidden = false;
-    if (needsUpgrade) await upgradeLegacyAnalysis();
-    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 6) await handleKeyChange();
+    if (needsUpgrade) await upgradeLegacyAnalysis(true);
+    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 7) await upgradeLegacyAnalysis(false);
     else { renderReview(); updateConfirmation(); }
   }
 

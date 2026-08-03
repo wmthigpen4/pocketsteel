@@ -197,7 +197,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"Review Song" in setup
     assert b"practice-reference-validation-v1.js" in setup
-    assert b"setup-song-no-chord-v7.js" in setup
+    assert b"setup-song-relative-major-v8.js" in setup
     assert b"play-song-no-chord-v4.js" in player
     assert b"play-songs-key-cues-v2.css" in player
     assert b"play-songs-key-regions-v1.css" in setup
@@ -206,7 +206,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     for asset_path, marker in (
         ("/ui/play-songs.css", b".play-cue-deck"),
         ("/ui/songs.js", b"STEEL_RAG_ANALYSIS_CLIENT"),
-        ("/ui/practice-analysis-client.js", b"practice-analysis-worker-key-regions-v6.js"),
+        ("/ui/practice-analysis-client.js", b"practice-analysis-worker-relative-major-v7.js"),
         ("/ui/practice-analysis-worker.js", b"ANALYSIS_VERSION = 2"),
         ("/ui/practice-reference-validation.js", b"loadProviderReference"),
         ("/ui/practice-tools.js", b"navigator.storage"),

@@ -77,7 +77,54 @@ def test_seventh_quality_requires_added_seventh_evidence() -> None:
         console.log(JSON.stringify({weak:a.chordCandidates(weak).top.symbol,clear:a.chordCandidates(clear).top.symbol,refreshed:refreshed.chords.map(chord=>chord.symbol),contextual:[...new Set(contextual)],version:refreshed.analysisState.qualityCalibrationVersion}));
         """
     )
-    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 6}
+    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 7}
+
+
+def test_major_sixth_color_uses_the_audible_root_instead_of_the_relative_minor() -> None:
+    payload = run_node(
+        r"""
+        const a=require('./ui/practice-analysis-worker.js');
+        function chroma(notes){const value=Array(12).fill(.01);for(const [pc,weight] of notes)value[pc]=weight;return value;}
+        const gSix=chroma([[7,1],[11,.7],[2,.72],[4,.85]]);
+        const eMinorSeven=chroma([[4,1],[7,.82],[11,.68],[2,.76]]);
+        console.log(JSON.stringify({majorSix:a.chordCandidates(gSix).top.symbol,trueMinorSeven:a.chordCandidates(eMinorSeven).top.symbol,key:a.estimateKey(Array(24).fill(gSix))}));
+        """
+    )
+    assert payload["majorSix"] == "G"
+    assert payload["trueMinorSeven"] == "Em7"
+    assert payload["key"]["key"] == "G"
+    assert payload["key"]["keyMode"] == "major"
+
+
+def test_fresh_ambiguous_country_form_recovers_g_c_a_major_regions() -> None:
+    payload = run_node(
+        r"""
+        const a=require('./ui/practice-analysis-worker.js');
+        const pcs={C:0,D:2,E:4,F:5,'F#':6,G:7,A:9,B:11};
+        function chroma(root,quality='six'){
+          const value=Array(12).fill(.01),pc=pcs[root];
+          const intervals=quality==='six'?[[0,1],[4,.72],[7,.7],[9,.84]]:quality==='minor'?[[0,1],[3,.82],[7,.72]]:[[0,1],[4,.82],[7,.72]];
+          intervals.forEach(([interval,weight])=>value[(pc+interval)%12]=weight);return value;
+        }
+        function bar(value,index){const scored=a.chordCandidates(value);return {bar:index+1,startMs:index*1000,endMs:(index+1)*1000,full:{chroma:value,scored},first:{chroma:value,scored},second:{chroma:value,scored}};}
+        const form=[];
+        for(let repeat=0;repeat<6;repeat++) form.push(chroma('G'),chroma('E','minor'),chroma('C'),chroma('D','major'));
+        for(let repeat=0;repeat<4;repeat++) form.push(chroma('C'),chroma('A','minor'),chroma('F'),chroma('G'));
+        for(let repeat=0;repeat<6;repeat++) form.push(chroma('A'),chroma('F#','minor'),chroma('D'),chroma('E'));
+        const bars=form.map(bar),window=bars.slice(0,Math.min(bars.length,48,Math.max(12,Math.ceil(bars.length/3))));
+        const key=a.estimateKey(window.map(item=>item.full.chroma));
+        const decoded=a.decodeBars(bars,key,bars.map(item=>item.startMs),bars.length*1000,null,true);
+        console.log(JSON.stringify({key:{key:key.key,keyMode:key.keyMode},regions:decoded.keyRegions.map(({startBar,endBar,key,keyMode})=>({startBar,endBar,key,keyMode}))}));
+        """
+    )
+    assert payload == {
+        "key": {"key": "G", "keyMode": "major"},
+        "regions": [
+            {"startBar": 1, "endBar": 24, "key": "G", "keyMode": "major"},
+            {"startBar": 25, "endBar": 40, "key": "C", "keyMode": "major"},
+            {"startBar": 41, "endBar": 64, "key": "A", "keyMode": "major"},
+        ],
+    }
 
 
 def test_detects_stable_g_c_a_key_regions_and_keeps_plain_dominants_as_triads() -> None:
@@ -265,7 +312,7 @@ def test_v2_contract_keeps_project_schema_and_audio_local() -> None:
     setup_html = (REPO_ROOT / "ui/setup-song.html").read_text(encoding="utf-8")
     assert "Reanalyze with improved method" not in setup_html
     assert "Updating Song Map" in setup_html
-    assert "if (needsUpgrade) await upgradeLegacyAnalysis()" in setup
+    assert "if (needsUpgrade) await upgradeLegacyAnalysis(true)" in setup
     assert "fetch(" not in client
     assert "XMLHttpRequest" not in client
     assert "fetch(" not in worker and "XMLHttpRequest" not in worker and "importScripts" not in worker

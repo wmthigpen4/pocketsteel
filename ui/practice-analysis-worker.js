@@ -14,7 +14,7 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 6;
+  const QUALITY_CALIBRATION_VERSION = 7;
   const MIN_EXTENSION_GAIN = 0.09;
   const MIN_SEVENTH_CORE_RATIO = 0.8;
   const MIN_KEY_REGION_BARS = 6;
@@ -272,9 +272,17 @@
       for (const mode of ["major", "minor"]) {
         const key = { root, key: NOTE_NAMES[root], keyMode: mode };
         const contextFit = mean(harmonicEvidence.map((evidence) => Math.max(...evidence.map((candidate) => keyPrior(candidate.symbol, key)))));
+        const primaryFit = mean(harmonicEvidence.map((evidence) => {
+          const parsed = parseSymbol(evidence[0]?.symbol);
+          if (parsed.root == null) return 0;
+          const interval = degree(parsed.root, key.root);
+          const quality = parsed.quality === "7" ? "major" : parsed.quality === "m7" ? "minor" : parsed.quality;
+          if (mode === "major") return [0, 5, 7].includes(interval) && quality === "major" ? 1 : 0;
+          return (interval === 0 || interval === 5) && quality === "minor" || interval === 7 && ["minor", "major"].includes(quality) ? 1 : 0;
+        }));
         const hintBonus = hint.key === key.key && (!hint.keyMode || hint.keyMode === mode) ? 0.045 : 0;
         const profile = mode === "major" ? MAJOR_PROFILE : MINOR_PROFILE;
-        candidates.push({ root, key: key.key, mode, score: profileScore(average, root, profile) + contextFit * 0.18 + hintBonus + (mode === "major" ? 0.008 : 0) });
+        candidates.push({ root, key: key.key, mode, score: profileScore(average, root, profile) + contextFit * 0.18 + primaryFit * 0.08 + hintBonus + (mode === "major" ? 0.008 : 0) });
       }
     }
     candidates.sort((left, right) => right.score - left.score);
@@ -323,6 +331,23 @@
     });
   }
 
+  function calibrateRelativeMinorQualities(candidates, chroma = []) {
+    const majorByRoot = new Map(candidates.filter((candidate) => parseSymbol(candidate.symbol).quality === "major").map((candidate) => [parseSymbol(candidate.symbol).root, candidate]));
+    return candidates.map((candidate) => {
+      const parsed = parseSymbol(candidate.symbol);
+      if (!["minor", "m7"].includes(parsed.quality)) return candidate;
+      const relativeMajorRoot = (parsed.root + 3) % 12;
+      const relativeMajor = majorByRoot.get(relativeMajorRoot);
+      if (!relativeMajor) return candidate;
+      const minorRootEvidence = Number(chroma[parsed.root] || 0);
+      const majorRootEvidence = Number(chroma[relativeMajorRoot] || 0);
+      const rootSupportsMajor = majorRootEvidence >= Math.max(0.08, minorRootEvidence * 1.05);
+      const harmonicallyAmbiguous = Number(relativeMajor.score) >= Number(candidate.score) - 0.3;
+      if (!rootSupportsMajor || !harmonicallyAmbiguous) return candidate;
+      return { ...candidate, score: round(Math.min(Number(candidate.score), Number(relativeMajor.score) - 0.025)), relativeMajorPreferred: true };
+    });
+  }
+
   function chordCandidates(chroma, energy = 1, silenceThreshold = 0) {
     let candidates = [];
     for (let root = 0; root < 12; root += 1) {
@@ -337,7 +362,7 @@
     }
     const relativeEnergy = silenceThreshold > 0 ? energy / silenceThreshold : 10;
     candidates.push({ symbol: "N.C.", root: null, quality: "none", score: relativeEnergy < 1 ? 0.96 - 0.18 * relativeEnergy : Math.max(0.02, 0.24 / relativeEnergy) });
-    candidates = calibrateExtendedQualities(candidates, chroma);
+    candidates = calibrateRelativeMinorQualities(calibrateExtendedQualities(candidates, chroma), chroma);
     candidates.sort((left, right) => right.score - left.score);
     const top = candidates[0], next = candidates[1] || top;
     const confidence = clamp(0.28 + (top.score - next.score) * 3.8 + (top.score - 0.68) * 1.25, 0.05, 0.99);
@@ -780,7 +805,7 @@
   function hydrateRetainedBars(analysis) {
     return (analysis.analysisState?.bars || []).map((bar) => {
       const make = (item) => {
-        const candidates = calibrateExtendedQualities(item.candidates || [], item.chroma || []).sort((left, right) => right.score - left.score);
+        const candidates = calibrateRelativeMinorQualities(calibrateExtendedQualities(item.candidates || [], item.chroma || []), item.chroma || []).sort((left, right) => right.score - left.score);
         const top = candidates[0] || { symbol: "N.C.", score: 0 };
         const next = candidates[1] || top;
         return { chroma: item.chroma, energy: item.energy, scored: { top, candidates, confidence: clamp(0.28 + (top.score - next.score) * 3.8, 0.05, 0.99) } };
@@ -821,11 +846,12 @@
     const silenceThreshold = Math.max(1e-6, median(energies) * 0.55);
     const bars = barEvidence(rhythm.beatEvidence, rhythm.barStartsMs, durationMs, rhythm.beatsPerBar, silenceThreshold);
     if (!bars.length) throw new Error("Song bars could not be aligned to the recording.");
+    const startingKeyBars = bars.slice(0, Math.min(bars.length, 48, Math.max(MIN_KEY_REGION_BARS * 2, Math.ceil(bars.length / 3))));
     const key = options.key && NOTE_NAMES.includes(options.key)
       ? { key: options.key, keyMode: options.keyMode === "minor" ? "minor" : "major", root: NOTE_NAMES.indexOf(options.key), confidence: 1, alternatives: [] }
-      : estimateKey(bars.map((bar) => bar.full.chroma), { key: options.keyHint, keyMode: options.keyModeHint });
+      : estimateKey(startingKeyBars.map((bar) => bar.full.chroma), { key: options.keyHint, keyMode: options.keyModeHint });
     notify("Detecting beats, meter, key, and chords", "Decoding the complete chord sequence");
-    const decoded = decodeBars(bars, key, rhythm.barStartsMs, durationMs, null, Boolean(options.key));
+    const decoded = decodeBars(bars, key, rhythm.barStartsMs, durationMs, null, true);
     const startingRegion = decoded.keyRegions[0] || { key: key.key, keyMode: key.keyMode, confidence: key.confidence };
     notify("Building the steel route", "Preparing the attention list and editable chord bars");
     const firstBarMs = rhythm.barStartsMs[0] || 0;
