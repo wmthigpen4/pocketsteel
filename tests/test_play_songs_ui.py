@@ -227,6 +227,21 @@ def test_play_along_uses_active_section_key_for_nns_and_key_markers() -> None:
     assert "Current key" in player_html
 
 
+def test_play_along_surfaces_key_changes_in_now_and_next_cues() -> None:
+    player_js = (REPO_ROOT / "ui" / "play-song.js").read_text(encoding="utf-8")
+    player_html = (REPO_ROOT / "ui" / "play-song.html").read_text(encoding="utf-8")
+    player_css = (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
+    assert 'id="current-key-change"' in player_html
+    assert 'id="next-key-change"' in player_html
+    assert '"Key change"' in player_js
+    assert '"Key change ahead"' in player_js
+    assert "activeKey.region?.startBar === currentBar" in player_js
+    assert ".play-key-change.is-ahead" in player_css
+    assert ".play-cue.has-key-change" in player_css
+    assert "play-song-key-cues-v3.js" in player_html
+    assert "play-songs-key-cues-v2.css" in player_html
+
+
 def test_play_along_keeps_a_fretboard_position_visible_during_no_chord() -> None:
     player_js = (REPO_ROOT / "ui" / "play-song.js").read_text(encoding="utf-8")
     player_html = (REPO_ROOT / "ui" / "play-song.html").read_text(encoding="utf-8")
@@ -235,4 +250,4 @@ def test_play_along_keeps_a_fretboard_position_visible_during_no_chord() -> None
     assert "const displayedCurrent = fretboardAnchorEvent(current, next, timeMs)" in player_js
     assert "renderFretboard(current, next, timeMs)" in player_js
     assert 'return "Rest · keep your place and listen."' in player_js
-    assert "play-song-hold-no-chord-v2.js" in player_html
+    assert "play-song-key-cues-v3.js" in player_html

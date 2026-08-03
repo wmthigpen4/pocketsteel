@@ -11,8 +11,8 @@
   const audio = document.querySelector("#play-audio");
   const elements = {
     title: document.querySelector("#play-title"), key: document.querySelector("#play-key"), keyJourney: document.querySelector("#play-key-journey"), meta: document.querySelector("#play-meta"), attribution: document.querySelector("#play-attribution"), bar: document.querySelector("#play-bar"),
-    objective: document.querySelector("#play-objective"), currentChord: document.querySelector("#current-chord"), currentGrip: document.querySelector("#current-grip"), currentMelody: document.querySelector("#current-melody"), currentMove: document.querySelector("#current-move"),
-    nextLabel: document.querySelector("#next-chord-label"), nextDirection: document.querySelector("#next-direction"), nextDirectionArrow: document.querySelector("#next-direction-arrow"), nextDirectionText: document.querySelector("#next-direction-text"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMelody: document.querySelector("#next-melody"),
+    objective: document.querySelector("#play-objective"), currentCard: document.querySelector(".play-cue.is-current"), currentKeyChange: document.querySelector("#current-key-change"), currentChord: document.querySelector("#current-chord"), currentGrip: document.querySelector("#current-grip"), currentMelody: document.querySelector("#current-melody"), currentMove: document.querySelector("#current-move"),
+    nextLabel: document.querySelector("#next-chord-label"), nextKeyChange: document.querySelector("#next-key-change"), nextDirection: document.querySelector("#next-direction"), nextDirectionArrow: document.querySelector("#next-direction-arrow"), nextDirectionText: document.querySelector("#next-direction-text"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMelody: document.querySelector("#next-melody"),
     fretboard: document.querySelector("#play-fretboard"), lyric: document.querySelector("#play-lyric"), toggle: document.querySelector("#play-toggle"), restart: document.querySelector("#play-restart"),
     scrub: document.querySelector("#play-scrub"), time: document.querySelector("#play-time"), speed: document.querySelector("#play-speed"), route: document.querySelector("#play-route"), loop: document.querySelector("#play-loop"), volume: document.querySelector("#play-volume"),
     checkpoints: Array.from(document.querySelectorAll("[data-checkpoint]")), nextCard: document.querySelector(".play-cue.is-next"),
@@ -76,6 +76,16 @@
 
   function displayedChord(symbol, bar) {
     return practiceTools?.chordForDisplay(symbol, keyContextForBar(bar).key, practiceSession?.chordDisplay || "letters") || symbol;
+  }
+
+  function keyDisplayName(context) {
+    return `${context?.key || "—"} ${context?.keyMode === "minor" ? "minor" : "major"}`;
+  }
+
+  function setKeyChangeCue(element, card, message, context, visible) {
+    element.hidden = !visible;
+    element.textContent = visible ? `${message} · ${keyDisplayName(context)}` : "";
+    card?.classList.toggle("has-key-change", visible);
   }
 
   function queueSessionSave(force = false) {
@@ -510,6 +520,11 @@
       elements.nextMelody.hidden = !elements.nextMelody.textContent;
       renderMovementIndicator(current, next);
       const activeKey = keyContextForBar(currentBar);
+      const upcomingKey = next ? keyContextForBar(nextBar) : null;
+      const currentStartsNewKey = Boolean(current && currentBar > 1 && activeKey.region?.startBar === currentBar);
+      const nextCrossesKey = Boolean(next && nextBar !== currentBar && upcomingKey && (activeKey.key !== upcomingKey.key || activeKey.keyMode !== upcomingKey.keyMode));
+      setKeyChangeCue(elements.currentKeyChange, elements.currentCard, "Key change", activeKey, currentStartsNewKey);
+      setKeyChangeCue(elements.nextKeyChange, elements.nextCard, "Key change ahead", upcomingKey, nextCrossesKey);
       elements.key.textContent = `${activeKey.key}${activeKey.keyMode === "minor" ? " minor" : ""}`;
       elements.bar.textContent = current?.isPickup ? `Pickup · Bar 1 of ${chart.measures.length}` : current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";
       renderFretboard(current, next, timeMs);

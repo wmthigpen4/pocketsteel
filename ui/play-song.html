@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Play Along · Steel Guitar RAG</title>
-  <link rel="stylesheet" href="/ui/play-songs-key-regions-v1.css">
+  <link rel="stylesheet" href="/ui/play-songs-key-cues-v2.css">
 </head>
 <body>
   <header class="songs-header">
@@ -19,13 +19,13 @@
     <p class="play-objective" id="play-objective">Keep the melody as the highest note.</p>
     <section class="play-cue-deck" aria-label="Current and upcoming chord">
       <article class="play-cue is-current" aria-labelledby="current-chord-label">
-        <p class="play-cue__label" id="current-chord-label">Now</p>
+        <div class="play-cue__head"><p class="play-cue__label" id="current-chord-label">Now</p><p class="play-key-change" id="current-key-change" hidden></p></div>
         <div class="play-cue__row"><h2 class="play-cue__chord" id="current-chord">—</h2><div class="play-grip" id="current-grip"></div></div>
         <p class="play-melody-cue" id="current-melody" hidden></p>
         <p class="play-move" id="current-move">Listen for the count-in.</p>
       </article>
       <article class="play-cue is-next" aria-labelledby="next-chord-label">
-        <div class="play-cue__head"><p class="play-cue__label" id="next-chord-label">Next</p><p class="play-direction" id="next-direction" hidden><span class="play-direction__arrow" id="next-direction-arrow" aria-hidden="true"></span><span id="next-direction-text"></span></p></div>
+        <div class="play-cue__head"><p class="play-cue__label" id="next-chord-label">Next</p><div class="play-cue__signals"><p class="play-key-change is-ahead" id="next-key-change" hidden></p><p class="play-direction" id="next-direction" hidden><span class="play-direction__arrow" id="next-direction-arrow" aria-hidden="true"></span><span id="next-direction-text"></span></p></div></div>
         <div class="play-cue__row"><h2 class="play-cue__chord" id="next-chord">—</h2><div class="play-grip" id="next-grip"></div></div>
         <p class="play-melody-cue" id="next-melody" hidden></p>
       </article>
@@ -83,6 +83,6 @@
   <script src="/ui/song-projects.js?v=play-songs-20260801-2"></script>
   <script src="/ui/practice-tools-key-regions-v1.js"></script>
   <script src="/ui/practice-transport.js?v=play-songs-20260802-1"></script>
-  <script src="/ui/play-song-hold-no-chord-v2.js"></script>
+  <script src="/ui/play-song-key-cues-v3.js"></script>
 </body>
 </html>
