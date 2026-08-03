@@ -615,6 +615,12 @@
   async function arrangeChordLesson(lesson) {
     chart = songTools.parseSongChart(track.chart, { mode: "letter", key: track.key, meter: track.meter });
     if (chart.errors.length) throw new Error(chart.errors.join(" "));
+    if (Array.isArray(track.timelineChords)) {
+      chart.measures.forEach((measure, measureIndex) => {
+        const events = track.timelineChords.filter((event) => Number(event.bar) === measureIndex + 1).sort((left, right) => Number(left.startFraction || 0) - Number(right.startFraction || 0));
+        if (events.length === measure.resolvedChords.length) measure.chordFractions = events.map((event) => Number(event.startFraction || 0));
+      });
+    }
     const route = selectedChordRoute(lesson);
     const practiceProject = {
       key: track.key, meter: track.meter, style: "classic_country", sections: chart.sections, measures: chart.measures,
@@ -646,10 +652,15 @@
     const file = await practiceTools.readAudio(project.audio?.opfsPath || `${project.id}.audio`).catch(() => null);
     if (!file) throw new Error("The local recording is missing. Return to Songs and relink the original file with the same fingerprint.");
     localAudioUrl = URL.createObjectURL(file);
+    const timelineChords = chords.map((chord, index) => ({ ...chord, bar: Number(chord.bar || index + 1), startFraction: Number(chord.startFraction || 0) }));
+    const chartBars = timeline.barStartsMs.map((_start, index) => {
+      const symbols = timelineChords.filter((chord) => chord.bar === index + 1).sort((left, right) => left.startFraction - right.startFraction).map((chord) => chord.symbol || "N.C.");
+      return symbols.length ? symbols.join(" ") : "N.C.";
+    });
     return {
-      id: project.id, projectId: project.id, title: project.title, performer: "On-device recording", key: timeline.key || "G", meter: timeline.meter || "4/4", tempo: Number(timeline.tempo || 100),
+      id: project.id, projectId: project.id, title: project.title, performer: "On-device recording", key: timeline.key || "G", keyMode: timeline.keyMode || "major", meter: timeline.meter || "4/4", tempo: Number(timeline.tempo || 100),
       durationMs: Number(project.audio.durationMs), barStartsMs: timeline.barStartsMs.map(Number), beatTimesMs: (timeline.beatTimesMs || []).map(Number),
-      chart: `[Detected song] | ${chords.map((chord) => chord.symbol || "N.C.").join(" | ")} |`, audioUrl: localAudioUrl, playAlongReady: true,
+      chart: `[Detected song] | ${chartBars.join(" | ")} |`, timelineChords, audioUrl: localAudioUrl, playAlongReady: true,
       routeOptions: [{ id: "movement", label: "Move the Bar", description: "Follow a practical E9 chord route generated from your reviewed chart." }], defaultRouteId: "movement",
       recordingCredit: "Stored and analyzed only on this device", authoredCountIn: Boolean(timeline.authoredCountIn), localProject: true
     };
@@ -657,7 +668,7 @@
 
   function prepareTrackShell() {
     elements.title.textContent = track.title;
-    elements.key.textContent = track.key || "—";
+    elements.key.textContent = track.key ? `${track.key}${track.keyMode === "minor" ? " minor" : ""}` : "—";
     elements.meta.textContent = [track.performer, track.meter, track.tempo ? `${track.tempo} BPM` : ""].filter(Boolean).join(" · ");
     elements.attribution.replaceChildren(document.createTextNode(track.recordingCredit || ""));
     if (track.rightsUrl) {

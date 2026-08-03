@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Review Song · Steel Guitar RAG</title>
-  <link rel="stylesheet" href="/ui/play-songs.css?v=play-songs-20260802-2">
+  <link rel="stylesheet" href="/ui/play-songs.css?v=review-map-v2-20260803">
 </head>
 <body>
   <header class="songs-header"><a class="songs-brand" href="/songs"><span>Steel Guitar RAG</span><strong>Review Song</strong></a><nav class="songs-nav"><a href="/songs">Songs</a><a href="/ui/steel-guitar-rag-mock.html">Home</a></nav></header>
@@ -13,15 +13,24 @@
     <section class="setup-summary" aria-label="Detected song details">
       <label>Title <input id="setup-song-title" type="text" maxlength="120"></label>
       <label>Key <select id="setup-key"><option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select></label>
+      <label>Mode <select id="setup-key-mode"><option value="major">Major</option><option value="minor">Minor</option></select></label>
       <label>Tempo <input id="setup-tempo" type="number" min="40" max="240" step="1"> BPM</label>
-      <label>Meter <select id="setup-meter"><option>3/4</option><option>4/4</option><option>6/8</option></select></label>
+      <label>Meter <select id="setup-meter"><option>2/4</option><option>3/4</option><option>4/4</option><option>6/8</option></select></label>
+    </section>
+    <section class="analysis-summary" id="analysis-summary" aria-label="Analysis confidence"></section>
+    <section class="reanalyze-panel" id="reanalyze-panel">
+      <div><strong id="reanalyze-title">Improved local analysis is available.</strong><p id="reanalyze-copy">Nothing changes until you accept a fresh preview.</p></div>
+      <div class="reanalyze-panel__actions"><button class="songs-button" id="reanalyze-v2" type="button">Reanalyze with improved method</button><button class="songs-button" id="preview-rhythm" type="button" hidden>Preview new timing</button></div>
+      <p class="reanalyze-panel__status" id="reanalyze-status" role="status"></p>
+      <div class="reanalyze-preview" id="reanalyze-preview" hidden><strong id="reanalyze-preview-copy"></strong><div><button class="songs-button is-primary" id="accept-reanalysis" type="button">Use this analysis</button><button class="songs-button is-quiet" id="discard-reanalysis" type="button">Keep current map</button></div></div>
     </section>
     <audio id="setup-audio" controls preload="metadata"></audio>
-    <section class="review-panel"><div class="songs-section-heading"><div><h2>Chord and timing review</h2><p>Low-confidence bars are highlighted. Change a chord or downbeat, then check Reviewed when it sounds right.</p></div><button class="songs-button is-quiet" id="review-all" type="button">Mark all reviewed</button></div><div class="review-grid review-grid--header" aria-hidden="true"><span>Bar</span><span>Chord</span><span>Downbeat</span><span>Confidence</span><span>Reviewed</span></div><div id="review-chords"></div></section>
+    <section class="review-panel"><div class="songs-section-heading"><div><p class="songs-kicker">First-pass review</p><h2 id="review-heading">Song Map</h2><p id="review-description">See the whole progression at once. Amber bars are accepted; coral bars need attention. Select any bar to hear and correct it.</p></div><div class="review-actions"><button class="songs-button is-quiet" id="review-all" type="button">Accept highlighted bars</button></div></div><div class="review-song-map" id="review-song-map" aria-label="Detected chord map"></div><section class="review-editor" id="review-editor" aria-live="polite"></section></section>
     <p class="songs-status" id="setup-status" role="status"></p>
   </main>
   <section class="play-error" id="setup-error" hidden><h1>This song could not open.</h1><p id="setup-error-copy"></p><a class="songs-button" href="/songs">Back to Songs</a></section>
-  <script src="/ui/practice-tools-20260802.js?v=control-labels-1"></script>
-  <script src="/ui/setup-song.js?v=play-songs-20260802-1"></script>
+  <script src="/ui/practice-tools-20260802.js?v=key-aware-v2-20260803"></script>
+  <script src="/ui/practice-analysis-client-key-aware-v2-4.js?v=20260803"></script>
+  <script src="/ui/setup-song-key-aware-v2-3.js?v=20260803"></script>
 </body>
 </html>

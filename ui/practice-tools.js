@@ -7,6 +7,7 @@
   const SESSION_STORE = "practiceSessions";
   const AUDIO_DIR = "practice-audio";
   const SESSION_SCHEMA_VERSION = 1;
+  const CHART_REFERENCE_PROVIDER_VERSION = 1;
   const NOTE_PCS = {
     C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4,
     F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9,
@@ -179,6 +180,18 @@
     return `${NASHVILLE_DEGREES[(chordPitch - keyPitch + 12) % 12]}${nashvilleSuffix(chordMatch[3])}`;
   }
 
+  function chartReferenceProvider(adapter) {
+    if (!adapter || typeof adapter.lookup !== "function" || !String(adapter.id || "").trim()) {
+      throw new Error("A chart reference provider needs an id and a permitted lookup function.");
+    }
+    return Object.freeze({
+      schemaVersion: CHART_REFERENCE_PROVIDER_VERSION,
+      id: String(adapter.id),
+      attribution: String(adapter.attribution || adapter.id),
+      lookup: adapter.lookup
+    });
+  }
+
   function controlLabelForDisplay(value) {
     const label = String(value || "").trim().replace(
       /\s*\((?:p(?:edal)?\s*\d+|[lr]k[lrv]\d*(?:\.(?:half|full))?)\)/gi,
@@ -257,11 +270,11 @@
   }
 
   const api = {
-    DB_NAME, DB_VERSION, PROJECT_STORE, SESSION_STORE, SESSION_SCHEMA_VERSION,
+    DB_NAME, DB_VERSION, PROJECT_STORE, SESSION_STORE, SESSION_SCHEMA_VERSION, CHART_REFERENCE_PROVIDER_VERSION,
     openDatabase, listProjects, loadProject, saveProject, deleteProject,
     loadSession, saveSession, sessionDefaults,
     writeAudio, readAudio, removeAudio, hasAudio, fingerprintFile, findProjectByFingerprint,
-    chordForDisplay, controlLabelForDisplay, controlLabelsForDisplay,
+    chordForDisplay, chartReferenceProvider, controlLabelForDisplay, controlLabelsForDisplay,
     projectBars, barsToLoopRange, countBasedLoopRange, beatTimesForTrack, meterBeats
   };
 

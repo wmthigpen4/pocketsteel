@@ -2,6 +2,7 @@
   "use strict";
 
   const tools = global.STEEL_RAG_PRACTICE;
+  const analysisClient = global.STEEL_RAG_ANALYSIS_CLIENT;
   const MAX_BYTES = 250 * 1024 * 1024;
   const MAX_DURATION_SECONDS = 15 * 60;
   const ACCEPTED_EXTENSIONS = new Set(["mp3", "m4a", "aac", "wav"]);
@@ -14,7 +15,7 @@
   const progressTitle = document.querySelector("#import-progress-title");
   const progressDetail = document.querySelector("#import-progress-detail");
   const duplicateDialog = document.querySelector("#duplicate-dialog");
-  let worker = null;
+  let analysisController = null;
   let cancelled = false;
 
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]); }
@@ -29,37 +30,6 @@
       if (item.dataset.stage === stage) reached = true;
       item.classList.toggle("is-current", item.dataset.stage === stage);
       item.classList.toggle("is-complete", !reached && item.dataset.stage !== stage);
-    });
-  }
-
-  function readAudioBuffer(file) {
-    return file.arrayBuffer().then(async (bytes) => {
-      const context = new (global.AudioContext || global.webkitAudioContext)();
-      try { return await context.decodeAudioData(bytes.slice(0)); }
-      catch (_error) { throw new Error("This recording could not be decoded. Try an MP3, M4A/AAC, or WAV file that plays normally on this device."); }
-      finally { await context.close(); }
-    });
-  }
-
-  function monoSamples(buffer) {
-    const output = new Float32Array(buffer.length);
-    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
-      const input = buffer.getChannelData(channel);
-      for (let index = 0; index < output.length; index += 1) output[index] += input[index] / buffer.numberOfChannels;
-    }
-    return output;
-  }
-
-  function analyze(samples, sampleRate, durationMs) {
-    return new Promise((resolve, reject) => {
-      worker = new Worker("/ui/practice-analysis-worker.js?v=play-songs-20260802-1");
-      worker.onmessage = (event) => {
-        if (event.data?.type === "progress") updateStage(event.data.stage, event.data.detail);
-        if (event.data?.type === "complete") { worker.terminate(); worker = null; resolve(event.data.analysis); }
-        if (event.data?.type === "error") { worker.terminate(); worker = null; reject(new Error(event.data.message)); }
-      };
-      worker.onerror = () => { worker?.terminate(); worker = null; reject(new Error("Local song analysis was interrupted. You can try the recording again.")); };
-      worker.postMessage({ type: "analyze", samples: samples.buffer, sampleRate, durationMs }, [samples.buffer]);
     });
   }
 
@@ -88,13 +58,20 @@
     const fingerprint = await tools.fingerprintFile(file);
     const duplicate = await tools.findProjectByFingerprint(fingerprint);
     if (duplicate) { progressDialog.close(); await waitForDuplicateChoice(duplicate); return null; }
-    const decoded = await readAudioBuffer(file);
+    if (!analysisClient) throw new Error("Local song analysis is unavailable. Reload the page and try again.");
+    analysisController = new AbortController();
+    const decoded = await analysisClient.decodeAudio(file);
     const durationSeconds = Number(decoded.duration);
     if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) throw new Error("The recording duration could not be read.");
     if (durationSeconds > MAX_DURATION_SECONDS) throw new Error("Choose a recording that is 15 minutes or shorter.");
     if (cancelled) return null;
     const durationMs = Math.round(durationSeconds * 1000);
-    const analysis = await analyze(monoSamples(decoded), decoded.sampleRate, durationMs);
+    const samples = analysisClient.monoSamples(decoded);
+    const analysis = await analysisClient.runWorker(
+      { type: "analyze", samples: samples.buffer, sampleRate: decoded.sampleRate, durationMs, signal: analysisController.signal },
+      [samples.buffer], updateStage
+    );
+    analysisController = null;
     if (cancelled) return null;
     updateStage("Saving on this device", "Keeping the original audio and analysis in this browser");
     const id = `local-${global.crypto?.randomUUID?.() || Date.now()}`;
@@ -145,7 +122,7 @@
   }
 
   addButtons.forEach((button) => button.addEventListener("click", () => fileInput.click()));
-  document.querySelector("#cancel-import").addEventListener("click", () => { cancelled = true; worker?.postMessage({ type: "cancel" }); worker?.terminate(); worker = null; progressDialog.close(); });
+  document.querySelector("#cancel-import").addEventListener("click", () => { cancelled = true; analysisController?.abort(); analysisController = null; progressDialog.close(); });
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files?.[0]; fileInput.value = ""; if (!file) return;
     const relinkId = fileInput.dataset.relink; delete fileInput.dataset.relink;

@@ -61,3 +61,20 @@ def test_upload_analysis_has_no_network_escape_hatch() -> None:
     assert "fetch(" not in worker
     assert "XMLHttpRequest" not in worker
     assert "importScripts" not in worker
+
+
+def test_chart_reference_provider_requires_explicit_permitted_adapter() -> None:
+    payload = run_node("""
+      const tools = require('./ui/practice-tools.js');
+      const provider = tools.chartReferenceProvider({id:'licensed-example',attribution:'Licensed Example',lookup:async()=>({bars:[]})});
+      let invalid = '';
+      try { tools.chartReferenceProvider({id:'missing-lookup'}); } catch (error) { invalid = error.message; }
+      console.log(JSON.stringify({version:provider.schemaVersion,id:provider.id,attribution:provider.attribution,frozen:Object.isFrozen(provider),invalid}));
+    """)
+    assert payload == {
+        "version": 1,
+        "id": "licensed-example",
+        "attribution": "Licensed Example",
+        "frozen": True,
+        "invalid": "A chart reference provider needs an id and a permitted lookup function.",
+    }

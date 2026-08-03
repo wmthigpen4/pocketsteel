@@ -10,6 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     songs = (REPO_ROOT / "ui" / "songs.html").read_text(encoding="utf-8")
     player = (REPO_ROOT / "ui" / "play-song.html").read_text(encoding="utf-8")
+    setup = (REPO_ROOT / "ui" / "setup-song.html").read_text(encoding="utf-8")
     css = (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
 
     assert "Steel Guitar RAG" in songs and "Steel Guitar RAG" in player
@@ -26,6 +27,9 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert "Full song" in player
     assert "Less help" in player
     assert "Song Map" in player
+    assert 'id="review-song-map"' in setup
+    assert 'id="review-editor"' in setup
+    assert "coral bars need attention" in setup
     assert ">NNS<" in player
     assert "Count-in" in player and "Metronome" in player
     assert 'id="play-attribution"' in player
