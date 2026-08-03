@@ -199,14 +199,15 @@
     const needsAttention = barNeedsAttention(bar);
     const symbols = events.map((event) => chordForReview(event.symbol)).join(" · ") || "N.C.";
     const externalState = barExternalState(bar);
-    const stateLabel = needsAttention ? "Needs attention" : externalState || "Accepted";
+    const confidenceLabel = percent(barConfidence(bar));
+    const stateLabel = needsAttention ? `${confidenceLabel} confidence · Needs attention` : `${confidenceLabel} confident${externalState ? ` · ${externalState}` : ""}`;
     const button = document.createElement("button");
     button.type = "button";
     button.className = `review-map-bar ${needsAttention ? "needs-attention" : "is-accepted"}${bar === selectedBar ? " is-selected" : ""}`;
     button.dataset.bar = String(bar);
     button.setAttribute("aria-pressed", String(bar === selectedBar));
     button.setAttribute("aria-label", `Bar ${bar}, ${symbols}, ${stateLabel}. Select to review without autoplay.`);
-    button.innerHTML = `<span>Bar ${bar}</span><strong>${escapeHtml(symbols)}</strong><small>${percent(barConfidence(bar))} · ${stateLabel}</small>`;
+    button.innerHTML = `<span>Bar ${bar}</span><strong>${escapeHtml(symbols)}</strong><small>${escapeHtml(stateLabel)}</small>`;
     button.onclick = () => {
       selectedBar = bar;
       audio.pause();
@@ -233,11 +234,14 @@
     const teaching = selectedChordTeaching(events, displayedChords);
     const explorerTargets = events.map((event) => explorerTargetForChord(event.symbol)).filter(Boolean);
     const externalState = barExternalState(bar);
-    const stateLabel = showingPreview ? (needsAttention ? "Preview · Needs attention" : externalState ? `Preview · ${externalState}` : "Preview · Auto-accepted") : needsAttention ? "Needs attention" : externalState || "Accepted";
+    const confidenceLabel = percent(barConfidence(bar));
+    const stateLabel = showingPreview
+      ? needsAttention ? `${confidenceLabel} confidence · Preview needs attention` : `${confidenceLabel} confident · Preview${externalState ? ` · ${externalState}` : ""}`
+      : needsAttention ? `${confidenceLabel} confidence · Needs attention` : `${confidenceLabel} confident${externalState ? ` · ${externalState}` : ""}`;
     editor.innerHTML = `
       <div class="review-editor__head">
         <div><p class="songs-kicker">Selected measure</p><h3>Bar ${bar}</h3></div>
-        <span class="review-editor__status ${needsAttention ? "needs-attention" : "is-accepted"}">${percent(barConfidence(bar))} confidence · ${stateLabel}</span>
+        <span class="review-editor__status ${needsAttention ? "needs-attention" : "is-accepted"}">${escapeHtml(stateLabel)}</span>
       </div>
       ${reviewChordDisplay === "nns" ? `<p class="review-editor__notation"><span>Nashville number${events.length === 2 ? "s" : ""}</span><strong>${escapeHtml(displayedChords)}</strong></p>` : ""}
       <div class="review-editor__fields">
