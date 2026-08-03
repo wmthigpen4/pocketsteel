@@ -256,9 +256,18 @@
       audio.currentTime = Number(timeline.barStartsMs?.[bar - 1] || 0) / 1000;
       audio.play().catch(() => {});
     };
-    if (editable) editor.querySelector("[data-chord]").onchange = (event) => {
-      replaceBarChords(bar, event.target.value.split(/\s+/)); renderReview(); updateConfirmation(); queueSave();
-    };
+    if (editable) {
+      const chordField = editor.querySelector("[data-chord]");
+      const commitChordField = () => {
+        replaceBarChords(bar, chordField.value.split(/\s+/)); renderReview(); updateConfirmation(); queueSave();
+      };
+      chordField.onchange = commitChordField;
+      chordField.onkeydown = (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        commitChordField();
+      };
+    }
     if (editable) editor.querySelector("[data-time]").onchange = (event) => {
       const starts = project.timeline.barStartsMs;
       const lower = bar > 1 ? Number(starts[bar - 2]) + 25 : 0;

@@ -12,6 +12,8 @@
 - Added a direct selected-chord link to the existing E9 virtual fretboard chord
   finder. The link carries the song key, chord root, and chord quality so the
   player can explore the exact harmony without reconstructing it manually.
+- Chord edits now commit with Enter in addition to the existing change/blur
+  behavior, making keyboard review explicit and reliable.
 - Cross-checked the current Sammy Kershaw recording against public chord charts.
   The sources agree on A major and the core vocabulary A, D, E, F#m, and G.
   This supports a targeted review of low-confidence chord quality, but it is not
@@ -24,6 +26,7 @@
 - `ui/practice-tools-review-teaching-1.js`
 - `ui/setup-song.js`
 - `ui/setup-song-review-v2-12.js`
+- `ui/setup-song-review-v2-13.js`
 - `ui/setup-song.html`
 - `ui/play-songs.css`
 - `ui/play-songs-review-v6.css`
@@ -70,6 +73,7 @@
 - `ui/practice-tools-review-teaching-1.js`
 - `ui/setup-song.js`
 - `ui/setup-song-review-v2-12.js`
+- `ui/setup-song-review-v2-13.js`
 - `ui/setup-song.html`
 - `ui/play-songs.css`
 - `ui/play-songs-review-v6.css`
