@@ -46,6 +46,31 @@
   function barCount() { const timeline = activeTimeline(); return timeline?.barStartsMs?.length || Math.max(0, ...(timeline?.chords || []).map((chord) => Number(chord.bar || 0))); }
   function eventsForBar(bar) { return (activeTimeline()?.chords || []).filter((chord) => Number(chord.bar) === bar).sort((left, right) => Number(left.startFraction || 0) - Number(right.startFraction || 0)); }
   function chordForReview(symbol) { return tools.chordForDisplay(symbol || "N.C.", activeTimeline()?.key || project?.timeline?.key, reviewChordDisplay); }
+  function noChord(symbol) { return /^(?:N\.?C\.?|NO\s+CHORD|REST)$/i.test(String(symbol || "").trim()); }
+  function explorerTargetForChord(symbol) {
+    const match = /^([A-G])([#b]?)(.*)$/i.exec(String(symbol || "").trim());
+    if (!match || noChord(symbol)) return null;
+    const suffix = match[3].toLowerCase();
+    const quality = /^m7/.test(suffix) ? "minor7" : /^m(?!aj)/.test(suffix) ? "minor" : /^(?:7|dom7)/.test(suffix) ? "dominant7" : /^maj7/.test(suffix) ? "major7" : "major";
+    const root = `${match[1].toUpperCase()}${match[2]}`;
+    const key = activeTimeline()?.key || project?.timeline?.key || "A";
+    return {
+      root,
+      url: `/ui/e9-fretboard-explorer.html?mode=chord&key=${encodeURIComponent(key)}&root=${encodeURIComponent(root)}&quality=${quality}&source=song-review`
+    };
+  }
+  function selectedChordTeaching(events, displayedChords) {
+    const symbols = events.map((event) => event.symbol || "N.C.");
+    if (symbols.some(noChord)) {
+      return "No chord means there is no sustained harmony to play in this measure. Listen for silence, spoken audio, or pickup notes before the band enters.";
+    }
+    if (reviewChordDisplay !== "nns" || events.length !== 1) return "";
+    const key = activeTimeline()?.key || project?.timeline?.key || "the song key";
+    if (/^♭7/.test(displayedChords)) {
+      return `${displayedChords} is ${symbols[0]} in the key of ${key}. The flat-seven chord sits one whole step below the 1 chord and is a common country and rock color.`;
+    }
+    return `${displayedChords} is ${symbols[0]} in the key of ${key}.`;
+  }
   function eventNeedsAttention(event) { return Boolean(event.needsAttention ?? (!event.reviewed || Number(event.confidence) < 0.68)); }
   function barNeedsAttention(bar) { if (legacyTimeline()) return false; const events = eventsForBar(bar); return !events.length || events.some(eventNeedsAttention); }
   function allReviewed() { return Array.from({ length: barCount() }, (_item, index) => index + 1).every((bar) => !barNeedsAttention(bar)); }
@@ -204,7 +229,9 @@
     const reasons = Array.from(new Set(events.flatMap((event) => event.reviewReasons || [])));
     const matches = matchingBarsFor(events[0]?.repeatedSectionGroup, bar);
     const chordNames = events.map((event) => event.symbol || "N.C.").join(" ");
-    const displayedChords = events.map((event) => chordForReview(event.symbol)).join(" · ") || "N.C.";
+    const displayedChords = events.map((event) => chordForReview(event.symbol)).join(" · ") || "No chord";
+    const teaching = selectedChordTeaching(events, displayedChords);
+    const explorerTargets = events.map((event) => explorerTargetForChord(event.symbol)).filter(Boolean);
     const externalState = barExternalState(bar);
     const stateLabel = showingPreview ? (needsAttention ? "Preview · Needs attention" : externalState ? `Preview · ${externalState}` : "Preview · Auto-accepted") : needsAttention ? "Needs attention" : externalState || "Accepted";
     editor.innerHTML = `
@@ -217,9 +244,11 @@
         <label>${reviewChordDisplay === "nns" ? "Chord names (editing)" : `Chord${events.length === 2 ? "s" : ""}`}<input data-chord type="text" value="${escapeHtml(chordNames)}" aria-label="Chord${events.length === 2 ? "s" : ""} for bar ${bar}"${editable ? "" : " disabled"}><small>${editable ? "Enter one chord, or two chords separated by a space." : "Accept the preview before making corrections."}</small></label>
         <label>Bar downbeat<input data-time type="number" min="0" max="${project.audio.durationMs}" step="10" value="${Math.round(startMs)}" aria-label="Downbeat milliseconds for bar ${bar}"${editable ? "" : " disabled"}><small>${formatTime(startMs)} into the recording</small></label>
       </div>
+      ${teaching ? `<p class="review-editor__teaching">${escapeHtml(teaching)}</p>` : ""}
       <p class="review-editor__reason">${escapeHtml(reasons.join(" ") || "Strong audio and song-context agreement.")}</p>
       <div class="review-editor__actions">
         <button class="songs-button" data-play-bar type="button">Play from bar ${bar}</button>
+        ${explorerTargets.length === 1 ? `<a class="songs-button is-quiet" href="${escapeHtml(explorerTargets[0].url)}" target="_blank" rel="noopener">Explore ${escapeHtml(explorerTargets[0].root)}${reviewChordDisplay === "nns" ? ` (${escapeHtml(displayedChords)})` : ""} on the fretboard</a>` : ""}
         ${editable ? `<button class="songs-button is-primary" data-accept-bar type="button">${needsAttention ? "Accept this bar" : "Mark for review"}</button>` : ""}
         ${editable && matches.length ? `<button class="songs-button is-quiet" data-apply-repeat type="button">Apply chord to ${matches.length} matching bar${matches.length === 1 ? "" : "s"}</button>` : ""}
       </div>`;

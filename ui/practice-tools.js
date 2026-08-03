@@ -167,17 +167,22 @@
     return String(suffix || "").replaceAll("13", "¹³").replaceAll("11", "¹¹").replaceAll("9", "⁹").replaceAll("7", "⁷");
   }
 
+  function musicalAccidentals(value) {
+    return String(value || "").replace(/^b(?=[1-7])/, "♭").replace(/^#(?=[1-7])/, "♯");
+  }
+
   function chordForDisplay(symbol, key, display = "letters") {
     const chord = String(symbol || "N.C.").trim();
-    if (display !== "nns" || /^(?:N\.?C\.?|NO\s+CHORD|REST)$/i.test(chord)) return chord;
-    if (/^[b#]?[1-7]/.test(chord)) return chord;
+    if (/^(?:N\.?C\.?|NO\s+CHORD|REST)$/i.test(chord)) return "No chord";
+    if (display !== "nns") return chord;
+    if (/^[b#♭♯]?[1-7]/.test(chord)) return musicalAccidentals(nashvilleSuffix(chord));
     const chordMatch = /^([A-G])([#b]?)(.*)$/.exec(chord);
     const keyMatch = /^([A-G])([#b]?)/.exec(String(key || "C"));
     if (!chordMatch || !keyMatch) return chord;
     const chordPitch = NOTE_PCS[`${chordMatch[1]}${chordMatch[2]}`];
     const keyPitch = NOTE_PCS[`${keyMatch[1]}${keyMatch[2]}`];
     if (!Number.isInteger(chordPitch) || !Number.isInteger(keyPitch)) return chord;
-    return `${NASHVILLE_DEGREES[(chordPitch - keyPitch + 12) % 12]}${nashvilleSuffix(chordMatch[3])}`;
+    return `${musicalAccidentals(NASHVILLE_DEGREES[(chordPitch - keyPitch + 12) % 12])}${nashvilleSuffix(chordMatch[3])}`;
   }
 
   function chartReferenceProvider(adapter) {

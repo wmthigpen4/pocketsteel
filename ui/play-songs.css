@@ -197,6 +197,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .review-editor__fields label { display: grid; gap: 6px; color: var(--cream); font-size: 12px; font-weight: 800; }
 .review-editor__fields small, .review-editor__reason { color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.4; }
 .review-editor__reason { margin: 0; border-top: 1px solid rgba(244,234,214,.1); padding-top: 12px; }
+.review-editor__teaching { margin: 0; border: 1px solid rgba(240,191,105,.28); border-radius: 12px; background: rgba(240,191,105,.07); color: var(--cream); padding: 11px 12px; font-size: 11px; line-height: 1.5; }
 .review-editor__actions { display: grid; gap: 7px; }
 .review-editor__actions .songs-button { width: 100%; }
 

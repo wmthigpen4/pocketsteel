@@ -23,9 +23,9 @@ def test_nns_projection_loop_ranges_and_crossing_chords() -> None:
         {id:'b',chord:'C',startMs:2500,endMs:6500,position:{fret:8,strings:[4,5,6],controls:['P1','P2','LKL1','LKR'],controlLabels:['A (P1)','B (P2)','F (LKL1)','E (LKR)']}},
         {id:'c',chord:'',startMs:6500,endMs:9000,status:'rest'}
       ]};
-      console.log(JSON.stringify({nns:[tools.chordForDisplay('G','G','nns'),tools.chordForDisplay('C','G','nns'),tools.chordForDisplay('D7','G','nns'),tools.chordForDisplay('N.C.','G','nns')],loop:tools.barsToLoopRange(track,2,3),legacyLoop:tools.countBasedLoopRange(track,3500,2),bars:tools.projectBars(track,plan),beats:tools.beatTimesForTrack(track)}));
+      console.log(JSON.stringify({nns:[tools.chordForDisplay('G','G','nns'),tools.chordForDisplay('C','G','nns'),tools.chordForDisplay('D7','G','nns'),tools.chordForDisplay('F','G','nns'),tools.chordForDisplay('N.C.','G','nns')],loop:tools.barsToLoopRange(track,2,3),legacyLoop:tools.countBasedLoopRange(track,3500,2),bars:tools.projectBars(track,plan),beats:tools.beatTimesForTrack(track)}));
     """)
-    assert payload["nns"] == ["1", "4", "5⁷", "N.C."]
+    assert payload["nns"] == ["1", "4", "5⁷", "♭7", "No chord"]
     assert payload["loop"] == {"startBar": 2, "endBar": 3, "startMs": 3000, "endMs": 9000}
     assert payload["legacyLoop"] == {"startBar": 1, "endBar": 2, "startMs": 0, "endMs": 6000}
     assert len(payload["bars"]) == 3
