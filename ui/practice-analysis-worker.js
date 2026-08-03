@@ -14,8 +14,8 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 3;
-  const MIN_EXTENSION_GAIN = 0.1;
+  const QUALITY_CALIBRATION_VERSION = 4;
+  const MIN_EXTENSION_GAIN = 0.09;
   const MIN_SEVENTH_CORE_RATIO = 0.8;
   const MIN_KEY_REGION_BARS = 6;
   const METER_OPTIONS = [
@@ -377,7 +377,9 @@
   }
 
   function candidateScore(evidence, symbol) {
-    return evidence.candidates.find((candidate) => candidate.symbol === symbol)?.score ?? -0.4;
+    const candidate = evidence.candidates.find((item) => item.symbol === symbol);
+    if (candidate?.extensionSupported === false) return -1;
+    return candidate?.score ?? -0.4;
   }
 
   function decodeSequence(evidences, key, repeatBonus = new Map()) {

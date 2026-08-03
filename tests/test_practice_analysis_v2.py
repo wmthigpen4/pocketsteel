@@ -72,10 +72,12 @@ def test_seventh_quality_requires_added_seventh_evidence() -> None:
           }))}
         };
         const refreshed=a.redecodeAnalysis(oldAnalysis,'C','major');
-        console.log(JSON.stringify({weak:a.chordCandidates(weak).top.symbol,clear:a.chordCandidates(clear).top.symbol,refreshed:refreshed.chords.map(chord=>chord.symbol),version:refreshed.analysisState.qualityCalibrationVersion}));
+        const unsupported={top:{symbol:'D7',score:.95},confidence:.9,candidates:[{symbol:'D7',score:.95,extensionSupported:false},{symbol:'D',score:.9}]};
+        const contextual=a.decodeSequence(Array.from({length:8},()=>unsupported),{key:'G',keyMode:'major',root:7});
+        console.log(JSON.stringify({weak:a.chordCandidates(weak).top.symbol,clear:a.chordCandidates(clear).top.symbol,refreshed:refreshed.chords.map(chord=>chord.symbol),contextual:[...new Set(contextual)],version:refreshed.analysisState.qualityCalibrationVersion}));
         """
     )
-    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "version": 3}
+    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 4}
 
 
 def test_detects_stable_g_c_a_key_regions_and_keeps_plain_dominants_as_triads() -> None:
