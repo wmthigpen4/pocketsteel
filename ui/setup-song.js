@@ -2,6 +2,7 @@
   "use strict";
   const tools = global.STEEL_RAG_PRACTICE;
   const analysisClient = global.STEEL_RAG_ANALYSIS_CLIENT;
+  const referenceValidation = global.STEEL_RAG_REFERENCE_VALIDATION;
   const projectId = decodeURIComponent(global.location.pathname.split("/").filter(Boolean).at(-1) || "");
   const app = document.querySelector("#setup-app");
   const errorPanel = document.querySelector("#setup-error");
@@ -14,6 +15,8 @@
   const previewRhythmButton = document.querySelector("#preview-rhythm");
   const reanalyzeStatus = document.querySelector("#reanalyze-status");
   const reanalyzePreview = document.querySelector("#reanalyze-preview");
+  const referencePanel = document.querySelector("#reference-panel");
+  const referenceStatus = document.querySelector("#reference-status");
   let project = null;
   let audioFile = null;
   let objectUrl = "";
@@ -142,12 +145,20 @@
     return events.length ? Math.min(...events.map((event) => Number(event.confidence || 0))) : 0;
   }
 
+  function barExternalState(bar) {
+    const results = eventsForBar(bar).map((event) => event.externalValidation?.result).filter(Boolean);
+    if (results.includes("close-audio-alternative")) return "Reference-resolved";
+    if (results.includes("bar-agreement")) return "Reference-confirmed";
+    return "";
+  }
+
   function mapButtonForBar(bar) {
     const events = eventsForBar(bar);
     const legacy = legacyTimeline();
     const needsAttention = barNeedsAttention(bar);
     const symbols = events.map((event) => event.symbol || "N.C.").join(" · ") || "N.C.";
-    const stateLabel = legacy ? "Legacy detection" : needsAttention ? "Needs attention" : "Accepted";
+    const externalState = barExternalState(bar);
+    const stateLabel = legacy ? "Legacy detection" : needsAttention ? "Needs attention" : externalState || "Accepted";
     const button = document.createElement("button");
     button.type = "button";
     button.className = `review-map-bar ${legacy ? "is-legacy" : needsAttention ? "needs-attention" : "is-accepted"}${bar === selectedBar ? " is-selected" : ""}`;
@@ -177,7 +188,8 @@
     const needsAttention = barNeedsAttention(bar);
     const reasons = Array.from(new Set(events.flatMap((event) => event.reviewReasons || [])));
     const matches = matchingBarsFor(events[0]?.repeatedSectionGroup, bar);
-    const stateLabel = showingPreview ? (needsAttention ? "Preview · Needs attention" : "Preview · Auto-accepted") : legacy ? "Legacy detection" : needsAttention ? "Needs attention" : "Accepted";
+    const externalState = barExternalState(bar);
+    const stateLabel = showingPreview ? (needsAttention ? "Preview · Needs attention" : externalState ? `Preview · ${externalState}` : "Preview · Auto-accepted") : legacy ? "Legacy detection" : needsAttention ? "Needs attention" : externalState || "Accepted";
     editor.innerHTML = `
       <div class="review-editor__head">
         <div><p class="songs-kicker">Selected measure</p><h3>Bar ${bar}</h3></div>
@@ -234,8 +246,58 @@
       description.textContent = "See the whole progression at once. Amber bars are accepted; coral bars need attention. Select any bar to hear and correct it.";
     }
     reviewAll.hidden = showingPreview || legacyTimeline();
+    referencePanel.hidden = legacyTimeline();
     map.replaceChildren(...Array.from({ length: count }, (_item, index) => mapButtonForBar(index + 1)));
     renderEditor();
+  }
+
+  function normalizedSourceUrl(urlValue) {
+    if (!urlValue) return "";
+    try {
+      const url = new URL(urlValue);
+      if (!/^https?:$/.test(url.protocol)) throw new Error();
+      url.username = ""; url.password = ""; url.search = ""; url.hash = "";
+      return url.href;
+    } catch (_error) {
+      throw new Error("Enter a complete http or https source URL, or leave it blank.");
+    }
+  }
+
+  function sourceLabelFor(urlValue) {
+    if (!urlValue) return "User-supplied chart";
+    const host = new URL(urlValue).hostname.replace(/^www\./, "");
+    return host === "ultimate-guitar.com" || host.endsWith(".ultimate-guitar.com") ? "Ultimate Guitar reference" : `${host} reference`;
+  }
+
+  function previewSummary(timeline) {
+    const attention = new Set((timeline.chords || []).filter(eventNeedsAttention).map((event) => event.bar)).size;
+    const chordCounts = new Map();
+    (timeline.chords || []).forEach((event) => chordCounts.set(event.symbol, (chordCounts.get(event.symbol) || 0) + 1));
+    const commonChords = [...chordCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 7).map(([symbol, count]) => `${symbol} (${count})`).join(", ");
+    return `Preview: ${timeline.key} ${timeline.keyMode} · ${timeline.meter} · ${timeline.tempo} BPM · ${attention} attention bar${attention === 1 ? "" : "s"}. Common chords: ${commonChords || "N.C."}.`;
+  }
+
+  async function applyReferenceValidation() {
+    if (!referenceValidation) throw new Error("External chord validation is unavailable. Reload the page and try again.");
+    if (legacyTimeline()) throw new Error("Run the improved local analysis before adding an external reference.");
+    if (!document.querySelector("#reference-permission").checked) throw new Error("Confirm that you have permission to use this reference.");
+    const chartField = document.querySelector("#reference-chart");
+    const sourceUrl = normalizedSourceUrl(document.querySelector("#reference-url").value.trim());
+    const sourceLabel = sourceLabelFor(sourceUrl);
+    const loaded = await referenceValidation.loadProviderReference("user-supplied", { text: chartField.value, sourceLabel, sourceUrl });
+    const reference = loaded.reference;
+    const result = referenceValidation.validateTimeline(activeTimeline(), reference, { sourceLabel, sourceUrl });
+    if (showingPreview) pendingAnalysis = result.timeline;
+    else { project.timeline = result.timeline; queueSave(); }
+    chartField.value = "";
+    document.querySelector("#reference-permission").checked = false;
+    selectedBar = 0;
+    renderReview(); updateConfirmation();
+    if (showingPreview) document.querySelector("#reanalyze-preview-copy").textContent = previewSummary(pendingAnalysis);
+    const resolved = result.summary.agreements + result.summary.corrections;
+    referenceStatus.textContent = result.summary.alignment === "vocabulary-only"
+      ? `Found ${reference.vocabulary.length} chord symbol${reference.vocabulary.length === 1 ? "" : "s"}, but no reliable measure alignment. No bars were auto-accepted.`
+      : `${resolved} uncertain event${resolved === 1 ? "" : "s"} resolved (${result.summary.agreements} confirmed, ${result.summary.corrections} changed); ${result.summary.disagreements} disagreement${result.summary.disagreements === 1 ? "" : "s"} remain for review.`;
   }
 
   function setControlsFromTimeline() {
@@ -277,11 +339,7 @@
         : { tempo: Number(fields.tempo.value), meter: fields.meter.value, keyHint: fields.key.value, keyModeHint: fields.keyMode.value };
       const result = await analysisClient.analyzeFile(audioFile, options, (stage, detail) => { reanalyzeStatus.textContent = `${stage}: ${detail}`; });
       pendingAnalysis = result.analysis;
-      const attention = new Set(pendingAnalysis.chords.filter(eventNeedsAttention).map((event) => event.bar)).size;
-      const chordCounts = new Map();
-      pendingAnalysis.chords.forEach((event) => chordCounts.set(event.symbol, (chordCounts.get(event.symbol) || 0) + 1));
-      const commonChords = [...chordCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 7).map(([symbol, count]) => `${symbol} (${count})`).join(", ");
-      document.querySelector("#reanalyze-preview-copy").textContent = `Preview: ${pendingAnalysis.key} ${pendingAnalysis.keyMode} · ${pendingAnalysis.meter} · ${pendingAnalysis.tempo} BPM · ${attention} attention bar${attention === 1 ? "" : "s"}. Common chords: ${commonChords || "N.C."}.`;
+      document.querySelector("#reanalyze-preview-copy").textContent = previewSummary(pendingAnalysis);
       reanalyzePreview.hidden = false;
       showingPreview = true; selectedBar = 0; renderReview(); updateConfirmation();
       reanalyzeStatus.textContent = "Preview ready below. Your saved map is unchanged.";
@@ -344,6 +402,7 @@
     previewRhythmButton.onclick = runFreshAnalysis;
     document.querySelector("#accept-reanalysis").onclick = acceptReanalysis;
     document.querySelector("#discard-reanalysis").onclick = () => { pendingAnalysis = null; showingPreview = false; selectedBar = 0; reanalyzePreview.hidden = true; reanalyzeStatus.textContent = "Current map kept."; setControlsFromTimeline(); configureReanalysis(); renderReview(); updateConfirmation(); };
+    document.querySelector("#validate-reference").onclick = async () => { try { await applyReferenceValidation(); } catch (error) { referenceStatus.textContent = error.message; } };
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     renderReview(); updateConfirmation(); app.hidden = false;
   }

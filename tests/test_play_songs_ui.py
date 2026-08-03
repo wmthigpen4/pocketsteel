@@ -29,6 +29,9 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert "Song Map" in player
     assert 'id="review-song-map"' in setup
     assert 'id="review-editor"' in setup
+    assert 'id="reference-panel"' in setup
+    assert 'id="validate-reference"' in setup
+    assert "The app does not fetch this page" in setup
     assert "coral bars need attention" in setup
     assert ">NNS<" in player
     assert "Count-in" in player and "Metronome" in player
@@ -145,6 +148,7 @@ def test_play_songs_javascript_syntax() -> None:
     for path in (
         "ui/songs.js", "ui/setup-song.js", "ui/play-song.js", "ui/practice-tools.js",
         "ui/practice-transport.js", "ui/practice-analysis-worker.js",
+        "ui/practice-reference-validation.js",
     ):
         result = subprocess.run(
             ["node", "--check", path],
@@ -164,3 +168,5 @@ def test_review_distinguishes_legacy_map_from_unsaved_v2_preview() -> None:
     assert "function activeTimeline()" in setup_js
     assert "if (legacyTimeline()) return false" in setup_js
     assert "This preview has not replaced your saved map" in setup_js
+    assert 'loadProviderReference("user-supplied"' in setup_js
+    assert "Reference-confirmed" in setup_js

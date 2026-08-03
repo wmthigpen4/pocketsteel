@@ -152,6 +152,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .reanalyze-preview { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid rgba(244,234,214,.1); padding-top: 12px; }
 .reanalyze-preview[hidden] { display: none; }
 #setup-audio { width: 100%; margin: 8px 0 24px; }
+.reference-panel { display: grid; gap: 18px; border: 1px solid rgba(244,234,214,.14); border-radius: 18px; background: linear-gradient(145deg, rgba(25,22,17,.96), rgba(14,14,12,.96)); margin: 0 0 24px; padding: clamp(18px,3vw,26px); }
+.reference-panel[hidden] { display: none; }
+.reference-panel__heading { display: flex; align-items: start; justify-content: space-between; gap: 24px; }
+.reference-panel__heading h2 { margin: 2px 0 5px; font: 650 clamp(28px,3vw,38px)/1 var(--lesson); }
+.reference-panel__heading p:not(.songs-kicker) { max-width: 720px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.reference-panel__badge { flex: 0 0 auto; border: 1px solid rgba(240,191,105,.45); border-radius: 999px; color: var(--gold); padding: 6px 10px; font-size: 10px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
+.reference-panel__fields { display: grid; grid-template-columns: minmax(240px,.7fr) minmax(0,1.3fr); gap: 14px; }
+.reference-panel__fields label { display: grid; align-content: start; gap: 7px; color: var(--cream); font-size: 12px; font-weight: 800; }
+.reference-panel__fields input[type="url"], .reference-panel__fields textarea { width: 100%; border: 1px solid var(--line); border-radius: 11px; background: #0b0a08; color: var(--cream); padding: 11px 12px; font: inherit; font-weight: 600; }
+.reference-panel__fields input[type="url"] { min-height: 44px; }
+.reference-panel__fields textarea { min-height: 130px; resize: vertical; line-height: 1.45; }
+.reference-panel__fields small { color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.4; }
+.reference-panel__chart { grid-row: span 2; }
+.reference-panel__permission { display: flex !important; grid-template-columns: auto 1fr; align-items: start; align-self: end; gap: 9px !important; color: var(--muted) !important; font-weight: 600 !important; line-height: 1.4; }
+.reference-panel__permission input { width: 16px; height: 16px; margin: 1px 0 0; accent-color: var(--gold); }
+.reference-panel__actions { display: flex; align-items: center; gap: 14px; border-top: 1px solid rgba(244,234,214,.1); padding-top: 15px; }
+.reference-panel__actions p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .review-panel { display: grid; grid-template-columns: minmax(0,1fr) minmax(280px,330px); gap: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--panel); padding: clamp(18px,3vw,28px); }
 .review-panel > .songs-section-heading { grid-column: 1 / -1; }
 .review-song-map { display: grid; grid-template-columns: repeat(4,minmax(105px,1fr)); align-content: start; gap: 9px; max-height: 580px; overflow: auto; padding: 2px 8px 2px 2px; scrollbar-color: rgba(240,191,105,.42) transparent; }
@@ -308,7 +325,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .play-controls .route-control select { min-width: 0; width: 100%; }
   .play-checkpoints { grid-template-columns: 1fr 1fr; }
   .songs-section-heading, .track-import-row, .local-track { grid-template-columns: 1fr; display: grid; align-items: start; }
-  .setup-heading, .setup-summary, .analysis-summary, .reanalyze-panel { grid-template-columns: 1fr; display: grid; align-items: start; }
+  .setup-heading, .setup-summary, .analysis-summary, .reanalyze-panel, .reference-panel__fields { grid-template-columns: 1fr; display: grid; align-items: start; }
   .setup-actions { justify-content: flex-start; }
   .reanalyze-panel__status, .reanalyze-preview { grid-column: 1; }
   .reanalyze-panel__actions, .reanalyze-preview, .review-actions { justify-content: flex-start; align-items: flex-start; }
@@ -316,6 +333,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .review-panel > .songs-section-heading { grid-column: 1; }
   .review-song-map { grid-template-columns: repeat(2,minmax(120px,1fr)); max-height: 52vh; }
   .review-editor { position: static; }
+  .reference-panel__heading, .reference-panel__actions { align-items: flex-start; flex-direction: column; }
+  .reference-panel__chart { grid-row: auto; }
   .song-map { grid-template-columns: repeat(2,minmax(130px,1fr)); padding-inline: 12px; }
   .track-import-row .songs-button { width: 100%; }
   .local-track__actions { justify-content: flex-start; }

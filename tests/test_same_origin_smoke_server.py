@@ -196,12 +196,15 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"Review Song" in setup
+    assert b"practice-reference-validation-v1.js" in setup
+    assert b"setup-song-review-v2-9.js" in setup
 
     for asset_path, marker in (
         ("/ui/play-songs.css", b".play-cue-deck"),
         ("/ui/songs.js", b"STEEL_RAG_ANALYSIS_CLIENT"),
         ("/ui/practice-analysis-client.js", b"practice-analysis-worker-key-aware-v2-8.js"),
         ("/ui/practice-analysis-worker.js", b"ANALYSIS_VERSION = 2"),
+        ("/ui/practice-reference-validation.js", b"loadProviderReference"),
         ("/ui/practice-tools.js", b"navigator.storage"),
         ("/ui/play-song.js", b"activeTimelineState"),
     ):
