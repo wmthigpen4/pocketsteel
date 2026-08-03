@@ -211,7 +211,7 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert "preserveManualChordEdits" in setup_js
     assert "seventhEvidenceTeaching" in setup_js
     assert "Audio ♭7 evidence" in setup_js
-    assert 'qualityCalibrationVersion || 0) < 5) await handleKeyChange()' in setup_js
+    assert 'qualityCalibrationVersion || 0) < 6) await handleKeyChange()' in setup_js
     assert "New key ·" in setup_js
 
 

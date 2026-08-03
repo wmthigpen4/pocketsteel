@@ -14,7 +14,7 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 5;
+  const QUALITY_CALIBRATION_VERSION = 6;
   const MIN_EXTENSION_GAIN = 0.09;
   const MIN_SEVENTH_CORE_RATIO = 0.8;
   const MIN_KEY_REGION_BARS = 6;
@@ -546,7 +546,8 @@
   function detectKeyRegions(bars, startingKey, forceStartingKey = false) {
     if (!bars.length) return [];
     const states = [];
-    for (let root = 0; root < 12; root += 1) for (const mode of ["major", "minor"]) states.push(keyState(root, mode));
+    const modes = forceStartingKey ? [startingKey.keyMode] : ["major", "minor"];
+    for (let root = 0; root < 12; root += 1) for (const mode of modes) states.push(keyState(root, mode));
     const prefix = states.map(() => [0]);
     states.forEach((state, stateIndex) => bars.forEach((bar) => prefix[stateIndex].push(prefix[stateIndex].at(-1) + keyEvidenceScore(bar, state))));
     const segmentScore = (stateIndex, start, end) => prefix[stateIndex][end] - prefix[stateIndex][start];
