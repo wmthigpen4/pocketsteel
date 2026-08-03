@@ -184,6 +184,7 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert 'e9-fretboard-explorer.html?mode=chord' in setup_js
     assert 'The flat-seven chord sits one whole step below the 1 chord' in setup_js
     assert 'if (event.key !== "Enter") return' in setup_js
+    assert 'referencePanel.hidden = false' not in setup_js
     assert 'tools.saveSession(practiceSession)' in setup_js
     assert "Chord names (editing)" in setup_js
     assert "Nashville number" in setup_js

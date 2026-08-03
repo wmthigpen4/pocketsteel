@@ -14,6 +14,8 @@
   player can explore the exact harmony without reconstructing it manually.
 - Chord edits now commit with Enter in addition to the existing change/blur
   behavior, making keyboard review explicit and reliable.
+- Removed the paste-a-chart panel from the active Review experience. The
+  provider boundary remains dormant for a future permitted integration.
 - Cross-checked the current Sammy Kershaw recording against public chord charts.
   The sources agree on A major and the core vocabulary A, D, E, F#m, and G.
   This supports a targeted review of low-confidence chord quality, but it is not
@@ -27,6 +29,7 @@
 - `ui/setup-song.js`
 - `ui/setup-song-review-v2-12.js`
 - `ui/setup-song-review-v2-13.js`
+- `ui/setup-song-review-v2-14.js`
 - `ui/setup-song.html`
 - `ui/play-songs.css`
 - `ui/play-songs-review-v6.css`
@@ -74,6 +77,7 @@
 - `ui/setup-song.js`
 - `ui/setup-song-review-v2-12.js`
 - `ui/setup-song-review-v2-13.js`
+- `ui/setup-song-review-v2-14.js`
 - `ui/setup-song.html`
 - `ui/play-songs.css`
 - `ui/play-songs-review-v6.css`

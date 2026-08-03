@@ -299,7 +299,10 @@
       description.textContent = "See the whole progression at once. Amber bars are accepted; coral bars need attention. Select any bar to hear and correct it.";
     }
     reviewAll.hidden = showingPreview;
-    referencePanel.hidden = false;
+    // The paste-a-chart workflow is intentionally dormant. Keep the provider
+    // boundary available for a future permitted integration without asking the
+    // player to copy a public chart into Review.
+    referencePanel.hidden = true;
     renderNotationToggle();
     map.replaceChildren(...Array.from({ length: count }, (_item, index) => mapButtonForBar(index + 1)));
     renderEditor();
