@@ -213,6 +213,8 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert "Audio ♭7 evidence" in setup_js
     assert 'qualityCalibrationVersion || 0) < 6) await handleKeyChange()' in setup_js
     assert "New key ·" in setup_js
+    assert 'event.symbol === "N.C." ? "No chord"' in setup_js
+    assert 'NO\\s+CHORD' in setup_js
 
 
 def test_play_along_uses_active_section_key_for_nns_and_key_markers() -> None:
@@ -238,7 +240,7 @@ def test_play_along_surfaces_key_changes_in_now_and_next_cues() -> None:
     assert "activeKey.region?.startBar === currentBar" in player_js
     assert ".play-key-change.is-ahead" in player_css
     assert ".play-cue.has-key-change" in player_css
-    assert "play-song-key-cues-v3.js" in player_html
+    assert "play-song-no-chord-v4.js" in player_html
     assert "play-songs-key-cues-v2.css" in player_html
 
 
@@ -250,4 +252,6 @@ def test_play_along_keeps_a_fretboard_position_visible_during_no_chord() -> None
     assert "const displayedCurrent = fretboardAnchorEvent(current, next, timeMs)" in player_js
     assert "renderFretboard(current, next, timeMs)" in player_js
     assert 'return "Rest · keep your place and listen."' in player_js
-    assert "play-song-key-cues-v3.js" in player_html
+    assert 'noChordEvent(current) ? "No chord"' in player_js
+    assert '"<span>No chord</span>"' in player_js
+    assert "play-song-no-chord-v4.js" in player_html

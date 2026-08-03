@@ -509,7 +509,7 @@
     const beats = beatCountdown(current, next, timeMs);
     if (force || stateKey !== renderedState) {
       renderedState = stateKey;
-      elements.currentChord.textContent = noChordEvent(current) ? "N.C." : displayedChord(current?.chord || "—", currentBar);
+      elements.currentChord.textContent = noChordEvent(current) ? "No chord" : displayedChord(current?.chord || "—", currentBar);
       elements.currentGrip.innerHTML = assistanceReduced ? "" : gripMarkup(current?.position, false);
       elements.currentMelody.textContent = assistanceReduced ? "" : melodyCueText(current);
       elements.currentMelody.hidden = !elements.currentMelody.textContent;
@@ -567,7 +567,7 @@
       const keyContext = keyContextForBar(bar.barNumber);
       const keyChange = keyContext.region?.startBar === bar.barNumber && bar.barNumber > 1;
       if (keyChange) button.classList.add("has-key-change");
-      const chordMarkup = bar.chords.length ? bar.chords.map((chord) => `<span style="--start:${chord.startFraction};--length:${chord.durationFraction}">${displayedChord(chord.symbol, bar.barNumber)}</span>`).join("") : "<span>N.C.</span>";
+      const chordMarkup = bar.chords.length ? bar.chords.map((chord) => `<span style="--start:${chord.startFraction};--length:${chord.durationFraction}">${displayedChord(chord.symbol, bar.barNumber)}</span>`).join("") : "<span>No chord</span>";
       const move = bar.firstMove ? `Fret ${bar.firstMove.fret}${bar.firstMove.controls?.length ? ` · ${bar.firstMove.controls.join("+")}` : ""}` : "Listen";
       button.innerHTML = `${keyChange ? `<i>New key · ${keyContext.key} ${keyContext.keyMode}</i>` : ""}<small>Bar ${bar.barNumber}</small><strong>${chordMarkup}</strong><em>${move}</em>`;
       button.setAttribute("aria-label", `Bar ${bar.barNumber}, ${bar.chords.map((item) => displayedChord(item.symbol, bar.barNumber)).join(", ") || "no chord"}${keyChange ? `, new key ${keyContext.key} ${keyContext.keyMode}` : ""}. Seek without autoplay.`);

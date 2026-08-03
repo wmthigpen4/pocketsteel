@@ -197,8 +197,8 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"Review Song" in setup
     assert b"practice-reference-validation-v1.js" in setup
-    assert b"setup-song-key-regions-v6.js" in setup
-    assert b"play-song-key-cues-v3.js" in player
+    assert b"setup-song-no-chord-v7.js" in setup
+    assert b"play-song-no-chord-v4.js" in player
     assert b"play-songs-key-cues-v2.css" in player
     assert b"play-songs-key-regions-v1.css" in setup
     assert b"practice-tools-key-regions-v1.js" in setup

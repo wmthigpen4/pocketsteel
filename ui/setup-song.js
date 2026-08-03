@@ -220,7 +220,7 @@
     const needsAttention = barNeedsAttention(bar);
     const keyContext = keyContextForBar(bar);
     const keyChange = keyContext.region.startBar === bar && bar > 1;
-    const symbols = events.map((event) => chordForReview(event.symbol, bar)).join(" · ") || "N.C.";
+    const symbols = events.map((event) => chordForReview(event.symbol, bar)).join(" · ") || "No chord";
     const externalState = barExternalState(bar);
     const confidenceLabel = percent(barConfidence(bar));
     const stateLabel = needsAttention ? `${confidenceLabel} confidence · Needs attention` : `${confidenceLabel} confident${externalState ? ` · ${externalState}` : ""}`;
@@ -252,7 +252,7 @@
     const needsAttention = barNeedsAttention(bar);
     const reasons = Array.from(new Set(events.flatMap((event) => event.reviewReasons || [])));
     const matches = matchingBarsFor(events[0]?.repeatedSectionGroup, bar);
-    const chordNames = events.map((event) => event.symbol || "N.C.").join(" ");
+    const chordNames = events.map((event) => event.symbol === "N.C." ? "No chord" : event.symbol || "No chord").join(" ");
     const keyContext = keyContextForBar(bar, timeline);
     const displayedChords = events.map((event) => chordForReview(event.symbol, bar)).join(" · ") || "No chord";
     const teaching = selectedChordTeaching(events, displayedChords, bar);
@@ -294,7 +294,8 @@
     if (editable) {
       const chordField = editor.querySelector("[data-chord]");
       const commitChordField = () => {
-        replaceBarChords(bar, chordField.value.split(/\s+/)); renderReview(); updateConfirmation(); queueSave();
+        const value = chordField.value.trim();
+        replaceBarChords(bar, /^(?:N\.?C\.?|NO\s+CHORD|REST)$/i.test(value) ? ["N.C."] : value.split(/\s+/)); renderReview(); updateConfirmation(); queueSave();
       };
       chordField.onchange = commitChordField;
       chordField.onkeydown = (event) => {
@@ -411,8 +412,8 @@
     const attention = new Set((timeline.chords || []).filter(eventNeedsAttention).map((event) => event.bar)).size;
     const chordCounts = new Map();
     (timeline.chords || []).forEach((event) => chordCounts.set(event.symbol, (chordCounts.get(event.symbol) || 0) + 1));
-    const commonChords = [...chordCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 7).map(([symbol, count]) => `${symbol} (${count})`).join(", ");
-    return `Preview: ${timeline.key} ${timeline.keyMode} · ${timeline.meter} · ${timeline.tempo} BPM · ${attention} attention bar${attention === 1 ? "" : "s"}. Common chords: ${commonChords || "N.C."}.`;
+    const commonChords = [...chordCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 7).map(([symbol, count]) => `${symbol === "N.C." ? "No chord" : symbol} (${count})`).join(", ");
+    return `Preview: ${timeline.key} ${timeline.keyMode} · ${timeline.meter} · ${timeline.tempo} BPM · ${attention} attention bar${attention === 1 ? "" : "s"}. Common chords: ${commonChords || "No chord"}.`;
   }
 
   async function applyReferenceValidation() {
