@@ -14,7 +14,7 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 9;
+  const QUALITY_CALIBRATION_VERSION = 10;
   const MIN_EXTENSION_GAIN = 0.09;
   const MIN_SEVENTH_CORE_RATIO = 0.8;
   const MIN_KEY_REGION_BARS = 6;
@@ -273,9 +273,12 @@
         const key = { root, key: NOTE_NAMES[root], keyMode: mode };
         const contextFit = mean(harmonicEvidence.map((evidence) => Math.max(...evidence.map((candidate) => keyPrior(candidate.symbol, key)))));
         const primaryFit = mean(harmonicEvidence.map((evidence) => primaryHarmonyFit(evidence[0]?.symbol, key)));
+        const sequenceSymbols = Array.isArray(hint.symbols) ? hint.symbols : harmonicEvidence.map((evidence) => evidence[0]?.symbol);
+        const soundingCount = sequenceSymbols.filter((symbol) => parseSymbol(symbol).root != null).length;
+        const cadenceFit = sequenceSymbols.slice(1).reduce((sum, symbol, index) => sum + keyCadenceSymbolScore(sequenceSymbols[index], symbol, key), 0) / Math.sqrt(Math.max(1, soundingCount));
         const hintBonus = hint.key === key.key && (!hint.keyMode || hint.keyMode === mode) ? 0.045 : 0;
         const profile = mode === "major" ? MAJOR_PROFILE : MINOR_PROFILE;
-        candidates.push({ root, key: key.key, mode, score: profileScore(average, root, profile) + contextFit * 0.18 + primaryFit * 0.08 + hintBonus + (mode === "major" ? 0.008 : 0) });
+        candidates.push({ root, key: key.key, mode, score: profileScore(average, root, profile) + contextFit * 0.18 + primaryFit * 0.08 + cadenceFit * 1.2 + hintBonus + (mode === "major" ? 0.008 : 0) });
       }
     }
     candidates.sort((left, right) => right.score - left.score);
@@ -558,10 +561,9 @@
     return chordFit + profileScore(bar.full.chroma, key.root, profile) * 0.24 + primaryFit * 0.12;
   }
 
-  function keyCadenceScore(previousBar, bar, key) {
-    if (!previousBar || !bar) return 0;
-    const previous = parseSymbol(previousBar.full.scored.top?.symbol);
-    const current = parseSymbol(bar.full.scored.top?.symbol);
+  function keyCadenceSymbolScore(previousSymbol, symbol, key) {
+    const previous = parseSymbol(previousSymbol);
+    const current = parseSymbol(symbol);
     if (previous.root == null || current.root == null) return 0;
     const from = degree(previous.root, key.root);
     const to = degree(current.root, key.root);
@@ -569,6 +571,18 @@
     if (from === 7) return 0.34;
     if (from === 5) return 0.12;
     return 0;
+  }
+
+  function keyCadenceScore(previousBar, bar, key) {
+    if (!previousBar || !bar) return 0;
+    return keyCadenceSymbolScore(previousBar.full.scored.top?.symbol, bar.full.scored.top?.symbol, key);
+  }
+
+  function estimateStartingKey(bars, hint = {}) {
+    const opening = bars.slice(0, Math.min(bars.length, 48, Math.max(MIN_KEY_REGION_BARS * 2, Math.ceil(bars.length / 3))));
+    const sounding = opening.filter((bar) => bar.full.scored.top?.symbol !== "N.C.");
+    const evidence = sounding.length >= MIN_KEY_REGION_BARS ? sounding : opening;
+    return estimateKey(evidence.map((bar) => bar.full.chroma), { ...hint, symbols: opening.map((bar) => bar.full.scored.top?.symbol) });
   }
 
   function normalizeKeyRegions(regions, barCount, fallbackKey) {
@@ -867,10 +881,9 @@
     const silenceThreshold = Math.max(1e-6, median(energies) * 0.55);
     const bars = barEvidence(rhythm.beatEvidence, rhythm.barStartsMs, durationMs, rhythm.beatsPerBar, silenceThreshold);
     if (!bars.length) throw new Error("Song bars could not be aligned to the recording.");
-    const startingKeyBars = bars.slice(0, Math.min(bars.length, 48, Math.max(MIN_KEY_REGION_BARS * 2, Math.ceil(bars.length / 3))));
     const key = options.key && NOTE_NAMES.includes(options.key)
       ? { key: options.key, keyMode: options.keyMode === "minor" ? "minor" : "major", root: NOTE_NAMES.indexOf(options.key), confidence: 1, alternatives: [] }
-      : estimateKey(startingKeyBars.map((bar) => bar.full.chroma), { key: options.keyHint, keyMode: options.keyModeHint });
+      : estimateStartingKey(bars, { key: options.keyHint, keyMode: options.keyModeHint });
     notify("Detecting beats, meter, key, and chords", "Decoding the complete chord sequence");
     const decoded = decodeBars(bars, key, rhythm.barStartsMs, durationMs, null, true);
     const startingRegion = decoded.keyRegions[0] || { key: key.key, keyMode: key.keyMode, confidence: key.confidence };
@@ -892,7 +905,7 @@
   const api = {
     ANALYSIS_VERSION, QUALITY_CALIBRATION_VERSION, NOTE_NAMES, downsample, onsetEnvelope, tempoCandidates, trackDynamicBeats,
     estimateTuning, spectralFrame, estimateKey, chordCandidates, keyPrior, transitionPrior,
-    decodeSequence, findRepeatedBars, detectKeyRegions, normalizeKeyRegions, decodeRegion, decodeBars, confidenceFor, barEvidence, scoreMeter, rhythmAnalysis, analyzePcm, redecodeAnalysis
+    decodeSequence, findRepeatedBars, estimateStartingKey, detectKeyRegions, normalizeKeyRegions, decodeRegion, decodeBars, confidenceFor, barEvidence, scoreMeter, rhythmAnalysis, analyzePcm, redecodeAnalysis
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;

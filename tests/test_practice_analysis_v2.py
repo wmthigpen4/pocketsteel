@@ -77,7 +77,7 @@ def test_seventh_quality_requires_added_seventh_evidence() -> None:
         console.log(JSON.stringify({weak:a.chordCandidates(weak).top.symbol,clear:a.chordCandidates(clear).top.symbol,refreshed:refreshed.chords.map(chord=>chord.symbol),contextual:[...new Set(contextual)],version:refreshed.analysisState.qualityCalibrationVersion}));
         """
     )
-    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 9}
+    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 10}
 
 
 def test_major_sixth_color_uses_the_audible_root_instead_of_the_relative_minor() -> None:
@@ -148,6 +148,22 @@ def test_short_c_f_g_modulation_is_not_absorbed_as_borrowed_harmony_in_g() -> No
         {"startBar": 49, "endBar": 61, "key": "C", "keyMode": "major"},
         {"startBar": 62, "endBar": 109, "key": "A", "keyMode": "major"},
     ]
+
+
+def test_leading_silence_and_dominant_chords_do_not_create_a_false_opening_key() -> None:
+    payload = run_node(
+        r"""
+        const a=require('./ui/practice-analysis-worker.js');
+        const pcs={'C#':1,'D#':3,'F#':6,'G#':8,B:11};
+        function chroma(symbol){if(symbol==='N.C.')return Array(12).fill(1/12);const match=/^([A-G](?:#)?)(m|7)?$/.exec(symbol),root=pcs[match[1]],intervals=match[2]==='m'?[0,3,7]:[0,4,7],value=Array(12).fill(.01);intervals.forEach((interval,index)=>value[(root+interval)%12]=[1,.82,.72][index]);if(match[2]==='7')value[(root+10)%12]=.76;return value;}
+        function bar(symbol,index){const value=chroma(symbol),scored=symbol==='N.C.'?{top:{symbol:'N.C.'},candidates:[{symbol:'N.C.',score:.98}]}:a.chordCandidates(value);return {bar:index+1,startMs:index*1000,endMs:(index+1)*1000,full:{chroma:value,scored},first:{chroma:value,scored},second:{chroma:value,scored}};}
+        const form=[...Array(9).fill('N.C.'),'F#','F#','N.C.','N.C.','N.C.','N.C.','C#','C#','C#','F#','C#','F#','C#','F#','C#','C#','G#7','F#','C#','F#','C#','F#','C#','C#','B','F#','C#','F#','F#','C#','C#'];
+        while(form.length<120) form.push('F#','C#','B','C#','F#','D#m','B','C#');
+        const bars=form.map(bar),key=a.estimateStartingKey(bars),decoded=a.decodeBars(bars,key,bars.map(item=>item.startMs),bars.length*1000,null,true);
+        console.log(JSON.stringify({key:{key:key.key,keyMode:key.keyMode},regions:decoded.keyRegions.map(({startBar,endBar,key,keyMode})=>({startBar,endBar,key,keyMode}))}));
+        """
+    )
+    assert payload == {"key": {"key": "F#", "keyMode": "major"}, "regions": [{"startBar": 1, "endBar": 120, "key": "F#", "keyMode": "major"}]}
 
 
 def test_occasional_borrowed_flat_seven_does_not_create_a_false_key_region() -> None:
