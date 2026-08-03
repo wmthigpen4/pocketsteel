@@ -14,7 +14,9 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 2;
+  const QUALITY_CALIBRATION_VERSION = 3;
+  const MIN_EXTENSION_GAIN = 0.1;
+  const MIN_SEVENTH_CORE_RATIO = 0.8;
   const MIN_KEY_REGION_BARS = 6;
   const METER_OPTIONS = [
     { meter: "2/4", beats: 2 },
@@ -306,8 +308,8 @@
       const third = parsed.quality === "7" ? 4 : 3;
       const coreEvidence = mean([chroma[parsed.root], chroma[(parsed.root + third) % 12], chroma[(parsed.root + 7) % 12]].map(Number));
       const seventhEvidence = Number(chroma[(parsed.root + 10) % 12] || 0);
-      const directEvidence = seventhEvidence >= Math.max(0.08, coreEvidence * 0.42);
-      const supported = extensionGain >= 0.1 && directEvidence;
+      const directEvidence = seventhEvidence >= Math.max(0.08, coreEvidence * MIN_SEVENTH_CORE_RATIO);
+      const supported = extensionGain >= MIN_EXTENSION_GAIN && directEvidence;
       const score = supported ? rawScore(candidate) : Math.min(rawScore(candidate), rawScore(triad) - 0.05);
       return { ...candidate, rawScore: rawScore(candidate), score: round(score), extensionSupported: supported };
     });

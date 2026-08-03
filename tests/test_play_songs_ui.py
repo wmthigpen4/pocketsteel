@@ -209,7 +209,7 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert "function toggleKeyBoundary" in setup_js
     assert "analysisClient.redecodeRegions" in setup_js
     assert "preserveManualChordEdits" in setup_js
-    assert 'qualityCalibrationVersion || 0) < 2) await handleKeyChange()' in setup_js
+    assert 'qualityCalibrationVersion || 0) < 3) await handleKeyChange()' in setup_js
     assert "New key ·" in setup_js
 
 

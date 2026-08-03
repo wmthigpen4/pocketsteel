@@ -594,7 +594,7 @@
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     app.hidden = false;
     if (needsUpgrade) await upgradeLegacyAnalysis();
-    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 2) await handleKeyChange();
+    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 3) await handleKeyChange();
     else { renderReview(); updateConfirmation(); }
   }
 

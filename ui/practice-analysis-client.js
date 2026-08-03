@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const WORKER_URL = "/ui/practice-analysis-worker-key-aware-v2-8.js?v=key-regions-20260803";
+  const WORKER_URL = "/ui/practice-analysis-worker-key-aware-v2-8.js?v=seventh-audio-v3-20260803";
 
   async function decodeAudio(file) {
     const bytes = await file.arrayBuffer();
