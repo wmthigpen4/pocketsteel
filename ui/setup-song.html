@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Review Song · Steel Guitar RAG</title>
-  <link rel="stylesheet" href="/ui/play-songs.css?v=review-map-v2-20260803">
+  <link rel="stylesheet" href="/ui/play-songs-review-v2.css?v=20260803">
 </head>
 <body>
   <header class="songs-header"><a class="songs-brand" href="/songs"><span>Steel Guitar RAG</span><strong>Review Song</strong></a><nav class="songs-nav"><a href="/songs">Songs</a><a href="/ui/steel-guitar-rag-mock.html">Home</a></nav></header>
   <main class="setup-main" id="setup-app" hidden>
-    <section class="setup-heading"><div><p class="songs-kicker">Local analysis · editable</p><h1 id="setup-title">Review detected song</h1><p>Correct the musical map here. Play Along uses this reviewed copy but cannot change it.</p></div><div class="setup-actions"><a class="songs-button is-primary" id="start-play" href="#">Start Play Along</a><button class="songs-button is-primary" id="confirm-play" type="button" hidden>Confirm and Play</button></div></section>
+    <section class="setup-heading"><div class="setup-heading__copy"><p class="songs-kicker">Local song analysis</p><h1 id="setup-title">Review Song</h1><p class="setup-track-name" id="setup-track-name">Detected song</p><p class="setup-heading__description">Check the detected chords before you practice. Select any bar to listen or make a correction.</p></div><div class="setup-actions"><a class="songs-button is-primary" id="start-play" href="#">Start Play Along</a><button class="songs-button is-primary" id="confirm-play" type="button" hidden>Confirm and Play</button></div></section>
     <section class="setup-summary" aria-label="Detected song details">
       <label>Title <input id="setup-song-title" type="text" maxlength="120"></label>
       <label>Key <select id="setup-key"><option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select></label>
@@ -31,6 +31,6 @@
   <section class="play-error" id="setup-error" hidden><h1>This song could not open.</h1><p id="setup-error-copy"></p><a class="songs-button" href="/songs">Back to Songs</a></section>
   <script src="/ui/practice-tools-20260802.js?v=key-aware-v2-20260803"></script>
   <script src="/ui/practice-analysis-client-key-aware-v2-4.js?v=20260803"></script>
-  <script src="/ui/setup-song-key-aware-v2-3.js?v=20260803"></script>
+  <script src="/ui/setup-song-review-v2-4.js?v=20260803"></script>
 </body>
 </html>

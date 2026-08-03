@@ -289,11 +289,15 @@
     if (!audioFile) throw new Error("The local recording is missing. Return to Songs and relink the original file with the same fingerprint.");
     if (!analysisClient) throw new Error("Local analysis controls are unavailable. Reload the page and try again.");
     objectUrl = URL.createObjectURL(audioFile); audio.src = objectUrl;
-    document.querySelector("#setup-title").textContent = `Review ${project.title}`;
+    document.querySelector("#setup-title").textContent = "Review Song";
+    document.querySelector("#setup-track-name").textContent = project.title;
     document.querySelector("#setup-song-title").value = project.title;
     document.querySelector("#start-play").href = `/play/${encodeURIComponent(project.id)}`;
     setControlsFromTimeline(); analysisBadges(); configureReanalysis();
-    document.querySelector("#setup-song-title").addEventListener("input", queueSave);
+    document.querySelector("#setup-song-title").addEventListener("input", (event) => {
+      document.querySelector("#setup-track-name").textContent = event.target.value.trim() || "Untitled song";
+      queueSave();
+    });
     controls().key.addEventListener("change", handleKeyChange);
     controls().keyMode.addEventListener("change", handleKeyChange);
     controls().tempo.addEventListener("change", markRhythmChange);
