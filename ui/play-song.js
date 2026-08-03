@@ -12,7 +12,7 @@
   const elements = {
     title: document.querySelector("#play-title"), key: document.querySelector("#play-key"), meta: document.querySelector("#play-meta"), attribution: document.querySelector("#play-attribution"), bar: document.querySelector("#play-bar"),
     objective: document.querySelector("#play-objective"), currentChord: document.querySelector("#current-chord"), currentGrip: document.querySelector("#current-grip"), currentMelody: document.querySelector("#current-melody"), currentMove: document.querySelector("#current-move"),
-    nextLabel: document.querySelector("#next-chord-label"), nextDirection: document.querySelector("#next-direction"), nextDirectionArrow: document.querySelector("#next-direction-arrow"), nextDirectionText: document.querySelector("#next-direction-text"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMelody: document.querySelector("#next-melody"), nextMove: document.querySelector("#next-move"),
+    nextLabel: document.querySelector("#next-chord-label"), nextDirection: document.querySelector("#next-direction"), nextDirectionArrow: document.querySelector("#next-direction-arrow"), nextDirectionText: document.querySelector("#next-direction-text"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMelody: document.querySelector("#next-melody"),
     fretboard: document.querySelector("#play-fretboard"), lyric: document.querySelector("#play-lyric"), toggle: document.querySelector("#play-toggle"), restart: document.querySelector("#play-restart"),
     scrub: document.querySelector("#play-scrub"), time: document.querySelector("#play-time"), speed: document.querySelector("#play-speed"), route: document.querySelector("#play-route"), loop: document.querySelector("#play-loop"), volume: document.querySelector("#play-volume"),
     checkpoints: Array.from(document.querySelectorAll("[data-checkpoint]")), nextCard: document.querySelector(".play-cue.is-next"),
@@ -63,7 +63,6 @@
     elements.currentChord.textContent = "…";
     elements.currentMove.textContent = "Loading the synchronized fretboard guidance.";
     elements.nextChord.textContent = "…";
-    elements.nextMove.textContent = "The recording will be ready with the route.";
   }
 
   function formatTime(seconds) {
@@ -135,30 +134,6 @@
       return `<span class="play-string">${string}${control ? ` ${control}` : ""}</span>`;
     }).join("");
     return `<span class="play-grip__fret">Fret ${position.fret}</span><span class="play-grip__strings" aria-label="Strings ${(position.strings || []).join(", ")}">${strings}</span>`;
-  }
-
-  function controlChangesByString(from, to) {
-    const fromMap = stringControlMap(from);
-    const toMap = stringControlMap(to);
-    const strings = Array.from(new Set([...(from?.strings || []), ...(to?.strings || [])])).sort((left, right) => left - right);
-    return strings.flatMap((string) => {
-      const before = fromMap.get(Number(string)) || "";
-      const after = toMap.get(Number(string)) || "";
-      if (before === after) return [];
-      return [`${string}: ${after || `release ${before}`}`];
-    });
-  }
-
-  function movementInstruction(current, next) {
-    const from = current?.position;
-    const to = next?.position;
-    if (!from) return to ? `Get ready at fret ${to.fret}.` : "Listen for the count-in.";
-    if (!to) return "Hold the ending and listen.";
-    if (isMelodyLesson() && next?.movement) return String(next.movement).replace(/^[a-z]/, (letter) => letter.toUpperCase());
-    const fretMove = from.fret === to.fret ? `Stay at fret ${from.fret}` : `Slide ${from.fret}→${to.fret}`;
-    const stringChanges = controlChangesByString(from, to);
-    const controlMove = stringChanges.length ? stringChanges.join(" · ") : "repick";
-    return `${fretMove} · ${controlMove}`;
   }
 
   function movementIndicator(current, next) {
@@ -369,6 +344,57 @@
     group.append(caption);
   }
 
+  function addFretMovementArrow(currentPosition, nextPosition) {
+    const fromFret = Number(currentPosition?.fret);
+    const toFret = Number(nextPosition?.fret);
+    if (!Number.isFinite(fromFret) || !Number.isFinite(toFret) || fromFret === toFret) return;
+    const svg = elements.fretboard.querySelector("svg");
+    const currentGroup = elements.fretboard.querySelector('[data-highlight-id="play-current"]');
+    const nextGroup = elements.fretboard.querySelector('[data-highlight-id="play-next"]');
+    const fromX = Number(currentGroup?.getAttribute("data-highlight-fret-x"));
+    const toX = Number(nextGroup?.getAttribute("data-highlight-fret-x"));
+    if (!svg || !Number.isFinite(fromX) || !Number.isFinite(toX)) return;
+
+    const direction = toX > fromX ? 1 : -1;
+    const distance = Math.abs(toFret - fromFret);
+    const gap = Math.abs(toX - fromX);
+    const inset = Math.min(24, Math.max(7, gap * 0.18));
+    const startX = fromX + (direction * inset);
+    const endX = toX - (direction * inset);
+    const head = Math.min(13, Math.max(8, gap * 0.12));
+    const y = 37;
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.setAttribute("class", `play-fret-move-arrow${distance >= 4 ? " is-large" : " is-slide"}`);
+    group.setAttribute("data-fret-move-from", String(fromFret));
+    group.setAttribute("data-fret-move-to", String(toFret));
+    group.setAttribute("data-fret-move-distance", String(distance));
+    group.setAttribute("aria-label", `Move from fret ${fromFret} to fret ${toFret}, ${distance} fret${distance === 1 ? "" : "s"}`);
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("class", "play-fret-move-arrow__line");
+    line.setAttribute("x1", String(startX));
+    line.setAttribute("y1", String(y));
+    line.setAttribute("x2", String(endX - (direction * head * 0.7)));
+    line.setAttribute("y2", String(y));
+
+    const arrowHead = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    arrowHead.setAttribute("class", "play-fret-move-arrow__head");
+    arrowHead.setAttribute("points", [
+      `${endX},${y}`,
+      `${endX - (direction * head)},${y - head * 0.7}`,
+      `${endX - (direction * head)},${y + head * 0.7}`
+    ].join(" "));
+
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.setAttribute("class", "play-fret-move-arrow__label");
+    label.setAttribute("x", String((startX + endX) / 2));
+    label.setAttribute("y", "25");
+    label.setAttribute("text-anchor", "middle");
+    label.textContent = distance >= 4 ? `MOVE ${distance}` : `SLIDE ${distance}`;
+    group.append(line, arrowHead, label);
+    svg.append(group);
+  }
+
   function renderFretboard(current, next) {
     if (!global.STEEL_RAG_FRETBOARD?.mountPedalSteelFretboard) return;
     const visibleNext = assistanceReduced || samePosition(current?.position, next?.position) ? null : next;
@@ -386,6 +412,7 @@
       centerSameFretCurrentGrip();
       separateSameFretNextGrip(visibleNext?.position);
     }
+    addFretMovementArrow(current?.position, visibleNext?.position);
     addMelodyVoiceTag("play-current", current?.position, "current", sharedFret);
     addMelodyVoiceTag("play-next", visibleNext?.position, "next");
   }
@@ -461,7 +488,6 @@
       elements.nextGrip.innerHTML = assistanceReduced ? "" : gripMarkup(next?.position);
       elements.nextMelody.textContent = assistanceReduced ? "" : melodyCueText(next);
       elements.nextMelody.hidden = !elements.nextMelody.textContent;
-      elements.nextMove.textContent = assistanceReduced ? "" : movementInstruction(current, next);
       renderMovementIndicator(current, next);
       const currentBar = barNumber(current || next);
       elements.bar.textContent = current?.isPickup ? `Pickup · Bar 1 of ${chart.measures.length}` : current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";

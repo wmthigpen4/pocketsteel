@@ -40,6 +40,7 @@ def test_songs_catalog_and_player_keep_existing_visual_language() -> None:
     assert 'id="play-attribution"' in player
     assert 'id="play-key"' in player
     assert 'id="next-direction"' in player
+    assert 'id="next-move"' not in player
     assert 'id="play-route"' in player
     assert 'id="play-objective"' in player
     assert 'id="current-melody"' in player
@@ -105,6 +106,10 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert 'symbol: change > 0 ? "↑" : "↓"' in player_js
     assert 'label: "Same fret"' in player_js
     assert "renderMovementIndicator(current, next)" in player_js
+    assert "function movementInstruction" not in player_js
+    assert "function addFretMovementArrow" in player_js
+    assert 'label.textContent = distance >= 4 ? `MOVE ${distance}` : `SLIDE ${distance}`' in player_js
+    assert "addFretMovementArrow(current?.position, visibleNext?.position)" in player_js
     assert "centerSameFretCurrentGrip();" in player_js
     assert "function separateSameFretNextGrip" in player_js
     assert 'positionDisplay(visibleNext, "play-next", "next", 2)' in player_js
@@ -144,6 +149,7 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "grid-template-columns: repeat(2, minmax(0, 430px))" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
     assert "flex-direction: column" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
     assert ".play-direction__arrow" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
+    assert ".play-fret-move-arrow__line" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
     assert 'opacity: 0.8 !important' in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
 
 

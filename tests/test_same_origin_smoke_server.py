@@ -198,7 +198,8 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b"Review Song" in setup
     assert b"practice-reference-validation-v1.js" in setup
     assert b"setup-song-review-v2-15.js" in setup
-    assert b"play-song-control-rationale-1.js" in player
+    assert b"play-song-fret-arrow-1.js" in player
+    assert b"play-songs-fret-arrow-1.css" in player
     assert b"play-songs-review-v6.css" in setup
     assert b"practice-tools-review-teaching-1.js" in setup
 

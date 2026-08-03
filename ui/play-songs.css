@@ -246,7 +246,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-melody-cue { margin: 10px 0 0; color: var(--gold); font-size: 12px; font-weight: 900; letter-spacing: 0.035em; text-transform: uppercase; }
 .play-cue.is-next .play-melody-cue { color: rgba(244, 234, 214, 0.78); }
 .play-move { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
-.play-cue.is-next .play-move { color: rgba(244, 234, 214, 0.82); font-weight: 750; }
 
 .play-fretboard-shell { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: #090907; }
 .play-fretboard { min-width: 760px; }
@@ -261,6 +260,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-fretboard [data-highlight-id="play-current"] { opacity: 1 !important; }
 .play-fretboard .pedal-steel-fretboard__string-action-label { font-family: var(--font); }
 .play-fretboard .play-next-grip-caption { fill: #fff4dc; font: 900 12px/1 var(--font); letter-spacing: 0.06em; paint-order: stroke fill; stroke: #090907; stroke-width: 4px; }
+.play-fretboard .play-fret-move-arrow { pointer-events: none; }
+.play-fretboard .play-fret-move-arrow__line { stroke: #f0bf69; stroke-width: 4px; stroke-linecap: round; filter: drop-shadow(0 0 5px rgba(240, 191, 105, 0.78)); }
+.play-fretboard .play-fret-move-arrow__head { fill: #f0bf69; filter: drop-shadow(0 0 5px rgba(240, 191, 105, 0.78)); }
+.play-fretboard .play-fret-move-arrow__label { fill: #fff4dc; font: 900 11px/1 var(--font); letter-spacing: 0.08em; paint-order: stroke fill; stroke: #090907; stroke-width: 4px; }
+.play-fretboard .play-fret-move-arrow.is-large .play-fret-move-arrow__line { stroke: #ff9f7e; stroke-width: 5px; }
+.play-fretboard .play-fret-move-arrow.is-large .play-fret-move-arrow__head { fill: #ff9f7e; }
+.play-fretboard .play-fret-move-arrow.is-large .play-fret-move-arrow__label { fill: #ffd2c2; }
 .play-fretboard .play-melody-tag rect { fill: #18130b; stroke: #f0bf69; stroke-width: 1.5px; }
 .play-fretboard .play-melody-tag text { fill: #fff4dc; font: 900 11px/1 var(--font); letter-spacing: 0.035em; paint-order: stroke fill; stroke: #18130b; stroke-width: 3px; }
 .play-fretboard [data-highlight-id="play-next"] .play-melody-tag rect { fill: #363b38; stroke: #fff4dc; }
