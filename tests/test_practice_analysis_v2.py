@@ -77,7 +77,7 @@ def test_seventh_quality_requires_added_seventh_evidence() -> None:
         console.log(JSON.stringify({weak:a.chordCandidates(weak).top.symbol,clear:a.chordCandidates(clear).top.symbol,refreshed:refreshed.chords.map(chord=>chord.symbol),contextual:[...new Set(contextual)],version:refreshed.analysisState.qualityCalibrationVersion}));
         """
     )
-    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 8}
+    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "contextual": ["D"], "version": 9}
 
 
 def test_major_sixth_color_uses_the_audible_root_instead_of_the_relative_minor() -> None:
@@ -148,6 +148,23 @@ def test_short_c_f_g_modulation_is_not_absorbed_as_borrowed_harmony_in_g() -> No
         {"startBar": 49, "endBar": 61, "key": "C", "keyMode": "major"},
         {"startBar": 62, "endBar": 109, "key": "A", "keyMode": "major"},
     ]
+
+
+def test_occasional_borrowed_flat_seven_does_not_create_a_false_key_region() -> None:
+    payload = run_node(
+        r"""
+        const a=require('./ui/practice-analysis-worker.js');
+        const pcs={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+        function chroma(symbol){const match=/^([A-G])(m)?$/.exec(symbol),root=pcs[match[1]],intervals=match[2]?[0,3,7]:[0,4,7],value=Array(12).fill(.01);intervals.forEach((interval,index)=>value[(root+interval)%12]=[1,.82,.72][index]);return value;}
+        function bar(symbol,index){const value=chroma(symbol),scored=a.chordCandidates(value);return {bar:index+1,startMs:index*1000,endMs:(index+1)*1000,full:{chroma:value,scored},first:{chroma:value,scored},second:{chroma:value,scored}};}
+        const form=[];
+        for(let repeat=0;repeat<12;repeat++) form.push('G','F','G','D','G','Em','C','D');
+        const bars=form.map(bar),starting={key:'G',keyMode:'major',root:7,confidence:.8};
+        const decoded=a.decodeBars(bars,starting,bars.map(item=>item.startMs),bars.length*1000,null,true);
+        console.log(JSON.stringify(decoded.keyRegions.map(({startBar,endBar,key,keyMode})=>({startBar,endBar,key,keyMode}))));
+        """
+    )
+    assert payload == [{"startBar": 1, "endBar": 96, "key": "G", "keyMode": "major"}]
 
 
 def test_detects_stable_g_c_a_key_regions_and_keeps_plain_dominants_as_triads() -> None:

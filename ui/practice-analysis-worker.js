@@ -14,7 +14,7 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 8;
+  const QUALITY_CALIBRATION_VERSION = 9;
   const MIN_EXTENSION_GAIN = 0.09;
   const MIN_SEVENTH_CORE_RATIO = 0.8;
   const MIN_KEY_REGION_BARS = 6;
@@ -558,6 +558,19 @@
     return chordFit + profileScore(bar.full.chroma, key.root, profile) * 0.24 + primaryFit * 0.12;
   }
 
+  function keyCadenceScore(previousBar, bar, key) {
+    if (!previousBar || !bar) return 0;
+    const previous = parseSymbol(previousBar.full.scored.top?.symbol);
+    const current = parseSymbol(bar.full.scored.top?.symbol);
+    if (previous.root == null || current.root == null) return 0;
+    const from = degree(previous.root, key.root);
+    const to = degree(current.root, key.root);
+    if (to !== 0) return 0;
+    if (from === 7) return 0.34;
+    if (from === 5) return 0.12;
+    return 0;
+  }
+
   function normalizeKeyRegions(regions, barCount, fallbackKey) {
     const clean = (Array.isArray(regions) ? regions : []).map((region) => ({
       startBar: Math.max(1, Math.min(barCount, Math.round(Number(region.startBar) || 1))),
@@ -576,8 +589,14 @@
     const modes = forceStartingKey ? [startingKey.keyMode] : ["major", "minor"];
     for (let root = 0; root < 12; root += 1) for (const mode of modes) states.push(keyState(root, mode));
     const prefix = states.map(() => [0]);
+    const cadencePrefix = states.map(() => [0]);
     states.forEach((state, stateIndex) => bars.forEach((bar) => prefix[stateIndex].push(prefix[stateIndex].at(-1) + keyEvidenceScore(bar, state))));
-    const segmentScore = (stateIndex, start, end) => prefix[stateIndex][end] - prefix[stateIndex][start];
+    states.forEach((state, stateIndex) => bars.forEach((bar, index) => cadencePrefix[stateIndex].push(cadencePrefix[stateIndex].at(-1) + keyCadenceScore(bars[index - 1], bar, state))));
+    const segmentScore = (stateIndex, start, end) => {
+      const harmony = prefix[stateIndex][end] - prefix[stateIndex][start];
+      const cadences = cadencePrefix[stateIndex][end] - cadencePrefix[stateIndex][Math.min(end, start + 1)];
+      return harmony + cadences;
+    };
     const bestAt = Array.from({ length: bars.length + 1 }, () => states.map(() => ({ score: -Infinity, previousEnd: null, previousState: null })));
     for (let end = MIN_KEY_REGION_BARS; end <= bars.length; end += 1) {
       states.forEach((state, stateIndex) => {

@@ -211,7 +211,7 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert "preserveManualChordEdits" in setup_js
     assert "seventhEvidenceTeaching" in setup_js
     assert "Audio ♭7 evidence" in setup_js
-    assert 'qualityCalibrationVersion || 0) < 8) await upgradeLegacyAnalysis(false)' in setup_js
+    assert 'qualityCalibrationVersion || 0) < 9) await upgradeLegacyAnalysis(false)' in setup_js
     assert "New key ·" in setup_js
     assert 'event.symbol === "N.C." ? "No chord"' in setup_js
     assert 'NO\\s+CHORD' in setup_js
