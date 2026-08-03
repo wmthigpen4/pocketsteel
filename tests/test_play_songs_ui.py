@@ -199,7 +199,26 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert 'tools.saveSession(practiceSession)' in setup_js
     assert "Chord names (editing)" in setup_js
     assert "Nashville number" in setup_js
-    assert "project.timeline = { ...previousTimeline, key: requestedKey, keyMode: requestedMode }" in setup_js
+    assert "keyRegions: immediateRegions" in setup_js
     assert "Song Map updated for ${requestedKey} ${requestedMode}. The audio was not transposed." in setup_js
     assert "qualityCalibrationVersion" in (REPO_ROOT / "ui" / "practice-analysis-worker.js").read_text(encoding="utf-8")
-    assert "Updates chord context and NNS; it does not transpose the audio." in setup_html
+    assert "Updates the first section and NNS; it does not transpose the audio." in setup_html
+    assert "Starting key" in setup_html
+    assert 'id="review-key-journey"' in setup_html
+    assert "function updateSectionKey" in setup_js
+    assert "function toggleKeyBoundary" in setup_js
+    assert "analysisClient.redecodeRegions" in setup_js
+    assert "preserveManualChordEdits" in setup_js
+    assert "New key ·" in setup_js
+
+
+def test_play_along_uses_active_section_key_for_nns_and_key_markers() -> None:
+    player_js = (REPO_ROOT / "ui" / "play-song.js").read_text(encoding="utf-8")
+    player_html = (REPO_ROOT / "ui" / "play-song.html").read_text(encoding="utf-8")
+    assert "function keyContextForBar" in player_js
+    assert "keyRegions: timeline.keyRegions || []" in player_js
+    assert "displayedChord(chord.symbol, bar.barNumber)" in player_js
+    assert "activeKey.key" in player_js
+    assert "New key ·" in player_js
+    assert 'id="play-key-journey"' in player_html
+    assert "Current key" in player_html

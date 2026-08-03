@@ -14,7 +14,8 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 1;
+  const QUALITY_CALIBRATION_VERSION = 2;
+  const MIN_KEY_REGION_BARS = 6;
   const METER_OPTIONS = [
     { meter: "2/4", beats: 2 },
     { meter: "3/4", beats: 3 },
@@ -293,7 +294,7 @@
     return { root: NOTE_NAMES.indexOf(match[1]), quality: match[2] === "m" ? "minor" : match[2] || "major" };
   }
 
-  function calibrateExtendedQualities(candidates) {
+  function calibrateExtendedQualities(candidates, chroma = []) {
     const rawScore = (candidate) => Number(candidate?.rawScore ?? candidate?.score ?? -0.4);
     return candidates.map((candidate) => {
       const parsed = parseSymbol(candidate.symbol);
@@ -302,8 +303,13 @@
       const triadSymbol = symbolFor(parsed.root, triadQuality);
       const triad = candidates.find((item) => item.symbol === triadSymbol);
       const extensionGain = rawScore(candidate) - rawScore(triad);
-      const weakExtensionPenalty = Math.max(0, 0.12 - extensionGain) * 1.5;
-      return { ...candidate, rawScore: rawScore(candidate), score: round(rawScore(candidate) - weakExtensionPenalty) };
+      const third = parsed.quality === "7" ? 4 : 3;
+      const coreEvidence = mean([chroma[parsed.root], chroma[(parsed.root + third) % 12], chroma[(parsed.root + 7) % 12]].map(Number));
+      const seventhEvidence = Number(chroma[(parsed.root + 10) % 12] || 0);
+      const directEvidence = seventhEvidence >= Math.max(0.08, coreEvidence * 0.42);
+      const supported = extensionGain >= 0.1 && directEvidence;
+      const score = supported ? rawScore(candidate) : Math.min(rawScore(candidate), rawScore(triad) - 0.05);
+      return { ...candidate, rawScore: rawScore(candidate), score: round(score), extensionSupported: supported };
     });
   }
 
@@ -321,7 +327,7 @@
     }
     const relativeEnergy = silenceThreshold > 0 ? energy / silenceThreshold : 10;
     candidates.push({ symbol: "N.C.", root: null, quality: "none", score: relativeEnergy < 1 ? 0.96 - 0.18 * relativeEnergy : Math.max(0.02, 0.24 / relativeEnergy) });
-    candidates = calibrateExtendedQualities(candidates);
+    candidates = calibrateExtendedQualities(candidates, chroma);
     candidates.sort((left, right) => right.score - left.score);
     const top = candidates[0], next = candidates[1] || top;
     const confidence = clamp(0.28 + (top.score - next.score) * 3.8 + (top.score - 0.68) * 1.25, 0.05, 0.99);
@@ -333,23 +339,23 @@
     const parsed = parseSymbol(symbol);
     if (parsed.root == null) return symbol === "N.C." ? -0.02 : -0.5;
     const interval = degree(parsed.root, key.root);
-    const quality = parsed.quality;
+    const quality = parsed.quality === "7" ? "major" : parsed.quality === "m7" ? "minor" : parsed.quality;
     if (key.keyMode === "minor") {
-      const preferred = new Map([[0, ["minor", "m7"]], [3, ["major", "7"]], [5, ["minor", "m7"]], [7, ["minor", "major", "7"]], [8, ["major", "7"]], [10, ["major", "7"]]]);
+      const preferred = new Map([[0, ["minor"]], [3, ["major"]], [5, ["minor"]], [7, ["minor", "major"]], [8, ["major"]], [10, ["major"]]]);
       if (preferred.get(interval)?.includes(quality)) return interval === 0 ? 0.62 : [5, 7].includes(interval) ? 0.46 : 0.34;
       if (interval === 0 && quality === "major") return -0.28;
       return -0.12;
     }
-    const preferred = new Map([[0, ["major"]], [2, ["minor", "m7"]], [4, ["minor", "m7"]], [5, ["major", "7"]], [7, ["major", "7"]], [9, ["minor", "m7"]], [10, ["major", "7"]]]);
+    const preferred = new Map([[0, ["major"]], [2, ["minor"]], [4, ["minor"]], [5, ["major"]], [7, ["major"]], [9, ["minor"]], [10, ["major"]]]);
     if (preferred.get(interval)?.includes(quality)) {
       if (interval === 0) return 0.54;
-      if (interval === 5) return quality === "major" ? 0.54 : 0.32;
-      if (interval === 7) return quality === "7" ? 0.58 : 0.54;
-      if (interval === 10) return quality === "major" ? 0.32 : 0.2;
+      if (interval === 5) return 0.54;
+      if (interval === 7) return 0.54;
+      if (interval === 10) return 0.32;
       if (interval === 9) return 0.26;
       return interval === 2 ? 0.18 : 0.14;
     }
-    if (interval === 0 && ["minor", "m7"].includes(quality)) return -0.68;
+    if (interval === 0 && quality === "minor") return -0.68;
     return -0.16;
   }
 
@@ -502,23 +508,73 @@
     });
   }
 
-  function modulationRanges(chords, key) {
-    const ranges = [];
-    let start = null;
-    const inKey = (chord) => keyPrior(chord.symbol, key) > 0;
-    chords.forEach((chord, index) => {
-      const suspicious = chord.symbol !== "N.C." && chord.confidence >= 0.68 && !inKey(chord);
-      if (suspicious && start == null) start = index;
-      if ((!suspicious || index === chords.length - 1) && start != null) {
-        const end = suspicious && index === chords.length - 1 ? index : index - 1;
-        if (end - start + 1 >= 4) ranges.push({ startBar: chords[start].bar, endBar: chords[end].bar, reason: "Sustained out-of-key passage; check for a modulation." });
-        start = null;
-      }
-    });
-    return ranges;
+  function keyState(root, keyMode = "major") {
+    return { root, key: NOTE_NAMES[root], keyMode };
   }
 
-  function decodeBars(bars, key, barStartsMs, durationMs) {
+  function keyEvidenceScore(bar, key) {
+    const candidates = (bar.full.scored.candidates || []).filter((candidate) => candidate.symbol !== "N.C.").slice(0, 18);
+    const chordFit = candidates.length ? Math.max(...candidates.map((candidate) => Number(candidate.score) + keyPrior(candidate.symbol, key) * 0.72)) : -0.4;
+    const profile = key.keyMode === "minor" ? MINOR_PROFILE : MAJOR_PROFILE;
+    return chordFit + profileScore(bar.full.chroma, key.root, profile) * 0.24;
+  }
+
+  function normalizeKeyRegions(regions, barCount, fallbackKey) {
+    const clean = (Array.isArray(regions) ? regions : []).map((region) => ({
+      startBar: Math.max(1, Math.min(barCount, Math.round(Number(region.startBar) || 1))),
+      key: NOTE_NAMES.includes(region.key) ? region.key : fallbackKey.key,
+      keyMode: region.keyMode === "minor" ? "minor" : "major",
+      confidence: round(clamp(Number(region.confidence ?? 1), 0.05, 1)),
+      source: region.source === "manual" ? "manual" : "detected"
+    })).sort((left, right) => left.startBar - right.startBar).filter((region, index, items) => !index || region.startBar !== items[index - 1].startBar);
+    if (!clean.length || clean[0].startBar !== 1) clean.unshift({ startBar: 1, key: fallbackKey.key, keyMode: fallbackKey.keyMode, confidence: Number(fallbackKey.confidence || 0.5), source: "detected" });
+    return clean.map((region, index) => ({ ...region, endBar: (clean[index + 1]?.startBar || barCount + 1) - 1 }));
+  }
+
+  function detectKeyRegions(bars, startingKey, forceStartingKey = false) {
+    if (!bars.length) return [];
+    const states = [];
+    for (let root = 0; root < 12; root += 1) for (const mode of ["major", "minor"]) states.push(keyState(root, mode));
+    const prefix = states.map(() => [0]);
+    states.forEach((state, stateIndex) => bars.forEach((bar) => prefix[stateIndex].push(prefix[stateIndex].at(-1) + keyEvidenceScore(bar, state))));
+    const segmentScore = (stateIndex, start, end) => prefix[stateIndex][end] - prefix[stateIndex][start];
+    const bestAt = Array.from({ length: bars.length + 1 }, () => states.map(() => ({ score: -Infinity, previousEnd: null, previousState: null })));
+    for (let end = MIN_KEY_REGION_BARS; end <= bars.length; end += 1) {
+      states.forEach((state, stateIndex) => {
+        const startMatches = !forceStartingKey || (state.key === startingKey.key && state.keyMode === startingKey.keyMode);
+        if (startMatches) {
+          const hint = state.key === startingKey.key && state.keyMode === startingKey.keyMode ? 0.32 : 0;
+          bestAt[end][stateIndex] = { score: segmentScore(stateIndex, 0, end) + hint, previousEnd: 0, previousState: null };
+        }
+        for (let start = MIN_KEY_REGION_BARS; start <= end - MIN_KEY_REGION_BARS; start += 1) {
+          states.forEach((_previous, previousState) => {
+            const previous = bestAt[start][previousState];
+            if (!Number.isFinite(previous.score) || previousState === stateIndex) return;
+            const score = previous.score + segmentScore(stateIndex, start, end) - 0.72;
+            if (score > bestAt[end][stateIndex].score) bestAt[end][stateIndex] = { score, previousEnd: start, previousState };
+          });
+        }
+      });
+    }
+    const end = bars.length;
+    let stateIndex = states.reduce((best, _state, index) => bestAt[end][index].score > bestAt[end][best].score ? index : best, 0);
+    if (!Number.isFinite(bestAt[end][stateIndex].score)) return normalizeKeyRegions([], bars.length, startingKey);
+    const reversed = [];
+    let cursor = end;
+    while (cursor > 0) {
+      const node = bestAt[cursor][stateIndex];
+      const start = Number(node.previousEnd || 0);
+      const state = states[stateIndex];
+      const ownAverage = segmentScore(stateIndex, start, cursor) / Math.max(1, cursor - start);
+      const rivalAverage = Math.max(...states.map((_item, index) => index === stateIndex ? -Infinity : segmentScore(index, start, cursor) / Math.max(1, cursor - start)));
+      reversed.push({ startBar: start + 1, endBar: cursor, key: state.key, keyMode: state.keyMode, confidence: round(clamp(0.5 + (ownAverage - rivalAverage) * 2.2, 0.35, 0.97)), source: "detected" });
+      stateIndex = node.previousState;
+      cursor = start;
+    }
+    return reversed.reverse();
+  }
+
+  function decodeRegion(bars, key, barStartsMs, durationMs) {
     const halfEvidence = bars.flatMap((bar) => [bar.first.scored, bar.second.scored]);
     const halfDecoded = decodeSequence(halfEvidence, key);
     const repeatGroups = findRepeatedBars(bars);
@@ -574,11 +630,31 @@
         });
       });
     });
-    const possibleModulations = modulationRanges(chords.filter((chord) => chord.startFraction === 0), key);
-    possibleModulations.forEach((range) => chords.filter((chord) => chord.bar >= range.startBar && chord.bar <= range.endBar).forEach((chord) => {
-      chord.needsAttention = true; chord.reviewed = false; chord.reviewReasons = [...chord.reviewReasons, range.reason];
+    return { chords, repeatGroups };
+  }
+
+  function decodeBars(bars, key, barStartsMs, durationMs, requestedRegions = null, forceStartingKey = false) {
+    const keyRegions = requestedRegions?.length
+      ? normalizeKeyRegions(requestedRegions, bars.length, key)
+      : detectKeyRegions(bars, key, forceStartingKey);
+    const chords = [];
+    const repeatGroups = [];
+    keyRegions.forEach((region) => {
+      const regionBars = bars.filter((bar) => bar.bar >= region.startBar && bar.bar <= region.endBar);
+      const regionKey = { key: region.key, keyMode: region.keyMode, root: NOTE_NAMES.indexOf(region.key), confidence: region.confidence };
+      const decoded = decodeRegion(regionBars, regionKey, barStartsMs, durationMs);
+      decoded.chords.forEach((chord) => chords.push({ ...chord, activeKey: region.key, activeKeyMode: region.keyMode }));
+      decoded.repeatGroups.forEach((group) => repeatGroups.push(group));
+    });
+    const possibleModulations = keyRegions.slice(1).map((region) => ({
+      startBar: region.startBar,
+      endBar: region.endBar,
+      key: region.key,
+      keyMode: region.keyMode,
+      confidence: region.confidence,
+      reason: `Key change to ${region.key} ${region.keyMode}.`
     }));
-    return { chords, repeatGroups, possibleModulations };
+    return { chords: chords.sort((left, right) => left.bar - right.bar || left.startFraction - right.startFraction), repeatGroups, possibleModulations, keyRegions };
   }
 
   function scoreMeter(track, beatEvidence, option) {
@@ -687,7 +763,7 @@
   function hydrateRetainedBars(analysis) {
     return (analysis.analysisState?.bars || []).map((bar) => {
       const make = (item) => {
-        const candidates = calibrateExtendedQualities(item.candidates || []).sort((left, right) => right.score - left.score);
+        const candidates = calibrateExtendedQualities(item.candidates || [], item.chroma || []).sort((left, right) => right.score - left.score);
         const top = candidates[0] || { symbol: "N.C.", score: 0 };
         const next = candidates[1] || top;
         return { chroma: item.chroma, energy: item.energy, scored: { top, candidates, confidence: clamp(0.28 + (top.score - next.score) * 3.8, 0.05, 0.99) } };
@@ -696,12 +772,12 @@
     });
   }
 
-  function redecodeAnalysis(analysis, requestedKey, requestedMode = "major") {
+  function redecodeAnalysis(analysis, requestedKey, requestedMode = "major", requestedRegions = null) {
     const keyRoot = NOTE_NAMES.indexOf(requestedKey);
     if (keyRoot < 0 || !analysis?.analysisState?.bars?.length) throw new Error("This project does not retain v2 chord candidates. Reanalyze the recording first.");
     const key = { key: requestedKey, keyMode: requestedMode === "minor" ? "minor" : "major", root: keyRoot, confidence: Number(analysis.keyConfidence || 0.5), alternatives: analysis.analysisState.keyAlternatives || [] };
     const bars = hydrateRetainedBars(analysis);
-    const decoded = decodeBars(bars, key, analysis.barStartsMs, Number(analysis.durationMs || bars.at(-1)?.endMs || 0));
+    const decoded = decodeBars(bars, key, analysis.barStartsMs, Number(analysis.durationMs || bars.at(-1)?.endMs || 0), requestedRegions, !requestedRegions?.length);
     const calibratedBars = analysis.analysisState.bars.map((bar, index) => ({
       ...bar,
       full: { ...bar.full, candidates: bars[index].full.scored.candidates },
@@ -713,6 +789,7 @@
       key: key.key,
       keyMode: key.keyMode,
       chords: decoded.chords,
+      keyRegions: decoded.keyRegions,
       possibleModulations: decoded.possibleModulations,
       analysisState: { ...analysis.analysisState, qualityCalibrationVersion: QUALITY_CALIBRATION_VERSION, bars: calibratedBars }
     };
@@ -731,16 +808,17 @@
       ? { key: options.key, keyMode: options.keyMode === "minor" ? "minor" : "major", root: NOTE_NAMES.indexOf(options.key), confidence: 1, alternatives: [] }
       : estimateKey(bars.map((bar) => bar.full.chroma), { key: options.keyHint, keyMode: options.keyModeHint });
     notify("Detecting beats, meter, key, and chords", "Decoding the complete chord sequence");
-    const decoded = decodeBars(bars, key, rhythm.barStartsMs, durationMs);
+    const decoded = decodeBars(bars, key, rhythm.barStartsMs, durationMs, null, Boolean(options.key));
+    const startingRegion = decoded.keyRegions[0] || { key: key.key, keyMode: key.keyMode, confidence: key.confidence };
     notify("Building the steel route", "Preparing the attention list and editable chord bars");
     const firstBarMs = rhythm.barStartsMs[0] || 0;
     const medianBarMs = rhythm.barStartsMs.length > 1 ? median(rhythm.barStartsMs.slice(1).map((time, index) => time - rhythm.barStartsMs[index])) : 0;
     const analysis = {
       analysisVersion: ANALYSIS_VERSION, durationMs, tempo: rhythm.tempo, tempoConfidence: rhythm.tempoConfidence,
-      key: key.key, keyMode: key.keyMode, keyConfidence: key.confidence,
+      key: startingRegion.key, keyMode: startingRegion.keyMode, keyConfidence: startingRegion.confidence,
       meter: rhythm.meter, meterConfidence: rhythm.meterConfidence,
       beatTimesMs: rhythm.beatTimesMs, barStartsMs: rhythm.barStartsMs, chords: decoded.chords,
-      authoredCountIn: Boolean(medianBarMs && firstBarMs > medianBarMs * 0.7), possibleModulations: decoded.possibleModulations,
+      authoredCountIn: Boolean(medianBarMs && firstBarMs > medianBarMs * 0.7), possibleModulations: decoded.possibleModulations, keyRegions: decoded.keyRegions,
       analysisState: null
     };
     analysis.analysisState = retainedState(bars, rhythm, key, decoded);
@@ -750,7 +828,7 @@
   const api = {
     ANALYSIS_VERSION, QUALITY_CALIBRATION_VERSION, NOTE_NAMES, downsample, onsetEnvelope, tempoCandidates, trackDynamicBeats,
     estimateTuning, spectralFrame, estimateKey, chordCandidates, keyPrior, transitionPrior,
-    decodeSequence, findRepeatedBars, decodeBars, confidenceFor, barEvidence, scoreMeter, rhythmAnalysis, analyzePcm, redecodeAnalysis
+    decodeSequence, findRepeatedBars, detectKeyRegions, normalizeKeyRegions, decodeRegion, decodeBars, confidenceFor, barEvidence, scoreMeter, rhythmAnalysis, analyzePcm, redecodeAnalysis
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -765,7 +843,7 @@
           const analysis = analyzePcm(input, Number(event.data.sampleRate), Number(event.data.durationMs), event.data.options || {}, (stage, detail) => global.postMessage({ type: "progress", stage, detail }));
           global.postMessage({ type: "complete", analysis });
         } else if (event.data?.type === "redecode") {
-          const analysis = redecodeAnalysis(event.data.analysis, event.data.key, event.data.keyMode);
+          const analysis = redecodeAnalysis(event.data.analysis, event.data.key, event.data.keyMode, event.data.keyRegions || null);
           global.postMessage({ type: "complete", analysis });
         }
       } catch (error) {

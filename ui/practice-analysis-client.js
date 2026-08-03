@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const WORKER_URL = "/ui/practice-analysis-worker-key-aware-v2-8.js?v=20260803";
+  const WORKER_URL = "/ui/practice-analysis-worker-key-aware-v2-8.js?v=key-regions-20260803";
 
   async function decodeAudio(file) {
     const bytes = await file.arrayBuffer();
@@ -53,5 +53,11 @@
     return runWorker({ type: "redecode", analysis, key, keyMode }, [], onProgress);
   }
 
-  global.STEEL_RAG_ANALYSIS_CLIENT = { WORKER_URL, decodeAudio, monoSamples, runWorker, analyzeFile, redecode };
+  function redecodeRegions(analysis, keyRegions, onProgress = () => {}) {
+    const first = keyRegions?.[0] || { key: analysis.key, keyMode: analysis.keyMode };
+    onProgress("Updating key regions", `Rechecking the song across ${keyRegions.length} key section${keyRegions.length === 1 ? "" : "s"}`);
+    return runWorker({ type: "redecode", analysis, key: first.key, keyMode: first.keyMode, keyRegions }, [], onProgress);
+  }
+
+  global.STEEL_RAG_ANALYSIS_CLIENT = { WORKER_URL, decodeAudio, monoSamples, runWorker, analyzeFile, redecode, redecodeRegions };
 })(window);

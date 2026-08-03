@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Review Song · Steel Guitar RAG</title>
-  <link rel="stylesheet" href="/ui/play-songs-review-v6.css">
+  <link rel="stylesheet" href="/ui/play-songs-review-v6.css?v=key-regions-20260803">
 </head>
 <body>
   <header class="songs-header"><a class="songs-brand" href="/songs"><span>Steel Guitar RAG</span><strong>Review Song</strong></a><nav class="songs-nav"><a href="/songs">Songs</a><a href="/ui/steel-guitar-rag-mock.html">Home</a></nav></header>
@@ -12,7 +12,7 @@
     <section class="setup-heading"><div class="setup-heading__copy"><p class="songs-kicker">Local song analysis</p><h1 id="setup-title">Review Song</h1><p class="setup-track-name" id="setup-track-name">Detected song</p><p class="setup-heading__description">Check the detected chords before you practice. Select any bar to listen or make a correction.</p></div><div class="setup-actions"><a class="songs-button is-primary" id="start-play" href="#">Start Play Along</a><button class="songs-button is-primary" id="confirm-play" type="button" hidden>Confirm and Play</button></div></section>
     <section class="setup-summary" aria-label="Detected song details">
       <label>Title <input id="setup-song-title" type="text" maxlength="120"></label>
-      <label>Song key <select id="setup-key"><option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select><small>Updates chord context and NNS; it does not transpose the audio.</small></label>
+      <label>Starting key <select id="setup-key"><option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select><small>Updates the first section and NNS; it does not transpose the audio.</small></label>
       <label>Mode <select id="setup-key-mode"><option value="major">Major</option><option value="minor">Minor</option></select></label>
       <label>Tempo <input id="setup-tempo" type="number" min="40" max="240" step="1"> BPM</label>
       <label>Meter <select id="setup-meter"><option>2/4</option><option>3/4</option><option>4/4</option><option>6/8</option></select></label>
@@ -34,13 +34,13 @@
       </div>
       <div class="reference-panel__actions"><button class="songs-button is-primary" id="validate-reference" type="button">Cross-check uncertain bars</button><p id="reference-status" role="status"></p></div>
     </section>
-    <section class="review-panel"><div class="songs-section-heading"><div><p class="songs-kicker">First-pass review</p><h2 id="review-heading">Song Map</h2><p id="review-description">See the whole progression at once. Amber bars are accepted; coral bars need attention. Select any bar to hear and correct it.</p></div><div class="review-actions"><div class="review-notation-toggle" role="group" aria-label="Song Map chord notation"><button id="review-show-chords" type="button" aria-pressed="true">Chords</button><button id="review-show-nns" type="button" aria-pressed="false">NNS</button></div><button class="songs-button is-quiet" id="review-all" type="button">Accept highlighted bars</button></div></div><div class="review-song-map" id="review-song-map" aria-label="Detected chord map"></div><section class="review-editor" id="review-editor" aria-live="polite"></section></section>
+    <section class="review-panel"><div class="songs-section-heading"><div><p class="songs-kicker">First-pass review</p><h2 id="review-heading">Song Map</h2><p id="review-description">See the whole progression at once. Amber bars are accepted; coral bars need attention. Select any bar to hear and correct it.</p><p class="review-key-journey" id="review-key-journey">Key journey</p></div><div class="review-actions"><div class="review-notation-toggle" role="group" aria-label="Song Map chord notation"><button id="review-show-chords" type="button" aria-pressed="true">Chords</button><button id="review-show-nns" type="button" aria-pressed="false">NNS</button></div><button class="songs-button is-quiet" id="review-all" type="button">Accept highlighted bars</button></div></div><div class="review-song-map" id="review-song-map" aria-label="Detected chord map"></div><section class="review-editor" id="review-editor" aria-live="polite"></section></section>
     <p class="songs-status" id="setup-status" role="status"></p>
   </main>
   <section class="play-error" id="setup-error" hidden><h1>This song could not open.</h1><p id="setup-error-copy"></p><a class="songs-button" href="/songs">Back to Songs</a></section>
-  <script src="/ui/practice-tools-review-teaching-1.js"></script>
-  <script src="/ui/practice-analysis-client-key-aware-v2-8.js?v=20260803"></script>
+  <script src="/ui/practice-tools-review-teaching-1.js?v=key-regions-20260803"></script>
+  <script src="/ui/practice-analysis-client-key-aware-v2-8.js?v=key-regions-20260803"></script>
   <script src="/ui/practice-reference-validation-v1.js?v=20260803"></script>
-  <script src="/ui/setup-song-review-v2-15.js"></script>
+  <script src="/ui/setup-song-review-v2-15.js?v=key-regions-20260803"></script>
 </body>
 </html>

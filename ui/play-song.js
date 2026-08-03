@@ -10,7 +10,7 @@
   const errorCopy = document.querySelector("#play-error-copy");
   const audio = document.querySelector("#play-audio");
   const elements = {
-    title: document.querySelector("#play-title"), key: document.querySelector("#play-key"), meta: document.querySelector("#play-meta"), attribution: document.querySelector("#play-attribution"), bar: document.querySelector("#play-bar"),
+    title: document.querySelector("#play-title"), key: document.querySelector("#play-key"), keyJourney: document.querySelector("#play-key-journey"), meta: document.querySelector("#play-meta"), attribution: document.querySelector("#play-attribution"), bar: document.querySelector("#play-bar"),
     objective: document.querySelector("#play-objective"), currentChord: document.querySelector("#current-chord"), currentGrip: document.querySelector("#current-grip"), currentMelody: document.querySelector("#current-melody"), currentMove: document.querySelector("#current-move"),
     nextLabel: document.querySelector("#next-chord-label"), nextDirection: document.querySelector("#next-direction"), nextDirectionArrow: document.querySelector("#next-direction-arrow"), nextDirectionText: document.querySelector("#next-direction-text"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMelody: document.querySelector("#next-melody"),
     fretboard: document.querySelector("#play-fretboard"), lyric: document.querySelector("#play-lyric"), toggle: document.querySelector("#play-toggle"), restart: document.querySelector("#play-restart"),
@@ -70,8 +70,12 @@
     return `${Math.floor(safe / 60)}:${String(Math.floor(safe % 60)).padStart(2, "0")}`;
   }
 
-  function displayedChord(symbol) {
-    return practiceTools?.chordForDisplay(symbol, track?.key, practiceSession?.chordDisplay || "letters") || symbol;
+  function keyContextForBar(bar) {
+    return practiceTools?.keyForBar(track, bar) || { key: track?.key, keyMode: track?.keyMode || "major" };
+  }
+
+  function displayedChord(symbol, bar) {
+    return practiceTools?.chordForDisplay(symbol, keyContextForBar(bar).key, practiceSession?.chordDisplay || "letters") || symbol;
   }
 
   function queueSessionSave(force = false) {
@@ -475,21 +479,24 @@
     const current = isPickup
       ? { ...events[0], startMs: pickupStartMs, isPickup: true }
       : timeline.current || restEventAt(timeMs, next);
-    const stateKey = `${current?.id || "count-in"}:${next?.id || "end"}:${isPickup ? "pickup" : "bar"}:${assistanceReduced}`;
+    const currentBar = barNumber(current || next);
+    const nextBar = barNumber(next || current);
+    const stateKey = `${current?.id || "count-in"}:${next?.id || "end"}:${isPickup ? "pickup" : "bar"}:${assistanceReduced}:${keyContextForBar(currentBar).key}`;
     const beats = beatCountdown(current, next, timeMs);
     if (force || stateKey !== renderedState) {
       renderedState = stateKey;
-      elements.currentChord.textContent = current?.status === "rest" ? "N.C." : displayedChord(current?.chord || "—");
+      elements.currentChord.textContent = current?.status === "rest" ? "N.C." : displayedChord(current?.chord || "—", currentBar);
       elements.currentGrip.innerHTML = assistanceReduced ? "" : gripMarkup(current?.position, false);
       elements.currentMelody.textContent = assistanceReduced ? "" : melodyCueText(current);
       elements.currentMelody.hidden = !elements.currentMelody.textContent;
       elements.currentMove.textContent = assistanceReduced ? "Listen and make the change." : currentInstruction(current);
-      elements.nextChord.textContent = next ? displayedChord(next.chord) : "End";
+      elements.nextChord.textContent = next ? displayedChord(next.chord, nextBar) : "End";
       elements.nextGrip.innerHTML = assistanceReduced ? "" : gripMarkup(next?.position);
       elements.nextMelody.textContent = assistanceReduced ? "" : melodyCueText(next);
       elements.nextMelody.hidden = !elements.nextMelody.textContent;
       renderMovementIndicator(current, next);
-      const currentBar = barNumber(current || next);
+      const activeKey = keyContextForBar(currentBar);
+      elements.key.textContent = `${activeKey.key}${activeKey.keyMode === "minor" ? " minor" : ""}`;
       elements.bar.textContent = current?.isPickup ? `Pickup · Bar 1 of ${chart.measures.length}` : current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";
       renderFretboard(current, next);
       renderWhyDetails(current);
@@ -528,10 +535,13 @@
       const button = document.createElement("button");
       button.type = "button"; button.className = "song-map-bar"; button.dataset.mapBar = String(bar.barNumber);
       if (loopRange && bar.barNumber >= loopRange.startBar && bar.barNumber <= loopRange.endBar) button.classList.add("is-looped");
-      const chordMarkup = bar.chords.length ? bar.chords.map((chord) => `<span style="--start:${chord.startFraction};--length:${chord.durationFraction}">${displayedChord(chord.symbol)}</span>`).join("") : "<span>N.C.</span>";
+      const keyContext = keyContextForBar(bar.barNumber);
+      const keyChange = keyContext.region?.startBar === bar.barNumber && bar.barNumber > 1;
+      if (keyChange) button.classList.add("has-key-change");
+      const chordMarkup = bar.chords.length ? bar.chords.map((chord) => `<span style="--start:${chord.startFraction};--length:${chord.durationFraction}">${displayedChord(chord.symbol, bar.barNumber)}</span>`).join("") : "<span>N.C.</span>";
       const move = bar.firstMove ? `Fret ${bar.firstMove.fret}${bar.firstMove.controls?.length ? ` · ${bar.firstMove.controls.join("+")}` : ""}` : "Listen";
-      button.innerHTML = `<small>Bar ${bar.barNumber}</small><strong>${chordMarkup}</strong><em>${move}</em>`;
-      button.setAttribute("aria-label", `Bar ${bar.barNumber}, ${bar.chords.map((item) => displayedChord(item.symbol)).join(", ") || "no chord"}. Seek without autoplay.`);
+      button.innerHTML = `${keyChange ? `<i>New key · ${keyContext.key} ${keyContext.keyMode}</i>` : ""}<small>Bar ${bar.barNumber}</small><strong>${chordMarkup}</strong><em>${move}</em>`;
+      button.setAttribute("aria-label", `Bar ${bar.barNumber}, ${bar.chords.map((item) => displayedChord(item.symbol, bar.barNumber)).join(", ") || "no chord"}${keyChange ? `, new key ${keyContext.key} ${keyContext.keyMode}` : ""}. Seek without autoplay.`);
       button.onclick = () => {
         if (elements.songMapLoop.dataset.selecting === "true") {
           loopSelection.push(bar.barNumber);
@@ -695,7 +705,7 @@
     return {
       id: project.id, projectId: project.id, title: project.title, performer: "On-device recording", key: timeline.key || "G", keyMode: timeline.keyMode || "major", meter: timeline.meter || "4/4", tempo: Number(timeline.tempo || 100),
       durationMs: Number(project.audio.durationMs), barStartsMs: timeline.barStartsMs.map(Number), beatTimesMs: (timeline.beatTimesMs || []).map(Number),
-      chart: `[Detected song] | ${chartBars.join(" | ")} |`, timelineChords, audioUrl: localAudioUrl, playAlongReady: true,
+      chart: `[Detected song] | ${chartBars.join(" | ")} |`, timelineChords, keyRegions: timeline.keyRegions || [], audioUrl: localAudioUrl, playAlongReady: true,
       routeOptions: [{ id: "movement", label: "Move the Bar", description: "Follow a practical E9 chord route generated from your reviewed chart." }], defaultRouteId: "movement",
       recordingCredit: "Stored and analyzed only on this device", authoredCountIn: Boolean(timeline.authoredCountIn), localProject: true
     };
@@ -704,6 +714,7 @@
   function prepareTrackShell() {
     elements.title.textContent = track.title;
     elements.key.textContent = track.key ? `${track.key}${track.keyMode === "minor" ? " minor" : ""}` : "—";
+    elements.keyJourney.textContent = `Key journey: ${practiceTools.keyJourneyLabel(track)}`;
     elements.meta.textContent = [track.performer, track.meter, track.tempo ? `${track.tempo} BPM` : ""].filter(Boolean).join(" · ");
     elements.attribution.replaceChildren(document.createTextNode(track.recordingCredit || ""));
     if (track.rightsUrl) {

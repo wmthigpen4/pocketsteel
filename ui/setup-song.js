@@ -46,27 +46,28 @@
   function legacyTimeline() { return Number(activeTimeline()?.analysisVersion || 1) < 2; }
   function barCount() { const timeline = activeTimeline(); return timeline?.barStartsMs?.length || Math.max(0, ...(timeline?.chords || []).map((chord) => Number(chord.bar || 0))); }
   function eventsForBar(bar) { return (activeTimeline()?.chords || []).filter((chord) => Number(chord.bar) === bar).sort((left, right) => Number(left.startFraction || 0) - Number(right.startFraction || 0)); }
-  function chordForReview(symbol) { return tools.chordForDisplay(symbol || "N.C.", activeTimeline()?.key || project?.timeline?.key, reviewChordDisplay); }
+  function keyContextForBar(bar, timeline = activeTimeline()) { return tools.keyForBar(timeline, bar); }
+  function chordForReview(symbol, bar) { return tools.chordForDisplay(symbol || "N.C.", keyContextForBar(bar).key, reviewChordDisplay); }
   function noChord(symbol) { return /^(?:N\.?C\.?|NO\s+CHORD|REST)$/i.test(String(symbol || "").trim()); }
-  function explorerTargetForChord(symbol) {
+  function explorerTargetForChord(symbol, bar) {
     const match = /^([A-G])([#b]?)(.*)$/i.exec(String(symbol || "").trim());
     if (!match || noChord(symbol)) return null;
     const suffix = match[3].toLowerCase();
     const quality = /^m7/.test(suffix) ? "minor7" : /^m(?!aj)/.test(suffix) ? "minor" : /^(?:7|dom7)/.test(suffix) ? "dominant7" : /^maj7/.test(suffix) ? "major7" : "major";
     const root = `${match[1].toUpperCase()}${match[2]}`;
-    const key = activeTimeline()?.key || project?.timeline?.key || "A";
+    const key = keyContextForBar(bar).key;
     return {
       root,
       url: `/ui/e9-fretboard-explorer.html?mode=chord&key=${encodeURIComponent(key)}&root=${encodeURIComponent(root)}&quality=${quality}&source=song-review`
     };
   }
-  function selectedChordTeaching(events, displayedChords) {
+  function selectedChordTeaching(events, displayedChords, bar) {
     const symbols = events.map((event) => event.symbol || "N.C.");
     if (symbols.some(noChord)) {
       return "No chord means there is no sustained harmony to play in this measure. Listen for silence, spoken audio, or pickup notes before the band enters.";
     }
     if (reviewChordDisplay !== "nns" || events.length !== 1) return "";
-    const key = activeTimeline()?.key || project?.timeline?.key || "the song key";
+    const key = keyContextForBar(bar).key || "the section key";
     if (/^♭7/.test(displayedChords)) {
       return `${displayedChords} is ${symbols[0]} in the key of ${key}. The flat-seven chord sits one whole step below the 1 chord and is a common country and rock color.`;
     }
@@ -122,12 +123,24 @@
 
   function queueSave() { global.clearTimeout(saveTimer); saveTimer = global.setTimeout(() => persist().catch((error) => { status.textContent = error.message; }), 180); }
 
+  function preserveManualChordEdits(updatedTimeline, previousTimeline) {
+    const manual = (previousTimeline.chords || []).filter((chord) => String(chord.id || "").startsWith("reviewed-chord-"));
+    if (!manual.length) return updatedTimeline;
+    const manualBars = new Set(manual.map((chord) => Number(chord.bar)));
+    return {
+      ...updatedTimeline,
+      chords: (updatedTimeline.chords || []).filter((chord) => !manualBars.has(Number(chord.bar))).concat(manual)
+        .sort((left, right) => Number(left.bar) - Number(right.bar) || Number(left.startFraction || 0) - Number(right.startFraction || 0))
+    };
+  }
+
   function analysisBadges() {
     const timeline = project.timeline || {};
     const mode = timeline.keyMode === "minor" ? "minor" : "major";
     const version = Number(timeline.analysisVersion || 1);
+    const journey = tools.keyJourneyLabel(timeline);
     document.querySelector("#analysis-summary").innerHTML = `
-      <span><strong>${escapeHtml(timeline.key || "—")} ${mode}</strong><small>Key confidence ${percent(timeline.keyConfidence)}</small></span>
+      <span><strong>${escapeHtml(timeline.key || "—")} ${mode}</strong><small>Starting key · ${escapeHtml(journey)}</small></span>
       <span><strong>${escapeHtml(timeline.meter || "—")}</strong><small>Meter confidence ${percent(timeline.meterConfidence)}</small></span>
       <span><strong>${escapeHtml(timeline.tempo || "—")} BPM</strong><small>Tempo confidence ${percent(timeline.tempoConfidence)}</small></span>
       <span><strong>Method v${version}</strong><small>${version >= 2 ? "Key-aware sequence" : "Legacy independent bars"}</small></span>`;
@@ -198,17 +211,19 @@
   function mapButtonForBar(bar) {
     const events = eventsForBar(bar);
     const needsAttention = barNeedsAttention(bar);
-    const symbols = events.map((event) => chordForReview(event.symbol)).join(" · ") || "N.C.";
+    const keyContext = keyContextForBar(bar);
+    const keyChange = keyContext.region.startBar === bar && bar > 1;
+    const symbols = events.map((event) => chordForReview(event.symbol, bar)).join(" · ") || "N.C.";
     const externalState = barExternalState(bar);
     const confidenceLabel = percent(barConfidence(bar));
     const stateLabel = needsAttention ? `${confidenceLabel} confidence · Needs attention` : `${confidenceLabel} confident${externalState ? ` · ${externalState}` : ""}`;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `review-map-bar ${needsAttention ? "needs-attention" : "is-accepted"}${bar === selectedBar ? " is-selected" : ""}`;
+    button.className = `review-map-bar ${needsAttention ? "needs-attention" : "is-accepted"}${bar === selectedBar ? " is-selected" : ""}${keyChange ? " has-key-change" : ""}`;
     button.dataset.bar = String(bar);
     button.setAttribute("aria-pressed", String(bar === selectedBar));
     button.setAttribute("aria-label", `Bar ${bar}, ${symbols}, ${stateLabel}. Select to review without autoplay.`);
-    button.innerHTML = `<span>Bar ${bar}</span><strong>${escapeHtml(symbols)}</strong><small>${escapeHtml(stateLabel)}</small>`;
+    button.innerHTML = `${keyChange ? `<em class="review-map-bar__key">New key · ${escapeHtml(keyContext.key)} ${escapeHtml(keyContext.keyMode)}</em>` : ""}<span>Bar ${bar}</span><strong>${escapeHtml(symbols)}</strong><small>${escapeHtml(stateLabel)}</small>`;
     button.onclick = () => {
       selectedBar = bar;
       audio.pause();
@@ -231,9 +246,12 @@
     const reasons = Array.from(new Set(events.flatMap((event) => event.reviewReasons || [])));
     const matches = matchingBarsFor(events[0]?.repeatedSectionGroup, bar);
     const chordNames = events.map((event) => event.symbol || "N.C.").join(" ");
-    const displayedChords = events.map((event) => chordForReview(event.symbol)).join(" · ") || "No chord";
-    const teaching = selectedChordTeaching(events, displayedChords);
-    const explorerTargets = events.map((event) => explorerTargetForChord(event.symbol)).filter(Boolean);
+    const keyContext = keyContextForBar(bar, timeline);
+    const displayedChords = events.map((event) => chordForReview(event.symbol, bar)).join(" · ") || "No chord";
+    const teaching = selectedChordTeaching(events, displayedChords, bar);
+    const explorerTargets = events.map((event) => explorerTargetForChord(event.symbol, bar)).filter(Boolean);
+    const keyOptions = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"].map((key) => `<option${key === keyContext.key ? " selected" : ""}>${key}</option>`).join("");
+    const startsKeyRegion = keyContext.region.startBar === bar;
     const externalState = barExternalState(bar);
     const confidenceLabel = percent(barConfidence(bar));
     const stateLabel = showingPreview
@@ -248,6 +266,8 @@
       <div class="review-editor__fields">
         <label>${reviewChordDisplay === "nns" ? "Chord names (editing)" : `Chord${events.length === 2 ? "s" : ""}`}<input data-chord type="text" value="${escapeHtml(chordNames)}" aria-label="Chord${events.length === 2 ? "s" : ""} for bar ${bar}"${editable ? "" : " disabled"}><small>${editable ? "Enter one chord, or two chords separated by a space." : "Accept the preview before making corrections."}</small></label>
         <label>Bar downbeat<input data-time type="number" min="0" max="${project.audio.durationMs}" step="10" value="${Math.round(startMs)}" aria-label="Downbeat milliseconds for bar ${bar}"${editable ? "" : " disabled"}><small>${formatTime(startMs)} into the recording</small></label>
+        <label>Section key<select data-section-key aria-label="Section key for bar ${bar}"${editable ? "" : " disabled"}>${keyOptions}</select><small>NNS is measured from this key until the next marker.</small></label>
+        <label>Section mode<select data-section-mode aria-label="Section mode for bar ${bar}"${editable ? "" : " disabled"}><option value="major"${keyContext.keyMode === "major" ? " selected" : ""}>Major</option><option value="minor"${keyContext.keyMode === "minor" ? " selected" : ""}>Minor</option></select><small>${startsKeyRegion ? `This section starts at bar ${keyContext.region.startBar}.` : `Current section starts at bar ${keyContext.region.startBar}.`}</small></label>
       </div>
       ${teaching ? `<p class="review-editor__teaching">${escapeHtml(teaching)}</p>` : ""}
       <p class="review-editor__reason">${escapeHtml(reasons.join(" ") || "Strong audio and song-context agreement.")}</p>
@@ -256,6 +276,7 @@
         ${explorerTargets.length === 1 ? `<a class="songs-button is-quiet" href="${escapeHtml(explorerTargets[0].url)}" target="_blank" rel="noopener">Explore ${escapeHtml(explorerTargets[0].root)}${reviewChordDisplay === "nns" ? ` (${escapeHtml(displayedChords)})` : ""} on the fretboard</a>` : ""}
         ${editable ? `<button class="songs-button is-primary" data-accept-bar type="button">${needsAttention ? "Accept this bar" : "Mark for review"}</button>` : ""}
         ${editable && matches.length ? `<button class="songs-button is-quiet" data-apply-repeat type="button">Apply chord to ${matches.length} matching bar${matches.length === 1 ? "" : "s"}</button>` : ""}
+        ${editable ? `<button class="songs-button is-quiet" data-key-boundary type="button">${startsKeyRegion && bar > 1 ? "Remove key change here" : startsKeyRegion ? "Starting key" : `Start a key change at bar ${bar}`}</button>` : ""}
       </div>`;
     editor.querySelector("[data-play-bar]").onclick = () => {
       audio.currentTime = Number(timeline.barStartsMs?.[bar - 1] || 0) / 1000;
@@ -272,6 +293,9 @@
         event.preventDefault();
         commitChordField();
       };
+      const commitSectionKey = () => updateSectionKey(bar, editor.querySelector("[data-section-key]").value, editor.querySelector("[data-section-mode]").value).catch((error) => { status.textContent = error.message; });
+      editor.querySelector("[data-section-key]").onchange = commitSectionKey;
+      editor.querySelector("[data-section-mode]").onchange = commitSectionKey;
     }
     if (editable) editor.querySelector("[data-time]").onchange = (event) => {
       const starts = project.timeline.barStartsMs;
@@ -286,6 +310,47 @@
       renderReview(); updateConfirmation(); queueSave();
     };
     editor.querySelector("[data-apply-repeat]")?.addEventListener("click", () => applyToMatchingBars(bar));
+    editor.querySelector("[data-key-boundary]")?.addEventListener("click", () => toggleKeyBoundary(bar).catch((error) => { status.textContent = error.message; }));
+  }
+
+  async function applyKeyRegions(regions, message) {
+    const request = ++keyChangeRequest;
+    const previousTimeline = project.timeline;
+    const normalized = tools.normalizeKeyRegions(regions, barCount(), previousTimeline.key, previousTimeline.keyMode);
+    project.timeline = { ...previousTimeline, key: normalized[0].key, keyMode: normalized[0].keyMode, keyRegions: normalized };
+    analysisBadges(); renderReview(); updateConfirmation();
+    if (!project.timeline.analysisState) { queueSave(); return; }
+    try {
+      reanalyzePanel.hidden = false;
+      reanalyzeStatus.textContent = message;
+      const updated = await analysisClient.redecodeRegions(previousTimeline, normalized, (_stage, detail) => { if (request === keyChangeRequest) reanalyzeStatus.textContent = detail; });
+      if (request !== keyChangeRequest) return;
+      project.timeline = { ...preserveManualChordEdits(updated, previousTimeline), confirmationState: "detected" };
+      analysisBadges(); renderReview(); updateConfirmation(); await persist();
+      reanalyzeStatus.textContent = `Key journey updated: ${tools.keyJourneyLabel(project.timeline)}. The audio was not transposed.`;
+    } catch (error) {
+      if (request !== keyChangeRequest) return;
+      project.timeline = previousTimeline; analysisBadges(); renderReview(); updateConfirmation(); reanalyzeStatus.textContent = error.message;
+    }
+  }
+
+  function updateSectionKey(bar, key, keyMode) {
+    const timeline = project.timeline;
+    const regions = tools.normalizeKeyRegions(timeline.keyRegions, barCount(), timeline.key, timeline.keyMode);
+    const active = regions.find((region) => bar >= region.startBar && bar <= region.endBar) || regions[0];
+    const updated = regions.map((region) => region.startBar === active.startBar ? { ...region, key, keyMode, confidence: 1, source: "manual" } : region);
+    return applyKeyRegions(updated, `Rechecking the section from bar ${active.startBar} in ${key} ${keyMode}…`);
+  }
+
+  function toggleKeyBoundary(bar) {
+    if (bar <= 1) return;
+    const timeline = project.timeline;
+    const regions = tools.normalizeKeyRegions(timeline.keyRegions, barCount(), timeline.key, timeline.keyMode);
+    const existing = regions.find((region) => region.startBar === bar);
+    const updated = existing
+      ? regions.filter((region) => region.startBar !== bar)
+      : [...regions, { startBar: bar, key: keyContextForBar(bar, timeline).key, keyMode: keyContextForBar(bar, timeline).keyMode, confidence: 1, source: "manual" }];
+    return applyKeyRegions(updated, existing ? `Removing the key change at bar ${bar}…` : `Adding a key change at bar ${bar}…`);
   }
 
   function renderReview() {
@@ -296,6 +361,7 @@
     const heading = document.querySelector("#review-heading");
     const description = document.querySelector("#review-description");
     const reviewAll = document.querySelector("#review-all");
+    const journey = document.querySelector("#review-key-journey");
     if (showingPreview) {
       heading.textContent = "Improved Analysis Preview";
       description.textContent = "This is the new key-aware map. Coral bars need review; amber bars were accepted automatically. Nothing is saved until you choose Use this analysis.";
@@ -304,6 +370,7 @@
       description.textContent = "See the whole progression at once. Amber bars are accepted; coral bars need attention. Select any bar to hear and correct it.";
     }
     reviewAll.hidden = showingPreview;
+    journey.textContent = `Key journey: ${tools.keyJourneyLabel(activeTimeline())}`;
     // The paste-a-chart workflow is intentionally dormant. Keep the provider
     // boundary available for a future permitted integration without asking the
     // player to copy a public chart into Review.
@@ -467,14 +534,19 @@
     }
     const request = ++keyChangeRequest;
     const previousTimeline = project.timeline;
-    project.timeline = { ...previousTimeline, key: requestedKey, keyMode: requestedMode };
+    const immediateRegions = tools.normalizeKeyRegions(previousTimeline.keyRegions, barCount(), previousTimeline.key, previousTimeline.keyMode)
+      .map((region, index) => index ? region : { ...region, key: requestedKey, keyMode: requestedMode, confidence: 1, source: "manual" });
+    project.timeline = { ...previousTimeline, key: requestedKey, keyMode: requestedMode, keyRegions: immediateRegions };
     analysisBadges(); renderReview(); updateConfirmation();
     try {
       reanalyzePanel.hidden = false;
       reanalyzeStatus.textContent = `Song Map is now shown in ${requestedKey} ${requestedMode}. Rechecking chord choices…`;
-      const updated = await analysisClient.redecode(previousTimeline, requestedKey, requestedMode, (_stage, detail) => { if (request === keyChangeRequest) reanalyzeStatus.textContent = detail; });
+      const manualLaterRegions = immediateRegions.slice(1).some((region) => region.source === "manual");
+      const updated = manualLaterRegions
+        ? await analysisClient.redecodeRegions(previousTimeline, immediateRegions, (_stage, detail) => { if (request === keyChangeRequest) reanalyzeStatus.textContent = detail; })
+        : await analysisClient.redecode(previousTimeline, requestedKey, requestedMode, (_stage, detail) => { if (request === keyChangeRequest) reanalyzeStatus.textContent = detail; });
       if (request !== keyChangeRequest) return;
-      project.timeline = { ...updated, confirmationState: "detected" };
+      project.timeline = { ...preserveManualChordEdits(updated, previousTimeline), confirmationState: "detected" };
       selectedBar = 0; analysisBadges(); renderReview(); updateConfirmation(); await persist();
       reanalyzeStatus.textContent = `Song Map updated for ${requestedKey} ${requestedMode}. The audio was not transposed.`;
     } catch (error) {
@@ -522,7 +594,7 @@
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     app.hidden = false;
     if (needsUpgrade) await upgradeLegacyAnalysis();
-    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 1 && !(project.timeline.chords || []).some((chord) => String(chord.id || "").startsWith("reviewed-chord-"))) await handleKeyChange();
+    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 2 && !(project.timeline.chords || []).some((chord) => String(chord.id || "").startsWith("reviewed-chord-"))) await handleKeyChange();
     else { renderReview(); updateConfirmation(); }
   }
 

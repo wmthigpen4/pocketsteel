@@ -185,6 +185,37 @@
     return `${musicalAccidentals(NASHVILLE_DEGREES[(chordPitch - keyPitch + 12) % 12])}${nashvilleSuffix(chordMatch[3])}`;
   }
 
+  function normalizeKeyRegions(regions, barCount, fallbackKey = "C", fallbackMode = "major") {
+    const count = Math.max(1, Number(barCount || 1));
+    const clean = (Array.isArray(regions) ? regions : []).map((region) => ({
+      startBar: Math.max(1, Math.min(count, Math.round(Number(region.startBar) || 1))),
+      key: Object.hasOwn(NOTE_PCS, region.key) ? region.key : fallbackKey,
+      keyMode: region.keyMode === "minor" ? "minor" : "major",
+      confidence: Number.isFinite(Number(region.confidence)) ? Number(region.confidence) : 1,
+      source: region.source === "manual" ? "manual" : "detected"
+    })).sort((left, right) => left.startBar - right.startBar).filter((region, index, items) => !index || region.startBar !== items[index - 1].startBar);
+    if (!clean.length || clean[0].startBar !== 1) clean.unshift({ startBar: 1, key: fallbackKey, keyMode: fallbackMode === "minor" ? "minor" : "major", confidence: 1, source: "detected" });
+    return clean.map((region, index) => ({ ...region, endBar: (clean[index + 1]?.startBar || count + 1) - 1 }));
+  }
+
+  function keyRegionForBar(timeline, bar) {
+    const count = timeline?.barStartsMs?.length || Math.max(1, Number(bar || 1));
+    const regions = normalizeKeyRegions(timeline?.keyRegions, count, timeline?.key || "C", timeline?.keyMode || "major");
+    return regions.find((region) => Number(bar) >= region.startBar && Number(bar) <= region.endBar) || regions[0];
+  }
+
+  function keyForBar(timeline, bar) {
+    const region = keyRegionForBar(timeline, bar);
+    return { key: region.key, keyMode: region.keyMode, region };
+  }
+
+  function keyJourneyLabel(timeline) {
+    const count = timeline?.barStartsMs?.length || 1;
+    return normalizeKeyRegions(timeline?.keyRegions, count, timeline?.key || "C", timeline?.keyMode || "major")
+      .map((region) => `${region.key} ${region.keyMode}`)
+      .join(" → ");
+  }
+
   function chartReferenceProvider(adapter) {
     if (!adapter || typeof adapter.lookup !== "function" || !String(adapter.id || "").trim()) {
       throw new Error("A chart reference provider needs an id and a permitted lookup function.");
@@ -279,7 +310,7 @@
     openDatabase, listProjects, loadProject, saveProject, deleteProject,
     loadSession, saveSession, sessionDefaults,
     writeAudio, readAudio, removeAudio, hasAudio, fingerprintFile, findProjectByFingerprint,
-    chordForDisplay, chartReferenceProvider, controlLabelForDisplay, controlLabelsForDisplay,
+    chordForDisplay, normalizeKeyRegions, keyRegionForBar, keyForBar, keyJourneyLabel, chartReferenceProvider, controlLabelForDisplay, controlLabelsForDisplay,
     projectBars, barsToLoopRange, countBasedLoopRange, beatTimesForTrack, meterBeats
   };
 

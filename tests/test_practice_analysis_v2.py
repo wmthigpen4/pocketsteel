@@ -75,7 +75,43 @@ def test_seventh_quality_requires_added_seventh_evidence() -> None:
         console.log(JSON.stringify({weak:a.chordCandidates(weak).top.symbol,clear:a.chordCandidates(clear).top.symbol,refreshed:refreshed.chords.map(chord=>chord.symbol),version:refreshed.analysisState.qualityCalibrationVersion}));
         """
     )
-    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "version": 1}
+    assert payload == {"weak": "C", "clear": "C7", "refreshed": ["C", "C"], "version": 2}
+
+
+def test_detects_stable_g_c_a_key_regions_and_keeps_plain_dominants_as_triads() -> None:
+    payload = run_node(
+        r"""
+        const a=require('./ui/practice-analysis-worker.js');
+        const pcs={C:0,'C#':1,D:2,Eb:3,E:4,F:5,'F#':6,G:7,Ab:8,A:9,Bb:10,B:11};
+        function chroma(symbol){
+          const match=/^([A-G](?:#|b)?)(m7|m|7)?$/.exec(symbol),root=pcs[match[1]],quality=match[2]||'';
+          const intervals=quality==='m'||quality==='m7'?[0,3,7]:[0,4,7], value=Array(12).fill(.01);
+          intervals.forEach((interval,index)=>{value[(root+interval)%12]=[1,.82,.7][index]});
+          if(quality.includes('7')) value[(root+10)%12]=.76;
+          return value;
+        }
+        function bar(symbol,index){
+          const value=chroma(symbol),scored=a.chordCandidates(value);
+          return {bar:index+1,startMs:index*1000,endMs:(index+1)*1000,full:{chroma:value,scored},first:{chroma:value,scored},second:{chroma:value,scored}};
+        }
+        const form=[];
+        for(let repeat=0;repeat<6;repeat++) form.push('G','Em7','C','D');
+        for(let repeat=0;repeat<4;repeat++) form.push('C','Am7','F','G');
+        for(let repeat=0;repeat<6;repeat++) form.push('A','F#m','D','E');
+        const bars=form.map(bar),starting={key:'G',keyMode:'major',root:7,confidence:.8};
+        const decoded=a.decodeBars(bars,starting,bars.map((bar)=>bar.startMs),bars.length*1000);
+        console.log(JSON.stringify({regions:decoded.keyRegions.map(({startBar,endBar,key,keyMode})=>({startBar,endBar,key,keyMode})),dominantSevenths:decoded.chords.filter((chord)=>/7$/.test(chord.symbol)&&!/m7$/.test(chord.symbol)).length,activeKeys:[decoded.chords.find((chord)=>chord.bar===1).activeKey,decoded.chords.find((chord)=>chord.bar===25).activeKey,decoded.chords.find((chord)=>chord.bar===41).activeKey]}));
+        """
+    )
+    assert payload == {
+        "regions": [
+            {"startBar": 1, "endBar": 24, "key": "G", "keyMode": "major"},
+            {"startBar": 25, "endBar": 40, "key": "C", "keyMode": "major"},
+            {"startBar": 41, "endBar": 64, "key": "A", "keyMode": "major"},
+        ],
+        "dominantSevenths": 0,
+        "activeKeys": ["G", "C", "A"],
+    }
 
 
 def test_context_decoder_removes_weak_tonic_minor_but_keeps_sustained_borrowed_chord() -> None:

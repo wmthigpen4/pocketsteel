@@ -140,7 +140,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .setup-summary { display: grid; grid-template-columns: minmax(220px,1.8fr) repeat(4,minmax(105px,1fr)); gap: 10px; margin: 28px 0 12px; }
 .setup-summary label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; font-weight: 750; }
 .setup-summary label small { color: rgba(244, 234, 214, 0.62); font-size: 10px; font-weight: 650; line-height: 1.35; }
-.setup-summary input, .setup-summary select, .review-editor input { min-height: 42px; border: 1px solid var(--line); border-radius: 10px; background: #0b0a08; color: var(--cream); padding: 0 10px; }
+.setup-summary input, .setup-summary select, .review-editor input, .review-editor select { min-height: 42px; border: 1px solid var(--line); border-radius: 10px; background: #0b0a08; color: var(--cream); padding: 0 10px; }
 .analysis-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 10px 0 12px; }
 .analysis-summary span { display: grid; gap: 3px; border: 1px solid rgba(244,234,214,.11); border-radius: 12px; background: rgba(19,19,16,.72); padding: 10px 12px; }
 .analysis-summary strong { color: var(--cream); font-size: 13px; }
@@ -175,6 +175,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .review-notation-toggle { display: inline-grid; grid-template-columns: repeat(2,auto); overflow: hidden; border: 1px solid rgba(244,234,214,.2); border-radius: 999px; background: #0b0a08; padding: 3px; }
 .review-notation-toggle button { min-height: 34px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); padding: 0 13px; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; }
 .review-notation-toggle button[aria-pressed="true"] { background: var(--gold); color: #1b1207; }
+.review-key-journey { margin-top: 8px !important; color: var(--gold) !important; font-size: 11px !important; font-weight: 800; }
 .review-song-map { display: grid; grid-template-columns: repeat(4,minmax(105px,1fr)); align-content: start; gap: 9px; max-height: 580px; overflow: auto; padding: 2px 8px 2px 2px; scrollbar-color: rgba(240,191,105,.42) transparent; }
 .review-map-bar { min-height: 104px; display: grid; align-content: space-between; gap: 8px; border: 1px solid rgba(244,234,214,.14); border-radius: 14px; background: #15130f; color: var(--cream); padding: 12px; text-align: left; cursor: pointer; }
 .review-map-bar > span { color: var(--gold); font-size: 11px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
@@ -185,6 +186,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .review-map-bar.is-legacy { border-color: rgba(244,234,214,.2); background: rgba(244,234,214,.035); }
 .review-map-bar.is-legacy > small { color: rgba(244,234,214,.5); }
 .review-map-bar.is-selected { outline: 3px solid #4d8dff; outline-offset: -3px; background: rgba(41,83,154,.24); }
+.review-map-bar.has-key-change { border-top: 4px solid #71c7a0; }
+.review-map-bar__key { margin: -6px 0 -2px; color: #8de0ba; font-size: 9px; font-style: normal; font-weight: 900; letter-spacing: .045em; text-transform: uppercase; }
 .review-editor { position: sticky; top: 14px; align-self: start; display: grid; gap: 14px; border: 1px solid rgba(244,234,214,.14); border-radius: 16px; background: #11100d; padding: 17px; }
 .review-editor__head { display: grid; gap: 9px; }
 .review-editor__head h3 { margin: 1px 0 0; font: 650 32px/1 var(--lesson); }
@@ -211,6 +214,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-context p { margin: 0; }
 .play-key-badge { display: inline-flex; align-items: baseline; gap: 5px; border: 1px solid rgba(240, 191, 105, 0.7); border-radius: 999px; background: rgba(240, 191, 105, 0.12); color: var(--gold); padding: 5px 10px; font-size: 11px; font-weight: 850; letter-spacing: 0.045em; text-transform: uppercase; }
 .play-key-badge strong { color: var(--cream); font-size: 15px; line-height: 1; }
+.play-heading .play-key-journey { color: var(--gold); font-size: 11px; font-weight: 800; }
 .play-heading .play-attribution { max-width: 760px; color: rgba(244, 234, 214, 0.5); font-size: 10px; line-height: 1.35; }
 .play-heading__tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .play-attribution a, .song-card__credit a { color: inherit; text-underline-offset: 2px; }
@@ -316,6 +320,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .song-map-bar.is-active { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
 .song-map-bar.is-looped { background: rgba(240,191,105,.12); }
 .song-map-bar.is-loop-anchor { outline: 2px solid #fff4dc; }
+.song-map-bar.has-key-change { border-top: 4px solid #71c7a0; }
+.song-map-bar > i { color: #8de0ba; font-size: 9px; font-style: normal; font-weight: 900; letter-spacing: .045em; text-transform: uppercase; }
 
 @media (max-width: 820px) {
   .songs-grid { grid-template-columns: 1fr; }

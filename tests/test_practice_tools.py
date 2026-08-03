@@ -38,6 +38,24 @@ def test_nns_projection_loop_ranges_and_crossing_chords() -> None:
     assert payload["beats"] == [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000]
 
 
+def test_key_regions_drive_section_aware_nns_and_key_journey() -> None:
+    payload = run_node("""
+      const tools=require('./ui/practice-tools.js');
+      const timeline={key:'G',keyMode:'major',barStartsMs:Array.from({length:12},(_,index)=>index*1000),keyRegions:[{startBar:1,key:'G',keyMode:'major'},{startBar:5,key:'C',keyMode:'major'},{startBar:9,key:'A',keyMode:'major'}]};
+      const bars=[1,5,9].map((bar)=>tools.keyForBar(timeline,bar));
+      console.log(JSON.stringify({bars:bars.map(({key,keyMode,region})=>({key,keyMode,startBar:region.startBar,endBar:region.endBar})),nns:[tools.chordForDisplay('G',bars[0].key,'nns'),tools.chordForDisplay('G',bars[1].key,'nns'),tools.chordForDisplay('A',bars[2].key,'nns')],journey:tools.keyJourneyLabel(timeline)}));
+    """)
+    assert payload == {
+        "bars": [
+            {"key": "G", "keyMode": "major", "startBar": 1, "endBar": 4},
+            {"key": "C", "keyMode": "major", "startBar": 5, "endBar": 8},
+            {"key": "A", "keyMode": "major", "startBar": 9, "endBar": 12},
+        ],
+        "nns": ["1", "5", "1"],
+        "journey": "G major → C major → A major",
+    }
+
+
 def test_chart_supports_no_chord_and_incomplete_final_measure() -> None:
     payload = run_node("""
       const songs = require('./ui/song-projects.js');
