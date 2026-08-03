@@ -198,8 +198,8 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b"Review Song" in setup
     assert b"practice-reference-validation-v1.js" in setup
     assert b"setup-song-tonic-cadence-v11.js" in setup
-    assert b"play-song-no-chord-v4.js" in player
-    assert b"play-songs-key-cues-v2.css" in player
+    assert b"play-song-rest-size-v5.js" in player
+    assert b"play-songs-rest-size-v3.css" in player
     assert b"play-songs-key-regions-v1.css" in setup
     assert b"practice-tools-key-regions-v1.js" in setup
 

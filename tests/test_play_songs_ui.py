@@ -241,8 +241,8 @@ def test_play_along_surfaces_key_changes_in_now_and_next_cues() -> None:
     assert "activeKey.region?.startBar === currentBar" in player_js
     assert ".play-key-change.is-ahead" in player_css
     assert ".play-cue.has-key-change" in player_css
-    assert "play-song-no-chord-v4.js" in player_html
-    assert "play-songs-key-cues-v2.css" in player_html
+    assert "play-song-rest-size-v5.js" in player_html
+    assert "play-songs-rest-size-v3.css" in player_html
 
 
 def test_play_along_keeps_a_fretboard_position_visible_during_no_chord() -> None:
@@ -253,6 +253,8 @@ def test_play_along_keeps_a_fretboard_position_visible_during_no_chord() -> None
     assert "const displayedCurrent = fretboardAnchorEvent(current, next, timeMs)" in player_js
     assert "renderFretboard(current, next, timeMs)" in player_js
     assert 'return "Rest · keep your place and listen."' in player_js
-    assert 'noChordEvent(current) ? "No chord"' in player_js
+    assert 'currentIsNoChord ? "No chord"' in player_js
     assert '"<span>No chord</span>"' in player_js
-    assert "play-song-no-chord-v4.js" in player_html
+    assert 'classList.toggle("is-no-chord", currentIsNoChord)' in player_js
+    assert ".play-cue__chord.is-no-chord" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
+    assert "play-song-rest-size-v5.js" in player_html

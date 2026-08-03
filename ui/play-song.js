@@ -509,12 +509,16 @@
     const beats = beatCountdown(current, next, timeMs);
     if (force || stateKey !== renderedState) {
       renderedState = stateKey;
-      elements.currentChord.textContent = noChordEvent(current) ? "No chord" : displayedChord(current?.chord || "—", currentBar);
+      const currentIsNoChord = noChordEvent(current);
+      const nextIsNoChord = noChordEvent(next);
+      elements.currentChord.textContent = currentIsNoChord ? "No chord" : displayedChord(current?.chord || "—", currentBar);
+      elements.currentChord.classList.toggle("is-no-chord", currentIsNoChord);
       elements.currentGrip.innerHTML = assistanceReduced ? "" : gripMarkup(current?.position, false);
       elements.currentMelody.textContent = assistanceReduced ? "" : melodyCueText(current);
       elements.currentMelody.hidden = !elements.currentMelody.textContent;
       elements.currentMove.textContent = assistanceReduced ? "Listen and make the change." : currentInstruction(current);
       elements.nextChord.textContent = next ? displayedChord(next.chord, nextBar) : "End";
+      elements.nextChord.classList.toggle("is-no-chord", nextIsNoChord);
       elements.nextGrip.innerHTML = assistanceReduced ? "" : gripMarkup(next?.position);
       elements.nextMelody.textContent = assistanceReduced ? "" : melodyCueText(next);
       elements.nextMelody.hidden = !elements.nextMelody.textContent;

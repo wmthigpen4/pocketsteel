@@ -247,6 +247,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .play-cue__row { display: flex; align-items: center; justify-content: flex-start; gap: clamp(20px, 3vw, 38px); }
 .play-cue__chord { margin: 0; font: 650 clamp(42px, 7vw, 78px)/0.92 var(--lesson); }
 .play-cue.is-next .play-cue__chord { font-size: clamp(34px, 5vw, 54px); }
+.play-cue__chord.is-no-chord { font-size: clamp(34px, 5vw, 54px); }
 .play-grip { display: flex; align-items: center; gap: 9px; color: rgba(244, 234, 214, 0.78); font-size: 12px; font-weight: 800; }
 .play-grip__fret { white-space: nowrap; }
 .play-grip__strings { display: flex; flex-direction: column; align-items: stretch; gap: 3px; }
@@ -381,6 +382,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .play-cue__label { margin-bottom: 4px; }
   .play-cue__chord { font-size: clamp(36px, 8vh, 54px); }
   .play-cue.is-next .play-cue__chord { font-size: 34px; }
+  .play-cue__chord.is-no-chord { font-size: 34px; }
   .play-melody-cue, .play-move { margin-top: 3px; }
   .play-fretboard { min-width: 690px; }
   .play-fretboard svg { max-height: 205px; }
