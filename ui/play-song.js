@@ -174,7 +174,7 @@
 
   function currentInstruction(current) {
     const position = current?.position;
-    if (current?.isRest) return "Rest · listen.";
+    if (noChordEvent(current)) return "Rest · keep your place and listen.";
     if (!position) return "Listen for the count-in.";
     const strings = position.strings || [];
     const instruction = strings.length === 1 ? `Pick string ${strings[0]}` : `Play strings ${strings.join(" · ")}`;
@@ -256,6 +256,19 @@
         [String(string), controlsByString.get(Number(string))].filter(Boolean).join(" ")
       ]))
     };
+  }
+
+  function noChordEvent(event) {
+    return Boolean(event && (event.isRest || event.status === "rest" || event.role === "rest" || !event.chord));
+  }
+
+  function fretboardAnchorEvent(current, next, timeMs) {
+    if (current?.position) return current;
+    const events = plan?.events || [];
+    const previous = events.filter((event) => event?.position && Number(event.startMs) <= timeMs).at(-1);
+    if (previous) return previous;
+    if (next?.position) return next;
+    return events.find((event) => event?.position && Number(event.startMs) >= timeMs) || null;
   }
 
   function leftAlignSvgStringLabels(id) {
@@ -399,11 +412,12 @@
     svg.append(group);
   }
 
-  function renderFretboard(current, next) {
+  function renderFretboard(current, next, timeMs) {
     if (!global.STEEL_RAG_FRETBOARD?.mountPedalSteelFretboard) return;
-    const visibleNext = assistanceReduced || samePosition(current?.position, next?.position) ? null : next;
-    const sharedFret = sameFret(current?.position, visibleNext?.position);
-    const positions = [positionDisplay(current, "play-current", "current", 1), positionDisplay(visibleNext, "play-next", "next", 2)].filter(Boolean);
+    const displayedCurrent = fretboardAnchorEvent(current, next, timeMs);
+    const visibleNext = assistanceReduced || displayedCurrent === next || samePosition(displayedCurrent?.position, next?.position) ? null : next;
+    const sharedFret = sameFret(displayedCurrent?.position, visibleNext?.position);
+    const positions = [positionDisplay(displayedCurrent, "play-current", "current", 1), positionDisplay(visibleNext, "play-next", "next", 2)].filter(Boolean);
     if (!positions.length) { elements.fretboard.innerHTML = ""; return; }
     global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
       title: "Play Along route", maxFret: 24, stringCount: 10, positions,
@@ -416,8 +430,8 @@
       centerSameFretCurrentGrip();
       separateSameFretNextGrip(visibleNext?.position);
     }
-    addFretMovementArrow(current?.position, visibleNext?.position);
-    addMelodyVoiceTag("play-current", current?.position, "current", sharedFret);
+    addFretMovementArrow(displayedCurrent?.position, visibleNext?.position);
+    addMelodyVoiceTag("play-current", displayedCurrent?.position, "current", sharedFret);
     addMelodyVoiceTag("play-next", visibleNext?.position, "next");
   }
 
@@ -485,7 +499,7 @@
     const beats = beatCountdown(current, next, timeMs);
     if (force || stateKey !== renderedState) {
       renderedState = stateKey;
-      elements.currentChord.textContent = current?.status === "rest" ? "N.C." : displayedChord(current?.chord || "—", currentBar);
+      elements.currentChord.textContent = noChordEvent(current) ? "N.C." : displayedChord(current?.chord || "—", currentBar);
       elements.currentGrip.innerHTML = assistanceReduced ? "" : gripMarkup(current?.position, false);
       elements.currentMelody.textContent = assistanceReduced ? "" : melodyCueText(current);
       elements.currentMelody.hidden = !elements.currentMelody.textContent;
@@ -498,7 +512,7 @@
       const activeKey = keyContextForBar(currentBar);
       elements.key.textContent = `${activeKey.key}${activeKey.keyMode === "minor" ? " minor" : ""}`;
       elements.bar.textContent = current?.isPickup ? `Pickup · Bar 1 of ${chart.measures.length}` : current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";
-      renderFretboard(current, next);
+      renderFretboard(current, next, timeMs);
       renderWhyDetails(current);
       renderSongMapActive(currentBar);
     }

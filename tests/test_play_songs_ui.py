@@ -109,16 +109,16 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "function movementInstruction" not in player_js
     assert "function addFretMovementArrow" in player_js
     assert 'label.textContent = distance >= 4 ? `MOVE ${distance}` : `SLIDE ${distance}`' in player_js
-    assert "addFretMovementArrow(current?.position, visibleNext?.position)" in player_js
+    assert "addFretMovementArrow(displayedCurrent?.position, visibleNext?.position)" in player_js
     assert "centerSameFretCurrentGrip();" in player_js
     assert "function separateSameFretNextGrip" in player_js
     assert 'positionDisplay(visibleNext, "play-next", "next", 2)' in player_js
-    assert "const visibleNext = assistanceReduced || samePosition(current?.position, next?.position) ? null : next" in player_js
+    assert "const visibleNext = assistanceReduced || displayedCurrent === next || samePosition(displayedCurrent?.position, next?.position) ? null : next" in player_js
     assert "C is intentional: it raises string 5 while leaving string 10 at the ♭7." in player_js
     assert 'const offset = sideOffset - renderOffsetX(group);' in player_js
     assert 'group.setAttribute("transform", `translate(${offset} 0)`)' in player_js
     assert 'caption.textContent = "NEXT · SAME FRET"' in player_js
-    assert "renderFretboard(current, next)" in player_js
+    assert "renderFretboard(current, next, timeMs)" in player_js
     assert 'fetch("/api/amazing-tablature/arrange"' in player_js
     assert "track?.melodyTimeline" in player_js
     assert 'label: "Follow the Melody"' in player_js
@@ -225,3 +225,14 @@ def test_play_along_uses_active_section_key_for_nns_and_key_markers() -> None:
     assert "New key ·" in player_js
     assert 'id="play-key-journey"' in player_html
     assert "Current key" in player_html
+
+
+def test_play_along_keeps_a_fretboard_position_visible_during_no_chord() -> None:
+    player_js = (REPO_ROOT / "ui" / "play-song.js").read_text(encoding="utf-8")
+    player_html = (REPO_ROOT / "ui" / "play-song.html").read_text(encoding="utf-8")
+    assert "function noChordEvent" in player_js
+    assert "function fretboardAnchorEvent" in player_js
+    assert "const displayedCurrent = fretboardAnchorEvent(current, next, timeMs)" in player_js
+    assert "renderFretboard(current, next, timeMs)" in player_js
+    assert 'return "Rest · keep your place and listen."' in player_js
+    assert "play-song-hold-no-chord-v2.js" in player_html
