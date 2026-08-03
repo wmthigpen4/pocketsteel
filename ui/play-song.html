@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Play Along · Steel Guitar RAG</title>
-  <link rel="stylesheet" href="/ui/play-songs-layout-20260802.css?v=compact-cues-1">
+  <link rel="stylesheet" href="/ui/play-songs-movement-20260802.css?v=direction-cues-1">
 </head>
 <body>
   <header class="songs-header">
@@ -25,7 +25,7 @@
         <p class="play-move" id="current-move">Listen for the count-in.</p>
       </article>
       <article class="play-cue is-next" aria-labelledby="next-chord-label">
-        <p class="play-cue__label" id="next-chord-label">Next</p>
+        <div class="play-cue__head"><p class="play-cue__label" id="next-chord-label">Next</p><p class="play-direction" id="next-direction" hidden><span class="play-direction__arrow" id="next-direction-arrow" aria-hidden="true"></span><span id="next-direction-text"></span></p></div>
         <div class="play-cue__row"><h2 class="play-cue__chord" id="next-chord">—</h2><div class="play-grip" id="next-grip"></div></div>
         <p class="play-melody-cue" id="next-melody" hidden></p>
         <p class="play-move" id="next-move">Get ready.</p>
@@ -84,6 +84,6 @@
   <script src="/ui/song-projects.js?v=play-songs-20260801-2"></script>
   <script src="/ui/practice-tools-20260802.js?v=control-labels-1"></script>
   <script src="/ui/practice-transport.js?v=play-songs-20260802-1"></script>
-  <script src="/ui/play-song-layout-20260802.js?v=compact-cues-1"></script>
+  <script src="/ui/play-song-movement-20260802.js?v=direction-cues-1"></script>
 </body>
 </html>

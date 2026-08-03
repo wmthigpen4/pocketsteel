@@ -12,7 +12,7 @@
   const elements = {
     title: document.querySelector("#play-title"), key: document.querySelector("#play-key"), meta: document.querySelector("#play-meta"), attribution: document.querySelector("#play-attribution"), bar: document.querySelector("#play-bar"),
     objective: document.querySelector("#play-objective"), currentChord: document.querySelector("#current-chord"), currentGrip: document.querySelector("#current-grip"), currentMelody: document.querySelector("#current-melody"), currentMove: document.querySelector("#current-move"),
-    nextLabel: document.querySelector("#next-chord-label"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMelody: document.querySelector("#next-melody"), nextMove: document.querySelector("#next-move"),
+    nextLabel: document.querySelector("#next-chord-label"), nextDirection: document.querySelector("#next-direction"), nextDirectionArrow: document.querySelector("#next-direction-arrow"), nextDirectionText: document.querySelector("#next-direction-text"), nextChord: document.querySelector("#next-chord"), nextGrip: document.querySelector("#next-grip"), nextMelody: document.querySelector("#next-melody"), nextMove: document.querySelector("#next-move"),
     fretboard: document.querySelector("#play-fretboard"), lyric: document.querySelector("#play-lyric"), toggle: document.querySelector("#play-toggle"), restart: document.querySelector("#play-restart"),
     scrub: document.querySelector("#play-scrub"), time: document.querySelector("#play-time"), speed: document.querySelector("#play-speed"), route: document.querySelector("#play-route"), loop: document.querySelector("#play-loop"), volume: document.querySelector("#play-volume"),
     checkpoints: Array.from(document.querySelectorAll("[data-checkpoint]")), nextCard: document.querySelector(".play-cue.is-next"),
@@ -159,6 +159,38 @@
     const stringChanges = controlChangesByString(from, to);
     const controlMove = stringChanges.length ? stringChanges.join(" · ") : "repick";
     return `${fretMove} · ${controlMove}`;
+  }
+
+  function movementIndicator(current, next) {
+    const fromFret = Number(current?.position?.fret);
+    const toFret = Number(next?.position?.fret);
+    if (!Number.isFinite(toFret)) return null;
+    if (!Number.isFinite(fromFret)) {
+      return { direction: "same", symbol: "●", label: `Start fret ${toFret}`, accessible: `Start at fret ${toFret}` };
+    }
+    const change = toFret - fromFret;
+    if (change === 0) {
+      return { direction: "same", symbol: "●", label: "Same fret", accessible: `Stay at fret ${toFret}` };
+    }
+    const direction = change > 0 ? "up" : "down";
+    const distance = Math.abs(change);
+    const fretLabel = distance === 1 ? "fret" : "frets";
+    return {
+      direction,
+      symbol: change > 0 ? "↑" : "↓",
+      label: `${direction} ${distance} ${fretLabel}`,
+      accessible: `Move ${direction} ${distance} ${fretLabel}, from fret ${fromFret} to fret ${toFret}`
+    };
+  }
+
+  function renderMovementIndicator(current, next) {
+    const indicator = movementIndicator(current, next);
+    elements.nextDirection.hidden = assistanceReduced || !indicator;
+    if (!indicator) return;
+    elements.nextDirection.className = `play-direction is-${indicator.direction}`;
+    elements.nextDirection.setAttribute("aria-label", indicator.accessible);
+    elements.nextDirectionArrow.textContent = indicator.symbol;
+    elements.nextDirectionText.textContent = indicator.label;
   }
 
   function currentInstruction(current) {
@@ -421,6 +453,7 @@
       elements.nextMelody.textContent = assistanceReduced ? "" : melodyCueText(next);
       elements.nextMelody.hidden = !elements.nextMelody.textContent;
       elements.nextMove.textContent = assistanceReduced ? "" : movementInstruction(current, next);
+      renderMovementIndicator(current, next);
       const currentBar = barNumber(current || next);
       elements.bar.textContent = current?.isPickup ? `Pickup · Bar 1 of ${chart.measures.length}` : current ? `Bar ${currentBar} of ${chart.measures.length}` : "Count-in";
       renderFretboard(current, next);
