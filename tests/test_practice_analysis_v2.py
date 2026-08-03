@@ -100,7 +100,13 @@ def test_detects_stable_g_c_a_key_regions_and_keeps_plain_dominants_as_triads() 
         for(let repeat=0;repeat<6;repeat++) form.push('A','F#m','D','E');
         const bars=form.map(bar),starting={key:'G',keyMode:'major',root:7,confidence:.8};
         const decoded=a.decodeBars(bars,starting,bars.map((bar)=>bar.startMs),bars.length*1000);
-        console.log(JSON.stringify({regions:decoded.keyRegions.map(({startBar,endBar,key,keyMode})=>({startBar,endBar,key,keyMode})),dominantSevenths:decoded.chords.filter((chord)=>/7$/.test(chord.symbol)&&!/m7$/.test(chord.symbol)).length,activeKeys:[decoded.chords.find((chord)=>chord.bar===1).activeKey,decoded.chords.find((chord)=>chord.bar===25).activeKey,decoded.chords.find((chord)=>chord.bar===41).activeKey]}));
+        const stableForm=[];
+        for(let repeat=0;repeat<16;repeat++) stableForm.push('G','Em7','C','D');
+        const stableBars=stableForm.map(bar);
+        const stable=a.decodeBars(stableBars,starting,stableBars.map((bar)=>bar.startMs),stableBars.length*1000);
+        const requested=[{startBar:1,key:'G',keyMode:'major',source:'manual'},{startBar:21,key:'C',keyMode:'major',source:'manual'},{startBar:45,key:'A',keyMode:'major',source:'manual'}];
+        const manual=a.decodeBars(bars,starting,bars.map((bar)=>bar.startMs),bars.length*1000,requested);
+        console.log(JSON.stringify({regions:decoded.keyRegions.map(({startBar,endBar,key,keyMode})=>({startBar,endBar,key,keyMode})),dominantSevenths:decoded.chords.filter((chord)=>/7$/.test(chord.symbol)&&!/m7$/.test(chord.symbol)).length,activeKeys:[decoded.chords.find((chord)=>chord.bar===1).activeKey,decoded.chords.find((chord)=>chord.bar===25).activeKey,decoded.chords.find((chord)=>chord.bar===41).activeKey],stableRegions:stable.keyRegions.map(({startBar,endBar,key,keyMode})=>({startBar,endBar,key,keyMode})),manualRegions:manual.keyRegions.map(({startBar,endBar,key,keyMode,source})=>({startBar,endBar,key,keyMode,source})),manualActiveKeys:[manual.chords.find((chord)=>chord.bar===1).activeKey,manual.chords.find((chord)=>chord.bar===21).activeKey,manual.chords.find((chord)=>chord.bar===45).activeKey]}));
         """
     )
     assert payload == {
@@ -111,6 +117,15 @@ def test_detects_stable_g_c_a_key_regions_and_keeps_plain_dominants_as_triads() 
         ],
         "dominantSevenths": 0,
         "activeKeys": ["G", "C", "A"],
+        "stableRegions": [
+            {"startBar": 1, "endBar": 64, "key": "G", "keyMode": "major"},
+        ],
+        "manualRegions": [
+            {"startBar": 1, "endBar": 20, "key": "G", "keyMode": "major", "source": "manual"},
+            {"startBar": 21, "endBar": 44, "key": "C", "keyMode": "major", "source": "manual"},
+            {"startBar": 45, "endBar": 64, "key": "A", "keyMode": "major", "source": "manual"},
+        ],
+        "manualActiveKeys": ["G", "C", "A"],
     }
 
 
