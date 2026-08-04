@@ -200,7 +200,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b"Review Song" in setup
     assert b"practice-reference-validation-v1.js" in setup
     assert b"setup-song-tonic-cadence-v11.js" in setup
-    assert b"play-song-rest-size-v5.js" in player
+    assert b"play-song-route-options-v6.js" in player
     assert b"play-songs-rest-size-v3.css" in player
     assert b"play-songs-key-regions-v1.css" in setup
     assert b"practice-tools-key-regions-v1.js" in setup
@@ -323,7 +323,7 @@ def test_changed_play_along_assets_use_content_digest_urls() -> None:
     expected_consumers = {
         "song-projects.js": {"melody-workbench.html", "play-song.html"},
         "practice-tools-key-regions-v1.js": {"play-song.html", "setup-song.html", "songs.html"},
-        "play-song-rest-size-v5.js": {"play-song.html"},
+        "play-song-route-options-v6.js": {"play-song.html"},
     }
 
     for asset_name, expected_html in expected_consumers.items():

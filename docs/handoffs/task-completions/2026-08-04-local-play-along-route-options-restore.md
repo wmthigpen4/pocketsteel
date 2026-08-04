@@ -13,6 +13,7 @@ The two choices use distinct deterministic backend policies. Stay Near centers v
 
 - `steel_guitar_rag/song_practice.py`
 - `ui/play-song.js`
+- `ui/play-song-route-options-v6.js` (immutable asset alias)
 - `ui/play-song.html`
 - `tests/test_song_practice.py`
 - `tests/test_play_songs_ui.py`
@@ -47,5 +48,6 @@ Low. The change is limited to device-local chord route selection and the determi
 - `tests/test_song_practice.py`
 - `ui/play-song.html`
 - `ui/play-song.js`
+- `ui/play-song-route-options-v6.js`
 
 Do not stage `.venv` or unrelated files.
