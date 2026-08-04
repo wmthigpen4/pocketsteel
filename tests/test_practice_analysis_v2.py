@@ -364,7 +364,7 @@ def test_v2_contract_keeps_project_schema_and_audio_local() -> None:
     assert "startFraction" in worker and "analysisState" in worker
     assert "project.timeline.barStartsMs" in setup
     assert "project.timeline.barStartsMs = project.timeline.chords" not in setup
-    assert "timelineChords" in player and "chartBars" in player
+    assert "timelineChords" in player and "practiceTools.chartTextForTimeline" in player
     setup_html = (REPO_ROOT / "ui/setup-song.html").read_text(encoding="utf-8")
     assert "Reanalyze with improved method" not in setup_html
     assert "Updating Song Map" in setup_html

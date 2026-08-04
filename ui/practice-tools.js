@@ -216,6 +216,24 @@
       .join(" → ");
   }
 
+  function chartTextForTimeline(barStartsMs, chords) {
+    const starts = Array.isArray(barStartsMs) ? barStartsMs : [];
+    const timelineChords = (Array.isArray(chords) ? chords : []).map((chord, index) => ({
+      ...chord,
+      bar: Number(chord?.bar || index + 1),
+      startFraction: Number(chord?.startFraction || 0),
+      sourceIndex: index
+    }));
+    const bars = starts.map((_start, index) => {
+      const symbols = timelineChords
+        .filter((chord) => chord.bar === index + 1)
+        .sort((left, right) => left.startFraction - right.startFraction || left.sourceIndex - right.sourceIndex)
+        .map((chord) => String(chord.symbol || "N.C.").trim() || "N.C.");
+      return symbols.length ? symbols.join(" ") : "N.C.";
+    });
+    return `[Detected song] | ${bars.join(" | ")} |`;
+  }
+
   function chartReferenceProvider(adapter) {
     if (!adapter || typeof adapter.lookup !== "function" || !String(adapter.id || "").trim()) {
       throw new Error("A chart reference provider needs an id and a permitted lookup function.");
@@ -310,7 +328,7 @@
     openDatabase, listProjects, loadProject, saveProject, deleteProject,
     loadSession, saveSession, sessionDefaults,
     writeAudio, readAudio, removeAudio, hasAudio, fingerprintFile, findProjectByFingerprint,
-    chordForDisplay, normalizeKeyRegions, keyRegionForBar, keyForBar, keyJourneyLabel, chartReferenceProvider, controlLabelForDisplay, controlLabelsForDisplay,
+    chordForDisplay, normalizeKeyRegions, keyRegionForBar, keyForBar, keyJourneyLabel, chartTextForTimeline, chartReferenceProvider, controlLabelForDisplay, controlLabelsForDisplay,
     projectBars, barsToLoopRange, countBasedLoopRange, beatTimesForTrack, meterBeats
   };
 

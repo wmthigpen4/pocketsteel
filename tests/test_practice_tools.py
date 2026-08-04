@@ -69,6 +69,44 @@ def test_chart_supports_no_chord_and_incomplete_final_measure() -> None:
     assert payload["events"][-1]["endMs"] == 7800
 
 
+def test_current_project_timeline_reaches_player_chart_with_rests() -> None:
+    payload = run_node("""
+      const tools = require('./ui/practice-tools.js');
+      const songs = require('./ui/song-projects.js');
+      const project = {
+        schemaVersion: 'practice_project_v1',
+        timeline: {
+          barStartsMs: [0, 1000, 2000, 3000],
+          chords: [
+            {bar: 1, startFraction: 0, symbol: 'G'},
+            {bar: 2, startFraction: 0, symbol: 'N.C.'},
+            {bar: 4, startFraction: 0.5, symbol: 'D'},
+            {bar: 4, startFraction: 0, symbol: 'C'}
+          ]
+        }
+      };
+      const chartText = tools.chartTextForTimeline(project.timeline.barStartsMs, project.timeline.chords);
+      const chart = songs.parseSongChart(chartText, {key: 'G', meter: '4/4'});
+      const events = songs.buildTimedEvents({...chart, barStartsMs: project.timeline.barStartsMs, durationMs: 4000});
+      console.log(JSON.stringify({
+        chartText,
+        errors: chart.errors,
+        barCount: chart.measures.length,
+        displayChords: chart.measures.map((measure) => measure.displayChords),
+        roles: chart.measures.map((measure) => measure.role),
+        eventChords: events.map((event) => event.chord)
+      }));
+    """)
+    assert payload == {
+        "chartText": "[Detected song] | G | N.C. | N.C. | C D |",
+        "errors": [],
+        "barCount": 4,
+        "displayChords": [["G"], ["N.C."], ["N.C."], ["C", "D"]],
+        "roles": ["comp", "rest", "rest", "comp"],
+        "eventChords": ["G", "", "", "C", "D"],
+    }
+
+
 def test_upload_analysis_has_no_network_escape_hatch() -> None:
     songs = (REPO_ROOT / "ui" / "songs.js").read_text(encoding="utf-8")
     worker = (REPO_ROOT / "ui" / "practice-analysis-worker.js").read_text(encoding="utf-8")

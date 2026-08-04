@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -142,7 +143,8 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"What do you want to work on?" in studio
     assert b'<script src="melody-score.js?v=chord-aware-harmony-v1"></script>' in studio
-    assert b'<script src="song-projects.js?v=amazing-tablature-product-v1-20260724-2"></script>' in studio
+    song_projects_digest = hashlib.sha256(Path("ui/song-projects.js").read_bytes()).hexdigest().encode()
+    assert b'<script src="song-projects.js?v=' + song_projects_digest + b'"></script>' in studio
     assert b'<script src="melody-workbench.js?v=quick-score-bulk-octave-v2"></script>' in studio
 
     status, headers, studio_script = call_app(smoke_app(), "/ui/melody-workbench.js")
@@ -315,6 +317,32 @@ def test_same_origin_static_response_supports_etag_gzip_and_immutable_cache() ->
     assert cached_status == "304 Not Modified"
     assert cached_headers["ETag"] == headers["ETag"]
     assert cached_body == b""
+
+
+def test_changed_play_along_assets_use_content_digest_urls() -> None:
+    expected_consumers = {
+        "song-projects.js": {"melody-workbench.html", "play-song.html"},
+        "practice-tools-key-regions-v1.js": {"play-song.html", "setup-song.html", "songs.html"},
+        "play-song-rest-size-v5.js": {"play-song.html"},
+    }
+
+    for asset_name, expected_html in expected_consumers.items():
+        asset_path = Path("ui") / asset_name
+        asset = asset_path.read_bytes()
+        digest = hashlib.sha256(asset).hexdigest()
+        consumers = [path for path in Path("ui").glob("*.html") if asset_name in path.read_text(encoding="utf-8")]
+        assert {path.name for path in consumers} == expected_html
+        for consumer in consumers:
+            assert f"{asset_name}?v={digest}" in consumer.read_text(encoding="utf-8")
+
+        status, headers, served = call_app(
+            smoke_app(),
+            f"/ui/{asset_name}",
+            environ_extra={"QUERY_STRING": f"v={digest}"},
+        )
+        assert status == "200 OK"
+        assert served == asset
+        assert headers["Cache-Control"] == "public, max-age=31536000, immutable"
 
 
 def test_same_origin_server_serves_public_fretboard_background() -> None:

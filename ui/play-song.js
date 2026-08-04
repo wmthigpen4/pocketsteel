@@ -731,14 +731,10 @@
     if (!file) throw new Error("The local recording is missing. Return to Songs and relink the original file with the same fingerprint.");
     localAudioUrl = URL.createObjectURL(file);
     const timelineChords = chords.map((chord, index) => ({ ...chord, bar: Number(chord.bar || index + 1), startFraction: Number(chord.startFraction || 0) }));
-    const chartBars = timeline.barStartsMs.map((_start, index) => {
-      const symbols = timelineChords.filter((chord) => chord.bar === index + 1).sort((left, right) => left.startFraction - right.startFraction).map((chord) => chord.symbol || "N.C.");
-      return symbols.length ? symbols.join(" ") : "N.C.";
-    });
     return {
       id: project.id, projectId: project.id, title: project.title, performer: "On-device recording", key: timeline.key || "G", keyMode: timeline.keyMode || "major", meter: timeline.meter || "4/4", tempo: Number(timeline.tempo || 100),
       durationMs: Number(project.audio.durationMs), barStartsMs: timeline.barStartsMs.map(Number), beatTimesMs: (timeline.beatTimesMs || []).map(Number),
-      chart: `[Detected song] | ${chartBars.join(" | ")} |`, timelineChords, keyRegions: timeline.keyRegions || [], audioUrl: localAudioUrl, playAlongReady: true,
+      chart: practiceTools.chartTextForTimeline(timeline.barStartsMs, timelineChords), timelineChords, keyRegions: timeline.keyRegions || [], audioUrl: localAudioUrl, playAlongReady: true,
       routeOptions: [{ id: "movement", label: "Move the Bar", description: "Follow a practical E9 chord route generated from your reviewed chart." }], defaultRouteId: "movement",
       recordingCredit: "Stored and analyzed only on this device", authoredCountIn: Boolean(timeline.authoredCountIn), localProject: true
     };

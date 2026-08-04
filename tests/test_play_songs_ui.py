@@ -228,6 +228,7 @@ def test_play_along_uses_active_section_key_for_nns_and_key_markers() -> None:
     assert "New key ·" in player_js
     assert 'id="play-key-journey"' in player_html
     assert "Current key" in player_html
+    assert "practiceTools.chartTextForTimeline(timeline.barStartsMs, timelineChords)" in player_js
 
 
 def test_play_along_surfaces_key_changes_in_now_and_next_cues() -> None:
