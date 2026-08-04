@@ -128,6 +128,27 @@ def test_arranger_is_deterministic_uses_familiar_route_and_never_invents_unsuppo
     assert "melody" not in first
 
 
+def test_local_song_route_preferences_offer_real_stay_near_and_bar_movement_routes() -> None:
+    profile = get_e9_copedent_profile()
+    stay_request = request_for(["A", "D", "E", "A"])
+    stay_request.update({"key": "A", "routePreference": "stay_near", "homeFret": 5})
+    move_request = request_for(["A", "D", "E", "A"])
+    move_request.update({"key": "A", "routePreference": "move_bar", "homeFret": 5})
+
+    stay = arrange_song_practice(stay_request, copedent_profile=profile, copedent_revision=1)
+    move = arrange_song_practice(move_request, copedent_profile=profile, copedent_revision=1)
+    stay_frets = [event["position"]["fret"] for event in stay["events"]]
+    move_frets = [event["position"]["fret"] for event in move["events"]]
+
+    assert stay["route"]["preference"] == "stay_near"
+    assert stay["route"]["homeFret"] == 5
+    assert move["route"]["preference"] == "move_bar"
+    assert max(abs(fret - 5) for fret in stay_frets) < max(abs(fret - 5) for fret in move_frets)
+    assert sum(left != right for left, right in zip(move_frets, move_frets[1:])) > sum(
+        left != right for left, right in zip(stay_frets, stay_frets[1:])
+    )
+
+
 def test_a_is_preferred_for_equivalent_string_five_raise_but_c_preserves_minor_seventh() -> None:
     profile = get_e9_copedent_profile()
     minor = parse_chord_symbol("F#m")

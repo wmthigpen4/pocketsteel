@@ -706,6 +706,8 @@
       authoredRoute: route?.positions || track.authoredRoute || [], syncOffsetMs: 0
     };
     const request = songTools.buildArrangePayload(practiceProject, activeCopedentContext());
+    request.routePreference = route?.routePreference || "balanced";
+    if (Number.isInteger(route?.homeFret)) request.homeFret = route.homeFret;
     const response = await fetch("/api/song-practice/arrange", { method: "POST", headers: accessHeaders(true), body: JSON.stringify(request) });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || "The E9 route could not be prepared.");
@@ -731,11 +733,17 @@
     if (!file) throw new Error("The local recording is missing. Return to Songs and relink the original file with the same fingerprint.");
     localAudioUrl = URL.createObjectURL(file);
     const timelineChords = chords.map((chord, index) => ({ ...chord, bar: Number(chord.bar || index + 1), startFraction: Number(chord.startFraction || 0) }));
+    const homeFretByKey = { C: 8, "C#": 9, Db: 9, D: 10, "D#": 11, Eb: 11, E: 0, F: 1, "F#": 2, Gb: 2, G: 3, "G#": 4, Ab: 4, A: 5, "A#": 6, Bb: 6, B: 7 };
+    const projectKey = timeline.key || "G";
+    const homeFret = homeFretByKey[projectKey] ?? 3;
     return {
-      id: project.id, projectId: project.id, title: project.title, performer: "On-device recording", key: timeline.key || "G", keyMode: timeline.keyMode || "major", meter: timeline.meter || "4/4", tempo: Number(timeline.tempo || 100),
+      id: project.id, projectId: project.id, title: project.title, performer: "On-device recording", key: projectKey, keyMode: timeline.keyMode || "major", meter: timeline.meter || "4/4", tempo: Number(timeline.tempo || 100),
       durationMs: Number(project.audio.durationMs), barStartsMs: timeline.barStartsMs.map(Number), beatTimesMs: (timeline.beatTimesMs || []).map(Number),
       chart: practiceTools.chartTextForTimeline(timeline.barStartsMs, timelineChords), timelineChords, keyRegions: timeline.keyRegions || [], audioUrl: localAudioUrl, playAlongReady: true,
-      routeOptions: [{ id: "movement", label: "Move the Bar", description: "Follow a practical E9 chord route generated from your reviewed chart." }], defaultRouteId: "movement",
+      routeOptions: [
+        { id: "movement", label: "Move the Bar", routePreference: "move_bar", homeFret, description: "Move among practical E9 chord pockets from your reviewed chart." },
+        { id: "same-fret", label: `Stay Near Fret ${homeFret}`, routePreference: "stay_near", homeFret, description: `Keep the accompaniment centered near fret ${homeFret} when valid E9 positions allow it.` }
+      ], defaultRouteId: "movement",
       recordingCredit: "Stored and analyzed only on this device", authoredCountIn: Boolean(timeline.authoredCountIn), localProject: true
     };
   }
@@ -818,10 +826,10 @@
     });
     routeOptions.forEach((routeOption) => lessons.push({
       id: `chord-${routeOption.id}`, kind: "chord", routeId: routeOption.id,
-      label: routeOption.id === "movement" ? "Chord Foundation · Move the Bar" : routeOption.id === "same-fret" ? "Chord Foundation · Stay Near Fret 3" : `Chord Foundation · ${routeOption.label}`,
+      label: routeOption.id === "movement" ? "Chord Foundation · Move the Bar" : routeOption.id === "same-fret" ? `Chord Foundation · Stay Near Fret ${routeOption.homeFret ?? 3}` : `Chord Foundation · ${routeOption.label}`,
       description: routeOption.description || "Practice the chord progression as accompaniment.",
       objective: routeOption.id === "same-fret"
-        ? "Accompany the chords near fret 3; the top note is not necessarily the melody."
+        ? `Accompany the chords near fret ${routeOption.homeFret ?? 3}; the top note is not necessarily the melody.`
         : "Accompany the chords through common pockets; the top note is not necessarily the melody."
     }));
     if (lessonPlans.has("full-chord-melody")) lessons.push({

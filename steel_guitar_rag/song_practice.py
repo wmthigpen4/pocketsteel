@@ -374,7 +374,12 @@ def _transition_cost(left: ChordCandidate, right: ChordCandidate) -> float:
     return round(fret_cost + control_cost + grip_cost - voice_credit, 4)
 
 
-def _coherent_route(groups: Sequence[list[ChordCandidate] | None]) -> list[ChordCandidate | None]:
+def _coherent_route(
+    groups: Sequence[list[ChordCandidate] | None],
+    *,
+    route_preference: str = "balanced",
+    home_fret: int = 6,
+) -> list[ChordCandidate | None]:
     route: list[ChordCandidate | None] = [None] * len(groups)
     supported_indexes = [index for index, group in enumerate(groups) if group]
     if not supported_indexes:
@@ -386,7 +391,11 @@ def _coherent_route(groups: Sequence[list[ChordCandidate] | None]) -> list[Chord
     for index in supported_indexes:
         candidates = trimmed[index]
         if previous_index is None:
-            costs[index] = [candidate.base_cost for candidate in candidates]
+            costs[index] = [
+                candidate.base_cost
+                + (abs(candidate.fret - home_fret) * 1.8 if route_preference == "stay_near" else 0)
+                for candidate in candidates
+            ]
             parents[index] = [None] * len(candidates)
         else:
             previous = trimmed[previous_index]
@@ -394,10 +403,27 @@ def _coherent_route(groups: Sequence[list[ChordCandidate] | None]) -> list[Chord
             current_costs: list[float] = []
             current_parents: list[int | None] = []
             for candidate in candidates:
-                choices = [
-                    (previous_costs[parent] + _transition_cost(source, candidate) + candidate.base_cost, parent)
-                    for parent, source in enumerate(previous)
-                ]
+                choices = []
+                chord_changed = groups[index] is not groups[previous_index]
+                for parent, source in enumerate(previous):
+                    preference_cost = 0.0
+                    if route_preference == "stay_near":
+                        preference_cost = abs(candidate.fret - home_fret) * 1.8
+                    elif route_preference == "move_bar" and chord_changed:
+                        distance = abs(candidate.fret - source.fret)
+                        if distance == 0:
+                            preference_cost = 4.0
+                        elif 2 <= distance <= 5:
+                            preference_cost = -1.6
+                        elif distance > 8:
+                            preference_cost = (distance - 8) * 0.8
+                    choices.append((
+                        previous_costs[parent]
+                        + _transition_cost(source, candidate)
+                        + candidate.base_cost
+                        + preference_cost,
+                        parent,
+                    ))
                 best_cost, best_parent = min(choices, key=lambda item: (item[0], item[1]))
                 current_costs.append(best_cost)
                 current_parents.append(best_parent)
@@ -490,6 +516,8 @@ def _canonical_timeline_hash(payload: Mapping[str, Any], events: Sequence[Mappin
         "key": payload["key"],
         "meter": payload["meter"],
         "style": payload["style"],
+        "routePreference": payload.get("routePreference", "balanced"),
+        "homeFret": payload.get("homeFret", 6),
         "events": list(events),
     }
     encoded = json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
@@ -576,7 +604,22 @@ def arrange_song_practice(
     if meter not in {"2/4", "3/4", "4/4", "6/8"}:
         raise SongPracticeError("meter must be 2/4, 3/4, 4/4, or 6/8")
     style = str(request_payload.get("style") or "classic_country").strip()[:40]
-    normalized_payload = {"key": key, "meter": meter, "style": style}
+    route_preference = str(request_payload.get("routePreference") or "balanced").strip()
+    if route_preference not in {"balanced", "move_bar", "stay_near"}:
+        raise SongPracticeError("routePreference must be balanced, move_bar, or stay_near")
+    try:
+        home_fret = int(request_payload.get("homeFret", (NOTE_TO_SEMITONE[key] - NOTE_TO_SEMITONE["E"]) % 12))
+    except (TypeError, ValueError) as exc:
+        raise SongPracticeError("homeFret must be an integer from 0 through 24") from exc
+    if not 0 <= home_fret <= MAX_FRET:
+        raise SongPracticeError("homeFret must be an integer from 0 through 24")
+    normalized_payload = {
+        "key": key,
+        "meter": meter,
+        "style": style,
+        "routePreference": route_preference,
+        "homeFret": home_fret,
+    }
     events = _validated_events(request_payload)
 
     parsed: list[ParsedChord | None] = [
@@ -593,7 +636,7 @@ def arrange_song_practice(
         if cache_key not in cache:
             cache[cache_key] = _chord_candidates(chord, copedent_profile)
         groups.append(cache[cache_key] or None)
-    selected = _coherent_route(groups)
+    selected = _coherent_route(groups, route_preference=route_preference, home_fret=home_fret)
     for index, (event, group) in enumerate(zip(events, groups, strict=True)):
         hint = event.get("positionHint")
         if not hint or not group:
@@ -671,6 +714,8 @@ def arrange_song_practice(
             "id": f"song-route-{timeline_hash[:12]}",
             "label": "Recommended chord route",
             "coherentAcrossChart": True,
+            "preference": route_preference,
+            "homeFret": home_fret,
             "selectionPriorities": [
                 "hard pitch and chord-tone validity",
                 "common sounding voices",

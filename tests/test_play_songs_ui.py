@@ -123,7 +123,10 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert "track?.melodyTimeline" in player_js
     assert 'label: "Follow the Melody"' in player_js
     assert '"Chord Foundation · Move the Bar"' in player_js
-    assert '"Chord Foundation · Stay Near Fret 3"' in player_js
+    assert "Chord Foundation · Stay Near Fret ${routeOption.homeFret ?? 3}" in player_js
+    assert 'routePreference: "move_bar"' in player_js
+    assert 'routePreference: "stay_near"' in player_js
+    assert "request.routePreference = route?.routePreference" in player_js
     assert 'label: "Full Chord Melody · Advanced"' in player_js
     assert "payload?.playAlongLessons" in player_js
     assert 'playAlongOpeningChordMelodyEvents: 3' in player_js
