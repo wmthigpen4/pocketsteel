@@ -17,6 +17,7 @@ The two choices use distinct deterministic backend policies. Stay Near centers v
 - `ui/play-song.html`
 - `tests/test_song_practice.py`
 - `tests/test_play_songs_ui.py`
+- `tests/test_same_origin_smoke_server.py`
 - this handoff
 
 No visual styling, fretboard rendering, audio, local project storage, authentication, Cloudflare, DNS, Tunnel, secrets, corpus, or private data changed.
@@ -25,6 +26,7 @@ No visual styling, fretboard rendering, audio, local project storage, authentica
 
 - Focused player and arranger suite: `36 passed`
 - Asset-digest and catalog checks: `2 passed`
+- Final player and same-origin asset checks: `23 passed`
 - Full repository suite: `1587 passed in 84.52s`
 - `node --check ui/play-song.js`: passed
 - `git diff --check`: passed
@@ -34,7 +36,9 @@ No visual styling, fretboard rendering, audio, local project storage, authentica
 
 ## Deployment
 
-Activation must use an immutable detached release at this exact commit, pass preflight and alternate-port health/version checks, then verify the authenticated protected Play Along page. The active user's device-local song should show both route choices without losing its OPFS audio or saved map.
+Runtime commit `3f483bb32f999dfaa6591e22211d450c28b23542` is active from the immutable detached release at `/Users/cory/.steel-rag/releases/3f483bb3-local-route-options-production`. Exact-release preflight, alternate-port health/version checks, production live/ready/version checks, and authenticated browser smoke passed.
+
+The user's existing `Shenandoah_NOVOCAL-200223-081529` device-local song retained its OPFS audio and saved map. The protected page displayed both `Move the Bar` and `Stay Near Fret 5`; switching to Stay Near updated the objective without an error, switching back restored Move the Bar, and the browser console remained clean. A new immutable script alias was required because protected browser smoke proved that the prior asset path remained stale at the edge despite a changed digest query.
 
 ## Risk
 
@@ -45,6 +49,7 @@ Low. The change is limited to device-local chord route selection and the determi
 - `docs/handoffs/task-completions/2026-08-04-local-play-along-route-options-restore.md`
 - `steel_guitar_rag/song_practice.py`
 - `tests/test_play_songs_ui.py`
+- `tests/test_same_origin_smoke_server.py`
 - `tests/test_song_practice.py`
 - `ui/play-song.html`
 - `ui/play-song.js`
