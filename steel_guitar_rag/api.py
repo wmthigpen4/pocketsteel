@@ -77,6 +77,11 @@ from steel_guitar_rag.chroma_search import (
     ChromaSearchIndex,
     SearchResponse,
 )
+from steel_guitar_rag.canonical_frontier_client import (
+    CanonicalFrontierClient,
+    CanonicalFrontierUnavailable,
+    configured_canonical_frontier_enabled,
+)
 from steel_guitar_rag.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
@@ -377,11 +382,25 @@ class RetrievalApi:
         account_usage_enabled: bool | None = None,
         account_usage_repository: AccountUsageRepository | None = None,
         amazing_tablature_policy: RuntimeRankerPolicy | None = None,
+        canonical_frontier_enabled: bool | None = None,
+        canonical_frontier_client: Any | None = None,
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
         self.curated_guidance_search = curated_guidance_search or search_curated_guidance
         self.answer_provider = configured_answer_provider(answer_provider)
+        self.canonical_frontier_enabled = (
+            configured_canonical_frontier_enabled()
+            if canonical_frontier_enabled is None
+            else bool(canonical_frontier_enabled)
+        )
+        self.canonical_frontier_client = (
+            canonical_frontier_client
+            if canonical_frontier_client is not None
+            else CanonicalFrontierClient.from_env()
+            if self.canonical_frontier_enabled
+            else None
+        )
         self.answer_auth_mode = normalize_answer_auth_mode(answer_auth_mode or configured_answer_auth_mode())
         self.auth_provider = resolve_auth_provider(self.answer_auth_mode, auth_provider)
         self.cloudflare_verifier = cloudflare_verifier
@@ -1619,6 +1638,50 @@ class RetrievalApi:
                     start_response, payload, access, request_payload=request_payload
                 )
 
+            if (
+                self.canonical_frontier_enabled
+                and self.canonical_frontier_client is not None
+                and answer_intent_decision.get("domain") == "steel_guitar"
+                and answer_intent_decision.get("needs_sources") is True
+                and answer_intent_decision.get("retrieval_allowed") is True
+                and answer_intent_decision.get("needs_fretboard") is not True
+            ):
+                try:
+                    frontier_result = self._answer_dependencies.run(
+                        lambda: self.canonical_frontier_client.answer(answer_request.question),
+                        timeout_seconds=self._answer_wall_timeout,
+                    )
+                except (CanonicalFrontierUnavailable, RuntimeError):
+                    LOGGER.warning("canonical_frontier_unavailable existing_answer_path=true")
+                else:
+                    final_answer = normalize_answer_list_markers(str(frontier_result["answer"]))
+                    frontier_sources = concise_source_cards(list(frontier_result["sources"]))
+                    payload: AnswerResponse = {
+                        "answer": final_answer,
+                        "mode": answer_request.mode,
+                        "sources": frontier_sources,
+                        "warnings": [],
+                        "sections": build_sections(final_answer),
+                    }
+                    if profile_personalization_requested:
+                        _personalize_answer_payload(payload, target_profile, target_revision)
+                    self._log_answer_attempt(
+                        request_payload,
+                        role=access.role,
+                        identity_email=access.identity_email,
+                        access_status="authorized",
+                        authorized=True,
+                        source_count=len(frontier_sources),
+                        warning_count=0,
+                    )
+                    return self._answer_success_response(
+                        start_response,
+                        payload,
+                        access,
+                        request_payload=request_payload,
+                        ai_assisted=True,
+                    )
+
             source_system = self._optional_string(request_payload.get("sourceSystem") or request_payload.get("source_system"))
             forum_name = self._optional_string(request_payload.get("forumName") or request_payload.get("forum_name"))
             ai_assisted = False
@@ -2234,6 +2297,8 @@ def create_app(
     account_usage_enabled: bool | None = None,
     account_usage_repository: AccountUsageRepository | None = None,
     amazing_tablature_policy: RuntimeRankerPolicy | None = None,
+    canonical_frontier_enabled: bool | None = None,
+    canonical_frontier_client: Any | None = None,
 ) -> RetrievalApi:
     retrieval_config = retrieval_config or configured_retrieval_mode_config()
     private_requested = retrieval_config.requested_mode in {
@@ -2264,6 +2329,8 @@ def create_app(
         account_usage_enabled=account_usage_enabled,
         account_usage_repository=account_usage_repository,
         amazing_tablature_policy=amazing_tablature_policy,
+        canonical_frontier_enabled=canonical_frontier_enabled,
+        canonical_frontier_client=canonical_frontier_client,
     )
 
 
