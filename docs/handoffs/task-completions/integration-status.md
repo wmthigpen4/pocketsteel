@@ -1,6 +1,6 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-08-05 10:59 America/Chicago
+Updated: 2026-08-05 11:20 America/Chicago
 
 ## Repository state
 
@@ -11,7 +11,7 @@ Updated: 2026-08-05 10:59 America/Chicago
 
 ## Canonical frontier knowledge candidate
 
-Status: **IMPLEMENTED AND DEFAULT-OFF — architecture selected, site adapter committed, no runtime activation or deployment.**
+Status: **OWNER-CORRECTED AND IMPLEMENTATION-READY, DEFAULT-OFF — architecture selected, site adapter committed, no runtime activation or deployment.**
 
 - Selected architecture: canonical hybrid lexical/vector retrieval, GPT-5.6 Terra atomic answer compiler, deterministic entailment fast path, and conditional GPT-5.6 Luna verification.
 - Site flag: `STEEL_RAG_CANONICAL_FRONTIER_ENABLED`, default `false`.
@@ -19,12 +19,16 @@ Status: **IMPLEMENTED AND DEFAULT-OFF — architecture selected, site adapter co
 - Files committed: `steel_guitar_rag/canonical_frontier_client.py`, `steel_guitar_rag/api.py`, `tests/test_canonical_frontier_client.py`, and the implementation handoff.
 - Focused application tests: 349 passed.
 - Full application tests: 1,592 passed; one environmental failure because this worktree lacks the test's hard-coded `.venv/bin/python`. The catalog command itself passed under the existing repository Python environment.
-- Exploration/runtime tests: 915 passed.
+- Exploration/runtime tests: 922 passed.
 - Local loopback client-to-service smoke passed with zero paid calls.
 - Capped live runtime smoke returned four verified claims from one canonical source, spent $0.0123489, and took 12.452 seconds for an exhaustive tail case.
 - Deployment, protected-preview restart, DNS, auth, Cloudflare settings, secrets, corpus, embeddings, and vector indexes were not changed.
-- Next gate: a small owner-facing expert product checkpoint, followed by separately authorized protected-preview enablement if accepted.
+- Owner checkpoint complete: Codex pre-reviewed 20 fresh cases; the owner reviewed four edge cases, accepted three, and requested one attributed-uncertainty correction.
+- The correction was live-confirmed: the answer now preserves Bobby Boggs's practical inspection advice and hedged 12-1 assessment plus Ulric Utsi-Åhlin's BC-12 guess and alternatives, without promoting any guess to fact.
+- Tracked cumulative API testing spend is $9.8861432 of the $20 cap; protected holdout usage remains zero.
+- Next gate: separately authorized isolated protected-preview deployment, smoke, latency observation, and untouched protected release evaluation.
 - Implementation handoff: `docs/handoffs/task-completions/2026-08-05-1058-05-18-canonical-frontier-site-candidate.md`.
+- Owner-corrected readiness handoff: `docs/handoffs/task-completions/2026-08-05-1120-05-18-canonical-frontier-owner-corrected-implementation-ready.md`.
 
 ## Melody Studio
 
