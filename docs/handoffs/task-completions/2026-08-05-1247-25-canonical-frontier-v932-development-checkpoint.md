@@ -102,6 +102,14 @@ The development-only discussion-expansion retriever is also implemented:
 - Warm local retrieval latency with a mock tournament: `1.85 seconds`
 - Activation authorization metadata: `false`
 
+Separate integrated runtime factory:
+
+- `/Users/cory/Documents/sgf-scrape-test/canonical_frontier_v932_runtime_candidate.py`
+- SHA-256: `c4033ede0d0fd52522e8aafa0eb67158a3bb4d6b17ec17f31c8b8474823fad79`
+- It composes the tournament retriever, ten-group context, Terra compiler, and conditional verifier without changing the active v931 service factory.
+- Real canonical retrieval plus schema-valid mocked model responses passed end to end in `4.69 seconds` from a cold process.
+- Focused unit suite: `15 tests passed`.
+
 ## Frozen 35-Case Pilot
 
 Policy:
@@ -137,6 +145,13 @@ Dry-run preflight passed:
 - API calls made by preflight: `0`
 
 Evaluation mode fails closed on provider, schema, or credit errors so infrastructure failures cannot be counted as ranking failures. Product/runtime mode retains deterministic hybrid-order fallback.
+
+Final protected-preview safety check after development:
+
+- Feature flag: `false`
+- Port `8770`: listening, live, and ready
+- Served site revision: `2a56f2e1`
+- Port `8771`: no listener
 
 ## Current Blocker
 
