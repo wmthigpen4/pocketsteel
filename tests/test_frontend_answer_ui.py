@@ -24,6 +24,10 @@ let capturedRequest;
 (async () => {
   const result = await answerUi.requestAnswer("Why does my amp buzz?", {
     accessRole: "beta_user",
+    conversationContext: [
+      "User: The buzz stops when I touch the changer.",
+      "Assistant: Keep that grounding clue in view."
+    ],
     fetchImpl: async (url, options) => {
       capturedRequest = { url, options };
       return {
@@ -52,7 +56,12 @@ let capturedRequest;
   assert.equal(capturedRequest.options.headers["X-Steel-Rag-Dev-Access-Role"], "beta_user");
   const legacyHeader = ["X", "Turn" + "around", "Dev", "Access", "Role"].join("-");
   assert.equal(capturedRequest.options.headers[legacyHeader], undefined);
-  assert.equal(JSON.parse(capturedRequest.options.body).question, "Why does my amp buzz?");
+  const requestBody = JSON.parse(capturedRequest.options.body);
+  assert.equal(requestBody.question, "Why does my amp buzz?");
+  assert.deepEqual(Array.from(requestBody.conversationContext), [
+    "User: The buzz stops when I touch the changer.",
+    "Assistant: Keep that grounding clue in view."
+  ]);
   assert.equal(result.sections[0].body, "Forum users suggest checking the ground path before replacing parts. [1]");
   assert.equal(JSON.stringify(result.sources[0]), JSON.stringify({
     forum: "Electronics",

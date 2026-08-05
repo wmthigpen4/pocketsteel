@@ -42,9 +42,16 @@ class FakeFrontierClient:
     def __init__(self, *, fail: bool = False) -> None:
         self.fail = fail
         self.questions: list[str] = []
+        self.contexts: list[list[str]] = []
 
-    def answer(self, question: str) -> dict[str, Any]:
+    def answer(
+        self,
+        question: str,
+        *,
+        conversation_context: list[str] | None = None,
+    ) -> dict[str, Any]:
         self.questions.append(question)
+        self.contexts.append(list(conversation_context or []))
         if self.fail:
             raise CanonicalFrontierUnavailable("test outage")
         return {
@@ -74,8 +81,16 @@ class FakeFrontierClient:
         }
 
 
-def call_answer(app: Any, question: str) -> tuple[str, dict[str, Any]]:
-    body = json.dumps({"question": question, "mode": "ask"}).encode("utf-8")
+def call_answer(
+    app: Any,
+    question: str,
+    *,
+    conversation_context: Any = None,
+) -> tuple[str, dict[str, Any]]:
+    request = {"question": question, "mode": "ask"}
+    if conversation_context is not None:
+        request["conversationContext"] = conversation_context
+    body = json.dumps(request).encode("utf-8")
     captured: dict[str, Any] = {}
 
     def start_response(status: str, headers: list[tuple[str, str]]) -> None:
@@ -153,6 +168,49 @@ def test_enabled_frontier_returns_verified_answer_without_old_retrieval() -> Non
         "chunkId": "sgf:passage:1",
         "postUid": "sgf:post:1",
     }]
+
+
+def test_enabled_frontier_forwards_bounded_conversation_context() -> None:
+    frontier = FakeFrontierClient()
+    app = create_app(
+        EmptySearchIndex(),
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    context = [
+        "User: I play a universal 12-string tuning.",
+        "Assistant: Keep the universal tuning constraint in view.",
+    ]
+    status, _payload = call_answer(
+        app,
+        "How does that change the recommendation?",
+        conversation_context=context,
+    )
+    assert status == "200 OK"
+    assert frontier.contexts == [context]
+
+
+@pytest.mark.parametrize(
+    "context",
+    ["not-a-list", ["ok"] * 9, [""], ["x" * 8_001]],
+)
+def test_answer_rejects_invalid_conversation_context(context: Any) -> None:
+    app = create_app(
+        EmptySearchIndex(),
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=FakeFrontierClient(),
+    )
+    status, payload = call_answer(
+        app,
+        "How does that change the recommendation?",
+        conversation_context=context,
+    )
+    assert status == "400 Bad Request"
+    assert "conversationContext" in payload["error"]
 
 
 def test_enabled_frontier_failure_falls_back_to_existing_path() -> None:

@@ -57,6 +57,7 @@ class AnswerRequest:
     question: str
     mode: AnswerMode = DEFAULT_MODE
     top_k: int = DEFAULT_TOP_K
+    conversation_context: tuple[str, ...] = ()
 
 
 class AnswerProvider(Protocol):
@@ -2324,7 +2325,21 @@ def parse_answer_request(payload: dict[str, Any]) -> tuple[AnswerRequest | None,
     except (TypeError, ValueError):
         top_k = DEFAULT_TOP_K
     top_k = max(1, min(top_k, 12))
-    return AnswerRequest(question=question, mode=cast(AnswerMode, mode), top_k=top_k), None
+    raw_context = payload.get("conversationContext", payload.get("conversation_context", []))
+    if not isinstance(raw_context, list):
+        return None, "conversationContext must be a list"
+    if len(raw_context) > 8 or any(
+        not isinstance(item, str) or not item.strip() or len(item) > 8_000
+        for item in raw_context
+    ):
+        return None, "conversationContext must contain at most eight nonempty strings of 8,000 characters or fewer"
+    conversation_context = tuple(" ".join(item.split()) for item in raw_context)
+    return AnswerRequest(
+        question=question,
+        mode=cast(AnswerMode, mode),
+        top_k=top_k,
+        conversation_context=conversation_context,
+    ), None
 
 
 def build_sections(answer: str) -> list[dict[str, str]]:

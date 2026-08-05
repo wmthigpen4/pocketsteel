@@ -1402,7 +1402,13 @@ class RetrievalApi:
                     start_response, payload, access, request_payload=request_payload
                 )
 
-            answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
+            routing_question = "\n".join(
+                [*answer_request.conversation_context, answer_request.question]
+            )
+            answer_intent_decision = classify_answer_request(
+                routing_question,
+                answer_request.mode,
+            )
             curated_guidance_status: str | None = None
             curated_guidance_count: int | None = None
 
@@ -1648,7 +1654,10 @@ class RetrievalApi:
             ):
                 try:
                     frontier_result = self._answer_dependencies.run(
-                        lambda: self.canonical_frontier_client.answer(answer_request.question),
+                        lambda: self.canonical_frontier_client.answer(
+                            answer_request.question,
+                            conversation_context=list(answer_request.conversation_context),
+                        ),
                         timeout_seconds=self._answer_wall_timeout,
                     )
                 except (CanonicalFrontierUnavailable, RuntimeError):

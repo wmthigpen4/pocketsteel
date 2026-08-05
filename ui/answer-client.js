@@ -902,6 +902,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     fetchImpl = window.fetch,
     accessRole = ACCESS_ROLES.ANONYMOUS,
     requestPayload = {},
+    conversationContext = [],
     retryTransientOnce = false,
     transientRetryDelayMs = 500
   } = {}) {
@@ -915,7 +916,13 @@ const STEEL_RAG_ANSWER_UI = (() => {
       method: "POST",
       credentials: "same-origin",
       headers,
-      body: JSON.stringify({ ...requestPayload, question })
+      body: JSON.stringify({
+        ...requestPayload,
+        question,
+        conversationContext: Array.isArray(conversationContext)
+          ? conversationContext.slice(-8)
+          : []
+      })
     };
     let response = await fetchImpl(ANSWER_ENDPOINT, requestOptions);
     if (retryTransientOnce && [502, 503, 504].includes(response.status)) {

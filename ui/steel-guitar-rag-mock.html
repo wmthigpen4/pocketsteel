@@ -7459,6 +7459,7 @@
     }
 
     let answerRequestInFlight = false;
+    let conversationContext = [];
     let devPreviewAccessEnabled = true;
     let backendSession = {
       authenticated: false,
@@ -7520,10 +7521,19 @@
       try {
         const response = await STEEL_RAG_ANSWER_UI.requestAnswer(submittedQuestion, {
           accessRole: mockAccessState,
-          requestPayload
+          requestPayload: {
+            ...requestPayload,
+            isFollowup: conversationContext.length > 0
+          },
+          conversationContext
         });
         answeredQuestion.textContent = response.question || submittedQuestion;
         renderResponse(response);
+        conversationContext = [
+          ...conversationContext,
+          `User: ${submittedQuestion}`,
+          `Assistant: ${response.answer}`
+        ].slice(-8);
       } catch (error) {
         renderErrorState(error.message);
       } finally {
@@ -7567,6 +7577,7 @@
         footer.hidden = false;
       }
       question.value = "";
+      conversationContext = [];
       answeredQuestion.textContent = HUM_DEMO_QUESTION;
       clearProgressionGuide();
       clearMelodyExercise();
