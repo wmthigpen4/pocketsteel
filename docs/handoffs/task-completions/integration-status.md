@@ -1,6 +1,6 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-08-05 16:04 America/Chicago
+Updated: 2026-08-05 16:10 America/Chicago
 
 ## Repository state
 
@@ -22,6 +22,8 @@ Status: **V980 RUNNING IN THE LOCAL TEST PATH — quality-first candidate restor
 - Two passage-count alternatives were rejected. The remaining model problem is hard-question coverage/synthesis, not a reason to destabilize the validated test candidate.
 - New protected release evidence is still required; the exposed v931 protected set will not be reused.
 - Latest handoff: `docs/handoffs/task-completions/2026-08-05-1604-05-06-15-v980-test-and-waiting-experience.md`.
+- Protected preview now serves site commit `78a0d0e5`; authenticated browser smoke passed the waiting state, final answer, exact source excerpt, and zero-console-error checks.
+- Protected deployment handoff: `docs/handoffs/task-completions/2026-08-05-1610-12-v980-protected-preview-pass.md`.
 
 - Selected architecture: canonical hybrid lexical/vector retrieval, GPT-5.6 Terra atomic answer compiler, deterministic entailment fast path, and conditional GPT-5.6 Luna verification.
 - Site flag: `STEEL_RAG_CANONICAL_FRONTIER_ENABLED`, default `false`.
