@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import plistlib
 import subprocess
 import tempfile
@@ -14,6 +15,8 @@ from scripts.verify_canonical_frontier_service import verify_bundle
 ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "deploy/macos/run-canonical-frontier-service.sh"
 PLIST = ROOT / "deploy/macos/com.steelguitarrag.canonical-frontier.plist.template"
+INSTALLER = ROOT / "deploy/macos/install-canonical-frontier-launchdaemon.sh"
+REAL_SERVICE_ROOT = Path("/Users/cory/Documents/sgf-scrape-test")
 
 
 def digest(path: Path) -> str:
@@ -111,10 +114,11 @@ class CanonicalFrontierServiceBundleTests(unittest.TestCase):
 
 class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
     def test_wrapper_has_valid_shell_syntax(self) -> None:
-        result = subprocess.run(
-            ["bash", "-n", str(WRAPPER)], capture_output=True, text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
+        for path in (WRAPPER, INSTALLER):
+            result = subprocess.run(
+                ["bash", "-n", str(path)], capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_wrapper_verifies_before_start_and_rejects_non_loopback(self) -> None:
         source = WRAPPER.read_text(encoding="utf-8")
@@ -129,6 +133,55 @@ class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
         self.assertEqual(environment["STEEL_RAG_CANONICAL_FRONTIER_HOST"], "127.0.0.1")
         self.assertNotIn("STEEL_RAG_CANONICAL_FRONTIER_TOKEN", environment)
         self.assertNotIn("OPENAI_API_KEY", environment)
+
+    def installer_env(self, temporary: Path) -> dict[str, str]:
+        env_file = temporary / "private-preview.env"
+        env_file.write_text(
+            "STEEL_RAG_CANONICAL_FRONTIER_TOKEN=test-only-token\n",
+            encoding="utf-8",
+        )
+        return {
+            **os.environ,
+            "STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT": str(REAL_SERVICE_ROOT),
+            "STEEL_RAG_CANONICAL_FRONTIER_PYTHON": "/usr/bin/python3",
+            "STEEL_RAG_CANONICAL_FRONTIER_ENV_FILE": str(env_file),
+            "STEEL_RAG_CANONICAL_FRONTIER_LOG_DIR": str(temporary / "logs"),
+            "STEEL_RAG_CANONICAL_FRONTIER_INSTALL_DIR": str(temporary / "installed"),
+            "STEEL_RAG_CANONICAL_FRONTIER_PLIST_PATH": str(temporary / "service.plist"),
+        }
+
+    @unittest.skipUnless(REAL_SERVICE_ROOT.is_dir(), "local frozen service bundle is unavailable")
+    def test_installer_render_and_preflight_are_read_only(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            env = self.installer_env(temporary)
+            rendered = subprocess.run(
+                [str(INSTALLER), "render"], env=env,
+                capture_output=True, text=True,
+            )
+            self.assertEqual(rendered.returncode, 0, rendered.stderr)
+            plist = plistlib.loads(rendered.stdout.encode("utf-8"))
+            self.assertEqual(plist["EnvironmentVariables"]["STEEL_RAG_CANONICAL_FRONTIER_HOST"], "127.0.0.1")
+            self.assertNotIn("__STEEL_RAG_", rendered.stdout)
+            preflight = subprocess.run(
+                [str(INSTALLER), "preflight"], env=env,
+                capture_output=True, text=True,
+            )
+            self.assertEqual(preflight.returncode, 0, preflight.stderr)
+            self.assertIn("no state changed", preflight.stdout)
+            self.assertFalse((temporary / "service.plist").exists())
+
+    @unittest.skipUnless(REAL_SERVICE_ROOT.is_dir(), "local frozen service bundle is unavailable")
+    def test_installer_rejects_non_loopback_before_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            env = self.installer_env(Path(directory))
+            env["STEEL_RAG_CANONICAL_FRONTIER_HOST"] = "0.0.0.0"
+            result = subprocess.run(
+                [str(INSTALLER), "preflight"], env=env,
+                capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("non-loopback", result.stderr)
 
 
 if __name__ == "__main__":
