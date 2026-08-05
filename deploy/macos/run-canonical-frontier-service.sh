@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fail() {
+  printf 'canonical-frontier service startup failed: %s\n' "$*" >&2
+  exit 1
+}
+
+STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT="${STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT:-}"
+STEEL_RAG_CANONICAL_FRONTIER_MANIFEST="${STEEL_RAG_CANONICAL_FRONTIER_MANIFEST:-}"
+STEEL_RAG_CANONICAL_FRONTIER_PYTHON="${STEEL_RAG_CANONICAL_FRONTIER_PYTHON:-}"
+STEEL_RAG_CANONICAL_FRONTIER_ENV_FILE="${STEEL_RAG_CANONICAL_FRONTIER_ENV_FILE:-}"
+STEEL_RAG_CANONICAL_FRONTIER_VERIFIER="${STEEL_RAG_CANONICAL_FRONTIER_VERIFIER:-}"
+STEEL_RAG_CANONICAL_FRONTIER_HOST="${STEEL_RAG_CANONICAL_FRONTIER_HOST:-127.0.0.1}"
+STEEL_RAG_CANONICAL_FRONTIER_PORT="${STEEL_RAG_CANONICAL_FRONTIER_PORT:-8771}"
+
+[[ -d "$STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT" ]] || fail "service root is missing"
+[[ -r "$STEEL_RAG_CANONICAL_FRONTIER_MANIFEST" ]] || fail "bundle manifest is missing"
+[[ -x "$STEEL_RAG_CANONICAL_FRONTIER_PYTHON" ]] || fail "Python executable is missing"
+[[ -r "$STEEL_RAG_CANONICAL_FRONTIER_ENV_FILE" ]] || fail "environment file is missing"
+[[ -r "$STEEL_RAG_CANONICAL_FRONTIER_VERIFIER" ]] || fail "bundle verifier is missing"
+[[ "$STEEL_RAG_CANONICAL_FRONTIER_HOST" == "127.0.0.1" ]] || fail "non-loopback binding is prohibited"
+[[ "$STEEL_RAG_CANONICAL_FRONTIER_PORT" =~ ^[0-9]+$ ]] || fail "port must be numeric"
+
+# shellcheck disable=SC1090
+set -a
+source "$STEEL_RAG_CANONICAL_FRONTIER_ENV_FILE"
+set +a
+
+[[ -n "${STEEL_RAG_CANONICAL_FRONTIER_TOKEN:-}" ]] || fail "service bearer token is missing"
+
+export PYTHONPATH="$STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT"
+cd "$STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT" || fail "cannot enter service root"
+
+"$STEEL_RAG_CANONICAL_FRONTIER_PYTHON" \
+  "$STEEL_RAG_CANONICAL_FRONTIER_VERIFIER" \
+  --service-root "$STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT" \
+  --manifest "$STEEL_RAG_CANONICAL_FRONTIER_MANIFEST"
+
+# Validate credential availability without printing or transmitting it.
+"$STEEL_RAG_CANONICAL_FRONTIER_PYTHON" - <<'PY'
+from project_answer_relation_openai_v2 import api_key
+
+if not api_key():
+    raise SystemExit("OpenAI API credential is unavailable.")
+PY
+
+exec "$STEEL_RAG_CANONICAL_FRONTIER_PYTHON" canonical_frontier_http_api_v2.py \
+  --host "$STEEL_RAG_CANONICAL_FRONTIER_HOST" \
+  --port "$STEEL_RAG_CANONICAL_FRONTIER_PORT"

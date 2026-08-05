@@ -1,0 +1,135 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import plistlib
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+from scripts.verify_canonical_frontier_service import verify_bundle
+
+
+ROOT = Path(__file__).resolve().parents[1]
+WRAPPER = ROOT / "deploy/macos/run-canonical-frontier-service.sh"
+PLIST = ROOT / "deploy/macos/com.steelguitarrag.canonical-frontier.plist.template"
+
+
+def digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+class CanonicalFrontierServiceBundleTests(unittest.TestCase):
+    def fixture(self, root: Path) -> Path:
+        candidate_path = root / "rag-evaluation/audit/canonical-frontier-implementation-ready-v931.json"
+        index_root = root / "rag-evaluation/index/steel-forum-passages-v1-hybrid-v1"
+        tiered_path = root / "rag-evaluation/training/canonical-tiered-reranker-grid-policy-v856.json"
+        lexical = index_root / "lexical.sqlite3"
+        vector = index_root / "vector"
+        group = index_root / "group-expansion-v1.sqlite3"
+        for directory in (candidate_path.parent, index_root, tiered_path.parent, vector):
+            directory.mkdir(parents=True, exist_ok=True)
+        candidate_path.write_text(json.dumps({
+            "status": "owner_corrected_default_off_candidate_implementation_ready",
+            "protected_holdout_cases_used": 0,
+            "runtime_activation_authorized": False,
+            "deployment_authorized": False,
+            "confirmed_corrected_answer": {"checks": {"owner_correction": True}},
+        }), encoding="utf-8")
+        lexical.write_bytes(b"sqlite")
+        group.write_bytes(b"sqlite")
+        (index_root / "manifest.json").write_text(json.dumps({
+            "status": "ready",
+            "corpus_version": "steel-forum-passages-v1",
+            "source_id_scheme": "steel-passage-v1",
+            "protected_holdout_used": False,
+            "lexical": {"count": 1, "database": str(lexical)},
+            "vector": {"count": 1, "path": str(vector)},
+        }), encoding="utf-8")
+        (index_root / "vector-embedding-progress.json").write_text(json.dumps({
+            "expected_passages": 1,
+            "processed_passages": 1,
+            "collection_count": 1,
+            "protected_holdout_cases_used": 0,
+        }), encoding="utf-8")
+        tiered_path.write_text(json.dumps({
+            "group_expansion_index": str(group),
+        }), encoding="utf-8")
+        entrypoint = root / "canonical_frontier_http_api_v2.py"
+        entrypoint.write_text("# fixture\n", encoding="utf-8")
+        required_paths = [
+            candidate_path,
+            index_root / "manifest.json",
+            index_root / "vector-embedding-progress.json",
+            tiered_path,
+            entrypoint,
+        ]
+        for index in range(45):
+            path = root / f"module_{index:02d}.py"
+            path.write_text(f"# {index}\n", encoding="utf-8")
+            required_paths.append(path)
+        manifest = root / "bundle.json"
+        manifest.write_text(json.dumps({
+            "schema_version": 1,
+            "bundle_version": "canonical-frontier-service-bundle-v931",
+            "service_entrypoint": "canonical_frontier_http_api_v2.py",
+            "candidate": str(candidate_path.relative_to(root)),
+            "expected_index_passages": 1,
+            "required_files": {
+                str(path.relative_to(root)): digest(path) for path in required_paths
+            },
+        }), encoding="utf-8")
+        return manifest
+
+    def test_complete_bundle_verifies_without_activation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result = verify_bundle(root, self.fixture(root))
+            self.assertEqual(result["status"], "canonical_frontier_service_bundle_verified")
+            self.assertEqual(result["verified_files"], 50)
+            self.assertFalse(result["runtime_activation_authorized"])
+
+    def test_modified_runtime_file_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = self.fixture(root)
+            (root / "module_00.py").write_text("changed\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "fingerprint mismatch"):
+                verify_bundle(root, manifest)
+
+    def test_path_escape_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest_path = self.fixture(root)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["required_files"]["../outside.py"] = "0" * 64
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "Unsafe bundle path"):
+                verify_bundle(root, manifest_path)
+
+
+class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
+    def test_wrapper_has_valid_shell_syntax(self) -> None:
+        result = subprocess.run(
+            ["bash", "-n", str(WRAPPER)], capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_wrapper_verifies_before_start_and_rejects_non_loopback(self) -> None:
+        source = WRAPPER.read_text(encoding="utf-8")
+        self.assertIn('== "127.0.0.1"', source)
+        self.assertLess(source.index("--service-root"), source.index("exec \"$STEEL_RAG_CANONICAL_FRONTIER_PYTHON\""))
+        self.assertNotIn("echo $STEEL_RAG_CANONICAL_FRONTIER_TOKEN", source)
+
+    def test_plist_contains_no_secret_values_or_public_binding(self) -> None:
+        raw = PLIST.read_bytes()
+        value = plistlib.loads(raw)
+        environment = value["EnvironmentVariables"]
+        self.assertEqual(environment["STEEL_RAG_CANONICAL_FRONTIER_HOST"], "127.0.0.1")
+        self.assertNotIn("STEEL_RAG_CANONICAL_FRONTIER_TOKEN", environment)
+        self.assertNotIn("OPENAI_API_KEY", environment)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,6 +1,6 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-08-05 11:20 America/Chicago
+Updated: 2026-08-05 11:27 America/Chicago
 
 ## Repository state
 
@@ -26,9 +26,12 @@ Status: **OWNER-CORRECTED AND IMPLEMENTATION-READY, DEFAULT-OFF — architecture
 - Owner checkpoint complete: Codex pre-reviewed 20 fresh cases; the owner reviewed four edge cases, accepted three, and requested one attributed-uncertainty correction.
 - The correction was live-confirmed: the answer now preserves Bobby Boggs's practical inspection advice and hedged 12-1 assessment plus Ulric Utsi-Åhlin's BC-12 guess and alternatives, without promoting any guess to fact.
 - Tracked cumulative API testing spend is $9.8861432 of the $20 cap; protected holdout usage remains zero.
+- Pre-deployment service safety is implemented: a 56-file immutable bundle verifier passed against the real 1,948,039-passage index, six new safety tests passed, and the loopback-only wrapper/plist contain no secrets.
+- No service was installed, loaded, started, restarted, deployed, or exposed by the pre-deployment slice; the application flag remains false.
 - Next gate: separately authorized isolated protected-preview deployment, smoke, latency observation, and untouched protected release evaluation.
 - Implementation handoff: `docs/handoffs/task-completions/2026-08-05-1058-05-18-canonical-frontier-site-candidate.md`.
 - Owner-corrected readiness handoff: `docs/handoffs/task-completions/2026-08-05-1120-05-18-canonical-frontier-owner-corrected-implementation-ready.md`.
+- Service-launch safety handoff: `docs/handoffs/task-completions/2026-08-05-1127-12-canonical-frontier-service-launch-safety.md`.
 
 ## Melody Studio
 
