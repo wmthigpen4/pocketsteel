@@ -1,13 +1,30 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-12 09:10 America/Chicago
+Updated: 2026-08-05 10:59 America/Chicago
 
 ## Repository state
 
-- Branch: `feature/answer-api`
-- Current implementation: `63e9719 fix: add Melody Studio header icons`
+- Branch: `fix/local-play-along-route-options`
+- Current implementation: `9e6ac02a feat: add default-off canonical frontier candidate`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
+
+## Canonical frontier knowledge candidate
+
+Status: **IMPLEMENTED AND DEFAULT-OFF — architecture selected, site adapter committed, no runtime activation or deployment.**
+
+- Selected architecture: canonical hybrid lexical/vector retrieval, GPT-5.6 Terra atomic answer compiler, deterministic entailment fast path, and conditional GPT-5.6 Luna verification.
+- Site flag: `STEEL_RAG_CANONICAL_FRONTIER_ENABLED`, default `false`.
+- Commit: `9e6ac02a feat: add default-off canonical frontier candidate`.
+- Files committed: `steel_guitar_rag/canonical_frontier_client.py`, `steel_guitar_rag/api.py`, `tests/test_canonical_frontier_client.py`, and the implementation handoff.
+- Focused application tests: 349 passed.
+- Full application tests: 1,592 passed; one environmental failure because this worktree lacks the test's hard-coded `.venv/bin/python`. The catalog command itself passed under the existing repository Python environment.
+- Exploration/runtime tests: 915 passed.
+- Local loopback client-to-service smoke passed with zero paid calls.
+- Capped live runtime smoke returned four verified claims from one canonical source, spent $0.0123489, and took 12.452 seconds for an exhaustive tail case.
+- Deployment, protected-preview restart, DNS, auth, Cloudflare settings, secrets, corpus, embeddings, and vector indexes were not changed.
+- Next gate: a small owner-facing expert product checkpoint, followed by separately authorized protected-preview enablement if accepted.
+- Implementation handoff: `docs/handoffs/task-completions/2026-08-05-1058-05-18-canonical-frontier-site-candidate.md`.
 
 ## Melody Studio
 
