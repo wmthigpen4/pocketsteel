@@ -84,7 +84,7 @@ The default-off development implementation now:
 Implementation:
 
 - `/Users/cory/Documents/sgf-scrape-test/rag_frontier_group_tournament_v2.py`
-- SHA-256: `16e213c66a701c05387e8c03e2bebcecbd91e302bbc78467eeed7b200c6a09ec`
+- SHA-256: `d1c0522ff5ac2e07b625670c4901aa3373fe443b0a6b55609ab423f313cd0163`
 
 Manual structured-output and tournament smoke passed:
 
@@ -93,17 +93,26 @@ Manual structured-output and tournament smoke passed:
 - Fallback calls: `0`
 - Mock candidate-ID validation: passed
 
+The development-only discussion-expansion retriever is also implemented:
+
+- `/Users/cory/Documents/sgf-scrape-test/rag_canonical_frontier_tournament_retriever_v2.py`
+- SHA-256: `96c9922cf32022fa425ee753371f0df1386c9c2908a345ef9e14d414189bb05c`
+- Real canonical-index smoke: `10` passages from `10` unique selected discussions
+- Cold local retrieval latency with a mock tournament: `4.78 seconds`
+- Warm local retrieval latency with a mock tournament: `1.85 seconds`
+- Activation authorization metadata: `false`
+
 ## Frozen 35-Case Pilot
 
 Policy:
 
 - `/Users/cory/Documents/sgf-scrape-test/rag-evaluation/training/canonical-v932-luna-tournament-pilot-policy-v936.json`
-- SHA-256: `2c1b1e46bfc5abf7a3425d93451d4f73cf1ee842331f9e64e24d238e5459bc3f`
+- SHA-256: `b4c54c374d5cc645ad680bbb7dd8f73f8c1cf76eb0cdb255365d159b68007d7d`
 
 Runner:
 
 - `/Users/cory/Documents/sgf-scrape-test/run_canonical_v932_luna_tournament_pilot_v2.py`
-- SHA-256: `3654764cf10f2588ded9248ddbed4e6e58345345fbaf18d81b060a78ef17c098`
+- SHA-256: `ac88330aea91dd906b249b436fe1d0484e45925036d2c857dd39e1819c853b73`
 
 The pilot is frozen before results:
 
@@ -126,6 +135,8 @@ Dry-run preflight passed:
 - Maximum conservative cumulative floor after pilot: `$11.908401725`
 - Owner cumulative cap: `$20.00`
 - API calls made by preflight: `0`
+
+Evaluation mode fails closed on provider, schema, or credit errors so infrastructure failures cannot be counted as ranking failures. Product/runtime mode retains deterministic hybrid-order fallback.
 
 ## Current Blocker
 
