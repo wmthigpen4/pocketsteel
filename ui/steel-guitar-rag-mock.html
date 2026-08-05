@@ -4238,6 +4238,58 @@
       display: none;
     }
 
+    .answer-waiting {
+      position: relative;
+      margin: 4px 0 20px;
+      padding: 16px 18px;
+      overflow: hidden;
+      border: 1px solid rgba(240, 191, 105, 0.24);
+      border-radius: 14px;
+      background:
+        linear-gradient(110deg, rgba(240, 191, 105, 0.05), rgba(240, 191, 105, 0.12), rgba(240, 191, 105, 0.05)),
+        rgba(13, 18, 17, 0.7);
+    }
+
+    .answer-waiting::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      width: 38%;
+      background: linear-gradient(90deg, transparent, rgba(255, 239, 201, 0.08), transparent);
+      transform: translateX(-140%);
+      animation: answer-waiting-sweep 2.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .answer-waiting[hidden] {
+      display: none;
+    }
+
+    .answer-waiting-label {
+      margin: 0 0 6px;
+      color: var(--brass);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .answer-waiting-fact {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.84);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    @keyframes answer-waiting-sweep {
+      0%, 24% { transform: translateX(-140%); }
+      76%, 100% { transform: translateX(360%); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .answer-waiting::after { animation: none; }
+    }
+
     footer {
       position: relative;
       width: min(1080px, calc(100% - 36px));
@@ -5219,6 +5271,10 @@
           </p>
           <div class="answer-lead" id="answer-lead">Touching the changer can reduce hum because your body is temporarily changing the guitar’s ground reference. That usually points toward grounding, shielding, pickup, cable, volume pedal, or amp-input issues.</div>
           <p class="answer-status" id="answer-status" role="status" hidden></p>
+          <aside class="answer-waiting" id="answer-waiting" aria-label="While the Steel Guitar Brain works" hidden>
+            <p class="answer-waiting-label">While the Brain digs through the steel pile</p>
+            <p class="answer-waiting-fact" id="answer-waiting-fact"></p>
+          </aside>
 
           <div class="answer-detail-grid" id="answer-section-grid"></div>
         </article>
@@ -5975,6 +6031,8 @@
     const answerPrimaryTitle = document.querySelector("#answer-primary-title");
     const answerLead = document.querySelector("#answer-lead");
     const answerStatus = document.querySelector("#answer-status");
+    const answerWaiting = document.querySelector("#answer-waiting");
+    const answerWaitingFact = document.querySelector("#answer-waiting-fact");
     const answerSectionGrid = document.querySelector("#answer-section-grid");
     const homeHeaderLink = document.querySelector(".home-header-link");
     const answerMelody = document.querySelector("#answer-melody");
@@ -6087,6 +6145,15 @@
     const techPopoverContent = document.querySelector("#tech-popover-content");
     const techPopoverClose = document.querySelector(".tech-popover-close");
     const initialQuestion = new URLSearchParams(window.location.search).get("question");
+    const ANSWER_WAITING_FACTS = Object.freeze([
+      "A copedent is the map of open-string pitches and what each pedal or knee lever changes.",
+      "On a common E9 setup, the A and B pedals create one of the instrument’s signature chord movements.",
+      "Bar position, string grip, pedals, and levers work together—good steel advice needs all four in context.",
+      "Buddy Emmons helped shape the modern pedal steel vocabulary and co-founded Sho-Bud with Shot Jackson.",
+      "The Brain compares related discussions, because steel players often use different words for the same musical idea."
+    ]);
+    let answerWaitingTimer = null;
+    let answerWaitingFactIndex = 0;
     let monthlyUsageState = { status: "idle", usage: null };
     let monthlyUsageRequest = null;
     if (initialQuestion) question.value = initialQuestion;
@@ -7302,6 +7369,7 @@
     }
 
     function renderResponse(response) {
+      stopAnswerWaiting();
       answerStatus.hidden = true;
       answerStatus.textContent = "";
 
@@ -7419,11 +7487,33 @@
 
     }
 
+    function showNextAnswerWaitingFact() {
+      const fact = ANSWER_WAITING_FACTS[answerWaitingFactIndex % ANSWER_WAITING_FACTS.length];
+      answerWaitingFactIndex += 1;
+      answerWaitingFact.textContent = fact;
+    }
+
+    function startAnswerWaiting() {
+      if (answerWaitingTimer) clearInterval(answerWaitingTimer);
+      answerWaitingFactIndex = Math.floor(Math.random() * ANSWER_WAITING_FACTS.length);
+      answerWaiting.hidden = false;
+      showNextAnswerWaitingFact();
+      answerWaitingTimer = setInterval(showNextAnswerWaitingFact, 5200);
+    }
+
+    function stopAnswerWaiting() {
+      if (answerWaitingTimer) clearInterval(answerWaitingTimer);
+      answerWaitingTimer = null;
+      answerWaiting.hidden = true;
+      answerWaitingFact.textContent = "";
+    }
+
     function renderLoadingState(submittedQuestion) {
       answerPrimaryTitle.lastChild.textContent = "Answer";
       answerLead.textContent = "Searching the forum sources...";
       answerStatus.hidden = false;
-      answerStatus.textContent = "Retrieving a source-backed answer.";
+      answerStatus.textContent = "Comparing discussions and checking the answer against its sources.";
+      startAnswerWaiting();
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
       clearProgressionGuide();
@@ -7440,6 +7530,7 @@
     }
 
     function renderErrorState(message) {
+      stopAnswerWaiting();
       answerPrimaryTitle.lastChild.textContent = "Answer unavailable";
       answerLead.textContent = "I couldn't reach the answer service.";
       answerStatus.hidden = false;

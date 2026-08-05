@@ -1,6 +1,6 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-08-05 11:27 America/Chicago
+Updated: 2026-08-05 16:04 America/Chicago
 
 ## Repository state
 
@@ -11,7 +11,17 @@ Updated: 2026-08-05 11:27 America/Chicago
 
 ## Canonical frontier knowledge candidate
 
-Status: **OWNER-CORRECTED AND IMPLEMENTATION-READY, DEFAULT-OFF — architecture selected, site adapter committed, no runtime activation or deployment.**
+Status: **V980 RUNNING IN THE LOCAL TEST PATH — quality-first candidate restored, waiting experience verified, fresh protected release evaluation still pending.**
+
+- Current local test architecture: ten-discussion canonical tournament, local semantic reranking, 20 focused passages, Terra answer compiler, deterministic entailment checks, and conditional Luna verification.
+- Loopback service `127.0.0.1:8771` is healthy and reports `canonical-frontier-v980-hybrid-semantic-passages`.
+- Site adapter on `127.0.0.1:8770` remains production-authenticated and configured for the loopback candidate; its account boundary was not weakened.
+- Browser smoke on a separate local-dev instance passed the complete waiting-to-answer path with an exact supporting Forum excerpt and no browser errors.
+- The waiting state now rotates steel-guitar facts while explaining that discussions and citations are being checked.
+- Scaled development evidence: `16/20` answered, `14/16 = 87.5%` publishable among answered cases, `100%` citation support, no first-person source voice, no invalid tablature, median `10.58s`.
+- Two passage-count alternatives were rejected. The remaining model problem is hard-question coverage/synthesis, not a reason to destabilize the validated test candidate.
+- New protected release evidence is still required; the exposed v931 protected set will not be reused.
+- Latest handoff: `docs/handoffs/task-completions/2026-08-05-1604-05-06-15-v980-test-and-waiting-experience.md`.
 
 - Selected architecture: canonical hybrid lexical/vector retrieval, GPT-5.6 Terra atomic answer compiler, deterministic entailment fast path, and conditional GPT-5.6 Luna verification.
 - Site flag: `STEEL_RAG_CANONICAL_FRONTIER_ENABLED`, default `false`.

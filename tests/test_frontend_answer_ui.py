@@ -3639,3 +3639,14 @@ def test_answer_ui_hides_searched_row_but_preserves_source_card_metadata() -> No
     assert "source.excerpt" in html
     assert "source.url" in html
     assert "source.forum" in html
+
+
+def test_answer_waiting_state_keeps_slow_source_checks_useful() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert 'id="answer-waiting"' in html
+    assert 'id="answer-waiting-fact"' in html
+    assert "ANSWER_WAITING_FACTS" in html
+    assert "startAnswerWaiting();" in html
+    assert html.count("stopAnswerWaiting();") >= 2
+    assert "Comparing discussions and checking the answer against its sources." in html
