@@ -16,7 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "deploy/macos/run-canonical-frontier-service.sh"
 PLIST = ROOT / "deploy/macos/com.steelguitarrag.canonical-frontier.plist.template"
 INSTALLER = ROOT / "deploy/macos/install-canonical-frontier-launchdaemon.sh"
-REAL_SERVICE_ROOT = Path("/Users/cory/Documents/sgf-scrape-test")
+REAL_SERVICE_ROOT = Path(
+    "/Users/cory/.steel-rag/services/canonical-frontier-v1034-fallback-20260806"
+)
 
 
 def digest(path: Path) -> str:
@@ -125,6 +127,16 @@ class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
         self.assertIn('== "127.0.0.1"', source)
         self.assertLess(source.index("--service-root"), source.index("exec \"$STEEL_RAG_CANONICAL_FRONTIER_PYTHON\""))
         self.assertNotIn("echo $STEEL_RAG_CANONICAL_FRONTIER_TOKEN", source)
+        self.assertIn('HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"', source)
+        self.assertIn('TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"', source)
+        self.assertIn(
+            'STEEL_RAG_CANONICAL_FRONTIER_RUNTIME_VERSION="${STEEL_RAG_CANONICAL_FRONTIER_RUNTIME_VERSION:-v1034}"',
+            source,
+        )
+        self.assertIn(
+            'STEEL_RAG_CANONICAL_FRONTIER_WARMUP_ROUNDS="${STEEL_RAG_CANONICAL_FRONTIER_WARMUP_ROUNDS:-2}"',
+            source,
+        )
 
     def test_plist_contains_no_secret_values_or_public_binding(self) -> None:
         raw = PLIST.read_bytes()
