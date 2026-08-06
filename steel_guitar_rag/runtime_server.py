@@ -14,6 +14,7 @@ from typing import Any, Callable
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer
 
 
+PACKAGE_LOGGER = logging.getLogger("steel_guitar_rag")
 LOGGER = logging.getLogger("steel_guitar_rag.runtime")
 RUNTIME_THREADS_ENV = "STEEL_RAG_RUNTIME_THREADS"
 RUNTIME_QUEUE_ENV = "STEEL_RAG_RUNTIME_QUEUE"
@@ -33,7 +34,7 @@ def bounded_env_int(name: str, default: int, *, minimum: int, maximum: int) -> i
 def configure_runtime_logging() -> None:
     """Configure one size-bounded runtime log without exposing request queries."""
 
-    if LOGGER.handlers:
+    if PACKAGE_LOGGER.handlers:
         return
     log_dir = str(os.environ.get(RUNTIME_LOG_DIR_ENV) or "").strip()
     if log_dir:
@@ -48,9 +49,9 @@ def configure_runtime_logging() -> None:
     else:
         handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    LOGGER.addHandler(handler)
-    LOGGER.setLevel(logging.INFO)
-    LOGGER.propagate = False
+    PACKAGE_LOGGER.addHandler(handler)
+    PACKAGE_LOGGER.setLevel(logging.INFO)
+    PACKAGE_LOGGER.propagate = False
 
 
 class BoundedRequestHandler(WSGIRequestHandler):

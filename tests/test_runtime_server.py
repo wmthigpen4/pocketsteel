@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import urllib.error
 import urllib.request
 from typing import Any
 
 from steel_guitar_rag.answering import DEFAULT_OLLAMA_TIMEOUT_SECONDS, OllamaAnswerProvider
-from steel_guitar_rag.runtime_server import create_runtime_server
+from steel_guitar_rag.runtime_server import (
+    PACKAGE_LOGGER,
+    configure_runtime_logging,
+    create_runtime_server,
+)
 
 
 def _response(start_response: Any, payload: dict[str, Any]) -> list[bytes]:
@@ -115,3 +120,32 @@ def test_ollama_dependency_timeout_is_bounded(monkeypatch: Any) -> None:
 
     monkeypatch.setenv("STEEL_RAG_OLLAMA_TIMEOUT_SECONDS", "not-a-number")
     assert OllamaAnswerProvider().timeout_seconds == DEFAULT_OLLAMA_TIMEOUT_SECONDS
+
+
+def test_runtime_logging_captures_answer_route_diagnostics(
+    monkeypatch: Any, tmp_path: Any
+) -> None:
+    original_handlers = list(PACKAGE_LOGGER.handlers)
+    original_level = PACKAGE_LOGGER.level
+    original_propagate = PACKAGE_LOGGER.propagate
+    for handler in original_handlers:
+        PACKAGE_LOGGER.removeHandler(handler)
+    monkeypatch.setenv("STEEL_RAG_LOG_DIR", str(tmp_path))
+    try:
+        configure_runtime_logging()
+        logging.getLogger("steel_guitar_rag.api").info(
+            'answer route event: {"route":"deterministic"}'
+        )
+        for handler in PACKAGE_LOGGER.handlers:
+            handler.flush()
+        assert 'answer route event: {"route":"deterministic"}' in (
+            tmp_path / "runtime.log"
+        ).read_text(encoding="utf-8")
+    finally:
+        for handler in list(PACKAGE_LOGGER.handlers):
+            handler.close()
+            PACKAGE_LOGGER.removeHandler(handler)
+        for handler in original_handlers:
+            PACKAGE_LOGGER.addHandler(handler)
+        PACKAGE_LOGGER.setLevel(original_level)
+        PACKAGE_LOGGER.propagate = original_propagate
