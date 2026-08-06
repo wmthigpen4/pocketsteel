@@ -133,8 +133,9 @@ class FakeNode {
       "[data-top-interval-filter]": Array.from(value.matchAll(/data-top-interval-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-top-interval-filter")),
       "[data-fret-range-filter]": Array.from(value.matchAll(/data-fret-range-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-fret-range-filter")),
       "[data-control-impact-clear]": value.includes("data-control-impact-clear") ? [new FakeButton("clear", "data-control-impact-clear")] : [],
-      "[data-note-workflow]": Array.from(value.matchAll(/data-note-workflow="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-workflow")),
-      "[data-note-control-state]": Array.from(value.matchAll(/data-note-control-state="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-control-state")),
+          "[data-note-workflow]": Array.from(value.matchAll(/data-note-workflow="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-workflow")),
+          "[data-note-target-mode]": Array.from(value.matchAll(/data-note-target-mode="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-target-mode")),
+          "[data-note-control-state]": Array.from(value.matchAll(/data-note-control-state="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-control-state")),
       "[data-note-target]": Array.from(value.matchAll(/data-note-target="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-target")),
       "[data-note-string-filter]": Array.from(value.matchAll(/data-note-string-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-string-filter")),
       "[data-note-cell]": noteCells,
@@ -719,6 +720,10 @@ elements["explorer-chord-quality"].dispatchChange();
 elements["explorer-grip-vocabulary"].value = "extended";
 elements["explorer-grip-vocabulary"].dispatchChange();
 assert.match(elements["explorer-chord-finder"].textContent, /Target: D7/);
+assert.match(elements["explorer-chord-finder"].textContent, /Where the ♭7 is/);
+assert.match(elements["explorer-chord-finder"].textContent, /Dominant 7 uses the formula 1–3–5–♭7/);
+assert.match(elements["explorer-chord-finder"].textContent, /C is the ♭7 \(also written b7\) above D/);
+assert.match(elements["explorer-chord-finder"].textContent, /one semitone below the major 7 \(C#\)/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /Fmaj7/);
 assert.equal(lastMount.options.positions.length > 0, true);
 assert.match(elements["explorer-active-results"].textContent, /D7/);
@@ -792,6 +797,7 @@ assert.match(elements["explorer-selected-detail"].textContent, /Open note at fre
 assert.match(elements["explorer-selected-detail"].textContent, /Final noteB/);
 assert.match(elements["explorer-selected-detail"].textContent, /Open position: no pedals or levers are active/);
 const noteWorkflowButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-workflow]");
+const noteTargetModeButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-target-mode]");
 const noteTargetButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-target]");
 const noteControlButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-control-state]");
 const noteStringFilterButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-string-filter]");
@@ -804,8 +810,19 @@ const noteCell = (stringNumber, fret) => elements["explorer-fretboard"]
   .querySelectorAll("[data-note-cell]")
   .find((button) => button.getAttribute("data-note-string") === String(stringNumber) && button.getAttribute("data-note-fret") === String(fret));
 assert.deepEqual(noteWorkflowButtons().map((button) => button.getAttribute("data-note-workflow")), ["find", "reverse", "changes", "grip", "drill", "sync"]);
+assert.deepEqual(noteTargetModeButtons().map((button) => button.getAttribute("data-note-target-mode")), ["scale", "intervals"]);
 assert.match(elements["explorer-note-finder"].textContent, /Find all/);
 assert.match(elements["explorer-note-finder"].textContent, /All strings/);
+noteTargetModeButtons().find((button) => button.getAttribute("data-note-target-mode") === "intervals").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Interval from G/);
+assert.equal(noteTargetButtons().length, 12);
+noteTargetButtons().find((button) => button.getAttribute("data-note-target") === "10").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /♭7 \(b7\)/);
+assert.match(elements["explorer-note-finder"].textContent, /In G, the ♭7 .* is F/);
+assert.match(elements["explorer-note-finder"].textContent, /10 semitones above the root/);
+assert.ok(elements["explorer-fretboard"].querySelectorAll("[data-note-result]").length > 0);
+assert.match(elements["explorer-selected-detail"].textContent, /Interval from G root/);
+noteTargetModeButtons().find((button) => button.getAttribute("data-note-target-mode") === "scale").onclick();
 noteTargetButtons().find((button) => button.getAttribute("data-note-target") === "2").onclick();
 assert.equal(noteCell(3, 3).getAttribute("data-note-result"), "3:3");
 noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "B").onclick();

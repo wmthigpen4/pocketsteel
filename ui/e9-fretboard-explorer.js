@@ -26,6 +26,7 @@
     NOTATION_MODES,
     PITCH_REGISTER_MODES,
     NOTE_WORKFLOWS,
+    NOTE_TARGET_MODES,
     CHORD_FINDER_ROOT_OPTIONS,
     CHORD_FINDER_QUALITY_LABELS,
     CHORD_FINDER_QUALITY_ORDER,
@@ -106,6 +107,7 @@
   let selectedFretRange = "core";
   let selectedNoteControlStateId = "open";
   let selectedNoteTargetIndex = 0;
+  let selectedNoteTargetMode = "scale";
   let selectedNoteWorkflow = "find";
   let selectedNoteStringFilter = "all";
   let selectedGripTargetId = "scale-triad";
@@ -668,6 +670,17 @@
   }
 
   function noteFinderTargets() {
+    if (selectedNoteTargetMode === "intervals") {
+      const rootPitchClass = pitchClassForNote(activeKey());
+      const intervalLabels = ["1 (root)", "♭2 (b2)", "2", "♭3 (b3)", "3", "4", "♭5 / ♯4", "5", "♭6 (b6)", "6", "♭7 (b7)", "7"];
+      return intervalLabels.map((label, index) => ({
+        index,
+        note: displayNoteForPitchClassInKey(rootPitchClass + index, activeKey()),
+        label,
+        pitchClass: ((rootPitchClass + index) % 12 + 12) % 12,
+        interval: intervalNameFromSemitones(index),
+      }));
+    }
     const notes = activeScaleNotes();
     const labels = activeScaleSequence();
     return notes.map((note, index) => ({
@@ -766,6 +779,7 @@
       isAffected: Boolean(activeControls.length && affectedCells.length),
       isTargetMatch,
       notationValue: notationLabelForFinalNote(finalNote),
+      intervalFromKeyRoot: intervalNameFromSemitones(finalPitchClass - pitchClassForNote(activeKey())),
       explanation,
     };
   }
@@ -1921,6 +1935,9 @@
   }
 
   function syncNoteFinderSelections() {
+    if (!NOTE_TARGET_MODES.some((mode) => mode.id === selectedNoteTargetMode)) {
+      selectedNoteTargetMode = "scale";
+    }
     if (!NOTE_WORKFLOWS.some((workflow) => workflow.id === selectedNoteWorkflow)) {
       selectedNoteWorkflow = "find";
     }
@@ -3863,6 +3880,18 @@
     `).join("");
   }
 
+  function noteTargetModeButtonsHtml() {
+    return NOTE_TARGET_MODES.map((mode) => `
+      <button
+        class="explorer-note-finder__chip${selectedNoteTargetMode === mode.id ? " is-selected" : ""}"
+        type="button"
+        data-note-target-mode="${escapeHtml(mode.id)}"
+        aria-pressed="${selectedNoteTargetMode === mode.id ? "true" : "false"}"
+        title="${escapeHtml(mode.description)}"
+      >${escapeHtml(mode.label)}</button>
+    `).join("");
+  }
+
   function noteFinderTargetButtonsHtml() {
     const target = selectedNoteFinderTarget();
     return noteFinderTargets().map((item) => `
@@ -3931,6 +3960,9 @@
     if (workflow.id === "sync") {
       return "Event sync uses safe deterministic example events only in this slice. Each event focuses the matching string, fret, and control state.";
     }
+    if (selectedNoteTargetMode === "intervals") {
+      return `Finding ${target?.label || "an interval"} from the ${activeKey()} root${target?.note ? ` (${target.note})` : ""} with ${activeControls.label}. ${resultCount} visible matches use the selected fret range.`;
+    }
     return `Finding ${target?.label || "scale tones"} with ${activeControls.label}. ${resultCount} visible matches use the selected notation mode and fret range.`;
   }
 
@@ -3983,12 +4015,16 @@
 
   function renderFindAllPanel(resultCells) {
     const target = selectedNoteFinderTarget();
+    const flatSevenLesson = selectedNoteTargetMode === "intervals" && target?.interval === "b7"
+      ? `<section class="explorer-teaching-note" aria-label="Flat seven explanation"><strong>What ♭7 means</strong><p>In ${escapeHtml(activeKey())}, the ♭7 (also written b7) is ${escapeHtml(target.note)}. It is 10 semitones above the root—one semitone below the major 7.</p></section>`
+      : "";
     return `
       <section class="explorer-note-workflow-panel" aria-label="Find all matching notes">
         <strong>Find all ${escapeHtml(target?.label || "target")} positions</strong>
-        <p>Highlighted cells match the selected ${escapeHtml(notationModeLabel())} target after the active pedal or lever state is applied.</p>
+        <p>Highlighted cells match the selected ${selectedNoteTargetMode === "intervals" ? "interval" : escapeHtml(notationModeLabel())} target after the active pedal or lever state is applied.</p>
         <p>${escapeHtml(`${resultCells.length} visible ${resultCells.length === 1 ? "match" : "matches"} in ${activeRangeOption().label}.`)}</p>
       </section>
+      ${flatSevenLesson}
     `;
   }
 
@@ -4252,6 +4288,7 @@
         ${detailRow("Open note with register", activePitchRegisterMode() === "off" ? "" : cellOpenRegisterLabel(cell))}
         ${detailRow("Final note with register", activePitchRegisterMode() === "off" ? "" : cellRegisterLabel(cell))}
         ${detailRow(`${notationModeLabel()} in ${scaleText}`, cell.notationValue)}
+        ${detailRow(`Interval from ${activeKey()} root`, formatInterval(cell.intervalFromKeyRoot))}
       </dl>
       ${amazingTablatureHandoffHtml([cell.finalNote], {voice: "single"})}
     `;
@@ -4295,7 +4332,13 @@
           </div>
         </div>
         <div>
-          <span class="explorer-note-finder__label">Find by ${escapeHtml(notationModeLabel())}</span>
+          <span class="explorer-note-finder__label">Find by</span>
+          <div class="explorer-note-finder__chips" role="group" aria-label="Choose notes or intervals">
+            ${noteTargetModeButtonsHtml()}
+          </div>
+        </div>
+        <div>
+          <span class="explorer-note-finder__label">${selectedNoteTargetMode === "intervals" ? `Interval from ${escapeHtml(activeKey())}` : `Find by ${escapeHtml(notationModeLabel())}`}</span>
           <div class="explorer-note-finder__chips" role="group" aria-label="Find matching single notes">
             ${noteFinderTargetButtonsHtml()}
           </div>
@@ -4357,6 +4400,14 @@
     Array.from(els.noteFinder.querySelectorAll("[data-note-control-state]")).forEach((button) => {
       button.addEventListener("click", () => {
         selectedNoteControlStateId = button.getAttribute("data-note-control-state") || "open";
+        drillFeedback = null;
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.noteFinder.querySelectorAll("[data-note-target-mode]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedNoteTargetMode = button.getAttribute("data-note-target-mode") || "scale";
+        selectedNoteTargetIndex = 0;
         drillFeedback = null;
         renderNoteFinder();
       });
@@ -4494,11 +4545,28 @@
       return `<p class="explorer-voicing-identifier__warning">${escapeHtml(target?.message || "Choose a root and quality to search practical E9 voicings.")}</p>`;
     }
     const filterExplanation = chordFinderFilterExplanation(target);
+    const flatSevenTeaching = target.quality?.intervals?.includes(10)
+      ? chordFinderFlatSevenTeachingHtml(target)
+      : "";
     return `
       <section class="explorer-voicing-summary explorer-chord-finder__summary" aria-label="Chord finder target">
         <strong>${escapeHtml(`Target: ${target.label} (${chordFinderQualityDisplayLabel(target.quality)})`)}</strong>
         <p>${escapeHtml(`${target.message ? `${target.message} ` : ""}Chord tones: ${target.toneLabels.map((tone) => `${tone.role} ${tone.note}`).join(", ")}.`)}</p>
         ${filterExplanation ? `<p>${escapeHtml(filterExplanation)}</p>` : ""}
+      </section>
+      ${flatSevenTeaching}
+    `;
+  }
+
+  function chordFinderFlatSevenTeachingHtml(target) {
+    const root = displayNoteForPitchClassInKey(target.rootPitchClass, target.contextKey);
+    const flatSeven = displayNoteForPitchClassInKey(target.rootPitchClass + 10, target.contextKey);
+    const majorSeven = displayNoteForPitchClassInKey(target.rootPitchClass + 11, target.contextKey);
+    const formula = target.quality.intervals.map((interval) => formatInterval(intervalNameFromSemitones(interval))).join("–");
+    return `
+      <section class="explorer-teaching-note" aria-label="Flat seven chord-tone explanation">
+        <strong>Where the ♭7 is</strong>
+        <p>${escapeHtml(`${chordFinderQualityDisplayLabel(target.quality)} uses the formula ${formula}. In ${target.label}, ${flatSeven} is the ♭7 (also written b7) above ${root}. It is 10 semitones above the root—one semitone below the major 7 (${majorSeven}).`)}</p>
       </section>
     `;
   }

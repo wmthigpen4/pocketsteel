@@ -1296,14 +1296,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' not in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=voicing-readability-20260704"></script>' in html
-    assert '<script src="e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2"></script>' in html
-    assert "e9-fretboard-explorer.js?v=amazing-tablature-product-v1-20260724-2" in loader
+    assert '<script src="e9-fretboard-explorer-config.js?v=flat-seven-learning-20260803"></script>' in html
+    assert '<script src="e9-fretboard-explorer-loader.js?v=flat-seven-learning-20260803"></script>' in html
+    assert "e9-fretboard-explorer.js?v=flat-seven-learning-20260803" in loader
     assert 'typeof STEEL_RAG_ANSWER_UI !== "undefined"' in loader
     assert "const session = await answerUi?.requestSession?.({ accessRole });" in loader
     assert "window.STEEL_RAG_ANSWER_UI?.requestSession" not in loader
     assert "e9-fretboard-explorer-data.js" not in loader
     assert 'dataset.explorerDataMode = "unavailable"' in loader
-    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2")
+    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=flat-seven-learning-20260803")
     assert "e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704" not in html
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
@@ -1680,7 +1681,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Open in Amazing Tablature" in script
     assert '["voice", options.voice || "mixed"]' in script
     assert '["movement", options.movement || (melody.length > 1 ? "slides" : "best_fit")]' in script
-    assert 'e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2' in html
+    assert 'e9-fretboard-explorer-loader.js?v=flat-seven-learning-20260803' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
@@ -1812,6 +1813,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Event sync" in script
     assert "data-note-control-state" in script
     assert "data-note-workflow" in script
+    assert "data-note-target-mode" in script
+    assert "Intervals from root" in script
+    assert "♭7 (b7)" in script
+    assert "Where the ♭7 is" in script
     assert "data-note-string-filter" in script
     assert "data-note-reverse-result" in script
     assert "data-note-grip-card" in script
