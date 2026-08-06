@@ -263,6 +263,32 @@ def test_enabled_frontier_forwards_bounded_conversation_context() -> None:
     assert frontier.contexts == [context]
 
 
+def test_complete_new_question_outranks_unrelated_conversation_context() -> None:
+    frontier = FakeFrontierClient()
+    app = create_app(
+        EmptySearchIndex(),
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    context = [
+        "User: Where can I play an F major 7?",
+        "Assistant: Use strings 2, 3, 4, and 5 open at the first fret.",
+    ]
+
+    status, payload = call_answer(
+        app,
+        "What causes cabinet drop?",
+        conversation_context=context,
+    )
+
+    assert status == "200 OK"
+    assert frontier.questions == ["What causes cabinet drop?"]
+    assert frontier.contexts == [context]
+    assert payload["sources"]
+
+
 def test_contextual_pronoun_followup_reaches_frontier_before_generic_intent_fallback() -> None:
     frontier = FakeFrontierClient()
     app = create_app(

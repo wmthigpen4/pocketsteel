@@ -7709,6 +7709,8 @@
     }
 
     function openAskWorkspace({ prefill = "" } = {}) {
+      conversationContext = [];
+      followupQuestion.value = "";
       answerWorkspace.hidden = true;
       homeSections.forEach((section) => {
         section.hidden = true;

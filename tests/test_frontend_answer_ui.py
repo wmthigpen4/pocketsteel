@@ -1261,6 +1261,16 @@ def test_answer_workspace_has_followup_composer_below_source_notes() -> None:
     assert 'submitQuestion(chip.textContent.trim(), { isFollowup: true });' not in html
 
 
+def test_opening_new_ask_workspace_clears_prior_conversation_context() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    open_ask_workspace = html.split(
+        'function openAskWorkspace({ prefill = "" } = {}) {', 1
+    )[1].split("\n    }", 1)[0]
+
+    assert "conversationContext = [];" in open_ask_workspace
+    assert 'followupQuestion.value = "";' in open_ask_workspace
+
+
 def test_backstage_more_action_pill_centers_summary_text() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     rule = html.split(".copedent-more summary {", 1)[1].split("}", 1)[0]

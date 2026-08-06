@@ -1417,10 +1417,20 @@ class RetrievalApi:
             )
             answer_intent_decision: dict[str, Any] = dict(
                 classify_answer_request(
-                    routing_question,
+                    answer_request.question,
                     answer_request.mode,
                 )
             )
+            if (
+                answer_intent_decision.get("domain") == "off_domain"
+                and answer_intent_decision.get("intent") == "unknown"
+                and answer_request.conversation_context
+            ):
+                contextual_decision = dict(
+                    classify_answer_request(routing_question, answer_request.mode)
+                )
+                if contextual_decision.get("domain") == "steel_guitar":
+                    answer_intent_decision = contextual_decision
             route_trace = AnswerRouteTrace(
                 classification=(
                     f"{answer_intent_decision.get('domain', 'unknown')}:"
