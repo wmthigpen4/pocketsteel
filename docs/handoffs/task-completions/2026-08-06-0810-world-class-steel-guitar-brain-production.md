@@ -13,7 +13,7 @@ The main control-layer failures reported by the owner are fixed: corpus-first en
 
 ## Production architecture
 
-- App: system-supervised private-preview service on loopback port 8770, exposed through the existing protected Cloudflare route.
+- App: user-domain LaunchAgent `com.steelguitarrag.private-preview` on loopback port 8770, exposed through the existing protected Cloudflare route. Routine deployments and restarts require no administrator password. The former system LaunchDaemon was retired after a verified transactional handoff and its plist is preserved at `/Library/LaunchDaemons/com.steelguitarrag.private-preview.plist.retired-20260806` for manual rollback.
 - Canonical knowledge service: user-domain LaunchAgent `com.steelguitarrag.canonical-frontier` on loopback port 8771. A user-domain service is intentional because the OpenAI credential is stored in the login Keychain; no API key is stored in the plist or manifest.
 - Service bundle: `/Users/cory/.steel-rag/services/canonical-frontier-v1034-fallback-20260806`
 - Supervisor bundle: `/Users/cory/.steel-rag/supervisors/canonical-frontier-v1034`
@@ -30,6 +30,9 @@ The unsuccessful system-LaunchDaemon copy was unloaded and removed after it prov
 - `0f285cb6` — freeze the 76-file canonical v1034 service manifest.
 - `b90c1699` — add the Keychain-compatible supervised LaunchAgent and force the exact v1034 runtime.
 - `282cf3cf` — resolve corpus-backed course follow-ups and add that failure to the release challenge.
+- `aef64dc3` — serve the hero-logo media correctly from the canonical app root.
+- `4e9806b9` — keep the static hero poster visible until the animation has actually loaded.
+- `23481a3d` — add and deploy the password-free user-domain app supervisor.
 
 The canonical runtime source remains in the manifest-verified service bundle. The repository deployment manifest pins its exact SHA-256 fingerprints, so runtime drift fails closed.
 
@@ -43,13 +46,15 @@ The final protected follow-up recorded corpus promotion to `lesson_lookup`, one 
 
 ## Verification evidence
 
-- Full application suite: **1,639 passed**.
+- Full application suite: **1,643 passed**.
 - Deployment-focused tests: **9 passed**.
 - Routing/challenge/deployment focused tests: **21 passed**.
 - Canonical-frontier tests: **22 passed**.
 - Canonical bundle verification: **76 files**, **1,948,039 passages**, **0 protected holdout cases used**.
 - Service health/readiness and unauthenticated-request rejection: **pass**.
 - Protected browser console warnings/errors: **0**.
+- Public homepage hero poster and animation: **loaded and visibly verified** after a supervised restart.
+- Password-free app restart: **passed**; launchd replaced PID 50156 with PID 50299, exact revision `23481a3d` returned healthy, and listener ownership matched the user LaunchAgent.
 
 Protected browser cases passed:
 
