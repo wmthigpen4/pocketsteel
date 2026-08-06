@@ -59,8 +59,14 @@ _CHORD_TOKEN_RE = re.compile(
 )
 _STEEL_RESULT_CONTEXT_RE = re.compile(
     r"\b(?:pedal[-\s]?steel|steel\s+guitar|steel\s+player|copedent|e9|c6|"
+    r"plays?\s+(?:pedal\s+)?steel|"
     r"pedals?|knee\s+levers?|fretboard|tablature|copedent|grips?|"
     r"steel\s+lessons?|steel\s+tutorials?|guitar\s+(?:company|builder|brand))\b",
+    re.I,
+)
+_CONTEXTUAL_ENTITY_FOLLOWUP_RE = re.compile(
+    r"\b(?:he|him|his|she|her|hers|they|them|their|it|its|that|those|"
+    r"the\s+(?:player|course|product|song))\b",
     re.I,
 )
 
@@ -127,6 +133,36 @@ def entity_anchors(question: str) -> tuple[str, ...]:
             continue
         anchors.append(token)
     return tuple(anchors[:8])
+
+
+def contextual_entity_probe_question(
+    question: str,
+    conversation_context: Sequence[str],
+) -> str | None:
+    """Return a prior user entity question for a referential follow-up.
+
+    The caller still has to prove that prior question against public SGF
+    results. Assistant text alone never establishes steel-guitar context.
+    """
+
+    if (
+        not conversation_context
+        or _CONTEXTUAL_ENTITY_FOLLOWUP_RE.search(question or "") is None
+    ):
+        return None
+    for item in reversed(conversation_context):
+        normalized = " ".join(str(item or "").split())
+        if not normalized.casefold().startswith("user:"):
+            continue
+        prior_question = normalized.split(":", 1)[1].strip()
+        if (
+            _PRIVATE_ENTITY_RE.search(prior_question) is None
+            and _ENTITY_QUESTION_RE.search(prior_question) is not None
+            and entity_anchors(prior_question)
+        ):
+            return prior_question
+        return None
+    return None
 
 
 def evaluate_corpus_entity_evidence(

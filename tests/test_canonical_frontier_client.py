@@ -284,6 +284,31 @@ def test_contextual_pronoun_followup_reaches_frontier_before_generic_intent_fall
     assert payload["sources"]
 
 
+def test_contextual_unknown_entity_followup_is_proved_from_prior_user_question() -> None:
+    search = EntitySearchIndex()
+    frontier = FakeFrontierClient()
+    app = create_app(
+        search,
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    question = "What is he especially known for?"
+    context = [
+        "User: Who is Travis Toy?",
+        "Assistant: Travis Toy is a pedal-steel guitarist discussed by forum contributors.",
+    ]
+
+    status, payload = call_answer(app, question, conversation_context=context)
+
+    assert status == "200 OK"
+    assert search.calls == ["Who is Travis Toy?"]
+    assert frontier.questions == [question]
+    assert frontier.contexts == [context]
+    assert payload["sources"]
+
+
 @pytest.mark.parametrize(
     "context",
     ["not-a-list", ["ok"] * 9, [""], ["x" * 8_001]],

@@ -70,6 +70,7 @@ from steel_guitar_rag.answer_contracts import enforce_answer_contract, infer_con
 from steel_guitar_rag.answer_intent_classifier import classify_answer_request
 from steel_guitar_rag.answer_routing import (
     AnswerRouteTrace,
+    contextual_entity_probe_question,
     corpus_promoted_decision,
     deterministic_subquestion_for_hybrid,
     evaluate_corpus_entity_evidence,
@@ -1428,18 +1429,26 @@ class RetrievalApi:
             )
             corpus_probe_response: SearchResponse | None = None
             corpus_promoted = False
-            if is_corpus_entity_candidate(answer_request.question, answer_intent_decision):
+            entity_probe_question = (
+                answer_request.question
+                if is_corpus_entity_candidate(answer_request.question, answer_intent_decision)
+                else contextual_entity_probe_question(
+                    answer_request.question,
+                    answer_request.conversation_context,
+                )
+            )
+            if entity_probe_question is not None:
                 route_trace.corpus_probe = "checking_public_sgf"
                 try:
                     corpus_probe_response = self._retrieval_dependencies.run(
-                        lambda: self._search(answer_request.question, limit=4),
+                        lambda: self._search(entity_probe_question, limit=4),
                         timeout_seconds=self._retrieval_wall_timeout,
                     )
                 except RuntimeError:
                     route_trace.corpus_probe = "unavailable"
                 else:
                     entity_evidence = evaluate_corpus_entity_evidence(
-                        answer_request.question,
+                        entity_probe_question,
                         corpus_probe_response.results,
                     )
                     route_trace.corpus_probe = entity_evidence.reason

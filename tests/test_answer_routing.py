@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from steel_guitar_rag.answer_routing import (
+    contextual_entity_probe_question,
     corpus_promoted_decision,
     entity_anchors,
     evaluate_corpus_entity_evidence,
@@ -34,6 +35,36 @@ def test_unknown_person_and_product_are_corpus_candidates_without_name_whitelist
     assert is_corpus_entity_candidate("Who is Travis Toy?", GUARDED_UNKNOWN)
     assert entity_anchors("Who is Travis Toy?") == ("travis", "toy")
     assert is_corpus_entity_candidate("What is Acme Steel Lessons?", GUARDED_UNKNOWN)
+
+
+def test_contextual_entity_probe_uses_prior_user_question_not_assistant_claim() -> None:
+    context = [
+        "User: Who is Travis Toy?",
+        "Assistant: Travis Toy is a pedal-steel guitarist.",
+    ]
+
+    assert contextual_entity_probe_question(
+        "What is he especially known for?", context
+    ) == "Who is Travis Toy?"
+    assert contextual_entity_probe_question(
+        "What is he especially known for?",
+        ["Assistant: Travis Toy is a pedal-steel guitarist."],
+    ) is None
+
+
+def test_public_player_relation_establishes_context_without_name_whitelist() -> None:
+    evidence = evaluate_corpus_entity_evidence(
+        "Who is Acme Person?",
+        [
+            sgf_result(
+                "Patty Loveless tour",
+                "Acme Person, who plays steel and dobro, joined the touring band.",
+                "303",
+            )
+        ],
+    )
+
+    assert evidence.strong is True
 
 
 def test_private_placeholder_is_never_a_corpus_entity_candidate() -> None:
