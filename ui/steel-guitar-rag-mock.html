@@ -5178,11 +5178,11 @@
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="app-shell-header">
       <a class="home-sign hero-hanging-sign" href="/ui/steel-guitar-rag-mock.html" aria-label="Steel Guitar RAG home">
-        <video class="landing-sign" autoplay muted loop playsinline poster="brand/steel-guitar-rag-hanging-sign-poster.png?v=mobile-desktop-parity-20260716-1" preload="metadata" aria-hidden="true">
-          <source src="brand/steel-guitar-rag-hanging-sign-mobile-alpha.mov?v=mobile-desktop-parity-20260716-1" type='video/quicktime; codecs="hvc1"'>
-          <source src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-return-20260713" type="video/webm">
+        <video class="landing-sign" autoplay muted loop playsinline poster="/brand/steel-guitar-rag-hanging-sign-poster.png?v=root-brand-route-20260806-2" preload="metadata" aria-hidden="true">
+          <source src="/brand/steel-guitar-rag-hanging-sign-mobile-alpha.mov?v=root-brand-route-20260806-2" type='video/quicktime; codecs="hvc1"'>
+          <source src="/brand/steel-guitar-rag-landing-alpha.webm?v=root-brand-route-20260806-2" type="video/webm">
         </video>
-        <img class="landing-sign-fallback" src="brand/steel-guitar-rag-hanging-sign-poster.png?v=mobile-desktop-parity-20260716-1" alt="">
+        <img class="landing-sign-fallback" src="/brand/steel-guitar-rag-hanging-sign-poster.png?v=root-brand-route-20260806-2" alt="">
       </a>
       <div class="brand">
         <button class="brand-home" type="button" aria-label="Return to Steel Guitar RAG home">
@@ -6550,12 +6550,20 @@
       document.querySelectorAll(".hero-hanging-sign video").forEach((video) => {
         const sign = video.closest(".hero-hanging-sign");
         const showFallback = () => sign?.classList.remove("is-animated");
+        const showAnimation = () => {
+          if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
+            sign?.classList.add("is-animated");
+          }
+        };
+        showFallback();
+        video.addEventListener("loadeddata", showAnimation);
+        video.addEventListener("canplay", showAnimation);
         video.addEventListener("error", showFallback, { once: true });
-        sign?.classList.add("is-animated");
-        video.load();
-        video.play?.().catch(() => {
-          showFallback();
+        video.querySelectorAll("source").forEach((source) => {
+          source.addEventListener("error", showFallback, { once: true });
         });
+        video.load();
+        video.play?.().then(showAnimation).catch(showFallback);
       });
     }
 

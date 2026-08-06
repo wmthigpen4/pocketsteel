@@ -1128,13 +1128,13 @@ def test_answer_ui_uses_safari_safe_transparent_home_and_answer_logos() -> None:
 
     assert 'class="home-sign hero-hanging-sign"' in html
     assert 'class="landing-sign" autoplay muted loop playsinline' in html
-    assert 'poster="brand/steel-guitar-rag-hanging-sign-poster.png?v=mobile-desktop-parity-20260716-1"' in html
-    assert 'src="brand/steel-guitar-rag-hanging-sign-mobile-alpha.mov?v=mobile-desktop-parity-20260716-1"' in html
+    assert 'poster="/brand/steel-guitar-rag-hanging-sign-poster.png?v=root-brand-route-20260806-2"' in html
+    assert 'src="/brand/steel-guitar-rag-hanging-sign-mobile-alpha.mov?v=root-brand-route-20260806-2"' in html
     assert 'type=\'video/quicktime; codecs="hvc1"\'' in html
-    assert 'src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-return-20260713"' in html
+    assert 'src="/brand/steel-guitar-rag-landing-alpha.webm?v=root-brand-route-20260806-2"' in html
     assert 'type="video/webm"' in html
     assert 'type="video/mp4"' not in html
-    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-hanging-sign-poster.png?v=mobile-desktop-parity-20260716-1"' in html
+    assert 'class="landing-sign-fallback" src="/brand/steel-guitar-rag-hanging-sign-poster.png?v=root-brand-route-20260806-2"' in html
     assert ".app-shell-header .home-sign" in hero_css
     assert "position: absolute;" in hero_css
     assert "left: calc((100vw - 100%) / -2 - 12px);" in hero_css
@@ -1154,6 +1154,10 @@ def test_answer_ui_uses_safari_safe_transparent_home_and_answer_logos() -> None:
     assert "display: none;" in mobile_sign_css
     assert "display: block;" in mobile_sign_css
     assert "steel-guitar-rag-hanging-sign-fallback.png" not in html
+    assert 'video.addEventListener("loadeddata", showAnimation);' in html
+    assert "video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA" in html
+    assert 'sign?.classList.add("is-animated");' in html
+    assert html.index('showFallback();') < html.index('video.load();')
     assert ".hero-hanging-sign.is-animated .landing-sign" in html
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
     assert "@media (prefers-reduced-motion: reduce)" in hero_css

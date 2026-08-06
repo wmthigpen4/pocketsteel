@@ -272,6 +272,8 @@ def test_same_origin_server_serves_brain_at_canonical_root() -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b'<link rel="canonical" href="/">' in body
     assert "Steel Guitar RAG — Steel Guitar Brain".encode() in body
+    assert b'src="/brand/steel-guitar-rag-landing-alpha.webm?v=root-brand-route-20260806-2"' in body
+    assert b'src="/brand/steel-guitar-rag-hanging-sign-poster.png?v=root-brand-route-20260806-2"' in body
 
     asset_status, asset_headers, asset_body = call_app(smoke_app(), "/answer-client.js")
     assert asset_status == "200 OK"
