@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "deploy/macos/run-canonical-frontier-service.sh"
 PLIST = ROOT / "deploy/macos/com.steelguitarrag.canonical-frontier.plist.template"
 INSTALLER = ROOT / "deploy/macos/install-canonical-frontier-launchdaemon.sh"
+USER_PLIST = ROOT / "deploy/macos/com.steelguitarrag.canonical-frontier.launchagent.plist.template"
+USER_INSTALLER = ROOT / "deploy/macos/install-canonical-frontier-launchagent.sh"
 REAL_SERVICE_ROOT = Path(
     "/Users/cory/.steel-rag/services/canonical-frontier-v1034-fallback-20260806"
 )
@@ -116,7 +118,7 @@ class CanonicalFrontierServiceBundleTests(unittest.TestCase):
 
 class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
     def test_wrapper_has_valid_shell_syntax(self) -> None:
-        for path in (WRAPPER, INSTALLER):
+        for path in (WRAPPER, INSTALLER, USER_INSTALLER):
             result = subprocess.run(
                 ["bash", "-n", str(path)], capture_output=True, text=True,
             )
@@ -127,24 +129,25 @@ class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
         self.assertIn('== "127.0.0.1"', source)
         self.assertLess(source.index("--service-root"), source.index("exec \"$STEEL_RAG_CANONICAL_FRONTIER_PYTHON\""))
         self.assertNotIn("echo $STEEL_RAG_CANONICAL_FRONTIER_TOKEN", source)
-        self.assertIn('HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"', source)
-        self.assertIn('TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"', source)
-        self.assertIn(
-            'STEEL_RAG_CANONICAL_FRONTIER_RUNTIME_VERSION="${STEEL_RAG_CANONICAL_FRONTIER_RUNTIME_VERSION:-v1034}"',
-            source,
-        )
-        self.assertIn(
-            'STEEL_RAG_CANONICAL_FRONTIER_WARMUP_ROUNDS="${STEEL_RAG_CANONICAL_FRONTIER_WARMUP_ROUNDS:-2}"',
-            source,
-        )
+        self.assertIn('HF_HUB_OFFLINE="1"', source)
+        self.assertIn('TRANSFORMERS_OFFLINE="1"', source)
+        self.assertIn('STEEL_RAG_CANONICAL_FRONTIER_RUNTIME_VERSION="v1034"', source)
+        self.assertIn('STEEL_RAG_CANONICAL_FRONTIER_WARMUP_ROUNDS="2"', source)
 
     def test_plist_contains_no_secret_values_or_public_binding(self) -> None:
-        raw = PLIST.read_bytes()
-        value = plistlib.loads(raw)
-        environment = value["EnvironmentVariables"]
-        self.assertEqual(environment["STEEL_RAG_CANONICAL_FRONTIER_HOST"], "127.0.0.1")
-        self.assertNotIn("STEEL_RAG_CANONICAL_FRONTIER_TOKEN", environment)
-        self.assertNotIn("OPENAI_API_KEY", environment)
+        for path in (PLIST, USER_PLIST):
+            raw = path.read_bytes()
+            value = plistlib.loads(raw)
+            environment = value["EnvironmentVariables"]
+            self.assertEqual(environment["STEEL_RAG_CANONICAL_FRONTIER_HOST"], "127.0.0.1")
+            self.assertNotIn("STEEL_RAG_CANONICAL_FRONTIER_TOKEN", environment)
+            self.assertNotIn("OPENAI_API_KEY", environment)
+
+    def test_user_launchagent_documents_keychain_boundary(self) -> None:
+        source = USER_INSTALLER.read_text(encoding="utf-8")
+        self.assertIn("login Keychain", source)
+        self.assertIn('gui/$(id -u)', source)
+        self.assertNotIn("sudo ", source)
 
     def installer_env(self, temporary: Path) -> dict[str, str]:
         env_file = temporary / "private-preview.env"
