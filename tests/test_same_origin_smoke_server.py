@@ -66,6 +66,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     status, headers, html = call_app(smoke_app(), "/ui/steel-guitar-rag-mock.html")
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert b'<link rel="canonical" href="/">' in html
     assert b'<script src="answer-client.js?v=v1034-conversation-context-20260805"></script>' in html
     assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert b'<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
@@ -264,12 +265,21 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b"PedalSteelFretboard" in script
 
 
-def test_same_origin_server_redirects_root_to_ui_shell() -> None:
+def test_same_origin_server_serves_brain_at_canonical_root() -> None:
     status, headers, body = call_app(smoke_app(), "/")
 
-    assert status == "302 Found"
-    assert headers["Location"] == "/ui/steel-guitar-rag-mock.html"
-    assert b"Redirecting to /ui/steel-guitar-rag-mock.html" in body
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert b'<link rel="canonical" href="/">' in body
+    assert "Steel Guitar RAG — Steel Guitar Brain".encode() in body
+
+    asset_status, asset_headers, asset_body = call_app(smoke_app(), "/answer-client.js")
+    assert asset_status == "200 OK"
+    assert asset_headers["Content-Type"] in {
+        "text/javascript; charset=utf-8",
+        "application/javascript; charset=utf-8",
+    }
+    assert b'const ANSWER_ENDPOINT = "/api/answer";' in asset_body
 
 
 def test_same_origin_server_delegates_health_checks() -> None:

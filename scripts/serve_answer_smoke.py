@@ -47,20 +47,6 @@ def text_response(start_response: StartResponse, status: str, body: str) -> list
     return [encoded]
 
 
-def redirect_response(start_response: StartResponse, location: str) -> list[bytes]:
-    body = f"Redirecting to {location}\n".encode("utf-8")
-    start_response(
-        "302 Found",
-        [
-            ("Location", location),
-            ("Content-Type", "text/plain; charset=utf-8"),
-            ("Content-Length", str(len(body))),
-            *SECURITY_RESPONSE_HEADERS,
-        ],
-    )
-    return [body]
-
-
 def read_json_body(environ: dict[str, Any]) -> dict[str, Any]:
     try:
         content_length = int(environ.get("CONTENT_LENGTH") or 0)
@@ -133,7 +119,7 @@ def build_app(
             return api_app(environ, start_response)
 
         if path == "/":
-            return redirect_response(start_response, "/ui/steel-guitar-rag-mock.html")
+            path = "/ui/steel-guitar-rag-mock.html"
         if path in {"/songs", "/songs/"}:
             path = "/ui/songs.html"
         elif path.startswith("/play/") and len(path.removeprefix("/play/").strip("/")) > 0:
@@ -152,6 +138,15 @@ def build_app(
                 security_headers=SECURITY_RESPONSE_HEADERS,
             )
         if not path.startswith("/ui/"):
+            file_path = (resolved_ui_root / path.removeprefix("/")).resolve()
+            if file_path.is_file():
+                return static_file_response(
+                    environ,
+                    start_response,
+                    file_path=file_path,
+                    root=resolved_ui_root,
+                    security_headers=SECURITY_RESPONSE_HEADERS,
+                )
             return text_response(start_response, "404 Not Found", "not found")
 
         file_path = (resolved_ui_root / path.removeprefix("/ui/")).resolve()
