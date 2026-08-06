@@ -9,6 +9,7 @@ from steel_guitar_rag.music_text import normalize_spelled_accidentals
 from steel_guitar_rag.basic_chord_answers import (
     basic_chord_theory_answer_for_question,
     chord_change_answer_for_question,
+    major_seventh_position_answer,
     sus_chord_usage_answer_for_question,
 )
 from steel_guitar_rag.curated_source_registry import slide_bar_vendor_bullets
@@ -1242,6 +1243,12 @@ def unsupported_chord_position_curated_answer(question: str) -> CuratedAnswer | 
     unsupported_request = unsupported_chord_location_request_for_question(question)
     if unsupported_request is None:
         return None
+    if unsupported_request.quality == "major 7":
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=major_seventh_position_answer(unsupported_request.requested_root),
+        )
     if unsupported_request.requested_root == unsupported_request.normalized_key:
         requested = unsupported_request.requested_root
     else:
@@ -1929,7 +1936,9 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
     if mode == "forum_wisdom":
         if _mentions_stage_string_forum_wisdom(q):
             return CuratedAnswer(
-                intent="forum_wisdom",
+                # This is a locally-authored recovery procedure, not evidence
+                # synthesized from the retrieved anecdotes.
+                intent="gig_advice",
                 confidence="curated_high",
                 answer=(
                     "Short answer: players generally treat a broken string on stage as normal gig risk, not a disaster.\n\n"

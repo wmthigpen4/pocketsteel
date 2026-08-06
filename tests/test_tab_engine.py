@@ -370,6 +370,7 @@ def test_answer_tab_example_selector_supports_safe_first_examples() -> None:
         ("How do I use A+B pedals?", "a-b-pedal-major-position"),
         ("Show me an E-lower move.", "e-lower-color-move"),
         ("Give me a beginner lick in G.", "beginner-g-two-event-lick"),
+        ("Show me a simple E9 A+B pedal lick in G.", "beginner-g-two-event-lick"),
     ]
 
     for question, expected_id in cases:

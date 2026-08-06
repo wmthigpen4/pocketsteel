@@ -4227,6 +4227,107 @@
       font-size: 12px;
     }
 
+    .followup-section {
+      display: grid;
+      gap: 12px;
+      padding: 18px 20px;
+      border: 1px solid rgba(240, 191, 105, 0.24);
+      border-radius: 15px;
+      background: linear-gradient(180deg, rgba(31, 34, 32, 0.86), rgba(14, 16, 15, 0.9));
+      box-shadow: 0 22px 56px rgba(0, 0, 0, 0.3);
+    }
+
+    .followup-section .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .followup-heading {
+      margin: 0;
+      color: #fff1db;
+      font-family: var(--font-lesson);
+      font-size: 19px;
+      font-weight: 600;
+    }
+
+    .followup-copy {
+      margin: 4px 0 0;
+      color: rgba(244, 234, 214, 0.7);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .answer-followup-input {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .answer-followup-input input {
+      min-width: 0;
+      min-height: 48px;
+      padding: 11px 14px;
+      border: 1px solid rgba(240, 191, 105, 0.28);
+      border-radius: 11px;
+      background: rgba(7, 10, 9, 0.76);
+      color: #fff1db;
+      font: inherit;
+      line-height: 1.35;
+    }
+
+    .answer-followup-input input::placeholder {
+      color: rgba(244, 234, 214, 0.5);
+    }
+
+    .answer-followup-input input:focus-visible {
+      outline: 2px solid rgba(240, 191, 105, 0.48);
+      outline-offset: 2px;
+      border-color: rgba(240, 191, 105, 0.64);
+    }
+
+    .answer-followup-send {
+      min-height: 48px;
+      padding: 0 18px;
+      border: 1px solid rgba(240, 191, 105, 0.5);
+      border-radius: 11px;
+      background: linear-gradient(180deg, #e4b75f, #bd8231);
+      color: #17130d;
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .answer-followup-send:hover,
+    .answer-followup-send:focus-visible {
+      background: linear-gradient(180deg, #f0c66f, #cc923b);
+      outline: 2px solid rgba(240, 191, 105, 0.35);
+      outline-offset: 2px;
+    }
+
+    .answer-followup-send:disabled,
+    .answer-followup-input input:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    @media (max-width: 620px) {
+      .answer-followup-input {
+        grid-template-columns: 1fr;
+      }
+
+      .answer-followup-send {
+        width: 100%;
+      }
+    }
+
     .answer-status {
       margin: -8px 0 18px;
       color: rgba(240, 191, 105, 0.86);
@@ -5331,6 +5432,23 @@
           </div>
         </section>
 
+        <section class="followup-section" aria-labelledby="followup-heading">
+          <div>
+            <h2 class="followup-heading" id="followup-heading">Ask a follow-up</h2>
+            <p class="followup-copy">The Steel Guitar Brain will keep the question and answer above in context.</p>
+          </div>
+          <div class="answer-followup-input">
+            <label class="sr-only" for="followup-question">Follow-up question</label>
+            <input
+              id="followup-question"
+              type="text"
+              autocomplete="off"
+              placeholder="Ask about something in this answer..."
+            >
+            <button class="answer-followup-send" id="followup-send" type="button">Ask follow-up</button>
+          </div>
+        </section>
+
       </section>
     </main>
 
@@ -6006,7 +6124,7 @@
 
   <script src="copedent-store.js?v=simple-control-dialog-20260714-1"></script>
   <script src="copedent-grid-model.js?v=editable-tab-labels-20260714-1"></script>
-  <script src="answer-client.js?v=amazing-tablature-product-v1-20260724-2"></script>
+  <script src="answer-client.js?v=v1034-conversation-context-20260805"></script>
   <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>
   <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
@@ -6048,6 +6166,8 @@
     const answerFretboardMount = document.querySelector("#answer-fretboard-mount");
     const sourceGrid = document.querySelector("#source-grid");
     const sourceSection = document.querySelector(".source-section");
+    const followupQuestion = document.querySelector("#followup-question");
+    const followupSend = document.querySelector("#followup-send");
     const questionLabel = document.querySelector(".question-label");
     const lessonQuestion = document.querySelector("#lesson-question");
     const helperText = document.querySelector(".helper-text");
@@ -6699,6 +6819,8 @@
       inputArea.classList.toggle("is-empty", !hasText);
       question.disabled = !canAskLive;
       primarySend.disabled = !canAskLive || answerRequestInFlight;
+      followupQuestion.disabled = !canAskLive || answerRequestInFlight;
+      followupSend.disabled = !canAskLive || answerRequestInFlight || !followupQuestion.value.trim();
       if (!canAskLive) {
         question.placeholder = "Private beta answers need a Backstage Pass.";
         accessHelper.hidden = false;
@@ -7561,6 +7683,8 @@
     function setAnswerBusy(isBusy) {
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState);
       primarySend.disabled = isBusy || !canAskLive;
+      followupQuestion.disabled = isBusy || !canAskLive;
+      followupSend.disabled = isBusy || !canAskLive || !followupQuestion.value.trim();
       suggestedPrompts.querySelectorAll(".example").forEach((button) => {
         button.disabled = isBusy;
       });
@@ -7608,6 +7732,7 @@
       showWorkspaceShell(submittedQuestion);
       renderLoadingState(submittedQuestion);
       question.value = "";
+      followupQuestion.value = "";
       setAnswerBusy(true);
       try {
         const response = await STEEL_RAG_ANSWER_UI.requestAnswer(submittedQuestion, {
@@ -7656,6 +7781,10 @@
       submitQuestion(question.value);
     }
 
+    function submitFollowupQuestion() {
+      submitQuestion(followupQuestion.value, { isFollowup: true });
+    }
+
     function returnToStage({ focusTarget = "home" } = {}) {
       answerWorkspace.hidden = true;
       askWorkspace.hidden = true;
@@ -7668,6 +7797,7 @@
         footer.hidden = false;
       }
       question.value = "";
+      followupQuestion.value = "";
       conversationContext = [];
       answeredQuestion.textContent = HUM_DEMO_QUESTION;
       clearProgressionGuide();
@@ -8329,6 +8459,14 @@
     });
 
     primarySend.addEventListener("click", submitHomeQuestion);
+    followupQuestion.addEventListener("input", updateHelperState);
+    followupQuestion.addEventListener("keydown", (event) => {
+      if (STEEL_RAG_ANSWER_UI.shouldSubmitQuestionKey(event)) {
+        event.preventDefault();
+        submitFollowupQuestion();
+      }
+    });
+    followupSend.addEventListener("click", submitFollowupQuestion);
     askLaunchCta.addEventListener("click", () => openAskWorkspace());
     askLaunchExample.addEventListener("click", () => openAskWorkspace({
       prefill: askLaunchExample.dataset.prefillQuestion

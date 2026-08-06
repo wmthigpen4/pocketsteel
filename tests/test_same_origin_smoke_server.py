@@ -66,7 +66,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     status, headers, html = call_app(smoke_app(), "/ui/steel-guitar-rag-mock.html")
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
-    assert b'<script src="answer-client.js?v=amazing-tablature-product-v1-20260724-2"></script>' in html
+    assert b'<script src="answer-client.js?v=v1034-conversation-context-20260805"></script>' in html
     assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert b'<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
     assert b'<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html

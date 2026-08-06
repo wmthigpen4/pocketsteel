@@ -16,6 +16,7 @@ from steel_guitar_rag.answer_intent_classifier import (
     classify_answer_intent,
     classify_answer_request,
 )
+from steel_guitar_rag.answer_routing import is_corpus_entity_candidate
 from steel_guitar_rag.chroma_search import SearchResponse
 
 
@@ -179,6 +180,18 @@ def assert_contract_shape(decision: dict[str, object]) -> None:
         ),
         (
             "How do players diagnose hum that changes when touching the changer?",
+            {
+                "domain": "steel_guitar",
+                "intent": "gear_diagnosis",
+                "needs_sources": True,
+                "needs_fretboard": False,
+                "needs_copedent": False,
+                "retrieval_allowed": True,
+                "allowed_answer_shape": "gear_diagnosis",
+            },
+        ),
+        (
+            "What causes cabinet drop?",
             {
                 "domain": "steel_guitar",
                 "intent": "gear_diagnosis",
@@ -714,6 +727,9 @@ def test_rooted_seventh_chord_questions_classify_as_steel_not_off_domain(questio
         "Who was Buddy Emmons?",
         "Who was Lloyd Green?",
         "Tell me about Paul Franklin.",
+        "Who is Travis Toy?",
+        "Tell me about Travis Toy.",
+        "What is Travis Toy Tutorials?",
         "What did players say about Buddy Emmons tone?",
         "What are notable records with pedal steel?",
         "Is Mullen or MSA a better guitar?",
@@ -732,6 +748,23 @@ def test_source_backed_steel_questions_allow_retrieval(question: str) -> None:
     decision = classify_answer_intent(question)
 
     assert_contract_shape(decision)
+    corpus_first_questions = {
+        "Who was Buddy Emmons?",
+        "Who was Lloyd Green?",
+        "Tell me about Paul Franklin.",
+        "Who is Travis Toy?",
+        "Tell me about Travis Toy.",
+        "What is Travis Toy Tutorials?",
+        "What did players say about Buddy Emmons tone?",
+        "Is Mullen or MSA a better guitar?",
+        "What do players say about Emmons push-pull guitars?",
+        "What do players say about Carter steels?",
+        "Are Sho-Bud guitars good for beginners?",
+    }
+    if question in corpus_first_questions:
+        assert decision["domain"] == "off_domain"
+        assert is_corpus_entity_candidate(question, decision)
+        return
     assert decision["domain"] == "steel_guitar"
     assert decision["retrieval_allowed"] is True
     assert decision["needs_sources"] is True
@@ -781,9 +814,12 @@ def test_answer_eval_question_bank_classifier_sanity_for_guardrails_and_fretboar
             assert decision["needs_fretboard"] is False, row["question"]
 
         if row.get("expected_domain") == "steel_guitar" and row.get("retrieval_allowed") is True:
-            assert decision["domain"] == "steel_guitar", row["question"]
-            assert decision["retrieval_allowed"] is True, row["question"]
-            assert decision["needs_sources"] is True, row["question"]
+            corpus_candidate = is_corpus_entity_candidate(row["question"], decision)
+            assert (
+                decision["domain"] == "steel_guitar"
+                and decision["retrieval_allowed"] is True
+            ) or corpus_candidate, row["question"]
+            assert decision["needs_sources"] is (not corpus_candidate), row["question"]
             assert decision["needs_fretboard"] is False, row["question"]
 
 

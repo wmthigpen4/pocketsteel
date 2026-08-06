@@ -1,0 +1,96 @@
+version: 1
+description: Focused end-to-end release gate built from the owner's real failure reports.
+cases:
+  - id: fmaj7-deterministic
+    question: Where can I play an F major 7?
+    expected_route: deterministic
+    paid: false
+    require_fretboard: true
+    require_sources: false
+    required_terms: [Fmaj7 is F-A-C-E, strings 2-3-4-5, complete F major 7]
+    forbidden_terms: [do not have a clean exact grip, more specific steel-guitar question]
+
+  - id: cabinet-drop-rag
+    question: What causes cabinet drop?
+    expected_route: source_backed_rag
+    paid: true
+    require_fretboard: false
+    require_sources: true
+    required_terms: [cabinet]
+    forbidden_terms: [more specific steel-guitar question, No sources returned]
+
+  - id: travis-toy-entity
+    question: Who is Travis Toy?
+    expected_route: source_backed_rag
+    paid: true
+    require_fretboard: false
+    require_sources: true
+    required_terms: [Travis Toy]
+    forbidden_terms: [more specific steel-guitar question, No sources returned]
+
+  - id: travis-toy-tutorials-entity
+    question: What is Travis Toy Tutorials?
+    expected_route: source_backed_rag
+    paid: true
+    require_fretboard: false
+    require_sources: true
+    required_terms: [Travis Toy]
+    forbidden_terms: [more specific steel-guitar question, No sources returned]
+
+  - id: obscure-player-entity
+    question: Who was Weldon Myrick?
+    expected_route: source_backed_rag
+    paid: true
+    require_fretboard: false
+    require_sources: true
+    required_terms: [Weldon Myrick]
+    forbidden_terms: [more specific steel-guitar question, No sources returned]
+
+  - id: gear-source-backed
+    question: What do players recommend checking when a steel guitar amp hums?
+    expected_route: source_backed_rag
+    paid: true
+    require_fretboard: false
+    require_sources: true
+    required_terms: [hum]
+    forbidden_terms: [more specific steel-guitar question, No sources returned]
+
+  - id: tab-deterministic
+    question: Show me a simple E9 A+B pedal lick in G.
+    expected_route: deterministic
+    paid: false
+    require_fretboard: false
+    require_tab: true
+    require_sources: false
+    required_terms: [A+B]
+    forbidden_terms: [more specific steel-guitar question]
+
+  - id: chord-forum-hybrid
+    question: What do players say about Fmaj7 and where can I play it?
+    expected_route: hybrid
+    paid: true
+    require_fretboard: true
+    require_sources: true
+    required_terms: [Fmaj7 is F-A-C-E, Source-backed forum context]
+    forbidden_terms: [do not have a clean exact grip, more specific steel-guitar question]
+
+  - id: followup-player-context
+    question: What is he especially known for?
+    expected_route: source_backed_rag
+    paid: true
+    require_fretboard: false
+    require_sources: true
+    conversation_context:
+      - "User: Who is Travis Toy?"
+      - "Assistant: Travis Toy is a pedal-steel guitarist discussed by Steel Guitar Forum contributors."
+    required_terms: [Travis]
+    forbidden_terms: [more specific steel-guitar question, No sources returned]
+
+  - id: unrelated-entity-guardrail
+    question: Who is Taylor Swift?
+    expected_route: guardrail
+    paid: false
+    require_fretboard: false
+    require_sources: false
+    required_terms: [steel-guitar topics]
+    forbidden_terms: [No sources returned]

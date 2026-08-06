@@ -124,7 +124,7 @@ preflight() {
   render_plist > "$temporary_plist"
   plutil -lint "$temporary_plist" >/dev/null
   rm -f "$temporary_plist"
-  printf 'Canonical-frontier preflight passed: bundle v931, loopback %s, no state changed.\n' "$STEEL_RAG_CANONICAL_FRONTIER_PORT"
+  printf 'Canonical-frontier preflight passed: bundle v1034, loopback %s, no state changed.\n' "$STEEL_RAG_CANONICAL_FRONTIER_PORT"
 }
 
 install_service() {

@@ -63,7 +63,7 @@ def verify_bundle(service_root: Path, manifest_path: Path) -> dict[str, Any]:
     if (
         set(manifest) != expected_keys
         or manifest.get("schema_version") != 1
-        or manifest.get("bundle_version") != "canonical-frontier-service-bundle-v931"
+        or manifest.get("bundle_version") != "canonical-frontier-service-bundle-v1034"
         or manifest.get("service_entrypoint") != "canonical_frontier_http_api_v2.py"
         or not isinstance(required, dict)
         or len(required) < 50

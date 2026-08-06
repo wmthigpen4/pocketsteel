@@ -68,6 +68,15 @@ from steel_guitar_rag.answer_tab_examples import (
 from steel_guitar_rag.api_contract import AnswerResponse
 from steel_guitar_rag.answer_contracts import enforce_answer_contract, infer_contract_intent
 from steel_guitar_rag.answer_intent_classifier import classify_answer_request
+from steel_guitar_rag.answer_routing import (
+    AnswerRouteTrace,
+    corpus_promoted_decision,
+    deterministic_subquestion_for_hybrid,
+    evaluate_corpus_entity_evidence,
+    hybrid_promoted_decision,
+    is_corpus_entity_candidate,
+    select_answer_route,
+)
 from steel_guitar_rag.amazing_tablature_model import RuntimeRankerPolicy
 from steel_guitar_rag.amazing_tablature_runtime import (
     configured_private_ranker_policy,
@@ -480,7 +489,7 @@ class RetrievalApi:
             ANSWER_WALL_TIMEOUT_ENV,
             DEFAULT_ANSWER_WALL_TIMEOUT_SECONDS,
             minimum=0.01,
-            maximum=40.0,
+            maximum=120.0,
         )
 
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
@@ -1405,10 +1414,84 @@ class RetrievalApi:
             routing_question = "\n".join(
                 [*answer_request.conversation_context, answer_request.question]
             )
-            answer_intent_decision = classify_answer_request(
-                routing_question,
-                answer_request.mode,
+            answer_intent_decision: dict[str, Any] = dict(
+                classify_answer_request(
+                    routing_question,
+                    answer_request.mode,
+                )
             )
+            route_trace = AnswerRouteTrace(
+                classification=(
+                    f"{answer_intent_decision.get('domain', 'unknown')}:"
+                    f"{answer_intent_decision.get('intent', 'unknown')}"
+                )
+            )
+            corpus_probe_response: SearchResponse | None = None
+            corpus_promoted = False
+            if is_corpus_entity_candidate(answer_request.question, answer_intent_decision):
+                route_trace.corpus_probe = "checking_public_sgf"
+                try:
+                    corpus_probe_response = self._retrieval_dependencies.run(
+                        lambda: self._search(answer_request.question, limit=4),
+                        timeout_seconds=self._retrieval_wall_timeout,
+                    )
+                except RuntimeError:
+                    route_trace.corpus_probe = "unavailable"
+                else:
+                    entity_evidence = evaluate_corpus_entity_evidence(
+                        answer_request.question,
+                        corpus_probe_response.results,
+                    )
+                    route_trace.corpus_probe = entity_evidence.reason
+                    if entity_evidence.strong:
+                        answer_intent_decision = corpus_promoted_decision(answer_request.question)
+                        corpus_promoted = True
+                        route_trace.classification = (
+                            f"corpus_promoted:{answer_intent_decision['intent']}"
+                        )
+
+            deterministic_question = (
+                deterministic_subquestion_for_hybrid(answer_request.question)
+                or answer_request.question
+            )
+            if deterministic_question != answer_request.question:
+                answer_intent_decision = hybrid_promoted_decision(answer_intent_decision)
+                route_trace.classification = (
+                    f"hybrid_requested:{answer_intent_decision.get('intent', 'unknown')}"
+                )
+            deterministic_resolution_allowed = (
+                deterministic_question != answer_request.question
+                or (
+                    not corpus_promoted
+                    and not (
+                        self.canonical_frontier_enabled
+                        and answer_intent_decision.get("needs_sources")
+                        and answer_intent_decision.get("retrieval_allowed")
+                    )
+                )
+            )
+            if deterministic_resolution_allowed:
+                deterministic_chord_answer = visual_fretboard_curated_answer(
+                    deterministic_question
+                )
+                if deterministic_chord_answer is None:
+                    deterministic_chord_answer = unsupported_chord_position_curated_answer(
+                        deterministic_question
+                    )
+                deterministic_fretboard_payload = fretboard_payload_for_question(
+                    deterministic_question
+                )
+            else:
+                deterministic_chord_answer = None
+                deterministic_fretboard_payload = None
+            answer_route = select_answer_route(
+                answer_intent_decision,
+                deterministic_available=(
+                    deterministic_chord_answer is not None
+                    and deterministic_fretboard_payload is not None
+                ),
+            )
+            route_trace.route = answer_route
             curated_guidance_status: str | None = None
             curated_guidance_count: int | None = None
 
@@ -1484,6 +1567,13 @@ class RetrievalApi:
                 if selected_fretboard is not None:
                     payload["fretboard"] = selected_fretboard
                 payload.update(copedent_context_metadata(target_profile, target_revision))
+                route_trace.route = "deterministic"
+                route_trace.retrieval = "not_needed"
+                route_trace.evidence = "deterministic_melody_model"
+                route_trace.synthesis = "melody_exercise"
+                route_trace.verification = "deterministic_contract"
+                route_trace.displayed_answer = "answer_with_melody_exercise"
+                self._log_route_trace(route_trace)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -1519,6 +1609,13 @@ class RetrievalApi:
                 }
                 if copedent_context is not None:
                     _personalize_answer_payload(payload, target_profile, target_revision)
+                route_trace.route = "deterministic"
+                route_trace.retrieval = "not_needed"
+                route_trace.evidence = "deterministic_progression_rules"
+                route_trace.synthesis = "progression_guide"
+                route_trace.verification = "answer_contract"
+                route_trace.displayed_answer = "answer_with_progression_guide"
+                self._log_route_trace(route_trace)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -1532,18 +1629,16 @@ class RetrievalApi:
                     start_response, payload, access, request_payload=request_payload
                 )
 
-            deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
-            if deterministic_chord_answer is None:
-                deterministic_chord_answer = unsupported_chord_position_curated_answer(answer_request.question)
             if (
                 deterministic_chord_answer is not None
                 and answer_intent_decision.get("domain") != "unsafe_or_impossible"
+                and answer_route != "hybrid"
             ):
                 final_answer = final_answer_quality_gate(deterministic_chord_answer.answer, answer_request.question)
                 contract_validation = enforce_answer_contract(final_answer, deterministic_chord_answer.intent)
                 final_answer = contract_validation.answer
                 final_answer = normalize_answer_list_markers(final_answer)
-                fretboard_payload = fretboard_payload_for_question(answer_request.question)
+                fretboard_payload = deterministic_fretboard_payload
                 curated_sources = concise_source_cards(list(deterministic_chord_answer.source_cards))
                 payload: AnswerResponse = {
                     "answer": final_answer,
@@ -1561,6 +1656,13 @@ class RetrievalApi:
                 )
                 if copedent_context is not None:
                     _personalize_answer_payload(payload, target_profile, target_revision)
+                route_trace.route = "deterministic"
+                route_trace.retrieval = "not_needed"
+                route_trace.evidence = "deterministic_copedent_rules"
+                route_trace.synthesis = "deterministic_chord_answer"
+                route_trace.verification = "answer_contract"
+                route_trace.displayed_answer = "answer_with_optional_fretboard"
+                self._log_route_trace(route_trace)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -1574,7 +1676,10 @@ class RetrievalApi:
                     start_response, payload, access, request_payload=request_payload
                 )
 
-            if _should_gate_answer_intent(answer_intent_decision):
+            if (
+                _should_gate_answer_intent(answer_intent_decision)
+                and not answer_request.conversation_context
+            ):
                 final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
                 final_answer = normalize_answer_list_markers(final_answer)
                 payload: AnswerResponse = {
@@ -1586,6 +1691,13 @@ class RetrievalApi:
                 }
                 if copedent_context is not None:
                     _personalize_answer_payload(payload, target_profile, target_revision)
+                route_trace.route = "guardrail"
+                route_trace.retrieval = "not_allowed"
+                route_trace.evidence = "not_applicable"
+                route_trace.synthesis = "guardrail_copy"
+                route_trace.verification = "guardrail_contract"
+                route_trace.displayed_answer = "guardrail"
+                self._log_route_trace(route_trace)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -1606,7 +1718,11 @@ class RetrievalApi:
             )
             curated_guidance_count = len(curated_guidance_results)
 
-            practical_intent_answer = intent_mode_curated_answer(answer_request.question)
+            practical_intent_answer = (
+                intent_mode_curated_answer(answer_request.question)
+                if answer_route == "deterministic"
+                else None
+            )
             if practical_intent_answer is not None:
                 final_answer = final_answer_quality_gate(practical_intent_answer.answer, answer_request.question)
                 contract_validation = enforce_answer_contract(final_answer, practical_intent_answer.intent)
@@ -1629,6 +1745,13 @@ class RetrievalApi:
                     payload["fretboard"] = classic_country_move_payload
                 if copedent_context is not None:
                     _personalize_answer_payload(payload, target_profile, target_revision)
+                route_trace.route = "deterministic"
+                route_trace.retrieval = "not_needed"
+                route_trace.evidence = "curated_rules"
+                route_trace.synthesis = "curated_practical_answer"
+                route_trace.verification = "answer_contract"
+                route_trace.displayed_answer = "answer_with_optional_tab"
+                self._log_route_trace(route_trace)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -1644,27 +1767,51 @@ class RetrievalApi:
                     start_response, payload, access, request_payload=request_payload
                 )
 
-            if (
-                self.canonical_frontier_enabled
-                and self.canonical_frontier_client is not None
-                and answer_intent_decision.get("domain") == "steel_guitar"
-                and answer_intent_decision.get("needs_sources") is True
-                and answer_intent_decision.get("retrieval_allowed") is True
-                and answer_intent_decision.get("needs_fretboard") is not True
-            ):
+            if self.canonical_frontier_enabled and answer_route in {
+                "source_backed_rag",
+                "hybrid",
+            }:
+                frontier_error: Exception | None = None
                 try:
+                    frontier_client = self.canonical_frontier_client
+                    if frontier_client is None:
+                        raise CanonicalFrontierUnavailable(
+                            "canonical frontier client is not configured"
+                        )
                     frontier_result = self._answer_dependencies.run(
-                        lambda: self.canonical_frontier_client.answer(
+                        lambda: frontier_client.answer(
                             answer_request.question,
                             conversation_context=list(answer_request.conversation_context),
                         ),
                         timeout_seconds=self._answer_wall_timeout,
                     )
-                except (CanonicalFrontierUnavailable, RuntimeError):
-                    LOGGER.warning("canonical_frontier_unavailable existing_answer_path=true")
+                except (CanonicalFrontierUnavailable, RuntimeError) as exc:
+                    frontier_error = exc
                 else:
-                    final_answer = normalize_answer_list_markers(str(frontier_result["answer"]))
+                    route_trace.retrieval = "canonical_frontier_complete"
+                    frontier_mode = str(frontier_result.get("mode") or "complete")
+                    frontier_answer = normalize_answer_list_markers(
+                        str(frontier_result["answer"])
+                    )
                     frontier_sources = concise_source_cards(list(frontier_result["sources"]))
+                    route_trace.evidence = f"{len(frontier_sources)}_source_cards"
+                    route_trace.synthesis = f"frontier_{frontier_mode}"
+                    route_trace.verification = "frontier_contract_verified"
+                    final_answer = frontier_answer
+                    if answer_route == "hybrid" and deterministic_chord_answer is not None:
+                        deterministic_answer = final_answer_quality_gate(
+                            deterministic_chord_answer.answer,
+                            answer_request.question,
+                        )
+                        deterministic_contract = enforce_answer_contract(
+                            deterministic_answer,
+                            deterministic_chord_answer.intent,
+                        )
+                        final_answer = normalize_answer_list_markers(
+                            f"Deterministic E9 result:\n\n{deterministic_contract.answer}"
+                            f"\n\nSource-backed forum context:\n\n{frontier_answer}"
+                        )
+                        route_trace.synthesis = f"deterministic_plus_frontier_{frontier_mode}"
                     payload: AnswerResponse = {
                         "answer": final_answer,
                         "mode": answer_request.mode,
@@ -1672,8 +1819,17 @@ class RetrievalApi:
                         "warnings": [],
                         "sections": build_sections(final_answer),
                     }
+                    if answer_route == "hybrid" and deterministic_fretboard_payload is not None:
+                        payload["fretboard"] = deterministic_fretboard_payload
+                        _attach_tab_example_if_available(
+                            payload,
+                            answer_request.question,
+                            answer_intent_decision=answer_intent_decision,
+                        )
                     if profile_personalization_requested:
                         _personalize_answer_payload(payload, target_profile, target_revision)
+                    route_trace.displayed_answer = "answer_with_sources"
+                    self._log_route_trace(route_trace)
                     self._log_answer_attempt(
                         request_payload,
                         role=access.role,
@@ -1691,16 +1847,98 @@ class RetrievalApi:
                         ai_assisted=True,
                     )
 
+                if frontier_error is not None:
+                    cause = frontier_error.__cause__
+                    LOGGER.warning(
+                        "canonical_frontier_unavailable honest_failure=true error_type=%s cause_type=%s trace_id=%s",
+                        type(frontier_error).__name__,
+                        type(cause).__name__ if cause is not None else "none",
+                        route_trace.trace_id,
+                    )
+                    route_trace.retrieval = "canonical_frontier_unavailable"
+                    route_trace.evidence = "unavailable"
+                    route_trace.synthesis = "not_run"
+                    route_trace.verification = "not_run"
+                    route_trace.fallback = "honest_unavailable"
+                    if answer_route == "hybrid" and deterministic_chord_answer is not None:
+                        deterministic_answer = final_answer_quality_gate(
+                            deterministic_chord_answer.answer,
+                            answer_request.question,
+                        )
+                        deterministic_contract = enforce_answer_contract(
+                            deterministic_answer,
+                            deterministic_chord_answer.intent,
+                        )
+                        final_answer = normalize_answer_list_markers(
+                            f"{deterministic_contract.answer}\n\n"
+                            "The deterministic E9 result is available, but the source-backed "
+                            "forum context could not be completed right now. No forum summary "
+                            "was substituted."
+                        )
+                        payload = {
+                            "answer": final_answer,
+                            "mode": answer_request.mode,
+                            "sources": [],
+                            "warnings": ["source-backed forum context is temporarily unavailable"],
+                            "sections": build_sections(final_answer),
+                        }
+                        if deterministic_fretboard_payload is not None:
+                            payload["fretboard"] = deterministic_fretboard_payload
+                        _attach_tab_example_if_available(
+                            payload,
+                            answer_request.question,
+                            answer_intent_decision=answer_intent_decision,
+                        )
+                        if profile_personalization_requested:
+                            _personalize_answer_payload(payload, target_profile, target_revision)
+                        route_trace.displayed_answer = "deterministic_partial_with_honest_warning"
+                        self._log_route_trace(route_trace)
+                        return self._answer_success_response(
+                            start_response,
+                            payload,
+                            access,
+                            request_payload=request_payload,
+                            ai_assisted=False,
+                        )
+
+                    route_trace.displayed_answer = "source_service_unavailable"
+                    self._log_route_trace(route_trace)
+                    self._log_answer_attempt(
+                        request_payload,
+                        role=access.role,
+                        identity_email=access.identity_email,
+                        access_status="authorized",
+                        authorized=True,
+                        source_count=0,
+                        warning_count=1,
+                        error_status="503 Service Unavailable",
+                    )
+                    return self._json_response(
+                        start_response,
+                        "503 Service Unavailable",
+                        {
+                            "error": (
+                                "The source-backed steel-guitar knowledge service could not "
+                                "complete this answer. No generic answer was substituted. "
+                                "Please try again."
+                            )
+                        },
+                        extra_headers=(("X-Steel-Rag-Trace-Id", route_trace.trace_id),),
+                    )
+
             source_system = self._optional_string(request_payload.get("sourceSystem") or request_payload.get("source_system"))
             forum_name = self._optional_string(request_payload.get("forumName") or request_payload.get("forum_name"))
             ai_assisted = False
-            search_response = self._search_for_answer(
-                answer_request.question,
-                role=access.role,
-                limit=answer_request.top_k,
-                source_system=source_system,
-                forum_name=forum_name,
-            )
+            if corpus_probe_response is not None and source_system is None and forum_name is None:
+                search_response = corpus_probe_response
+            else:
+                search_response = self._search_for_answer(
+                    answer_request.question,
+                    role=access.role,
+                    limit=answer_request.top_k,
+                    source_system=source_system,
+                    forum_name=forum_name,
+                )
             warnings = list(search_response.warnings)
             user_prompt_injection = is_injection_like(answer_request.question)
             if user_prompt_injection:
@@ -1722,6 +1960,9 @@ class RetrievalApi:
                     contract_intent = "copedent_fretboard"
                     sources = concise_source_cards(strong_sources)
                 else:
+                    direct_curated_answer = intent_mode_curated_answer(
+                        answer_request.question
+                    )
                     curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
                 if profile_answer is not None:
                     pass
@@ -1739,7 +1980,13 @@ class RetrievalApi:
                         answer_request.question, curated_answer, strong_sources
                     ):
                         warnings.append(WEAK_RETRIEVAL_WARNING)
-                    if _curated_answer_should_be_source_free(curated_answer.intent):
+                    if (
+                        _curated_answer_should_be_source_free(curated_answer.intent)
+                        or (
+                            direct_curated_answer is not None
+                            and direct_curated_answer.answer == curated_answer.answer
+                        )
+                    ):
                         sources = []
                     elif curated_answer.source_cards:
                         sources = concise_source_cards(list(curated_answer.source_cards))
@@ -1819,6 +2066,20 @@ class RetrievalApi:
             )
             if profile_personalization_requested:
                 _personalize_answer_payload(payload, target_profile, target_revision)
+            route_trace.retrieval = (
+                "corpus_probe_reused"
+                if corpus_probe_response is not None
+                else "legacy_local_retrieval"
+            )
+            route_trace.evidence = f"{len(sources)}_source_cards"
+            route_trace.synthesis = (
+                "legacy_ai_provider" if ai_assisted else "deterministic_or_curated_legacy"
+            )
+            route_trace.verification = "answer_contract"
+            route_trace.displayed_answer = "answer_with_optional_sources"
+            if "live answer provider unavailable; deterministic guidance returned" in warnings:
+                route_trace.fallback = "explicit_legacy_provider_warning"
+            self._log_route_trace(route_trace)
             self._log_answer_attempt(
                 request_payload,
                 role=access.role,
@@ -2205,6 +2466,10 @@ class RetrievalApi:
             event["curatedGuidanceCount"] = int(curated_guidance_count or 0)
         self.answer_request_log.append(event)
         LOGGER.info("answer request event: %s", json.dumps(event, sort_keys=True))
+
+    @staticmethod
+    def _log_route_trace(trace: AnswerRouteTrace) -> None:
+        LOGGER.info("answer route event: %s", json.dumps(trace.event(), sort_keys=True))
 
     @staticmethod
     def _identity_key(identity_email: str = "") -> str:

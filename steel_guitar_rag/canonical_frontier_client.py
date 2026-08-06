@@ -37,7 +37,10 @@ def _configured_timeout(env: Mapping[str, str]) -> float:
         value = float(env.get(CANONICAL_FRONTIER_TIMEOUT_ENV) or DEFAULT_CANONICAL_FRONTIER_TIMEOUT_SECONDS)
     except (TypeError, ValueError):
         value = DEFAULT_CANONICAL_FRONTIER_TIMEOUT_SECONDS
-    return max(1.0, min(value, 35.0))
+    # The independently verified frontier may run a deep discussion scan, Sol
+    # adjudication, and a separate claim verifier. Protected-preview callers
+    # deliberately prefer a slower sourced answer to an early legacy fallback.
+    return max(1.0, min(value, 120.0))
 
 
 def validate_frontier_result(value: Any) -> dict[str, Any]:
@@ -81,7 +84,11 @@ def validate_frontier_result(value: Any) -> dict[str, Any]:
             or not isinstance(cited, list)
             or not cited
             or any(not isinstance(item, str) or item not in source_ids for item in cited)
-            or support_mode not in {"deterministic_entailment", "independent_semantic_verifier"}
+            or support_mode not in {
+                "deterministic_entailment",
+                "independent_semantic_verifier",
+                "independent_relevance_entailment_verifier",
+            }
         ):
             raise CanonicalFrontierUnavailable("Canonical frontier claim support is invalid.")
         claim_ids.add(claim_id)

@@ -963,7 +963,7 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             ],
             kind="lick",
             display_mode="tab_and_fretboard",
-            matcher=lambda q: "lick" in q and _has_any(q, ("beginner", "simple beginner")),
+            matcher=lambda q: "lick" in q and _has_word_any(q, ("beginner", "simple", "original")),
         ),
     )
 

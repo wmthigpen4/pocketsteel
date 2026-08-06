@@ -75,7 +75,7 @@ class CanonicalFrontierServiceBundleTests(unittest.TestCase):
         manifest = root / "bundle.json"
         manifest.write_text(json.dumps({
             "schema_version": 1,
-            "bundle_version": "canonical-frontier-service-bundle-v931",
+            "bundle_version": "canonical-frontier-service-bundle-v1034",
             "service_entrypoint": "canonical_frontier_http_api_v2.py",
             "candidate": str(candidate_path.relative_to(root)),
             "expected_index_passages": 1,

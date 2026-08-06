@@ -92,7 +92,7 @@ STEEL_TERMS_RE = re.compile(
     r"pedals?|levers?|knee\s+lever|lkl|lkr|lkv|rkl|rkr|a\s*\+\s*b|a\s*\+\s*f|b\s*\+\s*c|"
     r"e[-\s]?lower|f\s+lever|vertical\s+lever|changer|volume\s+pedal|bar|tone\s+bar|"
     r"franklin\s+(?:pedal|change)|zero\s+pedal|half[-\s]?stop|split\s+tuning|"
-    r"compensator|x\s+lever|emmons\s+setup|day\s+setup|crawford\s+cluster|"
+    r"compensator|cabinet\s+(?:drop|detuning)|body\s+drop|x\s+lever|emmons\s+setup|day\s+setup|crawford\s+cluster|"
     r"blocking|pick\s+blocking|palm\s+blocking|finger\s+picks?|4th\s+finger\s+picks?|"
     r"grips?|licks?|fills?|stroboplus|"
     r"fender\s+steel\s+king|peavey\s+nashville|nashville\s+amps?|bjs(?:\s+bars?)?|"
@@ -155,25 +155,10 @@ OFF_DOMAIN_RE = re.compile(
 )
 MATH_EXPRESSION_RE = re.compile(r"\b\d[\d,]*\s*(?:x|\*)\s*\d[\d,]*\b", re.I)
 SOURCE_SEEKING_RE = re.compile(
-    r"\b(?:what\s+do\s+(?:players|people|forum|steelers)|players?\s+(?:say|describe)|forum\s+(?:players|wisdom|opinions?)|"
+    r"\b(?:what\s+(?:do|did)\s+(?:players|people|forum|steelers)|players?\s+(?:say|describe)|forum\s+(?:players|wisdom|opinions?)|"
     r"players?\s+(?:use|talk\s+about|prefer)|common\s+(?:uses?|opinions?|comments?|views?)|"
-    r"from\s+players|owner\s+reports?|practic(?:e|ing)\s+behind\s+a\s+singer)\b",
-    re.I,
-)
-PLAYER_CONTEXT_RE = re.compile(
-    r"\b(?:"
-    r"buddy\s+emmons|lloyd\s+green|paul\s+franklin|jeff\s+newman|jimmy\s+day|"
-    r"ralph\s+mooney|sarah\s+jory|curly\s+chalker|doug\s+jernigan|john\s+hughey|"
-    r"notable\s+records?\s+with\s+pedal\s+steel"
-    r")\b",
-    re.I,
-)
-BRAND_CONTEXT_RE = re.compile(
-    r"\b(?:"
-    r"mullen|msa|emmons(?:\s+guitar(?:\s+co\.?)?)?|emmons\s+push[-\s]?pull|push[-\s]?pull|"
-    r"carter\s+steels?|sho[-\s]?bud|benado\s+steel\s+dream|steel\s+dream|"
-    r"telonics|fender\s+steel\s+king|steel\s+king"
-    r")\b",
+    r"from\s+players|owner\s+reports?|notable\s+records?\s+with\s+pedal\s+steel|"
+    r"practic(?:e|ing)\s+behind\s+a\s+singer)\b",
     re.I,
 )
 VENDOR_ACCESSORY_RE = re.compile(
@@ -189,7 +174,8 @@ GEAR_CONTEXT_RE = re.compile(
     r"battery[-\s]?powered\s+tuners?|tuners?\s+live|good\s+volume\s+pedal|"
     r"oil\s+should\s+i\s+use|pedal\s+steel\s+parts?|clean\s+noisy\s+pedal\s+rods?|"
     r"tone\s+sound\s+thin|pedal\s+will\s+not\s+return|delay\s+settings?|effects?\s+loop|"
-    r"hum\s+that\s+changes\s+when\s+touching\s+the\s+changer"
+    r"hum\s+that\s+changes\s+when\s+touching\s+the\s+changer|"
+    r"cabinet\s+(?:drop|detuning)|body\s+drop"
     r")\b",
     re.I,
 )
@@ -199,14 +185,14 @@ GEAR_RE = re.compile(
     r"fender\s+steel\s+king|stroboplus|strobo\s*plus|tuner|battery|batteries|power|"
     r"strings?\s+(?:keep|keeps)?\s*breaking|gig\s+kit|emergency\s+kit|oil|"
     r"pedal\s+rods?|parts?|tone\s+sound\s+thin|will\s+not\s+return|"
-    r"telonics|pac[-\s]?a[-\s]?seat|steel\s+seat|bars?|picks?"
+    r"telonics|pac[-\s]?a[-\s]?seat|steel\s+seat|cabinet\s+(?:drop|detuning)|body\s+drop|bars?|picks?"
     r")\b",
     re.I,
 )
 GEAR_DIAGNOSIS_RE = re.compile(
     r"\b(?:diagnos|check|why|what\s+should|settings?|harsh|thin|buzz|hum|ground|"
     r"before|after|power|batteries?|run\s+out|breaking|carry|good|recommend|"
-    r"use|live|clean|oil|return|effects?\s+loop)\b",
+    r"use|live|clean|oil|return|causes?|effects?\s+loop)\b",
     re.I,
 )
 PRACTICE_RE = re.compile(
@@ -648,7 +634,6 @@ def _mentions_sensitive_personal_attribute(question: str) -> bool:
             re.search(r"\b(?:players?|steel|pedal\s+steel|steel\s+guitar|guitarists?|people|who)\b", question)
             or "<" in question
             or "public_player_placeholder" in question
-            or PLAYER_CONTEXT_RE.search(question)
         )
     )
 
@@ -657,7 +642,7 @@ def _mentions_specific_biography_fact(question: str) -> bool:
     return bool(
         re.search(r"\bwho\s+(?:was|is)\s+[a-z][a-z'. -]{1,60}\s+married\s+to\b", question)
         or (
-            PLAYER_CONTEXT_RE.search(question) is not None
+            re.search(r"\b(?:who|tell\s+me\s+about|biography|personal\s+life)\b", question)
             and re.search(r"\b(?:spouse|wife|husband|partner|married)\b", question)
         )
     )
@@ -778,15 +763,7 @@ def _source_backed_steel_decision(question: str) -> AnswerIntentPayload | None:
     if _mentions_visual_position(question):
         return None
 
-    if PLAYER_CONTEXT_RE.search(question):
-        return _source_backed_forum_decision()
-
     if re.search(r"\bbrands?\s+of\s+pedal\s+steel\b", question):
-        return _source_backed_forum_decision()
-
-    if BRAND_CONTEXT_RE.search(question):
-        if _mentions_gear_diagnosis(question) and not re.search(r"\b(?:who|was|is)\b", question):
-            return _gear_source_decision()
         return _source_backed_forum_decision()
 
     if GEAR_CONTEXT_RE.search(question):

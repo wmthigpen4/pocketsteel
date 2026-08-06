@@ -244,6 +244,7 @@ INTERVAL_NAMES: dict[int, str] = {
 
 CHORD_INTERVALS: dict[str, tuple[str, ...]] = {
     "major": ("1", "3", "5"),
+    "major7": ("1", "3", "5", "7"),
     "minor": ("1", "b3", "5"),
     "diminished": ("1", "b3", "b5/#11"),
     "dominant7": ("1", "3", "5", "b7"),
@@ -253,6 +254,7 @@ CHORD_INTERVALS: dict[str, tuple[str, ...]] = {
 
 CHORD_ADDED_INTERVALS: dict[str, tuple[str, ...]] = {
     "major": ("2/9", "6/13"),
+    "major7": ("2/9", "6/13"),
     "minor": ("2/9", "4/11", "b7"),
     "diminished": (),
     "dominant7": ("2/9", "6/13"),
@@ -262,6 +264,9 @@ CHORD_ADDED_INTERVALS: dict[str, tuple[str, ...]] = {
 
 CHORD_ALIASES: dict[str, str] = {
     "major": "major",
+    "major 7": "major7",
+    "major7": "major7",
+    "maj7": "major7",
     "minor": "minor",
     "m": "minor",
     "dominant": "dominant7",

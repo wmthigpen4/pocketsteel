@@ -21,7 +21,11 @@ COMPRESSIBLE_TYPES = {
     "text/css",
     "text/html",
     "text/javascript",
+    "text/markdown",
     "text/plain",
+}
+CONTENT_TYPES_BY_SUFFIX = {
+    ".md": "text/markdown",
 }
 
 
@@ -70,7 +74,11 @@ class FileIterable:
 def _content_type(file_path: Path) -> tuple[str, bool]:
     precompressed = file_path.suffix == ".gz"
     source_path = file_path.with_suffix("") if precompressed else file_path
-    content_type = mimetypes.guess_type(str(source_path))[0] or "application/octet-stream"
+    content_type = (
+        CONTENT_TYPES_BY_SUFFIX.get(source_path.suffix.lower())
+        or mimetypes.guess_type(str(source_path))[0]
+        or "application/octet-stream"
+    )
     if content_type.startswith("text/") or content_type in {
         "application/javascript",
         "application/json",

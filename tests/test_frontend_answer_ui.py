@@ -1106,7 +1106,7 @@ def test_answer_ui_keeps_melody_lesson_renderer_without_cross_feature_header_lin
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=amazing-tablature-product-v1-20260724-2"></script>' in html
+    assert '<script src="answer-client.js?v=v1034-conversation-context-20260805"></script>' in html
     assert '<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
@@ -1213,7 +1213,7 @@ def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     assert ".page.is-asking .ask-header-link {\n      display: none;\n    }" in html
     assert ".page.is-answering .ask-header-link" not in html
     assert html.count('id="question"') == 1
-    assert html.count('id="followup-question"') == 0
+    assert html.count('id="followup-question"') == 1
     assert 'class="stage-return"' not in html
     assert 'const stageReturn =' not in html
     assert 'stageReturn.addEventListener' not in html
@@ -1245,14 +1245,19 @@ def test_full_screen_ask_is_the_only_primary_search_surface() -> None:
     assert 'submitQuestion(button.dataset.promptText || button.textContent.trim());' in html
 
 
-def test_answer_workspace_has_no_followup_chips_or_composer() -> None:
+def test_answer_workspace_has_followup_composer_below_source_notes() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
     answer_workspace = html.split('<section class="answer-workspace"', 1)[1].split("</main>", 1)[0]
 
-    assert 'class="followup-section"' not in answer_workspace
-    assert 'id="followup-question"' not in answer_workspace
-    assert 'class="answer-followup-input"' not in answer_workspace
+    assert 'class="followup-section"' in answer_workspace
+    assert 'id="followup-question"' in answer_workspace
+    assert 'class="answer-followup-input"' in answer_workspace
+    assert 'id="followup-send"' in answer_workspace
+    assert "Ask a follow-up" in answer_workspace
+    assert answer_workspace.index('class="source-section"') < answer_workspace.index('class="followup-section"')
+    assert 'submitFollowupQuestion()' in html
+    assert 'conversationContext' in html
     assert 'submitQuestion(chip.textContent.trim(), { isFollowup: true });' not in html
 
 
@@ -3076,11 +3081,14 @@ def test_answer_ui_keeps_submission_in_full_screen_ask_workspace() -> None:
     assert "STEEL_RAG_ANSWER_UI.hasSubmittableQuestion(questionText)" in html
     assert "submitQuestion(question.value);" in html
     assert "primarySend.addEventListener(\"click\", submitHomeQuestion)" in html
-    assert 'id="followup-question"' not in html
-    assert 'class="followup-section"' not in html
-    assert 'class="answer-followup-input"' not in html
+    assert 'id="followup-question"' in html
+    assert 'class="followup-section"' in html
+    assert 'class="answer-followup-input"' in html
     assert "followupChipList" not in html
-    assert "submitFollowupQuestion" not in html
+    assert "function submitFollowupQuestion()" in html
+    assert 'submitQuestion(followupQuestion.value, { isFollowup: true });' in html
+    assert 'followupSend.addEventListener("click", submitFollowupQuestion);' in html
+    assert 'followupQuestion.addEventListener("keydown"' in html
 
 
 def test_answer_ui_gates_live_submission_by_mock_access_state() -> None:

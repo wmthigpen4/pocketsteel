@@ -11,10 +11,12 @@ import re
 from dataclasses import dataclass
 
 from steel_guitar_rag.fretboard_examples import (
+    fret_label,
     minor_triad_spelling_for_answer,
     normalize_chord_words_in_text,
     normalize_key,
     normalize_requested_root,
+    open_major_fret,
     transpose,
 )
 
@@ -164,6 +166,34 @@ def major_seventh_spelling_for_answer(root: str) -> str:
     return preferred.get(key, f"{major_triad_spelling_for_answer(key)}-{transpose(key, 11)}")
 
 
+def major_seventh_position_answer(root: str) -> str:
+    """Explain the exact no-pedal major-seventh grip from the saved E9 copedent."""
+    key = display_key_for_answer(root)
+    normalized_key = normalize_key(root)
+    fret = open_major_fret(normalized_key)
+    octave_fret = fret + 12
+    pedal_fret = (fret + 2) % 12
+    pedal_octave_fret = pedal_fret + 12
+    root_note, third, fifth, seventh = major_seventh_spelling_for_answer(key).split("-")
+    octave_sentence = (
+        f" The same grip repeats at the {fret_label(octave_fret)}."
+        if octave_fret <= 24
+        else ""
+    )
+    return (
+        f"{key}maj7 is {major_seventh_spelling_for_answer(key)}: root, major 3rd, "
+        "perfect 5th, and major 7th.\n\n"
+        f"On your saved E9 copedent, play strings 2-3-4-5 at the {fret_label(fret)} with no "
+        f"pedals or knee levers. From high to low, those strings sound "
+        f"{seventh}-{third}-{root_note}-{fifth}. That is a complete {key} major 7 ({key}maj7), not "
+        f"an approximation or an ordinary {key} major grip.{octave_sentence}\n\n"
+        f"Pick it low to high as strings 5-4-3-2: {fifth}-{root_note}-{third}-{seventh}.\n\n"
+        f"For a root-position alternative, go to the {fret_label(pedal_fret)}, press A+B, "
+        f"and play strings 9-7-6-5 low to high: {root_note}-{third}-{fifth}-{seventh}. "
+        f"That complete grip repeats at the {fret_label(pedal_octave_fret)}."
+    )
+
+
 def dominant_seventh_spelling_for_answer(root: str) -> str:
     key = display_key_for_answer(root)
     preferred = {
@@ -214,12 +244,7 @@ def basic_chord_theory_answer_for_question(question: str) -> str | None:
             "That is the basic chord spelling. Ask where to play it on E9 if you want fretboard positions."
         )
     if quality == "major 7":
-        return (
-            f"{key}maj7 is {major_seventh_spelling_for_answer(key)}: root, major 3rd, perfect 5th, and major 7th. "
-            f"{key} major 7 is the same chord label written out.\n\n"
-            f"The exact {key}maj7 grip may require a partial voicing or choosing which chord tones to include. "
-            f"Start by finding {key} major positions, then target {transpose(key, 11)} as the major 7."
-        )
+        return major_seventh_position_answer(key)
     if quality in {"sus", "sus2", "sus4"}:
         spelling_quality = "sus4" if quality == "sus" else quality
         spelling, formula = suspended_spelling_for_answer(key, spelling_quality)

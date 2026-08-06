@@ -3361,7 +3361,24 @@ def test_classifier_gate_preserves_source_backed_steel_retrieval() -> None:
         "What vendors sell pedal steel accessories?",
     ]
     for question in questions:
-        search_index = FakeSearchIndex({"results": noisy_practical_sources(), "warnings": []})
+        corpus_first = question in {
+            "Who was Buddy Emmons?",
+            "Is Mullen or MSA a better guitar?",
+        }
+        entity_source = {
+            "score": 0.94,
+            "excerpt": f"Steel Guitar Forum members discussed {question.rstrip('?')} as a pedal-steel topic.",
+            "forum_name": "Pedal Steel",
+            "thread_title": question.rstrip("?"),
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=405001",
+            "chunk_id": "entity-context-1",
+            "post_uid": "entity-context-1",
+            "source_system": "sgf_phpbb_current",
+        }
+        search_index = FakeSearchIndex({
+            "results": [entity_source, *noisy_practical_sources()] if corpus_first else noisy_practical_sources(),
+            "warnings": [],
+        })
 
         status, _, payload = call_app(
             "/api/answer",
@@ -3375,7 +3392,7 @@ def test_classifier_gate_preserves_source_backed_steel_retrieval() -> None:
         assert search_index.calls == [
             {
                 "query": question,
-                "limit": 6,
+                "limit": 4 if corpus_first else 6,
                 "source_system": None,
                 "forum_name": None,
             }
@@ -4135,13 +4152,16 @@ def test_major_seventh_questions_are_teacher_first_and_source_free() -> None:
         assert_clean_answer_body(payload)
         assert "Fmaj7 is F-A-C-E" in payload["answer"]
         assert "root, major 3rd, perfect 5th, and major 7th" in payload["answer"]
-        assert "exact Fmaj7 grip may require a partial voicing" in payload["answer"]
-        assert "target E as the major 7" in payload["answer"]
+        assert "strings 2-3-4-5 at the 1st fret" in payload["answer"]
+        assert "E-A-F-C" in payload["answer"]
+        assert "complete F major 7" in payload["answer"]
+        assert "3rd fret, press A+B" in payload["answer"]
+        assert "strings 9-7-6-5 low to high: F-A-C-E" in payload["answer"]
         assert_no_internal_answer_language(payload["answer"])
         if question.startswith("How do I play"):
             assert "fretboard" in payload
             assert_valid_fretboard_payload(payload)
-            assert payload["fretboard"]["title"] == "F major positions on E9"
+            assert payload["fretboard"]["title"] == "F major 7 positions on E9"
         else:
             assert "fretboard" not in payload
         assert payload["sources"] == []
@@ -5276,20 +5296,20 @@ def test_quarantine_smoke_concrete_resolvers_are_direct_source_free_and_visual_w
             "fretboard_title": "Eb major, also called D# major enharmonically pitch check on E9",
         },
         "What is a C maj 7 and where do I play it?": {
-            "required": ("Cmaj7 is C-E-G-B", "major 7th", "target B as the major 7"),
-            "fretboard_title": "C major positions on E9",
+            "required": ("Cmaj7 is C-E-G-B", "major 7th", "strings 2-3-4-5 at the 8th fret"),
+            "fretboard_title": "C major 7 positions on E9",
         },
         "What is a Cmaj7 and where do I play it?": {
-            "required": ("Cmaj7 is C-E-G-B", "major 7th", "target B as the major 7"),
-            "fretboard_title": "C major positions on E9",
+            "required": ("Cmaj7 is C-E-G-B", "major 7th", "strings 2-3-4-5 at the 8th fret"),
+            "fretboard_title": "C major 7 positions on E9",
         },
         "What is an Fmaj7? Where can I find it on the fretboard?": {
-            "required": ("Fmaj7 is F-A-C-E", "major 7th", "target E as the major 7"),
-            "fretboard_title": "F major positions on E9",
+            "required": ("Fmaj7 is F-A-C-E", "major 7th", "strings 2-3-4-5 at the 1st fret"),
+            "fretboard_title": "F major 7 positions on E9",
         },
         "How do I play a C major 7th?": {
-            "required": ("Cmaj7 is C-E-G-B", "major 7th", "target B as the major 7"),
-            "fretboard_title": "C major positions on E9",
+            "required": ("Cmaj7 is C-E-G-B", "major 7th", "strings 2-3-4-5 at the 8th fret"),
+            "fretboard_title": "C major 7 positions on E9",
         },
         "What is a C dom 7? Where do I play it?": {
             "required": ("C7, or C dominant 7, is C-E-G-Bb", "flat 7th", "think C major first"),
@@ -5524,13 +5544,49 @@ def test_major_seventh_play_questions_are_direct_and_visual_when_supported() -> 
         assert_clean_answer_body(payload)
         assert payload["answer"].startswith("Fmaj7 is F-A-C-E")
         assert "root, major 3rd, perfect 5th, and major 7th" in payload["answer"]
-        assert "target E as the major 7" in payload["answer"]
+        assert "strings 2-3-4-5 at the 1st fret" in payload["answer"]
+        assert "E-A-F-C" in payload["answer"]
+        assert "complete F major 7" in payload["answer"]
+        assert "3rd fret, press A+B" in payload["answer"]
+        assert "strings 9-7-6-5 low to high: F-A-C-E" in payload["answer"]
         assert_no_internal_answer_language(payload["answer"])
         assert "fretboard" in payload
         assert_valid_fretboard_payload(payload)
-        assert payload["fretboard"]["title"] == "F major positions on E9"
+        assert payload["fretboard"]["title"] == "F major 7 positions on E9"
+        exact = next(position for position in payload["fretboard"]["positions"] if position["id"] == "f-maj7-open-1")
+        assert exact["strings"] == [2, 3, 4, 5]
+        assert exact["notes"] == {"2": "E", "3": "A", "4": "F", "5": "C"}
+        assert exact["intervals"] == {"2": "7", "3": "3", "4": "1", "5": "5"}
+        assert exact["isFullChord"] is True
         assert payload["sources"] == []
         assert payload["warnings"] == []
+
+
+def test_where_can_i_play_f_major_7_returns_exact_copedent_grips() -> None:
+    payload = answer_for_question("Where can I play an F major 7?", noisy_practical_sources())
+
+    assert payload["answer"].startswith("Fmaj7 is F-A-C-E")
+    assert "strings 2-3-4-5 at the 1st fret" in payload["answer"]
+    assert "same grip repeats at the 13th fret" in payload["answer"]
+    assert "do not have a clean exact grip" not in payload["answer"]
+    assert payload["fretboard"]["title"] == "F major 7 positions on E9"
+    assert [item["label"] for item in payload["fretboard"]["legend"]] == [
+        "No-pedal major 7",
+        "A+B root-position major 7",
+    ]
+    visible = [
+        (position["fret"], position["strings"], position["isFullChord"])
+        for position in payload["fretboard"]["positions"]
+        if position["visibleByDefault"]
+    ]
+    assert visible == [
+        (1, [2, 3, 4, 5], True),
+        (3, [5, 6, 7, 9], True),
+        (13, [2, 3, 4, 5], True),
+        (15, [5, 6, 7, 9], True),
+    ]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
 
 
 def test_major_seventh_definition_stays_source_free_without_forcing_fretboard() -> None:

@@ -611,7 +611,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-movement-mode"' in html
     assert "How many voices?" in html
     assert "How should it move?" in html
-    assert 'answer-client.js?v=amazing-tablature-product-v1-20260724-2' in html
+    assert 'answer-client.js?v=v1034-conversation-context-20260805' in html
     assert 'melody-score.js?v=chord-aware-harmony-v1' in html
     assert 'song-projects.js?v=1d1f85bf433fc14d791e90c6802d2d163146d76c0046616403fe09175d6669ef' in html
     assert 'melody-workbench.js?v=quick-score-bulk-octave-v2' in html

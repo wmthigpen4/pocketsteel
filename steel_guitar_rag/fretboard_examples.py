@@ -601,7 +601,7 @@ INTERVAL_ROLE_LABELS: dict[str, str] = {
     "3": "major 3rd",
     "5": "5th",
     "b7": "7th",
-    "7": "7th",
+    "7": "major 7th",
     "2/9": "9th",
     "6/13": "13th",
 }
@@ -948,6 +948,7 @@ def require_major_position(candidate: FretboardPosition | None, *, key: str, rol
 def quality_label(quality: str) -> str:
     return {
         "major": "major",
+        "major7": "major 7",
         "minor": "minor",
         "diminished": "diminished",
         "dominant7": "dominant 7",
@@ -2548,7 +2549,24 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     if q == "show me common grips for g":
         return get_fretboard_examples("common_grips", "G")
     unsupported_request = unsupported_chord_location_request_for_question(q)
-    if unsupported_request is not None and unsupported_request.quality in {"dominant 7", "major 7"}:
+    if unsupported_request is not None and unsupported_request.quality == "major 7":
+        payload = major_seventh_positions(unsupported_request.normalized_key).to_payload()
+        payload["legend"] = [
+            {
+                "id": "primary",
+                "label": "No-pedal major 7",
+                "color": "primary",
+                "description": "A complete major-7 grip without pedals or levers.",
+            },
+            {
+                "id": "alternate",
+                "label": "A+B root-position major 7",
+                "color": "alternate",
+                "description": "A complete major-7 grip with A and B pedals and the root in the bass.",
+            },
+        ]
+        return payload
+    if unsupported_request is not None and unsupported_request.quality == "dominant 7":
         return get_fretboard_examples("major_positions", unsupported_request.normalized_key)
     return None
 
@@ -3221,6 +3239,122 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
         subtitle=f"Common places to find {key} major.",
         key=key,
         positions=positions,
+    )
+
+
+def major_seventh_positions(key: str) -> FretboardVisualizationPayload:
+    """Return exact, copedent-validated major-seventh grips at the open family."""
+    key = normalize_key(key)
+    fret = open_major_fret(key)
+    candidates: list[FretboardPosition] = []
+
+    def add(
+        strings: tuple[int, ...],
+        *,
+        target_fret: int,
+        suffix: str,
+        role: str,
+        tier: str,
+        visible: bool,
+        sort_order: int,
+        pedals: tuple[str, ...] = (),
+        levers: tuple[str, ...] = (),
+        family: str = "major_seventh_open",
+    ) -> None:
+        controls = " + ".join((*pedals, *levers)) or "no pedals or levers"
+        candidate = major_position_candidate(
+            key=key,
+            quality="major7",
+            suffix=suffix,
+            fret=target_fret,
+            strings=strings,
+            pedals=pedals,
+            levers=levers,
+            color="primary" if visible else "reference",
+            role=role,
+            family=family,
+            tier=tier,
+            color_role="primary" if visible else "reference",
+            visible_by_default=visible,
+            sort_order=sort_order,
+            explanation=(
+                f"Fret {target_fret} with {controls} on strings {grip_label(strings)} is "
+                f"checked against all four tones of {key} major 7."
+            ),
+            function="Imaj7",
+            key_context=key,
+            allow_added_intervals=False,
+        )
+        if candidate is None:
+            raise ValueError(
+                f"Structured E9 copedent did not validate {key} major 7 on "
+                f"strings {grip_label(strings)} at fret {target_fret}."
+            )
+        candidates.append(candidate)
+
+    # The adjacent 2-3-4-5 grip contains 7-3-1-5 from high to low.
+    add(
+        (2, 3, 4, 5),
+        target_fret=fret,
+        suffix=f"maj7-open-{fret}",
+        role="Complete no-pedal major 7",
+        tier="beginner",
+        visible=True,
+        sort_order=10,
+    )
+    # This alternate voicing contains the same four chord tones.
+    add(
+        (2, 4, 5, 6),
+        target_fret=fret,
+        suffix=f"maj7-open-alt-{fret}",
+        role="Complete no-pedal major 7 alternate",
+        tier="common",
+        visible=False,
+        sort_order=20,
+    )
+    pedal_fret = (fret + 2) % 12
+    add(
+        (5, 6, 7, 9),
+        target_fret=pedal_fret,
+        suffix=f"maj7-ab-root-{pedal_fret}",
+        role="Complete A+B root-position major 7",
+        tier="common",
+        visible=True,
+        sort_order=25,
+        pedals=("A", "B"),
+        family="major_seventh_ab",
+    )
+    if fret + 12 <= 24:
+        add(
+            (2, 3, 4, 5),
+            target_fret=fret + 12,
+            suffix=f"maj7-open-{fret + 12}-octave",
+            role="Complete no-pedal major 7 octave",
+            tier="alternate",
+            visible=True,
+            sort_order=30,
+        )
+    if pedal_fret + 12 <= 24:
+        add(
+            (5, 6, 7, 9),
+            target_fret=pedal_fret + 12,
+            suffix=f"maj7-ab-root-{pedal_fret + 12}-octave",
+            role="Complete A+B root-position major 7 octave",
+            tier="alternate",
+            visible=True,
+            sort_order=40,
+            pedals=("A", "B"),
+            family="major_seventh_ab",
+        )
+
+    return FretboardVisualizationPayload(
+        title=f"{key} major 7 positions on E9",
+        subtitle=(
+            f"Exact {key} major 7 grips from the saved E9 copedent; every displayed "
+            "complete grip contains root, major 3rd, 5th, and major 7th."
+        ),
+        key=key,
+        positions=tuple(candidates),
     )
 
 
