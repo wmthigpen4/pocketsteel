@@ -1311,14 +1311,14 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=voicing-readability-20260704"></script>' in html
     assert '<script src="e9-fretboard-explorer-config.js?v=flat-seven-learning-20260803"></script>' in html
-    assert '<script src="e9-fretboard-explorer-loader.js?v=flat-seven-learning-20260803"></script>' in html
-    assert "e9-fretboard-explorer.js?v=flat-seven-learning-20260803" in loader
+    assert '<script src="e9-fretboard-explorer-loader.js?v=default-grip-456-20260806"></script>' in html
+    assert "e9-fretboard-explorer.js?v=default-grip-456-20260806" in loader
     assert 'typeof STEEL_RAG_ANSWER_UI !== "undefined"' in loader
     assert "const session = await answerUi?.requestSession?.({ accessRole });" in loader
     assert "window.STEEL_RAG_ANSWER_UI?.requestSession" not in loader
     assert "e9-fretboard-explorer-data.js" not in loader
     assert 'dataset.explorerDataMode = "unavailable"' in loader
-    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=flat-seven-learning-20260803")
+    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=default-grip-456-20260806")
     assert "e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704" not in html
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
@@ -1585,7 +1585,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<optgroup label="E-lower pocket grips">' in html
     assert '<option value="3-5-9">3-5-9</option>' in html
     assert '<option value="5-7-8">5-7-8</option>' in html
-    assert '<option value="all" selected>All 3-string groups</option>' in html
+    assert '<option value="all">All 3-string groups</option>' in html
+    assert '<option value="4-5-6" selected>4-5-6</option>' in html
     assert "Advanced swaps:</strong> less direct string combinations" not in html
     assert "5&amp;8 branch:</strong> 5-8 appears with the 2-string harmonized-scale groups" not in html
     assert "deterministic teaching data" not in html
@@ -1695,7 +1696,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Open in Amazing Tablature" in script
     assert '["voice", options.voice || "mixed"]' in script
     assert '["movement", options.movement || (melody.length > 1 ? "slides" : "best_fit")]' in script
-    assert 'e9-fretboard-explorer-loader.js?v=flat-seven-learning-20260803' in html
+    assert 'e9-fretboard-explorer-loader.js?v=default-grip-456-20260806' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html

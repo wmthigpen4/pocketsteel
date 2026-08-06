@@ -278,7 +278,10 @@ const elements = {
     { value: "all", text: "All legitimate" }
   ]),
   "explorer-grip-vocabulary-control": new FakeNode("explorer-grip-vocabulary-control"),
-  "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
+  "explorer-string-group": new FakeSelect("explorer-string-group", "4-5-6", [
+    { value: "all", text: "All 3-string groups" },
+    { value: "4-5-6", text: "4-5-6", selected: true }
+  ]),
   "explorer-string-group-control": new FakeNode("explorer-string-group-control"),
   "explorer-path-family": new FakeSelect("explorer-path-family", "low", [
     { value: "high", text: "High path: 3-4-5 / 4-5-6" },
@@ -410,6 +413,9 @@ assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /5-6-7/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /6-7-10/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /5-7-8/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
+assert.equal(elements["explorer-string-group"].value, "4-5-6");
+assert.equal(lastMount.options.positions.length > 0, true);
+assert.equal(lastMount.options.positions.every((row) => row.grip === "4-5-6"), true);
 assert.equal(elements["explorer-explore-mode"].value, "single");
 assert.equal(elements["explorer-string-group-control"].hidden, false);
 assert.equal(elements["explorer-path-family-control"].hidden, true);
