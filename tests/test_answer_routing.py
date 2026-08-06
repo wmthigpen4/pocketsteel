@@ -50,6 +50,13 @@ def test_contextual_entity_probe_uses_prior_user_question_not_assistant_claim() 
         "What is he especially known for?",
         ["Assistant: Travis Toy is a pedal-steel guitarist."],
     ) is None
+    assert contextual_entity_probe_question(
+        "What does the course cover?",
+        [
+            "User: What is Travis Toy Tutorials?",
+            "Assistant: Nelson Checkoway described it as an online course.",
+        ],
+    ) == "What is Travis Toy Tutorials?"
 
 
 def test_public_player_relation_establishes_context_without_name_whitelist() -> None:

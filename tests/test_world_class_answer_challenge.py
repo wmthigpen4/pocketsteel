@@ -6,7 +6,7 @@ from scripts.run_world_class_answer_challenge import DEFAULT_BANK, load_cases, s
 def test_world_class_challenge_covers_required_release_routes() -> None:
     cases = load_cases(DEFAULT_BANK)
 
-    assert len(cases) == 10
+    assert len(cases) == 11
     assert {case["expected_route"] for case in cases} == {
         "deterministic",
         "source_backed_rag",
@@ -19,6 +19,7 @@ def test_world_class_challenge_covers_required_release_routes() -> None:
         "travis-toy-entity",
         "travis-toy-tutorials-entity",
         "followup-player-context",
+        "followup-course-context",
         "obscure-player-entity",
         "gear-source-backed",
         "tab-deterministic",

@@ -86,6 +86,18 @@ cases:
     required_terms: [Travis]
     forbidden_terms: [more specific steel-guitar question, No sources returned]
 
+  - id: followup-course-context
+    question: What does the course cover?
+    expected_route: source_backed_rag
+    paid: true
+    require_fretboard: false
+    require_sources: true
+    conversation_context:
+      - "User: What is Travis Toy Tutorials?"
+      - "Assistant: Nelson Checkoway reported that Travis Toy Tutorials is an online course."
+    required_terms: [basics, advanced]
+    forbidden_terms: [more specific steel-guitar question, No sources returned]
+
   - id: unrelated-entity-guardrail
     question: Who is Taylor Swift?
     expected_route: guardrail
