@@ -281,6 +281,20 @@ def test_same_origin_server_serves_brain_at_canonical_root() -> None:
     }
     assert b'const ANSWER_ENDPOINT = "/api/answer";' in asset_body
 
+    poster_status, poster_headers, poster_body = call_app(
+        smoke_app(), "/brand/steel-guitar-rag-hanging-sign-poster.png"
+    )
+    assert poster_status == "200 OK"
+    assert poster_headers["Content-Type"] == "image/png"
+    assert poster_body.startswith(b"\x89PNG\r\n\x1a\n")
+
+    video_status, video_headers, video_body = call_app(
+        smoke_app(), "/brand/steel-guitar-rag-landing-alpha.webm"
+    )
+    assert video_status == "200 OK"
+    assert video_headers["Content-Type"] == "video/webm"
+    assert video_body.startswith(b"\x1aE\xdf\xa3")
+
 
 def test_same_origin_server_delegates_health_checks() -> None:
     app = build_app(

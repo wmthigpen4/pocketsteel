@@ -130,11 +130,15 @@ def build_app(
             path = "/ui/steel-guitar-rag-mock.html"
         if path.startswith("/brand/"):
             file_path = (resolved_public_root / path.removeprefix("/")).resolve()
+            asset_root = resolved_public_root
+            if not file_path.is_file():
+                file_path = (resolved_ui_root / path.removeprefix("/")).resolve()
+                asset_root = resolved_ui_root
             return static_file_response(
                 environ,
                 start_response,
                 file_path=file_path,
-                root=resolved_public_root,
+                root=asset_root,
                 security_headers=SECURITY_RESPONSE_HEADERS,
             )
         if not path.startswith("/ui/"):
