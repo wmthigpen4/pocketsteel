@@ -206,7 +206,7 @@ def _ollama_models() -> dict[str, str]:
     }
 
 
-def _local_json(model: str, system: str, user: str, *, timeout: int = 300) -> dict[str, Any]:
+def _local_json(model: str, system: str, user: str, *, timeout: int = 600) -> dict[str, Any]:
     payload = {
         "model": model,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
