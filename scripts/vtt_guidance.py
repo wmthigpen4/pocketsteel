@@ -48,6 +48,7 @@ DEFAULT_CANDIDATES = DEFAULT_ROOT / "candidates/cards.jsonl"
 DEFAULT_REVIEW_QUEUE = DEFAULT_ROOT / "review/review-queue.jsonl"
 DEFAULT_DECISIONS_TEMPLATE = DEFAULT_ROOT / "review/decisions-template.jsonl"
 DEFAULT_GENERATION_REPORT = DEFAULT_ROOT / "reports/generation-report.json"
+DEFAULT_CORPUS_AUDIT_REPORT = DEFAULT_ROOT / "reports/corpus-audit.json"
 DEFAULT_APPROVAL_REPORT = DEFAULT_ROOT / "reports/approval-report.json"
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 GENERATION_MODEL = os.environ.get("VTT_GUIDANCE_GENERATION_MODEL", "qwen3.5:27b")
@@ -74,6 +75,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     generate.add_argument("--checkpoint-root", type=Path, default=DEFAULT_ROOT / "candidates/by-source")
     generate.add_argument("--limit", type=int)
     generate.add_argument("--regenerate", action="store_true")
+
+    audit = sub.add_parser(
+        "audit-corpus",
+        help="Run metadata-only integrity, privacy, overlap, and eligibility gates.",
+    )
+    audit.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    audit.add_argument("--candidates", type=Path, default=DEFAULT_CANDIDATES)
+    audit.add_argument("--checkpoint-root", type=Path, default=DEFAULT_ROOT / "candidates/by-source")
+    audit.add_argument("--report", type=Path, default=DEFAULT_CORPUS_AUDIT_REPORT)
 
     approve = sub.add_parser("apply-review", help="Apply a complete human card-decision ledger.")
     approve.add_argument("--candidates", type=Path, default=DEFAULT_CANDIDATES)
@@ -614,6 +624,219 @@ def generate_cards(
     return report
 
 
+def audit_corpus(
+    manifest_path: Path,
+    candidates_path: Path,
+    checkpoint_root: Path,
+    report_path: Path,
+) -> dict[str, object]:
+    """Audit generated candidates without returning private text or source metadata."""
+
+    manifest = read_jsonl(manifest_path)
+    candidates = read_jsonl(candidates_path)
+    manifest_by_id = {str(item.get("source_id") or ""): item for item in manifest}
+    manifest_ids = set(manifest_by_id)
+    source_text_by_id: dict[str, str] = {}
+    source_hash_mismatch_count = 0
+    missing_source_file_count = 0
+    manifest_policy_mismatch_count = 0
+    for source_id, item in manifest_by_id.items():
+        if (
+            not source_id
+            or item.get("approved_for_generation") is not True
+            or item.get("candidate_status") != "candidate_after_human_review"
+            or item.get("corpus_class") != "structured_lesson"
+            or item.get("privacy_action") != "converted"
+            or item.get("licensing_action") != "low_risk"
+            or item.get("answer_quote_allowed") is not False
+            or item.get("allowed_for_embedding") is not False
+        ):
+            manifest_policy_mismatch_count += 1
+        for path_field, hash_field in (
+            ("source_path", "source_sha256"),
+            ("overview_path", "overview_sha256"),
+            ("guidance_path", "guidance_sha256"),
+        ):
+            path = Path(str(item.get(path_field) or ""))
+            if not path.is_file():
+                missing_source_file_count += 1
+                continue
+            if sha256_file(path) != item.get(hash_field):
+                source_hash_mismatch_count += 1
+        guidance_path = Path(str(item.get("guidance_path") or ""))
+        if guidance_path.is_file():
+            source_text_by_id[source_id] = guidance_path.read_text(
+                encoding="utf-8", errors="ignore"
+            )
+
+    card_ids = [str(card.get("card_id") or "") for card in candidates]
+    card_sources = [str(card.get("source_id") or "") for card in candidates]
+    overview_counts: Counter[str] = Counter(
+        str(card.get("source_id") or "")
+        for card in candidates
+        if card.get("card_type") == "overview"
+    )
+    validation_findings: Counter[str] = Counter()
+    source_reference_mismatch_count = 0
+    for card in candidates:
+        source_id = str(card.get("source_id") or "")
+        manifest_item = manifest_by_id.get(source_id)
+        source_text = source_text_by_id.get(source_id)
+        for finding in validate_card(card, source_text=source_text):
+            validation_findings[finding] += 1
+        if (
+            manifest_item is None
+            or card.get("source_sha256") != manifest_item.get("guidance_sha256")
+        ):
+            source_reference_mismatch_count += 1
+
+    checkpoint_files = sorted(checkpoint_root.glob("*.json")) if checkpoint_root.is_dir() else []
+    checkpoint_cards: list[dict[str, object]] = []
+    checkpoint_integrity_mismatch_count = 0
+    for checkpoint in checkpoint_files:
+        payload = json.loads(checkpoint.read_text(encoding="utf-8"))
+        source_id = str(payload.get("source_id") or "")
+        manifest_item = manifest_by_id.get(source_id)
+        raw_cards = payload.get("cards")
+        if (
+            manifest_item is None
+            or payload.get("guidance_sha256") != manifest_item.get("guidance_sha256")
+            or not isinstance(raw_cards, list)
+        ):
+            checkpoint_integrity_mismatch_count += 1
+            continue
+        checkpoint_cards.extend(card for card in raw_cards if isinstance(card, dict))
+    candidate_digest = canonical_json(sorted(candidates, key=lambda card: str(card.get("card_id") or "")))
+    checkpoint_digest = canonical_json(
+        sorted(checkpoint_cards, key=lambda card: str(card.get("card_id") or ""))
+    )
+    if candidate_digest != checkpoint_digest:
+        checkpoint_integrity_mismatch_count += 1
+
+    status_counts = Counter(str(card.get("review_status") or "") for card in candidates)
+    instrument_counts = Counter(str(card.get("instrument") or "") for card in candidates)
+    card_type_counts = Counter(str(card.get("card_type") or "") for card in candidates)
+    privacy_status_counts = Counter(
+        str(card.get("privacy_review_status") or "") for card in candidates
+    )
+    music_status_counts = Counter(
+        str(card.get("music_validation_status") or "") for card in candidates
+    )
+    recorded_automated_findings: Counter[str] = Counter(
+        str(finding)
+        for card in candidates
+        for finding in (card.get("automated_findings") or [])
+    )
+    pending_runtime_count = sum(
+        card.get("review_status") == "pending_human_review"
+        and card.get("instrument") in {"E9", "general"}
+        for card in candidates
+    )
+    pending_offline_instrument_count = sum(
+        card.get("review_status") == "pending_human_review"
+        and card.get("instrument") not in {"E9", "general"}
+        for card in candidates
+    )
+    blocked_consistency_mismatch_count = sum(
+        (card.get("review_status") == "blocked_automated_review")
+        != bool(
+            card.get("automated_findings")
+            or card.get("privacy_review_status") != "passed"
+            or card.get("music_validation_status") != "passed"
+        )
+        for card in candidates
+    )
+    generator_version_mismatch_count = sum(
+        card.get("generator_version") != BUILD_VERSION for card in candidates
+    )
+    quote_or_embedding_enabled_count = sum(
+        card.get("answer_quote_allowed") is not False
+        or card.get("allowed_for_embedding") is not False
+        for card in candidates
+    )
+    manifest_shape_valid = (
+        len(manifest) == EXPECTED_MANIFEST_COUNT
+        and len(manifest_ids) == EXPECTED_MANIFEST_COUNT
+        and "" not in manifest_ids
+    )
+    card_shape_valid = (
+        len(set(card_ids)) == len(card_ids)
+        and all(card_ids)
+        and set(card_sources) == manifest_ids
+        and set(overview_counts) == manifest_ids
+        and all(count == 1 for count in overview_counts.values())
+    )
+    private_or_overlap_count = sum(
+        count
+        for finding, count in validation_findings.items()
+        if finding in {
+            "presenter_or_brand",
+            "member_or_request",
+            "contact_or_url",
+            "platform_or_course",
+            "private_path_or_filename",
+            "source_ten_word_overlap",
+        }
+    )
+    candidate_gate_passed = all(
+        (
+            manifest_shape_valid,
+            card_shape_valid,
+            len(checkpoint_files) == EXPECTED_MANIFEST_COUNT,
+            missing_source_file_count == 0,
+            source_hash_mismatch_count == 0,
+            source_reference_mismatch_count == 0,
+            manifest_policy_mismatch_count == 0,
+            checkpoint_integrity_mismatch_count == 0,
+            blocked_consistency_mismatch_count == 0,
+            generator_version_mismatch_count == 0,
+            quote_or_embedding_enabled_count == 0,
+            private_or_overlap_count == 0,
+            status_counts.get("approved", 0) == 0,
+        )
+    )
+    report: dict[str, object] = {
+        "schema_version": "vtt_guidance_corpus_audit_v2",
+        "candidate_gate_passed": candidate_gate_passed,
+        "runtime_gate_passed": False,
+        "manifest_count": len(manifest),
+        "manifest_policy_mismatch_count": manifest_policy_mismatch_count,
+        "candidate_card_count": len(candidates),
+        "candidate_source_count": len(set(card_sources)),
+        "checkpoint_count": len(checkpoint_files),
+        "pending_runtime_review_count": pending_runtime_count,
+        "pending_offline_instrument_count": pending_offline_instrument_count,
+        "review_status_counts": dict(sorted(status_counts.items())),
+        "instrument_counts": dict(sorted(instrument_counts.items())),
+        "card_type_counts": dict(sorted(card_type_counts.items())),
+        "independent_validation_finding_counts": dict(sorted(validation_findings.items())),
+        "recorded_automated_finding_counts": dict(sorted(recorded_automated_findings.items())),
+        "privacy_review_status_counts": dict(sorted(privacy_status_counts.items())),
+        "music_validation_status_counts": dict(sorted(music_status_counts.items())),
+        "private_or_ten_word_overlap_count": private_or_overlap_count,
+        "missing_source_file_count": missing_source_file_count,
+        "source_hash_mismatch_count": source_hash_mismatch_count,
+        "source_reference_mismatch_count": source_reference_mismatch_count,
+        "checkpoint_integrity_mismatch_count": checkpoint_integrity_mismatch_count,
+        "blocked_consistency_mismatch_count": blocked_consistency_mismatch_count,
+        "generator_version_mismatch_count": generator_version_mismatch_count,
+        "quote_or_embedding_enabled_count": quote_or_embedding_enabled_count,
+        "generation_model_digest_count": len(
+            {str(card.get("generation_model_digest") or "") for card in candidates}
+        ),
+        "privacy_model_digest_count": len(
+            {str(card.get("privacy_review_model_digest") or "") for card in candidates}
+        ),
+        "approved_card_count": status_counts.get("approved", 0),
+        "index_created": False,
+        "embeddings_created": 0,
+        "hosted_calls": 0,
+    }
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return report
+
+
 def apply_review(candidates_path: Path, decisions_path: Path, output_path: Path, report_path: Path) -> dict[str, object]:
     candidates = read_jsonl(candidates_path)
     decisions = read_jsonl(decisions_path)
@@ -733,6 +956,15 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
                 regenerate=args.regenerate,
             )
+        elif args.command == "audit-corpus":
+            result = audit_corpus(
+                args.manifest,
+                args.candidates,
+                args.checkpoint_root,
+                args.report,
+            )
+            if result["candidate_gate_passed"] is not True:
+                raise VttGuidanceError("VTT guidance candidate corpus audit failed")
         elif args.command == "apply-review":
             result = apply_review(args.candidates, args.decisions, args.output, args.report)
         elif args.command == "build-index":

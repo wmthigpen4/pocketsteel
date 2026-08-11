@@ -30,9 +30,17 @@ All commands run from the repository root with `.venv/bin/python scripts/vtt_gui
 
    Generation stops before publishing if either `qwen3.5:27b` or `gemma4:12b` is unavailable. Qwen runs deterministically with hidden reasoning disabled and a bounded JSON response. Gemma reviews each card independently. There is no hosted or embedding code path.
 
-3. Review every row in `corpus-private/vtt-guidance-v2/review/review-queue.jsonl`. Copy the decision template to a separate private decision ledger and set every decision to `approve` or `reject` with a human reviewer. Do not commit either file.
+3. Run the metadata-only candidate corpus audit:
 
-4. Apply the complete human ledger:
+   ```bash
+   .venv/bin/python scripts/vtt_guidance.py audit-corpus
+   ```
+
+   The command fails on manifest/card/checkpoint inconsistencies, changed source hashes, private-marker or normalized ten-word overlap hits, version mismatches, or enabled quote/embedding policy. Its report contains counts and statuses only—never lesson text, paths, source IDs, or transcript attribution. A passing candidate audit does not make cards runtime-ready.
+
+4. Review every row in `corpus-private/vtt-guidance-v2/review/review-queue.jsonl`. Copy the decision template to a separate private decision ledger and set every decision to `approve` or `reject` with a human reviewer. Do not commit either file. Reject every automated-blocked card and any C6, non-pedal, or unknown-instrument card; the final gate will not admit them.
+
+5. Apply the complete human ledger:
 
    ```bash
    .venv/bin/python scripts/vtt_guidance.py apply-review \
@@ -41,15 +49,15 @@ All commands run from the repository root with `.venv/bin/python scripts/vtt_gui
 
    Automated-blocked cards cannot be overridden by the ledger. Approved cards must pass privacy, ten-word overlap, quote/embedding, runtime-instrument, human-approval, and deterministic E9 gates again.
 
-5. Build the dedicated FTS5 index:
+6. Build the dedicated FTS5 index:
 
    ```bash
    .venv/bin/python scripts/vtt_guidance.py build-index
    ```
 
-6. Add the private retrieval probe ledger at `corpus-private/vtt-guidance-v2/review/retrieval-probes.jsonl`. Each row contains `probe_id`, `kind` (`detail`, `broad`, or `human`), `question`, and `useful_source_ids`; human rows also contain `expected_instruments`. The ledger must contain exactly 43 detail probes, exactly 10 broad probes, and at least one human-labeled probe.
+7. Add the private retrieval probe ledger at `corpus-private/vtt-guidance-v2/review/retrieval-probes.jsonl`. Each row contains `probe_id`, `kind` (`detail`, `broad`, or `human`), `question`, and `useful_source_ids`; human rows also contain `expected_instruments`. The ledger must contain exactly 43 detail probes, exactly 10 broad probes, and at least one human-labeled probe.
 
-7. Enforce the retrieval gates:
+8. Enforce the retrieval gates:
 
    ```bash
    .venv/bin/python scripts/vtt_guidance.py evaluate

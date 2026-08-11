@@ -130,6 +130,82 @@ def test_e9_validation_accepts_word_strings_pedal_pairs_and_e_to_f_alias() -> No
     assert validate_technical_anchors(anchors, instrument="E9") == []
 
 
+def test_corpus_audit_reports_metadata_only_candidate_gate(tmp_path: Path) -> None:
+    source_path = tmp_path / "source.txt"
+    overview_path = tmp_path / "overview.txt"
+    guidance_path = tmp_path / "guidance.txt"
+    source_path.write_text("Raw source fixture.", encoding="utf-8")
+    overview_path.write_text("Compact overview fixture.", encoding="utf-8")
+    guidance_path.write_text("Privacy cleaned technical guidance fixture.", encoding="utf-8")
+    manifest_path = tmp_path / "manifest.jsonl"
+    candidates_path = tmp_path / "candidates.jsonl"
+    checkpoint_root = tmp_path / "by-source"
+    checkpoint_root.mkdir()
+    report_path = tmp_path / "audit.json"
+    manifests: list[dict[str, object]] = []
+    candidates: list[dict[str, object]] = []
+    for index in range(62):
+        source_id = f"source-{index:02d}"
+        manifests.append(
+            {
+                "source_id": source_id,
+                "source_path": source_path.as_posix(),
+                "source_sha256": sha256_file(source_path),
+                "overview_path": overview_path.as_posix(),
+                "overview_sha256": sha256_file(overview_path),
+                "guidance_path": guidance_path.as_posix(),
+                "guidance_sha256": sha256_file(guidance_path),
+                "approved_for_generation": True,
+                "candidate_status": "candidate_after_human_review",
+                "corpus_class": "structured_lesson",
+                "privacy_action": "converted",
+                "licensing_action": "low_risk",
+                "answer_quote_allowed": False,
+                "allowed_for_embedding": False,
+            }
+        )
+        candidate = card(
+            f"card-{index:02d}",
+            source_id,
+            card_type="overview",
+        )
+        candidate.update(
+            {
+                "source_sha256": sha256_file(guidance_path),
+                "review_status": "pending_human_review",
+                "human_approved": False,
+                "automated_findings": [],
+            }
+        )
+        candidates.append(candidate)
+        (checkpoint_root / f"{source_id}.json").write_text(
+            json.dumps(
+                {
+                    "source_id": source_id,
+                    "guidance_sha256": sha256_file(guidance_path),
+                    "cards": [candidate],
+                }
+            ),
+            encoding="utf-8",
+        )
+    write_jsonl(manifest_path, manifests)
+    write_jsonl(candidates_path, candidates)
+
+    result = cli.audit_corpus(
+        manifest_path,
+        candidates_path,
+        checkpoint_root,
+        report_path,
+    )
+
+    assert result["candidate_gate_passed"] is True
+    assert result["manifest_count"] == 62
+    assert result["candidate_card_count"] == 62
+    assert result["private_or_ten_word_overlap_count"] == 0
+    assert result["runtime_gate_passed"] is False
+    assert report_path.is_file()
+
+
 def test_approved_cards_build_dedicated_checksummed_index_and_group_results(tmp_path: Path) -> None:
     cards_path = tmp_path / "approved/cards.jsonl"
     index_path = tmp_path / "index/vtt.sqlite"
