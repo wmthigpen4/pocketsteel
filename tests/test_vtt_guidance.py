@@ -121,6 +121,15 @@ def test_e9_validation_accepts_ordinal_string_anchors() -> None:
     assert validate_technical_anchors(anchors, instrument="E9") == []
 
 
+def test_e9_validation_accepts_word_strings_pedal_pairs_and_e_to_f_alias() -> None:
+    anchors = dict(card("card-1", "source-1")["technical_anchors"])
+    anchors["strings"] = ["three", "fifth string", "ten"]
+    anchors["pedals"] = ["A and B pedals", "B and C pedals"]
+    anchors["levers"] = ["E-to-F lever"]
+
+    assert validate_technical_anchors(anchors, instrument="E9") == []
+
+
 def test_approved_cards_build_dedicated_checksummed_index_and_group_results(tmp_path: Path) -> None:
     cards_path = tmp_path / "approved/cards.jsonl"
     index_path = tmp_path / "index/vtt.sqlite"

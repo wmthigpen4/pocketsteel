@@ -20,7 +20,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 SCHEMA_VERSION = "vtt_guidance_card_v2"
 INDEX_SCHEMA_VERSION = "vtt_guidance_fts_v2"
-BUILD_VERSION = "vtt-guidance-v2.0"
+BUILD_VERSION = "vtt-guidance-v2.1"
 CONTENT_LAYER = "vtt_curated_guidance_v2"
 DEFAULT_ROOT = Path("corpus-private/vtt-guidance-v2")
 DEFAULT_APPROVED_CARDS = DEFAULT_ROOT / "approved/cards.jsonl"
@@ -40,6 +40,49 @@ CARD_TYPES = {
     "common_mistake",
     "transfer",
 }
+NUMBER_WORD_ANCHORS = {
+    word: value
+    for value, word in enumerate(
+        (
+            "zero",
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+            "six",
+            "seven",
+            "eight",
+            "nine",
+            "ten",
+            "eleven",
+            "twelve",
+            "thirteen",
+            "fourteen",
+            "fifteen",
+            "sixteen",
+            "seventeen",
+            "eighteen",
+            "nineteen",
+            "twenty",
+        )
+    )
+}
+NUMBER_WORD_ANCHORS.update(
+    {
+        "first": 1,
+        "second": 2,
+        "third": 3,
+        "fourth": 4,
+        "fifth": 5,
+        "sixth": 6,
+        "seventh": 7,
+        "eighth": 8,
+        "ninth": 9,
+        "tenth": 10,
+        "twelfth": 12,
+    }
+)
 RUNTIME_INSTRUMENTS = {"E9", "general"}
 ALL_INSTRUMENTS = RUNTIME_INSTRUMENTS | {"C6", "non_pedal", "unknown"}
 
@@ -219,6 +262,9 @@ def _integer_anchor(value: object) -> int:
     if isinstance(value, int):
         return value
     normalized = str(value).strip().lower()
+    normalized = re.sub(r"\s+(?:string|fret)$", "", normalized)
+    if normalized in NUMBER_WORD_ANCHORS:
+        return NUMBER_WORD_ANCHORS[normalized]
     match = re.fullmatch(r"(\d+)(?:st|nd|rd|th)?(?:\s+(?:string|fret))?", normalized)
     if not match:
         raise ValueError("invalid integer anchor")
@@ -256,7 +302,20 @@ def validate_technical_anchors(anchors: object, *, instrument: str) -> list[str]
             for value in anchors.get(field) or []:
                 normalized = str(value).strip().lower()
                 components = [part.strip() for part in re.split(r"\+|&|\band\b", normalized) if part.strip()]
-                if not components or any(component not in valid_controls for component in components):
+                normalized_components: list[str] = []
+                for component in components:
+                    aliases = {
+                        component,
+                        re.sub(r"\s+pedals?$", "", component).strip(),
+                    }
+                    if component in {"e-to-f lever", "e to f lever"}:
+                        aliases.add("f lever")
+                    normalized_components.append(
+                        next((alias for alias in aliases if alias in valid_controls), component)
+                    )
+                if not normalized_components or any(
+                    component not in valid_controls for component in normalized_components
+                ):
                     findings.append(f"invalid_e9_{field[:-1]}")
     return sorted(set(findings))
 

@@ -206,14 +206,21 @@ def _ollama_models() -> dict[str, str]:
     }
 
 
-def _local_json(model: str, system: str, user: str, *, timeout: int = 600) -> dict[str, Any]:
+def _local_json(
+    model: str,
+    system: str,
+    user: str,
+    *,
+    json_schema: Mapping[str, object] | None = None,
+    timeout: int = 600,
+) -> dict[str, Any]:
     payload = {
         "model": model,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        "format": "json",
+        "format": json_schema or "json",
         "stream": False,
         "think": False,
-        "options": {"temperature": 0, "seed": 17, "num_predict": 4_096},
+        "options": {"temperature": 0, "seed": 17, "num_predict": 2_048},
     }
     request = urllib.request.Request(
         f"{OLLAMA_URL}/api/chat",
@@ -240,11 +247,95 @@ GENERATION_SYSTEM = """You transform privacy-cleaned steel-guitar lesson guidanc
 Never include people, brands, lesson titles, course/platform references, URLs, locations, personal stories, requester framing, or direct quotations.
 Paraphrase. Preserve concrete strings, frets, pedals, levers, grips, harmonic functions, setup, procedure, mistakes, and transfer only when supported.
 Do not invent notes, pitches, positions, or copedent behavior. Use instrument E9, C6, non_pedal, general, or unknown.
-Return JSON only with: instrument and cards. cards must contain 1-6 objects with card_type, concept, setup, procedure, common_mistakes, transfer, and technical_anchors.
+Return JSON only with: instrument and cards. cards must contain 2-4 objects with card_type, concept, setup, procedure, common_mistakes, transfer, and technical_anchors.
 card_type must be overview, concept, setup, procedure, common_mistake, or transfer.
 technical_anchors must contain arrays: strings, frets, pedals, levers, grips, keys, chord_functions, techniques.
 Use named technical anchors only when the same term appears in the detailed guidance; otherwise leave that anchor array empty.
-Include exactly one overview card. Keep every sentence instructional and attribution-free."""
+Include exactly one overview card, then select the most useful source-specific details. Keep every sentence instructional, attribution-free, and at most 22 words.
+Use no more than two setup items, three procedure steps, one common mistake, and one transfer item per card."""
+
+GENERATION_JSON_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["instrument", "cards"],
+    "properties": {
+        "instrument": {
+            "type": "string",
+            "enum": ["E9", "C6", "non_pedal", "general", "unknown"],
+        },
+        "cards": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "card_type",
+                    "concept",
+                    "setup",
+                    "procedure",
+                    "common_mistakes",
+                    "transfer",
+                    "technical_anchors",
+                ],
+                "properties": {
+                    "card_type": {
+                        "type": "string",
+                        "enum": [
+                            "overview",
+                            "concept",
+                            "setup",
+                            "procedure",
+                            "common_mistake",
+                            "transfer",
+                        ],
+                    },
+                    "concept": {"type": "string"},
+                    "setup": {"type": "array", "maxItems": 2, "items": {"type": "string"}},
+                    "procedure": {"type": "array", "maxItems": 3, "items": {"type": "string"}},
+                    "common_mistakes": {
+                        "type": "array",
+                        "maxItems": 1,
+                        "items": {"type": "string"},
+                    },
+                    "transfer": {"type": "array", "maxItems": 1, "items": {"type": "string"}},
+                    "technical_anchors": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "strings",
+                            "frets",
+                            "pedals",
+                            "levers",
+                            "grips",
+                            "keys",
+                            "chord_functions",
+                            "techniques",
+                        ],
+                        "properties": {
+                            field: {
+                                "type": "array",
+                                "maxItems": 12,
+                                "items": {"type": "string"},
+                            }
+                            for field in (
+                                "strings",
+                                "frets",
+                                "pedals",
+                                "levers",
+                                "grips",
+                                "keys",
+                                "chord_functions",
+                                "techniques",
+                            )
+                        },
+                    },
+                },
+            },
+        },
+    },
+}
 
 PRIVACY_SYSTEM = """You are a strict privacy and transformation reviewer for private steel-guitar teaching cards.
 Reject any person, brand, title, platform, membership/request framing, location, contact data, personal anecdote, transcript voice, direct quotation, or invented technical claim.
@@ -302,7 +393,7 @@ def _make_cards(
         raise VttGuidanceError("generation must return exactly one overview card")
     parent_id = stable_id(source_id, "overview", 0)[:24]
     cards: list[dict[str, object]] = []
-    for ordinal, raw in enumerate(raw_cards[:6]):
+    for ordinal, raw in enumerate(raw_cards[:4]):
         if not isinstance(raw, dict):
             continue
         card_type = str(raw.get("card_type") or "")
@@ -432,7 +523,12 @@ def generate_cards(
                 + "\n\nPrivacy-cleaned detailed guidance:\n"
                 + _bounded_source(source_text)
             )
-            generated = _local_json(GENERATION_MODEL, GENERATION_SYSTEM, user)
+            generated = _local_json(
+                GENERATION_MODEL,
+                GENERATION_SYSTEM,
+                user,
+                json_schema=GENERATION_JSON_SCHEMA,
+            )
             cards = _make_cards(
                 item,
                 generated,
