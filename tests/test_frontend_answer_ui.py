@@ -3381,6 +3381,8 @@ def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> N
     assert 'list.className = "try-list";' in html
     assert ".answer-section.is-bullets" in html
     assert ".answer-section.is-wide" in html
+    assert ".answer-section.is-guidance" in html
+    assert "rgba(112, 181, 169, 0.78)" in html
     assert ".answer-detail-grid:empty" in html
     assert "display: none;" in html
     assert "grid-column: 1 / -1;" in html
@@ -3391,6 +3393,10 @@ def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> N
     assert re.search(r"@media \(max-width: 960px\)[\s\S]*?\.answer-section\.is-wide \.try-list\s*\{[^}]*columns:\s*1;", html)
     assert re.search(r"\.try-list\s*\{[^}]*font-size:\s*18px;", html, re.S)
     assert re.search(r"\.answer-section p\s*\{[^}]*font-size:\s*17px;", html, re.S)
+    assert re.search(
+        r"@media \(max-width: 640px\)[\s\S]*?\.answer-section\.is-guidance\s*\{[^}]*padding:\s*15px 16px;",
+        html,
+    )
     assert "sourceGrid.appendChild(card);" in html
     assert "source.forum" in html
     assert "source.excerpt" in html
