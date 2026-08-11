@@ -61,6 +61,7 @@ from steel_guitar_rag.cloudflare_access import (
 from steel_guitar_rag.rag_guardrails import INJECTION_WARNING
 from steel_guitar_rag.retrieval_modes import RetrievalMode, RetrievalModeConfig
 from steel_guitar_rag.song_practice import song_practice_catalog
+from steel_guitar_rag.vtt_guidance import VttGuidanceError
 from scripts.serve_answer_smoke import build_app
 from scripts.serve_v2_rerank_smoke import create_v2_api_app
 
@@ -82,7 +83,7 @@ def call_app(
     cloudflare_verifier: Any = None,
     private_search_index: Any | None = None,
     retrieval_config: RetrievalModeConfig | None = None,
-    curated_guidance_search: Any | None = None,
+    vtt_guidance_search: Any | None = None,
     melody_exercise_enabled: bool | None = None,
     melody_import_enabled: bool | None = None,
     song_practice_enabled: bool | None = None,
@@ -100,7 +101,7 @@ def call_app(
         cloudflare_verifier=cloudflare_verifier,
         private_search_index=private_search_index,
         retrieval_config=retrieval_config,
-        curated_guidance_search=curated_guidance_search,
+        vtt_guidance_search=vtt_guidance_search,
         melody_exercise_enabled=melody_exercise_enabled,
         melody_import_enabled=melody_import_enabled,
         song_practice_enabled=song_practice_enabled,
@@ -287,7 +288,7 @@ class FakeCloudflareVerifier:
         )
 
 
-class FakeCuratedGuidanceSearch:
+class FakeVttGuidanceSearch:
     def __init__(self, results: list[dict[str, Any]] | None = None, *, fail: bool = False) -> None:
         self.results = results if results is not None else []
         self.fail = fail
@@ -296,7 +297,7 @@ class FakeCuratedGuidanceSearch:
     def __call__(self, query: str, **kwargs: Any) -> list[dict[str, Any]]:
         self.calls.append({"query": query, **kwargs})
         if self.fail:
-            raise RuntimeError("test curated guidance failure")
+            raise VttGuidanceError("test VTT guidance failure")
         return self.results
 
 
@@ -1303,102 +1304,147 @@ def test_api_production_startup_rejects_trusted_admin_header_scaffold() -> None:
         )
 
 
-def _enable_curated_guidance_answer_flags(monkeypatch: Any) -> None:
+def _enable_vtt_guidance_answer_flags(monkeypatch: Any) -> None:
     monkeypatch.setenv("ENABLE_PRIVATE_REVIEW_SOURCES", "1")
+    monkeypatch.setenv("ENABLE_VTT_GUIDANCE_RETRIEVAL", "1")
+    monkeypatch.setenv("ENABLE_VTT_GUIDANCE_IN_ANSWER", "1")
+
+
+def _fake_vtt_guidance_result() -> dict[str, Any]:
+    return {
+        "card_id": "private-card-id",
+        "source_id": "private-source-id",
+        "parent_overview_id": "private-overview-id",
+        "card_type": "procedure",
+        "instrument": "E9",
+        "concept": "Keep both blocking motions small and release each note deliberately.",
+        "procedure": [
+            "Mute the previous string before the next attack.",
+            "Alternate palm and pick blocking at a slow, even tempo.",
+            "Move the same grip to a second fret without increasing speed.",
+        ],
+        "common_mistakes": ["Do not let speed make the muting motion late."],
+        "score": 10.0,
+        "corpus_version": "private-test-version",
+    }
+
+
+def test_api_answer_vtt_guidance_disabled_by_default_and_legacy_flags_do_not_call_retriever(
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.delenv("ENABLE_PRIVATE_REVIEW_SOURCES", raising=False)
+    monkeypatch.delenv("ENABLE_VTT_GUIDANCE_RETRIEVAL", raising=False)
+    monkeypatch.delenv("ENABLE_VTT_GUIDANCE_IN_ANSWER", raising=False)
     monkeypatch.setenv("ENABLE_CURATED_GUIDANCE_RETRIEVAL", "1")
     monkeypatch.setenv("ENABLE_CURATED_GUIDANCE_IN_ANSWER", "1")
+    vtt_guidance = FakeVttGuidanceSearch([_fake_vtt_guidance_result()])
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        vtt_guidance_search=vtt_guidance,
+    )
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What is pick blocking?"},
+        access_role="admin",
+    )
+
+    assert status == "200 OK"
+    assert vtt_guidance.calls == []
+    event = app.answer_request_log[-1]
+    assert event["vttGuidanceStatus"] == "disabled"
+    assert event["vttGuidanceCount"] == 0
+    assert "Curated lesson guidance" not in json.dumps(payload)
 
 
-def test_api_answer_curated_guidance_disabled_by_default_does_not_call_retriever(monkeypatch: Any) -> None:
+def test_api_answer_vtt_guidance_admin_flags_append_only_distinct_section(monkeypatch: Any) -> None:
     monkeypatch.delenv("ENABLE_PRIVATE_REVIEW_SOURCES", raising=False)
-    monkeypatch.delenv("ENABLE_CURATED_GUIDANCE_RETRIEVAL", raising=False)
-    monkeypatch.delenv("ENABLE_CURATED_GUIDANCE_IN_ANSWER", raising=False)
-    curated_guidance = FakeCuratedGuidanceSearch(
-        [
-            {
-                "title": "Private teaching guidance",
-                "source_filename": "private-guidance.md",
-                "source_path": "private/path/private-guidance.md",
-                "content_layer": "curated_guidance",
-                "visibility": "private_review",
-                "score": 10.0,
-                "quality_flags": [],
-                "excerpt": "Private-review excerpt should not appear.",
-            }
-        ]
+    monkeypatch.delenv("ENABLE_VTT_GUIDANCE_RETRIEVAL", raising=False)
+    monkeypatch.delenv("ENABLE_VTT_GUIDANCE_IN_ANSWER", raising=False)
+    baseline_app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
     )
+    baseline_status, _, baseline_payload = call_existing_app(
+        baseline_app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How should I practice pick blocking cleanly?", "topK": 3},
+        access_role="admin",
+    )
+    assert baseline_status == "200 OK"
+
+    _enable_vtt_guidance_answer_flags(monkeypatch)
+    vtt_guidance = FakeVttGuidanceSearch([_fake_vtt_guidance_result()])
     app = create_app(
         fake_search_index(),
         answer_provider=FakeAnswerProvider(),
         answer_auth_mode="local_dev",
-        curated_guidance_search=curated_guidance,
+        vtt_guidance_search=vtt_guidance,
     )
 
     status, _, payload = call_existing_app(
         app,
         "/api/answer",
         method="POST",
-        json_body={"question": "What is pick blocking?"},
+        json_body={"question": "How should I practice pick blocking cleanly?", "topK": 3},
         access_role="admin",
     )
 
     assert status == "200 OK"
-    assert curated_guidance.calls == []
-    event = app.answer_request_log[-1]
-    assert event["curatedGuidanceStatus"] == "disabled"
-    assert event["curatedGuidanceCount"] == 0
-    assert "Private-review excerpt" not in json.dumps(payload)
-
-
-def test_api_answer_curated_guidance_admin_flags_route_without_public_exposure(monkeypatch: Any) -> None:
-    _enable_curated_guidance_answer_flags(monkeypatch)
-    private_result = {
-        "title": "Internal split tuning draft",
-        "source_filename": "private-guidance.md",
-        "source_path": "summary-draft/private-guidance.md",
-        "content_layer": "curated_guidance",
-        "visibility": "private_review",
-        "score": 10.0,
-        "quality_flags": [],
-        "excerpt": "Private-review guidance excerpt should stay out of the public payload.",
-    }
-    curated_guidance = FakeCuratedGuidanceSearch([private_result])
-    app = create_app(
-        fake_search_index(),
-        answer_provider=FakeAnswerProvider(),
-        answer_auth_mode="local_dev",
-        curated_guidance_search=curated_guidance,
-    )
-
-    status, _, payload = call_existing_app(
-        app,
-        "/api/answer",
-        method="POST",
-        json_body={"question": "How do I tune a split on string 6?", "topK": 3},
-        access_role="admin",
-    )
-
-    assert status == "200 OK"
-    assert curated_guidance.calls == [{"query": "How do I tune a split on string 6?", "top_k": 3}]
+    assert vtt_guidance.calls == [
+        {"query": "How should I practice pick blocking cleanly?", "top_k": 3}
+    ]
+    assert payload["answer"] == baseline_payload["answer"]
+    assert payload["sources"] == baseline_payload["sources"]
+    guidance = [section for section in payload["sections"] if section.get("style") == "guidance"]
+    assert guidance == [
+        {
+            "title": "Curated lesson guidance",
+            "style": "guidance",
+            "body": (
+                "Keep both blocking motions small and release each note deliberately.\n\n"
+                "Try this:\n"
+                "- Mute the previous string before the next attack.\n"
+                "- Alternate palm and pick blocking at a slow, even tempo.\n"
+                "- Move the same grip to a second fret without increasing speed.\n\n"
+                "Common mistake: Do not let speed make the muting motion late."
+            ),
+        }
+    ]
     payload_text = json.dumps(payload, sort_keys=True)
-    assert "private_review" not in payload_text
-    assert "curated_guidance" not in payload_text
-    assert "private-guidance.md" not in payload_text
-    assert "summary-draft" not in payload_text
-    assert "Private-review guidance excerpt" not in payload_text
+    assert "private-card-id" not in payload_text
+    assert "private-source-id" not in payload_text
+    assert "private-overview-id" not in payload_text
+    assert "private-test-version" not in payload_text
+    assert "corpus-private" not in payload_text
     event = app.answer_request_log[-1]
-    assert event["curatedGuidanceStatus"] == "retrieved"
-    assert event["curatedGuidanceCount"] == 1
+    assert event["vttGuidanceStatus"] == "retrieved"
+    assert event["vttGuidanceCount"] == 1
+    assert event["vttGuidanceVersion"] == "private-test-version"
 
 
-def test_api_answer_curated_guidance_beta_user_blocked_even_when_flags_enabled(monkeypatch: Any) -> None:
-    _enable_curated_guidance_answer_flags(monkeypatch)
-    curated_guidance = FakeCuratedGuidanceSearch([{"excerpt": "private"}])
+@pytest.mark.parametrize(
+    ("role", "expected_status"),
+    [("beta_user", "200 OK"), ("developer", "403 Forbidden"), ("dev", "403 Forbidden"), ("backstage", "403 Forbidden")],
+)
+def test_api_answer_vtt_guidance_non_admin_roles_blocked_even_when_flags_enabled(
+    monkeypatch: Any,
+    role: str,
+    expected_status: str,
+) -> None:
+    _enable_vtt_guidance_answer_flags(monkeypatch)
+    vtt_guidance = FakeVttGuidanceSearch([_fake_vtt_guidance_result()])
     app = create_app(
         fake_search_index(),
         answer_provider=FakeAnswerProvider(),
         answer_auth_mode="local_dev",
-        curated_guidance_search=curated_guidance,
+        vtt_guidance_search=vtt_guidance,
     )
 
     status, _, payload = call_existing_app(
@@ -1406,30 +1452,31 @@ def test_api_answer_curated_guidance_beta_user_blocked_even_when_flags_enabled(m
         "/api/answer",
         method="POST",
         json_body={"question": "What is pick blocking?"},
-        access_role="beta_user",
+        access_role=role,
     )
 
-    assert status == "200 OK"
-    assert curated_guidance.calls == []
-    assert "private" not in json.dumps(payload).lower()
-    event = app.answer_request_log[-1]
-    assert event["curatedGuidanceStatus"] == "role_blocked"
-    assert event["curatedGuidanceCount"] == 0
+    assert status == expected_status
+    assert vtt_guidance.calls == []
+    assert "Curated lesson guidance" not in json.dumps(payload)
+    if status == "200 OK":
+        event = app.answer_request_log[-1]
+        assert event["vttGuidanceStatus"] == "role_blocked"
+        assert event["vttGuidanceCount"] == 0
 
 
-def test_api_answer_curated_guidance_not_used_for_unauthenticated_public_request(monkeypatch: Any) -> None:
-    _enable_curated_guidance_answer_flags(monkeypatch)
+def test_api_answer_vtt_guidance_not_used_for_unauthenticated_public_request(monkeypatch: Any) -> None:
+    _enable_vtt_guidance_answer_flags(monkeypatch)
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
     monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
-    curated_guidance = FakeCuratedGuidanceSearch([{"excerpt": "private"}])
+    vtt_guidance = FakeVttGuidanceSearch([_fake_vtt_guidance_result()])
     app = create_app(
         fake_search_index(),
         answer_provider=FakeAnswerProvider(),
         answer_auth_mode="production",
         auth_provider="cloudflare_access",
         cloudflare_verifier=FakeCloudflareVerifier(),
-        curated_guidance_search=curated_guidance,
+        vtt_guidance_search=vtt_guidance,
     )
 
     status, _, payload = call_existing_app(
@@ -1442,18 +1489,18 @@ def test_api_answer_curated_guidance_not_used_for_unauthenticated_public_request
 
     assert status == "401 Unauthorized"
     assert payload == {"error": "request requires Cloudflare Access identity"}
-    assert curated_guidance.calls == []
+    assert vtt_guidance.calls == []
     assert app.answer_request_log[-1]["accessStatus"] == "blocked"
 
 
-def test_api_answer_curated_guidance_not_used_for_explicit_forum_wisdom(monkeypatch: Any) -> None:
-    _enable_curated_guidance_answer_flags(monkeypatch)
-    curated_guidance = FakeCuratedGuidanceSearch([{"excerpt": "private"}])
+def test_api_answer_vtt_guidance_not_used_for_explicit_forum_wisdom(monkeypatch: Any) -> None:
+    _enable_vtt_guidance_answer_flags(monkeypatch)
+    vtt_guidance = FakeVttGuidanceSearch([_fake_vtt_guidance_result()])
     app = create_app(
         fake_search_index(),
         answer_provider=FakeAnswerProvider(),
         answer_auth_mode="local_dev",
-        curated_guidance_search=curated_guidance,
+        vtt_guidance_search=vtt_guidance,
     )
 
     status, _, payload = call_existing_app(
@@ -1465,21 +1512,23 @@ def test_api_answer_curated_guidance_not_used_for_explicit_forum_wisdom(monkeypa
     )
 
     assert status == "200 OK"
-    assert curated_guidance.calls == []
-    assert "private" not in json.dumps(payload).lower()
+    assert vtt_guidance.calls == []
+    assert "Curated lesson guidance" not in json.dumps(payload)
     event = app.answer_request_log[-1]
-    assert event["curatedGuidanceStatus"] == "ineligible"
-    assert event["curatedGuidanceCount"] == 0
+    assert event["vttGuidanceStatus"] == "ineligible"
+    assert event["vttGuidanceCount"] == 0
 
 
-def test_api_answer_curated_guidance_missing_corpus_falls_back_without_private_warning(monkeypatch: Any) -> None:
-    _enable_curated_guidance_answer_flags(monkeypatch)
-    curated_guidance = FakeCuratedGuidanceSearch([])
+def test_api_answer_vtt_guidance_empty_or_error_falls_back_without_private_warning(
+    monkeypatch: Any,
+) -> None:
+    _enable_vtt_guidance_answer_flags(monkeypatch)
+    vtt_guidance = FakeVttGuidanceSearch([])
     app = create_app(
         fake_search_index(),
         answer_provider=FakeAnswerProvider(),
         answer_auth_mode="local_dev",
-        curated_guidance_search=curated_guidance,
+        vtt_guidance_search=vtt_guidance,
     )
 
     status, _, payload = call_existing_app(
@@ -1496,8 +1545,28 @@ def test_api_answer_curated_guidance_missing_corpus_falls_back_without_private_w
     assert "private_review" not in payload_text
     assert all("private" not in json.dumps(source).lower() for source in payload["sources"])
     event = app.answer_request_log[-1]
-    assert event["curatedGuidanceStatus"] == "empty"
-    assert event["curatedGuidanceCount"] == 0
+    assert event["vttGuidanceStatus"] == "empty"
+    assert event["vttGuidanceCount"] == 0
+
+    failing_guidance = FakeVttGuidanceSearch(fail=True)
+    failing_app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        vtt_guidance_search=failing_guidance,
+    )
+    failed_status, _, failed_payload = call_existing_app(
+        failing_app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How should I practice right-hand blocking?"},
+        access_role="admin",
+    )
+    assert failed_status == "200 OK"
+    assert failed_payload["answer"] == payload["answer"]
+    assert failed_payload["sources"] == payload["sources"]
+    assert "Curated lesson guidance" not in json.dumps(failed_payload)
+    assert failing_app.answer_request_log[-1]["vttGuidanceStatus"] == "error"
 
 
 def test_api_answer_dev_override_only_works_when_explicitly_enabled(monkeypatch: Any) -> None:

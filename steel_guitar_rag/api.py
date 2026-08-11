@@ -104,10 +104,13 @@ from steel_guitar_rag.curated_answers import (
     unsupported_chord_position_curated_answer,
     visual_fretboard_curated_answer,
 )
-from steel_guitar_rag.curated_guidance_retriever import (
-    ENABLE_CURATED_GUIDANCE_ENV,
-    is_teaching_style_query,
-    search_curated_guidance,
+from steel_guitar_rag.vtt_guidance import (
+    ENABLE_VTT_GUIDANCE_IN_ANSWER_ENV,
+    ENABLE_VTT_GUIDANCE_RETRIEVAL_ENV,
+    VttGuidanceError,
+    is_vtt_teaching_query,
+    render_guidance_section,
+    search_vtt_guidance,
 )
 from steel_guitar_rag.curated_source_registry import slide_bar_vendor_source_cards
 from steel_guitar_rag.fretboard_examples import (
@@ -164,13 +167,6 @@ from steel_guitar_rag.tab_engine import render_tab_from_payload
 LOGGER = logging.getLogger(__name__)
 
 ENABLE_PRIVATE_REVIEW_SOURCES_ENV = "ENABLE_PRIVATE_REVIEW_SOURCES"
-ENABLE_CURATED_GUIDANCE_IN_ANSWER_ENV = "ENABLE_CURATED_GUIDANCE_IN_ANSWER"
-CURATED_GUIDANCE_ADMIN_ROLES = {"admin", "dev", "developer", "backstage"}
-CURATED_GUIDANCE_FORUM_WISDOM_RE = re.compile(
-    r"\b(?:what\s+do\s+(?:players|people|forum|steelers)|players?\s+(?:say|think|report)|"
-    r"forum\s+(?:players|wisdom|opinions?)|owner\s+reports?|public\s+forum)\b",
-    re.I,
-)
 MAX_JSON_BODY_BYTES = 1_048_576
 MAX_CSP_REPORT_BYTES = 65_536
 MAX_SECURITY_EVENT_LOG = 256
@@ -347,28 +343,35 @@ def _env_flag(name: str, env: dict[str, str] | None = None) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _curated_guidance_answer_flags_enabled(env: dict[str, str] | None = None) -> bool:
+def _vtt_guidance_answer_flags_enabled(env: dict[str, str] | None = None) -> bool:
     return (
         _env_flag(ENABLE_PRIVATE_REVIEW_SOURCES_ENV, env)
-        and _env_flag(ENABLE_CURATED_GUIDANCE_ENV, env)
-        and _env_flag(ENABLE_CURATED_GUIDANCE_IN_ANSWER_ENV, env)
+        and _env_flag(ENABLE_VTT_GUIDANCE_RETRIEVAL_ENV, env)
+        and _env_flag(ENABLE_VTT_GUIDANCE_IN_ANSWER_ENV, env)
     )
 
 
-def _curated_guidance_role_allowed(role: str | None) -> bool:
-    return str(role or "").strip().lower() in CURATED_GUIDANCE_ADMIN_ROLES
+def _vtt_guidance_role_allowed(role: str | None) -> bool:
+    return str(role or "").strip().lower() == "admin"
 
 
-def _curated_guidance_query_eligible(question: str, decision: dict[str, Any]) -> bool:
+def _vtt_guidance_query_eligible(question: str, decision: dict[str, Any]) -> bool:
     if decision.get("domain") != "steel_guitar":
         return False
     if decision.get("needs_fretboard"):
         return False
     if decision.get("allowed_answer_shape") == "guardrail_refusal":
         return False
-    if CURATED_GUIDANCE_FORUM_WISDOM_RE.search(question or ""):
-        return False
-    return is_teaching_style_query(question or "")
+    return is_vtt_teaching_query(question or "")
+
+
+def _append_vtt_guidance_section(
+    payload: AnswerResponse,
+    results: list[dict[str, object]],
+) -> None:
+    section = render_guidance_section(results)
+    if section is not None:
+        payload.setdefault("sections", []).append(section)
 
 
 class RetrievalApi:
@@ -383,7 +386,7 @@ class RetrievalApi:
         answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
         private_search_index: Any | None = None,
         retrieval_config: RetrievalModeConfig | None = None,
-        curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
+        vtt_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
         melody_exercise_enabled: bool | None = None,
         melody_import_enabled: bool | None = None,
         song_practice_enabled: bool | None = None,
@@ -397,7 +400,7 @@ class RetrievalApi:
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
-        self.curated_guidance_search = curated_guidance_search or search_curated_guidance
+        self.vtt_guidance_search = vtt_guidance_search or search_vtt_guidance
         self.answer_provider = configured_answer_provider(answer_provider)
         self.canonical_frontier_enabled = (
             configured_canonical_frontier_enabled()
@@ -1501,8 +1504,9 @@ class RetrievalApi:
                 ),
             )
             route_trace.route = answer_route
-            curated_guidance_status: str | None = None
-            curated_guidance_count: int | None = None
+            vtt_guidance_status: str | None = None
+            vtt_guidance_count: int | None = None
+            vtt_guidance_version: str | None = None
 
             melody_request = request_payload.get("melodyRequest") or request_payload.get("melody_request")
             if melody_request is not None and not isinstance(melody_request, dict):
@@ -1719,13 +1723,13 @@ class RetrievalApi:
                 # Scope/copyright guardrails are blocked requests, not successful Ask usage.
                 return self._json_response(start_response, "200 OK", payload)
 
-            curated_guidance_results, curated_guidance_status = self._curated_guidance_for_answer(
+            vtt_guidance_results, vtt_guidance_status, vtt_guidance_version = self._vtt_guidance_for_answer(
                 answer_request.question,
                 role=access.role,
                 answer_intent_decision=answer_intent_decision,
                 limit=answer_request.top_k,
             )
-            curated_guidance_count = len(curated_guidance_results)
+            vtt_guidance_count = len(vtt_guidance_results)
 
             practical_intent_answer = (
                 intent_mode_curated_answer(answer_request.question)
@@ -1754,6 +1758,7 @@ class RetrievalApi:
                     payload["fretboard"] = classic_country_move_payload
                 if copedent_context is not None:
                     _personalize_answer_payload(payload, target_profile, target_revision)
+                _append_vtt_guidance_section(payload, vtt_guidance_results)
                 route_trace.route = "deterministic"
                 route_trace.retrieval = "not_needed"
                 route_trace.evidence = "curated_rules"
@@ -1769,8 +1774,9 @@ class RetrievalApi:
                     authorized=True,
                     source_count=0,
                     warning_count=0,
-                    curated_guidance_count=curated_guidance_count,
-                    curated_guidance_status=curated_guidance_status,
+                    vtt_guidance_count=vtt_guidance_count,
+                    vtt_guidance_status=vtt_guidance_status,
+                    vtt_guidance_version=vtt_guidance_version,
                 )
                 return self._answer_success_response(
                     start_response, payload, access, request_payload=request_payload
@@ -1837,6 +1843,7 @@ class RetrievalApi:
                         )
                     if profile_personalization_requested:
                         _personalize_answer_payload(payload, target_profile, target_revision)
+                    _append_vtt_guidance_section(payload, vtt_guidance_results)
                     route_trace.displayed_answer = "answer_with_sources"
                     self._log_route_trace(route_trace)
                     self._log_answer_attempt(
@@ -1847,6 +1854,9 @@ class RetrievalApi:
                         authorized=True,
                         source_count=len(frontier_sources),
                         warning_count=0,
+                        vtt_guidance_count=vtt_guidance_count,
+                        vtt_guidance_status=vtt_guidance_status,
+                        vtt_guidance_version=vtt_guidance_version,
                     )
                     return self._answer_success_response(
                         start_response,
@@ -1900,6 +1910,7 @@ class RetrievalApi:
                         )
                         if profile_personalization_requested:
                             _personalize_answer_payload(payload, target_profile, target_revision)
+                        _append_vtt_guidance_section(payload, vtt_guidance_results)
                         route_trace.displayed_answer = "deterministic_partial_with_honest_warning"
                         self._log_route_trace(route_trace)
                         return self._answer_success_response(
@@ -2075,6 +2086,7 @@ class RetrievalApi:
             )
             if profile_personalization_requested:
                 _personalize_answer_payload(payload, target_profile, target_revision)
+            _append_vtt_guidance_section(payload, vtt_guidance_results)
             route_trace.retrieval = (
                 "corpus_probe_reused"
                 if corpus_probe_response is not None
@@ -2097,8 +2109,9 @@ class RetrievalApi:
                 authorized=True,
                 source_count=len(sources),
                 warning_count=len(warnings),
-                curated_guidance_count=curated_guidance_count,
-                curated_guidance_status=curated_guidance_status,
+                vtt_guidance_count=vtt_guidance_count,
+                vtt_guidance_status=vtt_guidance_status,
+                vtt_guidance_version=vtt_guidance_version,
             )
             return self._answer_success_response(
                 start_response,
@@ -2272,26 +2285,27 @@ class RetrievalApi:
             )
         return SearchResponse(results=list(response or []), warnings=[])
 
-    def _curated_guidance_for_answer(
+    def _vtt_guidance_for_answer(
         self,
         question: str,
         *,
         role: str,
         answer_intent_decision: dict[str, Any],
         limit: int,
-    ) -> tuple[list[dict[str, object]], str]:
-        if not _curated_guidance_answer_flags_enabled():
-            return [], "disabled"
-        if not _curated_guidance_role_allowed(role):
-            return [], "role_blocked"
-        if not _curated_guidance_query_eligible(question, answer_intent_decision):
-            return [], "ineligible"
+    ) -> tuple[list[dict[str, object]], str, str]:
+        if not _vtt_guidance_answer_flags_enabled():
+            return [], "disabled", ""
+        if not _vtt_guidance_role_allowed(role):
+            return [], "role_blocked", ""
+        if not _vtt_guidance_query_eligible(question, answer_intent_decision):
+            return [], "ineligible", ""
         try:
-            results = self.curated_guidance_search(question, top_k=min(max(limit, 1), 5))
-        except Exception:
-            LOGGER.exception("curated guidance retrieval failed")
-            return [], "error"
-        return list(results), "retrieved" if results else "empty"
+            results = self.vtt_guidance_search(question, top_k=min(max(limit, 1), 3))
+        except (VttGuidanceError, OSError, ValueError):
+            return [], "error", ""
+        values = list(results)
+        version = str(values[0].get("corpus_version") or "") if values else ""
+        return values, "retrieved" if values else "empty", version
 
     def _authorize_content_request(self, environ: dict[str, Any]) -> Any:
         return authorize_answer_request(
@@ -2452,8 +2466,9 @@ class RetrievalApi:
         source_count: int | None = None,
         warning_count: int = 0,
         error_status: str = "",
-        curated_guidance_count: int | None = None,
-        curated_guidance_status: str | None = None,
+        vtt_guidance_count: int | None = None,
+        vtt_guidance_status: str | None = None,
+        vtt_guidance_version: str | None = None,
     ) -> None:
         question = str(request_payload.get("question") or "")
         mode = str(request_payload.get("mode") or "ask")
@@ -2470,9 +2485,10 @@ class RetrievalApi:
             "warningCount": warning_count,
             "errorStatus": error_status,
         }
-        if curated_guidance_status is not None:
-            event["curatedGuidanceStatus"] = curated_guidance_status
-            event["curatedGuidanceCount"] = int(curated_guidance_count or 0)
+        if vtt_guidance_status is not None:
+            event["vttGuidanceStatus"] = vtt_guidance_status
+            event["vttGuidanceCount"] = int(vtt_guidance_count or 0)
+            event["vttGuidanceVersion"] = str(vtt_guidance_version or "")
         self.answer_request_log.append(event)
         LOGGER.info("answer request event: %s", json.dumps(event, sort_keys=True))
 
@@ -2571,7 +2587,7 @@ def create_app(
     answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
     private_search_index: Any | None = None,
     retrieval_config: RetrievalModeConfig | None = None,
-    curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
+    vtt_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
     melody_exercise_enabled: bool | None = None,
     melody_import_enabled: bool | None = None,
     song_practice_enabled: bool | None = None,
@@ -2603,7 +2619,7 @@ def create_app(
         answer_rate_limiter=answer_rate_limiter,
         private_search_index=private_search_index,
         retrieval_config=retrieval_config,
-        curated_guidance_search=curated_guidance_search,
+        vtt_guidance_search=vtt_guidance_search,
         melody_exercise_enabled=melody_exercise_enabled,
         melody_import_enabled=melody_import_enabled,
         song_practice_enabled=song_practice_enabled,
