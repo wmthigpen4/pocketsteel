@@ -1824,6 +1824,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '"3-5-8"' in rules
     assert '"5-6-9"' in rules
     assert '"4-6-9"' in rules
+    assert '"5-6-7-9"' in rules
     assert '"3-6"' in rules
     assert '"8-10"' in rules
     assert "explorer-octave-register-20260627" not in html
@@ -2065,6 +2066,8 @@ assert.equal(rules.gripTierLabel("5-6-9"), "Extended grip");
 assert.equal(rules.gripTierLabel("5-6-7"), "Path grip");
 assert.equal(rules.gripTierLabel("3-5-9"), "Song/tab vocabulary grip");
 assert.equal(rules.gripTierLabel("5-7-8"), "E-lower pocket");
+assert.equal(rules.gripTierLabel("5-6-7-9"), "Core major-7 grip");
+assert.match(rules.gripMetadata("5-6-7-9").explanation, /strings 9-7-6-5 spell root, 3rd, 5th, and major 7th/);
 assert.equal(rules.gripMetadata("5-7-8").tier, "e_lower_pocket");
 assert.match(rules.gripMetadata("5-7-8").explanation, /E-lower pocket grip/);
 assert.match(rules.gripMetadata("3-5-9").watchOut, /9th-string color is context-dependent/);

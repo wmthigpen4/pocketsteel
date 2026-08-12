@@ -1,7 +1,7 @@
 (function (root) {
   "use strict";
 
-  const CORE_GROUPS = new Set(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]);
+  const CORE_GROUPS = new Set(["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-6-7-9"]);
   const PATH_GROUPS = new Set(["5-6-7", "6-7-10"]);
   const E_LOWER_POCKET_GROUPS = new Set(["5-7-8"]);
   const ADVANCED_GROUPS = new Set([...PATH_GROUPS, ...E_LOWER_POCKET_GROUPS]);
@@ -48,6 +48,7 @@
     { strings: "4-5-6", tier: "core", label: "Core grip", roles: ["harmonized_scale_path", "melody_harmony", "chord_voicing", "chord_shell"], note: "common middle triad", explanation: "A core adjacent grip for middle-register triads and beginner chord work." },
     { strings: "5-6-8", tier: "core", label: "Core grip", roles: ["chord_voicing", "chord_shell", "bass_root_support", "pad_sustain"], note: "common straight-bar support grip", explanation: "A core support grip that keeps the chord compact on the lower-middle strings." },
     { strings: "6-8-10", tier: "core", label: "Core grip", roles: ["chord_voicing", "chord_shell", "bass_root_support", "pad_sustain"], note: "common lower support grip", explanation: "A core lower support grip for straight-bar triads and pocket reference." },
+    { strings: "5-6-7-9", tier: "core", label: "Core major-7 grip", roles: ["chord_voicing", "bass_root_support"], note: "complete A+B major-7 grip; pick low to high 9-7-6-5", explanation: "With A+B down, strings 9-7-6-5 spell root, 3rd, 5th, and major 7th. The shape transposes chromatically with the bar." },
     { strings: "5-6-7", tier: "path", label: "Path grip", roles: ["harmonized_scale_path", "minor_color", "passing_color", "alternate_position"], note: "A+B minor path route", explanation: "A path grip often used with pedals to get minor or harmonized-scale movement without leaving the pocket." },
     { strings: "6-7-10", tier: "path", label: "Path grip", roles: ["harmonized_scale_path", "minor_color", "bass_root_support", "alternate_position"], note: "lower A+B path route", explanation: "A lower path grip often used with pedals to keep harmonized movement connected in the low strings." },
     { strings: "4-6-10", tier: "extended", label: "Extended grip", roles: ["wide_voicing", "chord_voicing", "bass_root_support", "alternate_position"], note: "wide grip / tab vocabulary", explanation: "A wide grip that spreads the chord out. Useful when a tight adjacent grip sounds too crowded or when you want a lower support note under the top voice." },

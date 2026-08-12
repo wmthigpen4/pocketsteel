@@ -405,9 +405,10 @@ assert.doesNotMatch(elements["explorer-copedent"].innerHTML, /My Copedent/);
 assert.equal(elements["explorer-copedent"].value, "emmons-e9-basic");
 assert.match(elements["explorer-string-group"].innerHTML, /All core grips/);
 assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
-assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /5-6-7/);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /value="5-6-7"/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /6-7-10/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /5-7-8/);
+assert.match(elements["explorer-string-group"].innerHTML, /value="5-6-7-9"/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
 assert.equal(elements["explorer-explore-mode"].value, "single");
 assert.equal(elements["explorer-string-group-control"].hidden, false);
@@ -640,6 +641,18 @@ assert.match(v7Target.message, /resolves to D7/);
 const iMaj7Target = explorerApi.parseChordFinderQuery("Imaj7 in F");
 assert.equal(iMaj7Target.label, "Fmaj7");
 assert.equal(iMaj7Target.quality.id, "major7");
+const aMaj7Complete = explorerApi.chordFinderCandidates(explorerApi.parseChordFinderQuery("Amaj7"), { ignoreRange: true })
+  .find((row) => row.string_group === "5-6-7-9" && row.fret === 7 && JSON.stringify(row.pedals) === JSON.stringify(["A", "B"]));
+assert.equal(Boolean(aMaj7Complete), true);
+assert.equal(aMaj7Complete.chord_name, "Amaj7");
+assert.equal(JSON.stringify(aMaj7Complete.notes), JSON.stringify(["G#", "E", "C#", "A"]));
+assert.equal(JSON.stringify(aMaj7Complete.chord_finder.omittedIntervals), JSON.stringify([]));
+for (const [root, fret] of [["D", 0], ["Eb", 1], ["E", 2], ["F", 3], ["F#", 4], ["G", 5], ["Ab", 6], ["A", 7], ["Bb", 8], ["B", 9], ["C", 10], ["C#", 11]]) {
+  const completeMajor7 = explorerApi.chordFinderCandidates(explorerApi.parseChordFinderQuery(`${root}maj7`), { ignoreRange: true })
+    .find((row) => row.string_group === "5-6-7-9" && row.fret === fret && JSON.stringify(row.pedals) === JSON.stringify(["A", "B"]));
+  assert.equal(Boolean(completeMajor7), true, `${root}maj7 should use 5-6-7-9 with A+B at fret ${fret}`);
+  assert.equal(JSON.stringify(completeMajor7.chord_finder.omittedIntervals), JSON.stringify([]));
+}
 
 elements["explorer-explore-mode"].value = "chord";
 elements["explorer-explore-mode"].dispatchChange();
@@ -659,7 +672,9 @@ assert.match(elements["explorer-active-results"].textContent, /Cards and SVG mar
 assert.match(elements["explorer-active-results"].textContent, /Present/);
 assert.match(elements["explorer-active-results"].textContent, /Omitted/);
 assert.match(elements["explorer-selected-detail"].textContent, /Present chord tones/);
-assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones/);
+assert.match(elements["explorer-selected-detail"].textContent, /Complete voicing for Fmaj7/);
+assert.match(elements["explorer-selected-detail"].textContent, /String group5-6-7-9/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Omitted tones/);
 assert.match(elements["explorer-selected-detail"].textContent, /Confidence/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /omitted 0/);
 assert.equal(lastMount.options.positions.length > 1, true);
