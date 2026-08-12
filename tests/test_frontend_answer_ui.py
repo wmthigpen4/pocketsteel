@@ -1295,7 +1295,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' not in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-music-rules.js?v=voicing-readability-20260704"></script>' in html
+    assert '<script src="e9-music-rules.js?v=complete-major7-grip-20260812"></script>' in html
     assert '<script src="e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2"></script>' in html
     assert "e9-fretboard-explorer.js?v=amazing-tablature-product-v1-20260724-2" in loader
     assert 'typeof STEEL_RAG_ANSWER_UI !== "undefined"' in loader
@@ -1303,7 +1303,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "window.STEEL_RAG_ANSWER_UI?.requestSession" not in loader
     assert "e9-fretboard-explorer-data.js" not in loader
     assert 'dataset.explorerDataMode = "unavailable"' in loader
-    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2")
+    assert html.index("e9-music-rules.js?v=complete-major7-grip-20260812") < html.index("e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2")
     assert "e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704" not in html
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
@@ -1433,7 +1433,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-explorer-task-card" in script
     assert "function applyTaskCard(taskId)" in script
     assert "study-movement-path" in script
-    assert "voicing-readability-20260704" in html
+    assert "complete-major7-grip-20260812" in html
     assert "explorer-mode-home-dedupe-20260704" not in html
     assert "explorer-handoff-20260701" not in html
     assert ".explorer-mode-panel {" in html
