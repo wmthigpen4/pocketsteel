@@ -1295,15 +1295,16 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' not in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-music-rules.js?v=complete-major7-grip-20260812"></script>' in html
-    assert '<script src="e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2"></script>' in html
-    assert "e9-fretboard-explorer.js?v=amazing-tablature-product-v1-20260724-2" in loader
+    assert '<script src="e9-music-rules.js?v=voicing-policy-20260812"></script>' in html
+    assert '<script src="e9-fretboard-explorer-config.js?v=voicing-policy-20260812"></script>' in html
+    assert '<script src="e9-fretboard-explorer-loader.js?v=voicing-policy-20260812"></script>' in html
+    assert "e9-fretboard-explorer.js?v=voicing-policy-20260812" in loader
     assert 'typeof STEEL_RAG_ANSWER_UI !== "undefined"' in loader
     assert "const session = await answerUi?.requestSession?.({ accessRole });" in loader
     assert "window.STEEL_RAG_ANSWER_UI?.requestSession" not in loader
     assert "e9-fretboard-explorer-data.js" not in loader
     assert 'dataset.explorerDataMode = "unavailable"' in loader
-    assert html.index("e9-music-rules.js?v=complete-major7-grip-20260812") < html.index("e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2")
+    assert html.index("e9-music-rules.js?v=voicing-policy-20260812") < html.index("e9-fretboard-explorer-loader.js?v=voicing-policy-20260812")
     assert "e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704" not in html
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
@@ -1433,7 +1434,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-explorer-task-card" in script
     assert "function applyTaskCard(taskId)" in script
     assert "study-movement-path" in script
-    assert "complete-major7-grip-20260812" in html
+    assert "voicing-policy-20260812" in html
     assert "explorer-mode-home-dedupe-20260704" not in html
     assert "explorer-handoff-20260701" not in html
     assert ".explorer-mode-panel {" in html
@@ -1594,6 +1595,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "<dt>Two-string grip / dyad</dt><dd>A two-note grip." in html
     assert "<dt>Pad / sustain</dt><dd>A held support sound" in html
     assert "<dt>Partial voicing</dt><dd>A useful part of a chord" in html
+    assert "<dt>Complete voicing</dt><dd>Contains every distinct chord tone" in html
+    assert "<dt>Practical voicing</dt><dd>Keeps the tones that define the chord" in html
+    assert "<dt>Rootless ensemble voicing</dt><dd>Keeps the defining color tones" in html
+    assert "<dt>Ambiguous fragment</dt><dd>Leaves out a defining tone" in html
+    assert "<dt>9th chord vs. add9</dt><dd>A true 9th chord includes a seventh and a ninth" in html
+    assert "<dt>Unique chord roles</dt><dd>The distinct functions present" in html
     assert 'id="explorer-tooltip"' in html
     assert 'id="explorer-active-results"' in html
     assert 'id="explorer-copedent-chart"' in html
@@ -1680,7 +1687,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Open in Amazing Tablature" in script
     assert '["voice", options.voice || "mixed"]' in script
     assert '["movement", options.movement || (melody.length > 1 ? "slides" : "best_fit")]' in script
-    assert 'e9-fretboard-explorer-loader.js?v=amazing-tablature-product-v1-20260724-2' in html
+    assert 'e9-fretboard-explorer-loader.js?v=voicing-policy-20260812' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
@@ -2052,13 +2059,42 @@ assert.equal(fMaj7.ok, true);
 assert.equal(fMaj7.label, "Fmaj7");
 assert.equal(fMaj7.quality.id, "major7");
 
+const completeMaj7Assessment = rules.chordFinderVoicingAssessment(fMaj7, [0, 4, 7, 11], [], { stringCount: 5, uniqueToneCount: 4 });
+assert.equal(completeMaj7Assessment.classificationId, "complete");
+assert.equal(completeMaj7Assessment.doubledToneCount, 1);
+assert.match(completeMaj7Assessment.playAllGuidance, /5 strings carry 4 unique chord roles/);
+const practicalMaj7Assessment = rules.chordFinderVoicingAssessment(fMaj7, [0, 4, 11], [7]);
+assert.equal(practicalMaj7Assessment.classificationId, "practical");
+assert.match(practicalMaj7Assessment.omissionSummary, /Dropped 5th/);
+const rootlessMaj7Shell = rules.chordFinderVoicingAssessment(fMaj7, [4, 11], [0, 7]);
+assert.equal(rootlessMaj7Shell.classificationId, "rootless");
+assert.match(rootlessMaj7Shell.omissionSummary, /bass or clear harmonic context must supply the root/);
+const ambiguousMaj7Triad = rules.chordFinderVoicingAssessment(fMaj7, [4, 7, 11], [0]);
+assert.equal(ambiguousMaj7Triad.classificationId, "ambiguous");
+assert.match(ambiguousMaj7Triad.omissionSummary, /simpler complete triad/);
+
+const g9Target = rules.parseChordFinderQuery("G9");
+assert.equal(g9Target.quality.id, "dominant9");
+assert.equal(rules.chordFinderQualityGate(g9Target, [0, 2, 4, 7]), false);
+assert.equal(rules.chordFinderVoicingAssessment(g9Target, [0, 2, 4, 10], [7]).classificationId, "practical");
+assert.equal(rules.chordFinderVoicingAssessment(g9Target, [2, 4, 10], [0, 7]).classificationId, "rootless");
+const gAdd9Target = rules.parseChordFinderQuery("Gadd9");
+assert.equal(gAdd9Target.quality.id, "add9");
+assert.equal(rules.chordFinderQualityGate(gAdd9Target, [0, 2, 4, 7]), true);
+const cDim7Target = rules.parseChordFinderQuery("Cdim7");
+assert.equal(cDim7Target.quality.id, "diminished7");
+assert.equal(rules.chordFinderVoicingAssessment(cDim7Target, [0, 3, 6, 9], []).classificationId, "complete");
+assert.equal(rules.chordFinderVoicingAssessment(cDim7Target, [3, 6, 9], [0]).classificationId, "ambiguous");
+assert.equal(rules.parseChordFinderQuery("C6").quality.id, "major6");
+assert.equal(rules.parseChordFinderQuery("Cm6").quality.id, "minor6");
+
 const cMin9 = rules.parseChordFinderQuery("Cmin9");
 assert.equal(cMin9.ok, true);
 assert.equal(cMin9.label, "Cm9");
 assert.equal(cMin9.quality.id, "minor9");
 assert.equal(rules.chordFinderQualityGate(cMin9, [0, 3, 7]), false);
 assert.equal(rules.chordFinderQualityGate(cMin9, [2, 3, 10]), true);
-assert.equal(rules.chordFinderConfidence(cMin9, [2, 3, 10], [0, 7]), "medium, rootless");
+assert.equal(rules.chordFinderConfidence(cMin9, [2, 3, 10], [0, 7]), "medium-high, context required");
 
 assert.equal(rules.chordConfidence(rules.chordQualityById("major7"), false, [4], [0, 7, 11]), "medium");
 assert.equal(rules.chordConfidence(rules.chordQualityById("major7"), false, [7], [0, 4, 11]), "medium-high");

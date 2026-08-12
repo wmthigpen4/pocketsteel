@@ -1593,6 +1593,10 @@
     return musicRules.chordFinderConfidence(target, presentIntervals, omittedIntervals);
   }
 
+  function chordFinderVoicingAssessment(target, presentIntervals, omittedIntervals, options = {}) {
+    return musicRules.chordFinderVoicingAssessment(target, presentIntervals, omittedIntervals, options);
+  }
+
   function chordFinderCandidateScore(row, target, presentIntervals, omittedIntervals) {
     const tierPenalty = gripTierSortValue(row.string_group) * 6;
     const controlPenalty = normalizePedals(row).length * 3;
@@ -1612,8 +1616,13 @@
       return total + 5;
     }, 0);
     const definitionBonus = presentIntervals.filter((interval) => target.quality.required.includes(interval)).length * 14;
-    const completeBonus = omittedIntervals.length ? 0 : 48;
-    return 100 + completeBonus + definitionBonus - missingPenalty - tierPenalty - controlPenalty - Math.abs(Number(row.fret) - 8) * 0.3;
+    const classificationBonus = {
+      complete: 48,
+      practical: 34,
+      rootless: 16,
+      ambiguous: -12,
+    }[row?.chord_finder?.voicingClass || "ambiguous"];
+    return 100 + classificationBonus + definitionBonus - missingPenalty - tierPenalty - controlPenalty - Math.abs(Number(row.fret) - 8) * 0.3;
   }
 
   function chordFinderCandidateSort(a, b) {
@@ -1679,6 +1688,10 @@
       };
     });
     const strings = group.split("-").map(Number).filter(Number.isFinite);
+    const assessment = chordFinderVoicingAssessment(target, presentIntervals, omittedIntervals, {
+      stringCount: strings.length,
+      uniqueToneCount: presentIntervals.length,
+    });
     const topCell = entries.find(({ cell }) => Number(cell.stringNumber) === strings[0])?.cell || entries[0]?.cell;
     const notesWithRegister = registerEntriesForCells(entries.map(({ cell }) => cell));
     const topRegister = notesWithRegister.find((entry) => Number(entry.string) === Number(topCell?.stringNumber));
@@ -1709,8 +1722,10 @@
       note_registers: noteRegistersByStringFromCells(entries.map(({ cell }) => cell)),
       notes_with_register: notesWithRegister,
       display_summary: `${omittedIntervals.length ? "Partial " : ""}${target.label} on strings ${group}`,
-      explanation_summary: `${omittedIntervals.length ? "Partial voicing" : "Complete voicing"} for ${target.label}: present ${presentIntervals.map(intervalRoleLabel).join(", ")}${omittedIntervals.length ? `; omitted ${omittedIntervals.map(intervalRoleLabel).join(", ")}` : ""}.`,
-      warnings: omittedIntervals.length ? [`Partial ${target.label}: omitted ${omittedIntervals.map(intervalRoleLabel).join(", ")}.`] : [],
+      explanation_summary: `${assessment.classificationLabel} for ${target.label}: present ${presentIntervals.map(intervalRoleLabel).join(", ")}. ${assessment.omissionSummary}`,
+      warnings: assessment.classificationId === "complete" || assessment.classificationId === "practical"
+        ? []
+        : [assessment.omissionSummary],
       per_string_changes: perStringChangesFromCells(cells, { useFromTo: true }),
       string_action_labels: stringActionLabelsFromCells(cells),
       chord_finder: {
@@ -1719,7 +1734,16 @@
         omittedIntervals,
         presentTones: presentIntervals.map((interval) => `${intervalRoleLabel(interval)} (${displayNoteForPitchClassInKey(target.rootPitchClass + interval, target.contextKey)})`),
         omittedTones: omittedIntervals.map((interval) => `${intervalRoleLabel(interval)} (${displayNoteForPitchClassInKey(target.rootPitchClass + interval, target.contextKey)})`),
-        confidence: chordFinderConfidence(target, presentIntervals, omittedIntervals),
+        confidence: assessment.confidence,
+        voicingClass: assessment.classificationId,
+        voicingClassLabel: assessment.classificationLabel,
+        omissionSummary: assessment.omissionSummary,
+        playAllGuidance: assessment.playAllGuidance,
+        definingTones: assessment.definingIntervals.map((interval) => `${intervalRoleLabel(interval)} (${displayNoteForPitchClassInKey(target.rootPitchClass + interval, target.contextKey)})`),
+        safeOmissions: assessment.safeOmissions.map(intervalRoleLabel),
+        stringCount: assessment.stringCount,
+        uniqueToneCount: assessment.uniqueToneCount,
+        doubledToneCount: assessment.doubledToneCount,
         gripTier: gripTierLabel(group),
         whyGrip: gripMetadata(group)?.explanation || "",
         gripWatchOut: gripMetadata(group)?.watchOut || "",
@@ -1732,7 +1756,7 @@
   function chordFinderGroups() {
     const groups = new Set(gripVocabularyGroups(selectedGripVocabulary));
     return Array.from(groups)
-      .filter((group) => group.split("-").filter(Boolean).length <= 4);
+      .filter((group) => group.split("-").filter(Boolean).length <= 5);
   }
 
   function chordFinderCandidates(target = parseChordFinderQuery(), options = {}) {
@@ -1781,14 +1805,7 @@
   }
 
   function chordFinderCompleteness(row) {
-    const omitted = toArray(row?.chord_finder?.omittedIntervals);
-    if (!omitted.length) {
-      return "complete";
-    }
-    if (omitted.map(Number).includes(0)) {
-      return "rootless";
-    }
-    return "partial";
+    return row?.chord_finder?.voicingClass || "ambiguous";
   }
 
   function chordFinderControlFilter(row) {
@@ -1819,8 +1836,9 @@
       { id: "mid", label: "Mid frets" },
       { id: "high", label: "High frets" },
       { id: "complete", label: "Complete" },
-      { id: "partial", label: "Partial" },
-      { id: "rootless", label: "Rootless" },
+      { id: "practical", label: "Practical" },
+      { id: "rootless", label: "Rootless ensemble" },
+      { id: "ambiguous", label: "Ambiguous" },
       { id: "core", label: "Core" },
       { id: "path", label: "Path" },
       { id: "extended", label: "Extended" },
@@ -1846,7 +1864,7 @@
     if (["low", "mid", "high"].includes(filterId)) {
       return chordFinderFretBucket(row) === filterId;
     }
-    if (["complete", "partial", "rootless"].includes(filterId)) {
+    if (["complete", "practical", "rootless", "ambiguous"].includes(filterId)) {
       return chordFinderCompleteness(row) === filterId;
     }
     if (["core", "path", "extended", "song_tab_vocabulary", "e_lower_pocket", "two_string"].includes(filterId)) {
@@ -4494,10 +4512,16 @@
       return `<p class="explorer-voicing-identifier__warning">${escapeHtml(target?.message || "Choose a root and quality to search practical E9 voicings.")}</p>`;
     }
     const filterExplanation = chordFinderFilterExplanation(target);
+    const ninthExplanation = ["dominant9", "major9", "minor9"].includes(target.quality?.id)
+      ? "A true 9th voicing keeps the 7th and 9th; the 5th is the first safe omission. Without the 7th, the sound is add9 rather than a 9th chord."
+      : target.quality?.id === "add9"
+        ? "Add9 deliberately contains no 7th. The 9th is defining, and the 5th is the first safe omission."
+        : "";
     return `
       <section class="explorer-voicing-summary explorer-chord-finder__summary" aria-label="Chord finder target">
         <strong>${escapeHtml(`Target: ${target.label} (${chordFinderQualityDisplayLabel(target.quality)})`)}</strong>
         <p>${escapeHtml(`${target.message ? `${target.message} ` : ""}Chord tones: ${target.toneLabels.map((tone) => `${tone.role} ${tone.note}`).join(", ")}.`)}</p>
+        ${ninthExplanation ? `<p>${escapeHtml(ninthExplanation)}</p>` : ""}
         ${filterExplanation ? `<p>${escapeHtml(filterExplanation)}</p>` : ""}
       </section>
     `;
@@ -4605,9 +4629,11 @@
           <span><b>Pedals/levers</b>${escapeHtml(controls.length ? `With ${controls.join("+")}` : "Open")}</span>
           <span><b>Grip</b>${escapeHtml(formatValue(finder.gripTier))}</span>
           ${finder.whyGrip ? `<span><b>Why</b>${escapeHtml(finder.whyGrip)}</span>` : ""}
+          <span><b>Voicing</b>${escapeHtml(formatValue(finder.voicingClassLabel))}</span>
           <span><b>Confidence</b>${escapeHtml(formatValue(finder.confidence))}</span>
           <span><b>Present</b>${escapeHtml(present)}</span>
           <span><b>Omitted</b>${escapeHtml(omitted)}</span>
+          <span><b>What gets dropped</b>${escapeHtml(formatValue(finder.omissionSummary))}</span>
         </span>
       </button>
     `;
@@ -4714,8 +4740,14 @@
         ${detailRow("Watch out", finder.gripWatchOut)}
         ${detailRow("Pedals / levers", normalizePedals(row))}
         ${detailRow("Notes", rowNoteLabels(row))}
+        ${detailRow("Voicing classification", finder.voicingClassLabel)}
         ${detailRow("Present chord tones", finder.presentTones)}
         ${detailRow("Omitted tones", finder.omittedTones)}
+        ${detailRow("Defining tones", finder.definingTones)}
+        ${detailRow("Safe omissions", finder.safeOmissions)}
+        ${detailRow("What gets dropped", finder.omissionSummary)}
+        ${detailRow("When to play all strings", finder.playAllGuidance)}
+        ${detailRow("Strings / unique chord roles", `${finder.stringCount || row.strings?.length || 0} strings / ${finder.uniqueToneCount || 0} unique roles`)}
         ${detailRow("Confidence", finder.confidence)}
         ${detailRow("Notation mode", notationModeLabel())}
         ${detailRow("Warnings", row.warnings)}

@@ -2,7 +2,7 @@
   "use strict";
 
   const MANIFEST_URL = "/ui/explorer-data-v1/manifest.json";
-  const EXPLORER_SCRIPT_URL = "e9-fretboard-explorer.js?v=amazing-tablature-product-v1-20260724-2";
+  const EXPLORER_SCRIPT_URL = "e9-fretboard-explorer.js?v=voicing-policy-20260812";
   const answerUi = typeof STEEL_RAG_ANSWER_UI !== "undefined" ? STEEL_RAG_ANSWER_UI : window.STEEL_RAG_ANSWER_UI;
   const payloadsByKey = window.STEEL_RAG_E9_EXPLORER_PAYLOADS || {};
   const payloadsByCopedent = window.STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT || {};

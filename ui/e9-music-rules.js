@@ -59,6 +59,9 @@
     { strings: "3-5-6", tier: "extended", label: "Extended grip", roles: ["spread_voicing", "melody_harmony", "passing_color"], note: "tab vocabulary", explanation: "A non-core spread grip for passing color or alternate melody-harmony spacing." },
     { strings: "4-5-8", tier: "extended", label: "Extended grip", roles: ["spread_voicing", "chord_voicing", "pad_sustain", "alternate_position"], note: "tab vocabulary", explanation: "An alternate spread grip that can keep a held lower note under a tighter upper pair." },
     { strings: "5-8-10", tier: "extended", label: "Extended grip", roles: ["wide_voicing", "chord_voicing", "bass_root_support", "pad_sustain"], note: "wide support grip; possible pad / sustain", explanation: "A wide lower support grip that can work as a pad or sustain shape when the notes fit the chord." },
+    { strings: "4-5-7", tier: "extended", label: "Extended 9th shell", roles: ["chord_voicing", "wide_voicing", "alternate_position"], note: "three-note 9th shell", explanation: "A compact 3rd-7th-9th shell in the matching pedal position. Use it when bass or context supplies the root." },
+    { strings: "4-5-7-9", tier: "extended", label: "Extended four-note 9th grip", roles: ["chord_voicing", "bass_root_support", "wide_voicing"], note: "four-note 9th grip with the 5th omitted", explanation: "A practical four-note 9th voicing. In the matching pedal position it keeps root, 3rd, 7th, and 9th while omitting the 5th." },
+    { strings: "4-5-6-7-9", tier: "extended", label: "Extended five-note 9th grip", roles: ["chord_voicing", "bass_root_support", "wide_voicing"], note: "complete five-note 9th grip; roll low to high", explanation: "A full five-tone 9th voicing when the pitch validator confirms every role. Roll or rake it low to high when the steel needs to establish the complete harmony." },
     { strings: "3-5", tier: "two_string", label: "Two-string grip", roles: ["melody_harmony"], note: "dyad / melody harmony" },
     { strings: "3-6", tier: "two_string", label: "Two-string grip", roles: ["melody_harmony", "passing_color"], note: "dyad / passing color" },
     { strings: "4-6", tier: "two_string", label: "Two-string grip", roles: ["melody_harmony", "passing_color"], note: "dyad / melody harmony" },
@@ -91,14 +94,35 @@
     { id: "dominant9", label: "dominant 9", suffix: "9", intervals: [0, 2, 4, 7, 10], required: [2, 4, 10] },
     { id: "major9", label: "major 9", suffix: "maj9", intervals: [0, 2, 4, 7, 11], required: [2, 4, 11] },
     { id: "minor9", label: "minor 9", suffix: "m9", intervals: [0, 2, 3, 7, 10], required: [2, 3, 10] },
+    { id: "add9", label: "add 9", suffix: "add9", intervals: [0, 2, 4, 7], required: [0, 2, 4] },
     { id: "minor7flat5", label: "minor 7 flat 5", suffix: "m7b5", intervals: [0, 3, 6, 10], required: [0, 3, 6, 10] },
     { id: "diminished", label: "diminished", suffix: "dim", intervals: [0, 3, 6], required: [0, 3, 6] },
+    { id: "diminished7", label: "diminished 7", suffix: "dim7", intervals: [0, 3, 6, 9], required: [0, 3, 6, 9] },
     { id: "major6", label: "major 6", suffix: "6", intervals: [0, 4, 7, 9], required: [0, 4, 9] },
     { id: "minor6", label: "minor 6", suffix: "m6", intervals: [0, 3, 7, 9], required: [0, 3, 9] },
     { id: "sus2", label: "sus2", suffix: "sus2", intervals: [0, 2, 7], required: [0, 2, 7] },
     { id: "sus4", label: "sus4", suffix: "sus4", intervals: [0, 5, 7], required: [0, 5, 7] },
     { id: "fifth", label: "5/no third", suffix: "5", intervals: [0, 7], required: [0, 7] },
   ];
+  const CHORD_VOICING_POLICIES = {
+    major: { defining: [0, 4, 7], safeOmissions: [], rootlessAllowed: false },
+    minor: { defining: [0, 3, 7], safeOmissions: [], rootlessAllowed: false },
+    dominant7: { defining: [4, 10], safeOmissions: [7], rootlessAllowed: true, nestedTriadWhenOnlyRootMissing: true },
+    major7: { defining: [4, 11], safeOmissions: [7], rootlessAllowed: true, nestedTriadWhenOnlyRootMissing: true },
+    minor7: { defining: [3, 10], safeOmissions: [7], rootlessAllowed: true, nestedTriadWhenOnlyRootMissing: true },
+    dominant9: { defining: [2, 4, 10], safeOmissions: [7], rootlessAllowed: true },
+    major9: { defining: [2, 4, 11], safeOmissions: [7], rootlessAllowed: true },
+    minor9: { defining: [2, 3, 10], safeOmissions: [7], rootlessAllowed: true },
+    add9: { defining: [0, 2, 4], safeOmissions: [7], rootlessAllowed: false },
+    minor7flat5: { defining: [3, 6, 10], safeOmissions: [], rootlessAllowed: true, nestedTriadWhenOnlyRootMissing: true },
+    diminished: { defining: [0, 3, 6], safeOmissions: [], rootlessAllowed: false },
+    diminished7: { defining: [0, 3, 6, 9], safeOmissions: [], rootlessAllowed: false },
+    major6: { defining: [0, 4, 9], safeOmissions: [7], rootlessAllowed: false },
+    minor6: { defining: [0, 3, 9], safeOmissions: [7], rootlessAllowed: false },
+    sus2: { defining: [0, 2, 7], safeOmissions: [], rootlessAllowed: false },
+    sus4: { defining: [0, 5, 7], safeOmissions: [], rootlessAllowed: false },
+    fifth: { defining: [0, 7], safeOmissions: [], rootlessAllowed: false },
+  };
   const CHROMATIC_SHARP_NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const CHROMATIC_FLAT_NOTES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
   const MAJOR_SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11];
@@ -523,7 +547,7 @@
   }
 
   function isExtendedChordQuality(quality) {
-    return ["dominant7", "major7", "minor7", "dominant9", "major9", "minor9", "minor7flat5", "major6", "minor6"].includes(quality?.id);
+    return ["dominant7", "major7", "minor7", "dominant9", "major9", "minor9", "add9", "minor7flat5", "diminished7", "major6", "minor6"].includes(quality?.id);
   }
 
   function extendedQualityGate(quality, intervals) {
@@ -537,7 +561,9 @@
       dominant9: [10, 2],
       major9: [11, 2],
       minor9: [10, 2],
+      add9: [2],
       minor7flat5: [10],
+      diminished7: [9],
       major6: [9],
       minor6: [9],
     }[quality.id] || [];
@@ -576,7 +602,9 @@
       dominant9: 15,
       major9: 15,
       minor9: 15,
+      add9: 12,
       minor7flat5: 13,
+      diminished7: 13,
       major6: 10,
       minor6: 10,
       sus2: 8,
@@ -902,8 +930,14 @@
     if (target.quality.id === "minor9") {
       return hasNinth && hasFlatSeven && (hasRoot || hasMinorThird);
     }
+    if (target.quality.id === "add9") {
+      return hasRoot && hasNinth && hasMajorThird && !hasFlatSeven && !hasMajorSeven;
+    }
     if (target.quality.id === "minor7flat5") {
       return hasFlatSeven && hasMinorThird && presentIntervals.includes(6);
+    }
+    if (target.quality.id === "diminished7") {
+      return hasMinorThird && presentIntervals.includes(6) && presentIntervals.includes(9);
     }
     if (target.quality.id === "diminished") {
       return hasMinorThird && presentIntervals.includes(6);
@@ -914,23 +948,102 @@
     if (target.quality.id === "major") {
       return hasRoot && hasMajorThird;
     }
+    if (target.quality.id === "major6") {
+      return hasRoot && hasMajorThird && presentIntervals.includes(9);
+    }
+    if (target.quality.id === "minor6") {
+      return hasRoot && hasMinorThird && presentIntervals.includes(9);
+    }
     return presentIntervals.length >= 2;
   }
 
+  function chordVoicingPolicy(qualityOrTarget) {
+    const quality = qualityOrTarget?.quality || qualityOrTarget;
+    return CHORD_VOICING_POLICIES[quality?.id] || {
+      defining: Array.isArray(quality?.required) ? quality.required.map(Number) : [],
+      safeOmissions: [],
+      rootlessAllowed: false,
+    };
+  }
+
+  function chordFinderVoicingAssessment(target, presentIntervals, omittedIntervals, options = {}) {
+    const quality = target?.quality || target || chordQualityById("major");
+    const policy = chordVoicingPolicy(quality);
+    const present = Array.from(new Set((Array.isArray(presentIntervals) ? presentIntervals : []).map(Number))).sort((a, b) => a - b);
+    const omitted = Array.from(new Set((Array.isArray(omittedIntervals) ? omittedIntervals : []).map(Number))).sort((a, b) => a - b);
+    const missingRoot = omitted.includes(0);
+    const missingDefining = policy.defining.filter((interval) => !present.includes(interval));
+    const nonRootOmissions = omitted.filter((interval) => interval !== 0);
+    const onlySafeNonRootOmissions = nonRootOmissions.every((interval) => policy.safeOmissions.includes(interval));
+    const definingPresent = missingDefining.length === 0;
+    const nestedTriadAmbiguity = Boolean(policy.nestedTriadWhenOnlyRootMissing && omitted.length === 1 && missingRoot);
+    let classificationId = "ambiguous";
+    if (!omitted.length) {
+      classificationId = "complete";
+    } else if (!missingRoot && definingPresent && onlySafeNonRootOmissions) {
+      classificationId = "practical";
+    } else if (missingRoot && policy.rootlessAllowed && definingPresent && onlySafeNonRootOmissions && !nestedTriadAmbiguity) {
+      classificationId = "rootless";
+    }
+    const classificationLabels = {
+      complete: "Complete voicing",
+      practical: "Practical voicing",
+      rootless: "Rootless ensemble voicing",
+      ambiguous: "Ambiguous fragment",
+    };
+    const omittedRoles = omitted.map(intervalRoleLabel);
+    const safeOmittedRoles = omitted.filter((interval) => policy.safeOmissions.includes(interval)).map(intervalRoleLabel);
+    const unsafeOmittedRoles = omitted.filter((interval) => interval !== 0 && !policy.safeOmissions.includes(interval)).map(intervalRoleLabel);
+    let omissionSummary = "No chord tones dropped.";
+    if (classificationId === "practical") {
+      omissionSummary = `Dropped ${safeOmittedRoles.join(", ")}; ${safeOmittedRoles.length === 1 ? "this is" : "these are"} a sanctioned omission for ${quality.label}.`;
+    } else if (classificationId === "rootless") {
+      omissionSummary = `Dropped the root${safeOmittedRoles.length ? ` and ${safeOmittedRoles.join(", ")}` : ""}; bass or clear harmonic context must supply the root.`;
+    } else if (classificationId === "ambiguous") {
+      const reason = nestedTriadAmbiguity
+        ? "the remaining notes also form a simpler complete triad"
+        : missingDefining.length
+          ? `defining ${missingDefining.map(intervalRoleLabel).join(", ")} ${missingDefining.length === 1 ? "is" : "are"} missing`
+          : unsafeOmittedRoles.length
+            ? `${unsafeOmittedRoles.join(", ")} ${unsafeOmittedRoles.length === 1 ? "is" : "are"} not a sanctioned omission`
+            : "the chord identity depends on context";
+      omissionSummary = `${omittedRoles.length ? `Dropped ${omittedRoles.join(", ")}; ` : ""}${reason}.`;
+    }
+    const stringCount = Number(options.stringCount) || Number(options.noteCount) || present.length;
+    const uniqueToneCount = Number(options.uniqueToneCount) || present.length;
+    const doubledToneCount = Math.max(0, stringCount - uniqueToneCount);
+    const playAllGuidance = doubledToneCount
+      ? `${stringCount} strings carry ${uniqueToneCount} unique chord roles; ${doubledToneCount} string${doubledToneCount === 1 ? " doubles" : "s double"} an existing tone.`
+      : stringCount >= quality.intervals.length
+        ? `All ${uniqueToneCount} unique chord roles are present; play or roll the full grip when the steel must establish the harmony.`
+        : classificationId === "rootless"
+          ? "Use this compact shell when bass or another instrument establishes the root."
+          : "Use the compact grip when voice-leading and register are more important than maximum density.";
+    const confidence = {
+      complete: "high",
+      practical: "high, sanctioned omission",
+      rootless: "medium-high, context required",
+      ambiguous: "low, context required",
+    }[classificationId];
+    return {
+      classificationId,
+      classificationLabel: classificationLabels[classificationId],
+      confidence,
+      definingIntervals: [...policy.defining],
+      safeOmissions: [...policy.safeOmissions],
+      missingDefining,
+      omittedRoles,
+      omissionSummary,
+      playAllGuidance,
+      stringCount,
+      uniqueToneCount,
+      doubledToneCount,
+      nestedTriadAmbiguity,
+    };
+  }
+
   function chordFinderConfidence(target, presentIntervals, omittedIntervals) {
-    if (!omittedIntervals.length) {
-      return "high";
-    }
-    const missingThird = omittedIntervals.includes(3) || omittedIntervals.includes(4);
-    const missingSeventh = omittedIntervals.includes(10) || omittedIntervals.includes(11);
-    const missingNinth = target.quality.id.includes("9") && omittedIntervals.includes(2);
-    if (missingThird || missingSeventh || missingNinth) {
-      return "medium";
-    }
-    if (omittedIntervals.includes(0)) {
-      return "medium, rootless";
-    }
-    return "medium-high";
+    return chordFinderVoicingAssessment(target, presentIntervals, omittedIntervals).confidence;
   }
 
   function normalizeChordFinderText(value) {
@@ -956,6 +1069,9 @@
     if (/^(m9|min9|minor9)$/.test(compact)) {
       return chordQualityById("minor9");
     }
+    if (/^(add9)$/.test(compact)) {
+      return chordQualityById("add9");
+    }
     if (/^9$/.test(compact)) {
       return chordQualityById(lowerDegree ? "minor9" : "dominant9");
     }
@@ -973,6 +1089,15 @@
     }
     if (/^(dim|diminished)$/.test(compact)) {
       return chordQualityById("diminished");
+    }
+    if (/^(dim7|diminished7)$/.test(compact)) {
+      return chordQualityById("diminished7");
+    }
+    if (/^(6|major6|maj6)$/.test(compact)) {
+      return chordQualityById("major6");
+    }
+    if (/^(m6|min6|minor6)$/.test(compact)) {
+      return chordQualityById("minor6");
     }
     if (/^sus2$/.test(compact)) {
       return chordQualityById("sus2");
@@ -1138,6 +1263,7 @@
   const api = {
     ADVANCED_GROUPS,
     CHORD_QUALITY_PATTERNS,
+    CHORD_VOICING_POLICIES,
     CHROMATIC_FLAT_NOTES,
     CHROMATIC_SHARP_NOTES,
     COMMON_VOICING_GRIPS: new Set([
@@ -1169,6 +1295,8 @@
     chordConfidence,
     chordFinderConfidence,
     chordFinderQualityGate,
+    chordFinderVoicingAssessment,
+    chordVoicingPolicy,
     chordLabel,
     chordQualityById,
     defaultQualityForDegree,

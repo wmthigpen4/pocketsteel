@@ -116,6 +116,10 @@
     dominant9: "Dominant 9",
     minor9: "Minor 9",
     major9: "Major 9",
+    add9: "Add 9",
+    major6: "Major 6",
+    minor6: "Minor 6",
+    diminished7: "Diminished 7",
   };
   const CHORD_FINDER_QUALITY_ORDER = [
     "major",
@@ -127,6 +131,10 @@
     "dominant7",
     "major7",
     "minor7",
+    "major6",
+    "minor6",
+    "diminished7",
+    "add9",
     "dominant9",
     "minor9",
     "major9",
