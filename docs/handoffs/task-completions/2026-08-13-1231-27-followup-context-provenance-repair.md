@@ -7,6 +7,7 @@
 - Added a contextual provenance answer for deterministic position-strategy teaching. It explains that the original answer came from the deterministic E9 rules layer, verifies the 3rd-fret/A+B/8th-fret pitches, separates calculated mechanics from curated arranging guidance, and states honestly that no SGF quotation produced the original answer.
 - Added an honest recovery response when a source follow-up is marked as a follow-up but arrives without its parent context.
 - Reused the existing Source notes card presentation to display `Deterministic E9 rules` provenance instead of the misleading `No sources returned` state.
+- Replaced the answer client's semantic cache-buster with its SHA-256 content digest. The first protected smoke exposed that a browser which had requested the future semantic URL before activation could retain the old client under the server's immutable-cache policy; the digest URL makes the asset identity verifiable and collision-free.
 - No new page, visual redesign, corpus/vector mutation, scraping, embeddings, auth, DNS, Tunnel, Access, secret, Cloudflare configuration, or `chatgpt.site` work was performed.
 
 ## Files changed
@@ -31,6 +32,9 @@
   - PASS: the existing Source notes area rendered `Answer provenance` / `Deterministic E9 rules` and the E9 calculation summary.
   - PASS: no browser errors or warnings.
   - Runtime trace: `steel_guitar:source_provenance_followup` -> `deterministic`; evidence `deterministic_e9_pitch_calculation`; verification `answer_contract`; fallback `none`.
+- Protected cold-client check after the first activation
+  - CAUGHT before release handoff: a browser with a pre-activation cached copy of the semantic `v1035` asset loaded stale frontend code and could not initialize the Q&A workspace.
+  - FIXED: the HTML now references the answer client by its exact SHA-256 digest, and regression tests recompute that digest from the file instead of trusting a hand-maintained version label.
 - `.venv/bin/pytest -q tests/test_api_search.py tests/test_frontend_answer_ui.py tests/test_canonical_frontier_client.py tests/test_same_origin_smoke_server.py`
   - PASS: 442 passed.
 - Focused follow-up regression selection
@@ -49,6 +53,7 @@
 - Same-tab session storage temporarily holds at most eight normalized conversation strings, each capped at 8,000 characters. It is cleared on a new Q&A or return home and is never sent outside the existing same-origin answer request.
 - The direct provenance explanation currently covers deterministic position-strategy answers. Other contextual follow-ups continue through the existing contextual classifier/frontier path.
 - The backend recovery clarifier remains necessary when an old cached client or malformed request marks a provenance question as a follow-up without including context.
+- The previously poisoned semantic asset URL can remain in old browser caches without affecting this release because the page no longer references it.
 
 ## Human decision needed
 

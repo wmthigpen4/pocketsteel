@@ -1155,8 +1155,9 @@ def test_answer_ui_keeps_melody_lesson_renderer_without_cross_feature_header_lin
 
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    answer_client_digest = hashlib.sha256(Path("ui/answer-client.js").read_bytes()).hexdigest()
 
-    assert '<script src="answer-client.js?v=v1035-followup-provenance-20260813"></script>' in html
+    assert f'<script src="answer-client.js?v={answer_client_digest}"></script>' in html
     assert '<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
