@@ -6125,7 +6125,7 @@
 
   <script src="copedent-store.js?v=simple-control-dialog-20260714-1"></script>
   <script src="copedent-grid-model.js?v=editable-tab-labels-20260714-1"></script>
-  <script src="answer-client.e4779a8d19867e6ee4ef356c1d1bb8a4c9aa696efc0bdb896ad80912b2a0cab2.js"></script>
+  <script src="answer-client.ff4af92fd74ab2c12c18b722ef46fdafabc5aa667461b59d88dfc96be063553d.js"></script>
   <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>
   <script src="pedal-steel-fretboard.js?v=qna-repair-readable-labels-20260813"></script>
@@ -7698,6 +7698,7 @@
 
     let answerRequestInFlight = false;
     let conversationContext = STEEL_RAG_ANSWER_UI.readConversationContext();
+    let currentParentAnswerContext = null;
     let devPreviewAccessEnabled = true;
     let backendSession = {
       authenticated: false,
@@ -7734,6 +7735,7 @@
 
     function openAskWorkspace({ prefill = "" } = {}) {
       conversationContext = STEEL_RAG_ANSWER_UI.clearConversationContext();
+      currentParentAnswerContext = null;
       followupQuestion.value = "";
       answerWorkspace.hidden = true;
       homeSections.forEach((section) => {
@@ -7769,11 +7771,15 @@
         const requestConversationContext = requestedAsFollowup && persistedContext.length
           ? persistedContext
           : conversationContext;
+        const requestParentAnswerContext = requestedAsFollowup
+          ? currentParentAnswerContext
+          : null;
         const response = await STEEL_RAG_ANSWER_UI.requestAnswer(submittedQuestion, {
           accessRole: mockAccessState,
           requestPayload: {
             ...requestPayload,
-            isFollowup: requestedAsFollowup || requestConversationContext.length > 0
+            isFollowup: requestedAsFollowup || requestConversationContext.length > 0,
+            ...(requestParentAnswerContext ? { parentAnswerContext: requestParentAnswerContext } : {})
           },
           conversationContext: requestConversationContext
         });
@@ -7785,6 +7791,10 @@
             submittedQuestion,
             response.answer
           )
+        );
+        currentParentAnswerContext = STEEL_RAG_ANSWER_UI.buildParentAnswerContext(
+          submittedQuestion,
+          response
         );
       } catch (error) {
         renderErrorState(error.message);
@@ -7835,6 +7845,7 @@
       question.value = "";
       followupQuestion.value = "";
       conversationContext = STEEL_RAG_ANSWER_UI.clearConversationContext();
+      currentParentAnswerContext = null;
       answeredQuestion.textContent = HUM_DEMO_QUESTION;
       clearProgressionGuide();
       clearMelodyExercise();

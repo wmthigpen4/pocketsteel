@@ -150,7 +150,11 @@ from steel_guitar_rag.song_practice import (
     configured_song_practice_enabled,
     song_practice_catalog,
 )
-from steel_guitar_rag.rag_guardrails import sanitize_retrieved_sources
+from steel_guitar_rag.rag_guardrails import (
+    safe_http_url,
+    sanitize_retrieved_sources,
+    sanitize_source_text,
+)
 from steel_guitar_rag.rag_guardrails import is_injection_like
 from steel_guitar_rag.private_source_search import PrivateSourceSearchIndex
 from steel_guitar_rag.retrieval_modes import (
@@ -319,6 +323,74 @@ EXTRACTIVE_DEGRADED_PROVENANCE = _answer_provenance(
         "bounded sentences selected locally from the displayed public SGF source cards."
     ),
 )
+
+
+SOURCE_BACKED_PARENT_PROVENANCE_KINDS = frozenset({
+    "verified_sgf_synthesis",
+    "sgf_extractive_degraded",
+})
+
+
+def _bounded_parent_text(value: Any, *, limit: int) -> str:
+    return " ".join(str(value or "").split())[:limit]
+
+
+def _normalized_parent_answer_context(value: Any) -> dict[str, Any] | None:
+    """Validate the immediately preceding UI answer without trusting browser state."""
+
+    if not isinstance(value, dict):
+        return None
+    raw_provenance = value.get("answerProvenance", value.get("answer_provenance"))
+    provenance: dict[str, str] = {}
+    if isinstance(raw_provenance, dict):
+        kind = _bounded_parent_text(raw_provenance.get("kind"), limit=64)
+        if kind in {
+            "deterministic_e9_rules",
+            "curated_local_guidance",
+            *SOURCE_BACKED_PARENT_PROVENANCE_KINDS,
+        }:
+            provenance = {
+                "kind": kind,
+                "title": _bounded_parent_text(raw_provenance.get("title"), limit=120),
+                "summary": _bounded_parent_text(raw_provenance.get("summary"), limit=600),
+            }
+
+    cards = []
+    raw_sources = value.get("sources")
+    if isinstance(raw_sources, list):
+        for raw_source in raw_sources[:10]:
+            if not isinstance(raw_source, dict):
+                continue
+            excerpt, _, drop = sanitize_source_text(
+                _bounded_parent_text(raw_source.get("excerpt"), limit=1_200)
+            )
+            if drop or not excerpt:
+                continue
+            title = _bounded_parent_text(raw_source.get("title"), limit=240)
+            if not title:
+                continue
+            cards.append({
+                "title": title,
+                "forumName": _bounded_parent_text(
+                    raw_source.get("forumName", raw_source.get("forum")),
+                    limit=120,
+                ) or "Steel Guitar Forum",
+                "url": safe_http_url(raw_source.get("url")),
+                "excerpt": excerpt[:420],
+                "score": 0.0,
+                "chunkId": "",
+                "postUid": None,
+            })
+
+    parent = {
+        "question": _bounded_parent_text(value.get("question"), limit=2_000),
+        "answer": _bounded_parent_text(value.get("answer"), limit=8_000),
+        "sources": cards,
+        "answer_provenance": provenance,
+    }
+    if not any((parent["question"], parent["answer"], cards, provenance)):
+        return None
+    return parent
 
 
 def _attach_tab_example_if_available(
@@ -1543,9 +1615,21 @@ class RetrievalApi:
                     f"{answer_intent_decision.get('intent', 'unknown')}"
                 )
             )
-            provenance_followup = source_provenance_followup_answer(
-                answer_request.question,
-                answer_request.conversation_context,
+            parent_answer_context = _normalized_parent_answer_context(
+                request_payload.get("parentAnswerContext")
+            )
+            parent_answer_kind = (
+                parent_answer_context["answer_provenance"].get("kind", "")
+                if parent_answer_context is not None
+                else ""
+            )
+            provenance_followup = (
+                None
+                if parent_answer_kind in SOURCE_BACKED_PARENT_PROVENANCE_KINDS
+                else source_provenance_followup_answer(
+                    answer_request.question,
+                    answer_request.conversation_context,
+                )
             )
             if provenance_followup is not None:
                 final_answer = final_answer_quality_gate(
@@ -1594,6 +1678,86 @@ class RetrievalApi:
                     access,
                     request_payload=request_payload,
                 )
+
+            if (
+                request_payload.get("isFollowup") is True
+                and is_source_provenance_followup(answer_request.question)
+                and parent_answer_context is not None
+            ):
+                parent_provenance = parent_answer_context["answer_provenance"]
+                parent_kind = parent_provenance.get("kind", "")
+                if parent_kind in SOURCE_BACKED_PARENT_PROVENANCE_KINDS:
+                    parent_sources = parent_answer_context["sources"]
+                    if parent_sources:
+                        source_lines = [
+                            f"{index}. [{index}] {source['forumName']} — {source['title']}"
+                            for index, source in enumerate(parent_sources, start=1)
+                        ]
+                        if parent_kind == "sgf_extractive_degraded":
+                            provenance_intro = (
+                                "The preceding answer used extractive degraded SGF evidence. It was assembled "
+                                "locally from the same displayed passages below; no generative model was used."
+                            )
+                            answer_provenance = EXTRACTIVE_DEGRADED_PROVENANCE
+                        else:
+                            provenance_intro = (
+                                "The preceding answer used the same displayed Steel Guitar Forum evidence below. "
+                                "Local lexical and BGE retrieval ranked those passages, Terra wrote passage-linked "
+                                "claims, and Luna verified their relevance and citation support."
+                            )
+                            answer_provenance = VERIFIED_SYNTHESIS_PROVENANCE
+                        final_answer = (
+                            f"{provenance_intro}\n\n"
+                            "This follow-up reused the preceding answer’s verified source cards; it did not run "
+                            "another retrieval or model request.\n\n"
+                            "Sources from the preceding answer:\n"
+                            + "\n".join(source_lines)
+                        )
+                        warnings: list[str] = []
+                    else:
+                        final_answer = (
+                            "The preceding response did not contain a claim with a displayable supporting source "
+                            "card. It was an abstention or unavailable-evidence response, so there is no source "
+                            "passage I can honestly attribute to it. This follow-up did not run another retrieval "
+                            "or model request."
+                        )
+                        warnings = ["prior answer contained no displayable source cards"]
+                        answer_provenance = (
+                            EXTRACTIVE_DEGRADED_PROVENANCE
+                            if parent_kind == "sgf_extractive_degraded"
+                            else VERIFIED_SYNTHESIS_PROVENANCE
+                        )
+                    payload = {
+                        "answer": final_answer,
+                        "mode": answer_request.mode,
+                        "sources": parent_sources,
+                        "warnings": warnings,
+                        "sections": build_sections(final_answer),
+                        "answer_provenance": answer_provenance,
+                    }
+                    route_trace.classification = "steel_guitar:source_provenance_followup"
+                    route_trace.route = "deterministic"
+                    route_trace.retrieval = "reused_prior_source_cards"
+                    route_trace.evidence = f"{len(parent_sources)}_prior_source_cards"
+                    route_trace.synthesis = "not_run_contextual_provenance"
+                    route_trace.verification = "validated_parent_answer_envelope"
+                    route_trace.displayed_answer = "prior_answer_provenance"
+                    self._log_route_trace(route_trace)
+                    self._log_answer_attempt(
+                        request_payload,
+                        role=access.role,
+                        identity_email=access.identity_email,
+                        access_status="authorized",
+                        authorized=True,
+                        source_count=len(parent_sources),
+                        warning_count=len(warnings),
+                    )
+                    return self._answer_success_response(
+                        start_response,
+                        payload,
+                        access,
+                        request_payload=request_payload,
+                    )
 
             if (
                 request_payload.get("isFollowup") is True

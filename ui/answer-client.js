@@ -112,6 +112,36 @@ const STEEL_RAG_ANSWER_UI = (() => {
     ]);
   }
 
+  function buildParentAnswerContext(question, response) {
+    if (!isObjectRecord(response)) return null;
+    const answer = firstValue(response.answer).slice(0, 8000);
+    if (!answer) return null;
+    const sources = (Array.isArray(response.sources) ? response.sources : [])
+      .slice(0, 10)
+      .map(normalizeSource)
+      .map((source) => ({
+        forum: source.forum.slice(0, 120),
+        title: source.title.slice(0, 240),
+        excerpt: source.excerpt.slice(0, 1200),
+        url: source.url.slice(0, 2048),
+        date: source.date.slice(0, 120)
+      }));
+    const rawProvenance = response.answerProvenance || response.answer_provenance;
+    const parent = {
+      question: firstValue(response.question, question).slice(0, 2000),
+      answer,
+      sources
+    };
+    if (isObjectRecord(rawProvenance)) {
+      parent.answerProvenance = {
+        kind: firstValue(rawProvenance.kind).slice(0, 64),
+        title: firstValue(rawProvenance.title).slice(0, 120),
+        summary: firstValue(rawProvenance.summary).slice(0, 600)
+      };
+    }
+    return parent;
+  }
+
   function normalizeAccessRole(value) {
     const role = String(value || "").trim().toLowerCase();
     if (role === "member") return ACCESS_ROLES.BETA_USER;
@@ -1152,6 +1182,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     writeConversationContext,
     clearConversationContext,
     appendConversationExchange,
+    buildParentAnswerContext,
     normalizeAccessRole,
     devAccessHeaders,
     canSubmitLiveQuestion,

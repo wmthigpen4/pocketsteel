@@ -150,10 +150,12 @@ def call_answer(
     question: str,
     *,
     conversation_context: Any = None,
+    request_overrides: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     request = {"question": question, "mode": "ask"}
     if conversation_context is not None:
         request["conversationContext"] = conversation_context
+    request.update(request_overrides or {})
     body = json.dumps(request).encode("utf-8")
     captured: dict[str, Any] = {}
 
@@ -390,6 +392,60 @@ def test_provenance_followup_resolves_preceding_deterministic_chord_answer() -> 
     assert "deterministic and curated rules layer" in payload["answer"]
     assert payload["answer_provenance"]["kind"] == "deterministic_e9_rules"
     assert frontier.questions == []
+
+
+def test_provenance_followup_reuses_preceding_verified_source_cards_without_frontier_call() -> None:
+    frontier = FakeFrontierClient()
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    status, payload = call_answer(
+        app,
+        "What is your source of information for this?",
+        conversation_context=[
+            "User: What did Forum users say about Webb amp speaker swaps?",
+            "Assistant: Forum contributors reported that the speaker swap produced a clearer high end.",
+        ],
+        request_overrides={
+            "isFollowup": True,
+            "parentAnswerContext": {
+                "question": "What did Forum users say about Webb amp speaker swaps?",
+                "answer": "Forum contributors reported that the speaker swap produced a clearer high end.",
+                "answerProvenance": {
+                    "kind": "verified_sgf_synthesis",
+                    "title": "Verified SGF synthesis",
+                    "summary": "Terra claims verified by Luna.",
+                },
+                "sources": [{
+                    "forum": "Electronics",
+                    "title": "Webb speaker swaps",
+                    "excerpt": "The replacement speaker made the high end clearer.",
+                    "url": "https://bb.steelguitarforum.com/viewtopic.php?t=1",
+                }],
+            },
+        },
+    )
+
+    assert status == "200 OK"
+    assert "same displayed Steel Guitar Forum evidence" in payload["answer"]
+    assert "did not run another retrieval or model request" in payload["answer"]
+    assert payload["sources"] == [{
+        "title": "Webb speaker swaps",
+        "forumName": "Electronics",
+        "url": "https://bb.steelguitarforum.com/viewtopic.php?t=1",
+        "excerpt": "The replacement speaker made the high end clearer.",
+        "score": 0.0,
+        "chunkId": "",
+        "postUid": None,
+    }]
+    assert payload["answer_provenance"]["kind"] == "verified_sgf_synthesis"
+    assert frontier.questions == []
+    assert search.calls == 0
 
 
 def test_main_readiness_requires_exact_frontier_ready_but_reports_local_degraded() -> None:

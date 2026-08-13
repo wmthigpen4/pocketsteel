@@ -137,6 +137,52 @@ assert.deepEqual(Array.from(answerUi.readConversationContext(storage)), []);
     assert result.returncode == 0, result.stderr
 
 
+def test_frontend_builds_bounded_parent_answer_context_for_provenance_followup() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+const parent = answerUi.buildParentAnswerContext("Which speaker?", {
+  question: "Which speaker?",
+  answer: "Forum contributors preferred the replacement speaker.",
+  answerProvenance: {
+    kind: "verified_sgf_synthesis",
+    title: "Verified SGF synthesis",
+    summary: "Terra claims verified by Luna."
+  },
+  sources: [{
+    forum: "Electronics",
+    title: "Webb speaker swaps",
+    excerpt: "The replacement speaker made the high end clearer.",
+    url: "https://bb.steelguitarforum.com/viewtopic.php?t=1"
+  }]
+});
+
+assert.equal(parent.question, "Which speaker?");
+assert.equal(parent.answerProvenance.kind, "verified_sgf_synthesis");
+assert.equal(parent.sources.length, 1);
+assert.equal(parent.sources[0].title, "Webb speaker swaps");
+assert.equal(parent.sources[0].url, "https://bb.steelguitarforum.com/viewtopic.php?t=1");
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_frontend_answer_client_fetches_session_and_normalizes_access() -> None:
     script = r"""
 const assert = require("node:assert/strict");
@@ -1339,6 +1385,8 @@ def test_followup_request_restores_persisted_parent_exchange() -> None:
     assert "STEEL_RAG_ANSWER_UI.appendConversationExchange(" in show_answer_workspace
     assert "STEEL_RAG_ANSWER_UI.writeConversationContext(" in show_answer_workspace
     assert "isFollowup: requestedAsFollowup || requestConversationContext.length > 0" in show_answer_workspace
+    assert "parentAnswerContext: requestParentAnswerContext" in show_answer_workspace
+    assert "STEEL_RAG_ANSWER_UI.buildParentAnswerContext(" in show_answer_workspace
 
 
 def test_answer_source_notes_render_deterministic_provenance_without_fake_source_link() -> None:
