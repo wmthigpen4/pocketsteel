@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from steel_guitar_rag.answer_intent_classifier import mentions_position_strategy
 from steel_guitar_rag.music_text import normalize_spelled_accidentals
 from steel_guitar_rag.basic_chord_answers import (
     basic_chord_theory_answer_for_question,
@@ -1342,6 +1343,8 @@ def intent_mode_for_question(question: str) -> IntentMode:
         return "progression_intro_request"
     if _mentions_chord_family_teaching_request(q):
         return "fretboard_concept"
+    if mentions_position_strategy(q):
+        return "position_strategy"
     if _mentions_movement_request(q):
         return "movement_request"
     if _mentions_progression_intro_request(q):
@@ -1487,6 +1490,27 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
                 "- G: 6th fret with A pedal + F lever, same grip.\n"
                 "- G: 10th fret with A+B, same grip.\n\n"
                 "Thing to try: play those three G positions slowly, block after each grip, and listen for how open/no-pedals, A+F, and A+B give you movement without changing the chord name."
+            ),
+        )
+    if mode == "position_strategy":
+        return CuratedAnswer(
+            intent="position_strategy",
+            confidence="curated_high",
+            answer=(
+                "Short answer: stay on one fret when that position gives you the chord and melody you want; move the bar when another fret gives you a better melody note, voicing, register, tone, or path into the next phrase. On pedal steel, moving is a musical choice, not a requirement for every chord change.\n\n"
+                "Why staying works:\n"
+                "- Pedals and knee levers change pitches while the bar stays put, so one fret can contain several related chords and moving melody notes.\n"
+                "- Staying can make voice-leading smoother and keep the phrase in one register.\n\n"
+                "Why players move:\n"
+                "- The needed chord or melody note may lie more naturally at another fret or on a better-sounding string and grip.\n"
+                "- A different inversion can put the important top note where you want it.\n"
+                "- Moving changes register and tone, and an audible slide can be part of the expression.\n"
+                "- The new position may set up the next chord with less pedal-and-lever work.\n\n"
+                "Example on standard E9 in G, using strings 4-5-6:\n"
+                "- G: 3rd fret, open/no pedals.\n"
+                "- C without moving: stay at the 3rd fret and press A+B.\n"
+                "- C by moving: go to the 8th fret, open/no pedals.\n\n"
+                "Both C positions are valid. The 3rd-fret A+B choice gives compact, smooth movement; the 8th-fret open choice gives a higher register, a different inversion, and the sound of bar travel. A practical rule is to choose the position that puts the melody on a comfortable string, keeps the important notes moving cleanly, and leaves you well placed for what comes next."
             ),
         )
     if mode == "movement_request":

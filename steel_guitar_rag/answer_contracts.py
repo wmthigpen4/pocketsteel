@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
+
+from steel_guitar_rag.answer_intent_classifier import mentions_position_strategy
 
 
 COPYRIGHT_AWARE_SONG_HELP_POLICY = (
@@ -461,6 +462,24 @@ CONTRACTS.update(
             forbidden_answer_patterns=COMMON_FORBIDDEN,
             fallback_answer="Think of the E9 neck as related position families: open/no-pedals, A+B, A+F, and E-lower colors.",
         ),
+        "position_strategy": AnswerContract(
+            intent="position_strategy",
+            required_answer_elements=(
+                ("stay-versus-move decision", r"\b(?:stay|staying)\b.*\b(?:fret|position)\b|\bmove\b.*\b(?:bar|fret|position)\b"),
+                ("harmony or melody goal", r"\b(?:chord|harmony)\b.*\b(?:melody|top note|voicing)\b|\b(?:melody|top note|voicing)\b.*\b(?:chord|harmony)\b"),
+                ("pedal-steel mechanism", r"\b(?:pedals?|knee levers?|levers?|grips?)\b"),
+                ("concrete fret example", r"\b(?:3rd|8th)\s+fret\b"),
+            ),
+            forbidden_answer_patterns=COMMON_FORBIDDEN
+            + (
+                ("generic specificity refusal", r"\bI need a more specific steel-guitar question\b|\bTry asking about an E9 position\b"),
+            ),
+            fallback_answer=(
+                "Stay on one fret when its pedals, levers, and grips give you the chord and melody you need; "
+                "move the bar when another position gives you a better voicing, register, or route to the next phrase. "
+                "For example, on standard E9 you can play C at the 3rd fret with A+B or move to the 8th fret with no pedals."
+            ),
+        ),
         "movement_from_position": AnswerContract(
             intent="movement_from_position",
             required_answer_elements=(("position movement", r"\b(?:A\+B|open|A\+F|E-lower|fret|position|move)\b"),),
@@ -593,6 +612,8 @@ def infer_contract_intent(question: str, mode: str = "ask") -> str:
         return "gig_advice"
     if re.search(r"\b(?:worse\s+than\s+google|not\s+a\s+teacher|aren't\s+a\s+teacher|answering\s+machine|play\s+anything|just\s+one\s+thing|teach\s+me\s+anything|tell\s+me\s+something|might\s+not\s+already\s+know|show\s+me\s+anything)\b", q):
         return "practice_plan"
+    if mentions_position_strategy(q):
+        return "position_strategy"
     if re.search(r"\b(?:where\s+should\s+i\s+go|where\s+do\s+i\s+go|move\s+up\s+the\s+neck|not\s+staying\s+still)\b", q):
         return "movement_from_position"
     if re.search(r"\b1\s*[-/]\s*4\s*[-/]\s*5\s*[-/]\s*1\b", q):

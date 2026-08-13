@@ -19,6 +19,7 @@ AnswerDomain = Literal["steel_guitar", "off_domain", "unsafe_or_impossible"]
 AnswerIntent = Literal[
     "forum_wisdom",
     "copedent_position",
+    "position_strategy",
     "gear_diagnosis",
     "practice_plan",
     "tab_explainer",
@@ -29,6 +30,7 @@ AnswerIntent = Literal[
 AllowedAnswerShape = Literal[
     "source_backed",
     "copedent_position",
+    "position_strategy",
     "gear_diagnosis",
     "practice_plan",
     "tab_explainer",
@@ -65,6 +67,7 @@ ALLOWED_INTENTS = frozenset(
     (
         "forum_wisdom",
         "copedent_position",
+        "position_strategy",
         "gear_diagnosis",
         "practice_plan",
         "tab_explainer",
@@ -77,6 +80,7 @@ ALLOWED_ANSWER_SHAPES = frozenset(
     (
         "source_backed",
         "copedent_position",
+        "position_strategy",
         "gear_diagnosis",
         "practice_plan",
         "tab_explainer",
@@ -209,10 +213,24 @@ TAB_INTERVAL_RE = re.compile(
 LESSON_RE = re.compile(r"\b(?:lesson|lessons|course|tutorial|transcript|manual|pdf)\b", re.I)
 COPEDENT_RE = re.compile(
     r"\b(?:"
-    r"copedent|setup|pedals?|levers?|strings?|grips?|fret|frets|position|positions|"
+    r"copedent|setup|pedals?|levers?|strings?|grips?|position|positions|"
     r"e[-\s]?lower|f\s+lever|vertical\s+lever|a\s*\+\s*b|a\s*\+\s*f|b\s*\+\s*c|"
     r"rkl|rkr|lkl|lkr|lkv|lower|raises?|changes?|9th\s+string|6th\s+string|wound\s+6th"
     r")\b",
+    re.I,
+)
+POSITION_STRATEGY_RE = re.compile(
+    r"(?:"
+    r"\b(?:decide|choose|know)\b.{0,60}\b(?:when|whether|where)\b.{0,60}"
+    r"\b(?:move|change|switch|stay)\b.{0,40}\b(?:bar|frets?|positions?|neck)\b|"
+    r"\b(?:when|why)\b.{0,70}\b(?:move|change|switch|stay)\b.{0,50}"
+    r"\b(?:bar|frets?|positions?|same\s+fret|one\s+fret|neck)\b|"
+    r"\b(?:stay|staying|remain)\b.{0,35}\b(?:same|one)\s+(?:fret|position)\b.{0,80}"
+    r"\b(?:move|change|switch|slide)\b|"
+    r"\b(?:move|change|switch|slide)\b.{0,80}\b(?:instead\s+of|versus|vs\.?|or)\b.{0,50}"
+    r"\b(?:stay|staying|remain)\b|"
+    r"\b(?:need|have|supposed)\s+to\s+move\b.{0,50}\b(?:every|each)\b.{0,30}\b(?:chord|change)\b"
+    r")",
     re.I,
 )
 POSITION_LANGUAGE_RE = re.compile(
@@ -367,6 +385,17 @@ def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPay
             needs_copedent=False,
             retrieval_allowed=True,
             allowed_answer_shape="source_backed",
+        )
+
+    if mentions_position_strategy(q):
+        return _decision(
+            domain="steel_guitar",
+            intent="position_strategy",
+            needs_sources=False,
+            needs_fretboard=False,
+            needs_copedent=False,
+            retrieval_allowed=False,
+            allowed_answer_shape="position_strategy",
         )
 
     if _mentions_named_steel_vocabulary(q):
@@ -695,6 +724,10 @@ def _mentions_movement_request(question: str) -> bool:
         and re.search(r"\b(?:4\s+chord|iv\s+chord|one\s+to\s+four|1\s*[- ]\s*4|i\s*[- ]\s*iv|move\s+up\s+the\s+neck|not\s+staying\s+still)\b", question)
         and re.search(r"\b(?:chord|fret|position|neck|a\+b|open|pedal|g|c)\b", question)
     )
+
+
+def mentions_position_strategy(question: str) -> bool:
+    return bool(POSITION_STRATEGY_RE.search(question))
 
 
 def _mentions_progression_intro_request(question: str) -> bool:

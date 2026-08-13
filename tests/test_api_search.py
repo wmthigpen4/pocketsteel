@@ -438,6 +438,12 @@ def test_intent_mode_classifier_for_practical_advice_questions() -> None:
     assert intent_mode_for_question("Show me how pros approach this position") == "missing_context_clarifier"
     assert intent_mode_for_question("What’s a better grip for this chord?") == "missing_context_clarifier"
     assert intent_mode_for_question("Where should I go after A+B?") == "movement_from_position"
+    assert intent_mode_for_question(
+        "How does a steel guitar player decide when to move frets? Why not just stay on one fret?"
+    ) == "position_strategy"
+    assert infer_contract_intent(
+        "Why would I change positions if pedals can work at one fret?"
+    ) == "position_strategy"
 
 
 def test_contract_validation_catches_template_leakage() -> None:
@@ -3806,6 +3812,31 @@ def test_deterministic_fretboard_regressions_still_beat_intent_mode() -> None:
     assert "fretboard" in b9
     assert_valid_fretboard_payload(b9)
     assert_deterministic_fretboard_sources_are_clean(b9)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "How does a steel guitar player decide when to move frets? Why not just stay on one fret?",
+        "When should I move the bar instead of staying in the same position?",
+        "Why would I change positions if pedals can work at one fret?",
+        "Do I need to move the bar for every chord change?",
+    ],
+)
+def test_position_strategy_questions_get_a_direct_deterministic_teacher_answer(question: str) -> None:
+    payload = answer_for_question(question, noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "stay on one fret" in payload["answer"]
+    assert "move the bar" in payload["answer"]
+    assert "chord and melody" in payload["answer"]
+    assert "Pedals and knee levers" in payload["answer"]
+    assert "3rd fret" in payload["answer"]
+    assert "8th fret" in payload["answer"]
+    assert "I need a more specific steel-guitar question" not in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" not in payload
 
 
 def test_teacher_first_screenshot_prompt_regressions_are_synthesized() -> None:

@@ -14,6 +14,7 @@ IntentMode = Literal[
     "style_how_to",
     "safety_adjacent",
     "teach_me_something",
+    "position_strategy",
     "movement_request",
     "progression_intro_request",
     "pocket_request",

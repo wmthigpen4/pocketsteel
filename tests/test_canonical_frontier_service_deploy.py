@@ -19,8 +19,11 @@ INSTALLER = ROOT / "deploy/macos/install-canonical-frontier-launchdaemon.sh"
 USER_PLIST = ROOT / "deploy/macos/com.steelguitarrag.canonical-frontier.launchagent.plist.template"
 USER_INSTALLER = ROOT / "deploy/macos/install-canonical-frontier-launchagent.sh"
 REAL_SERVICE_ROOT = Path(
-    "/Users/cory/.steel-rag/services/canonical-frontier-v1034-fallback-20260806"
-)
+    os.environ.get(
+        "STEEL_RAG_TEST_CANONICAL_FRONTIER_SERVICE_ROOT",
+        Path.home() / ".steel-rag/services/canonical-frontier-v1034-fallback-20260806",
+    )
+).expanduser()
 
 
 def digest(path: Path) -> str:

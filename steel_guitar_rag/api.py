@@ -226,6 +226,7 @@ def _curated_answer_should_be_source_free(intent: str) -> bool:
         "style_how_to",
         "safety_adjacent",
         "teach_me_something",
+        "position_strategy",
         "movement_request",
         "progression_intro_request",
         "pocket_request",
@@ -1786,6 +1787,15 @@ class RetrievalApi:
                     start_response, payload, access, request_payload=request_payload
                 )
 
+            if (
+                answer_route == "deterministic"
+                and answer_intent_decision["domain"] == "steel_guitar"
+                and answer_intent_decision["allowed_answer_shape"] != "guardrail_refusal"
+            ):
+                answer_route = "source_backed_rag"
+                route_trace.route = answer_route
+                route_trace.fallback = "deterministic_miss_to_source_backed"
+
             if self.canonical_frontier_enabled and answer_route in {
                 "source_backed_rag",
                 "hybrid",
@@ -2048,9 +2058,14 @@ class RetrievalApi:
             raw_answer_needed_quarantine = sgf_answer_body_needs_quarantine(answer)
             final_answer = final_answer_quality_gate(answer, answer_request.question)
             if raw_answer_needed_quarantine or sgf_answer_body_needs_quarantine(final_answer):
-                quarantine_answer = sgf_quarantine_teacher_answer(
-                    answer_request.question
-                ) or generic_sgf_quarantine_fallback_answer(answer_request.question)
+                quarantine_answer = sgf_quarantine_teacher_answer(answer_request.question)
+                if quarantine_answer is not None:
+                    route_trace.fallback = "sgf_quarantine_teacher_answer"
+                else:
+                    quarantine_answer = generic_sgf_quarantine_fallback_answer(
+                        answer_request.question
+                    )
+                    route_trace.fallback = "sgf_quarantine_specificity_fallback"
                 final_answer = final_answer_quality_gate(quarantine_answer.answer, answer_request.question)
                 contract_intent = quarantine_answer.intent
                 sources = []
