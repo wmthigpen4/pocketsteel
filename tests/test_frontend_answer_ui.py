@@ -1209,8 +1209,9 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     assert '<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
-    assert '<script src="pedal-steel-fretboard.js?v=qna-repair-readable-labels-20260813"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=qna-repair-grip-contract-20260813"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' not in html
+    assert 'gripOptions: ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]' in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
     assert "STEEL_RAG_ANSWER_UI.requestSession" in html

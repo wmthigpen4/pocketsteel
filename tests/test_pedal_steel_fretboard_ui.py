@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import re
 import subprocess
 from pathlib import Path
@@ -2228,6 +2227,39 @@ assert.match(visibleText, /Full chord position/);
 assert.match(visibleText, /Open no pedals/);
 assert.doesNotMatch(visibleText, /full_chord_position/);
 assert.doesNotMatch(visibleText, /open_no_pedals/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_component_honors_caller_grip_contract_and_order() -> None:
+    script = component_eval_script(
+        r"""
+const grips = ["1-4-5", "3-4-5", "4-5-6", "4-5-7", "5-6-8", "5-7-8", "6-8-10", "7-8-10"];
+const approvedGrips = ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"];
+const positions = grips.map((grip, index) => ({
+  id: `position-${index}`,
+  label: `Position ${index}`,
+  fret: index + 1,
+  strings: grip.split("-").map(Number),
+  grip,
+  pedals: [],
+  levers: [],
+  family: "open_no_pedals",
+  tier: "beginner",
+  role: "starter_home_position",
+  positionKind: "full_chord_position",
+  visibleByDefault: true
+}));
+const model = fretboard.buildFretboardModel({positions, gripOptions: approvedGrips});
+assert.equal(JSON.stringify(model.gripOptions), JSON.stringify(approvedGrips));
+const html = fretboard.renderPedalSteelFretboard({positions, gripOptions: approvedGrips});
+const renderedGrips = Array.from(html.matchAll(/data-grip-filter="([^"]+)"/g)).map((match) => match[1]);
+assert.equal(JSON.stringify(renderedGrips), JSON.stringify(["all", ...approvedGrips]));
+assert.doesNotMatch(html, /data-grip-filter="1-4-5"/);
+assert.doesNotMatch(html, /data-grip-filter="4-5-7"/);
+assert.doesNotMatch(html, /data-grip-filter="7-8-10"/);
 """
     )
 

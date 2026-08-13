@@ -1251,7 +1251,13 @@
     const voicingCategories = voicingCategoryOptions(allHighlights);
     const voicingOptions = hasFilterControls ? availableVoicingOptions(allHighlights) : [];
     const hasVoicingControls = hasFilterControls && hasUsefulVoicingControls(allHighlights, voicingOptions);
-    const gripOptions = uniqueGripOptions(allHighlights);
+    const availableGripOptions = uniqueGripOptions(allHighlights);
+    const requestedGripOptions = Array.isArray(options.gripOptions)
+      ? options.gripOptions.map((grip) => normalizeMetadataText(grip)).filter(Boolean)
+      : [];
+    const gripOptions = requestedGripOptions.length
+      ? Array.from(new Set(requestedGripOptions.filter((grip) => availableGripOptions.includes(grip))))
+      : availableGripOptions;
     const hasGripControls = hasFilterControls && gripOptions.length > 1;
     const pedalLeverOptions = hasFilterControls ? uniquePedalLeverOptions(allHighlights) : [];
     const hasPedalLeverControls = hasFilterControls &&

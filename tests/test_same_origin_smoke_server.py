@@ -73,7 +73,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert f'<script src="{answer_client_name}"></script>'.encode("ascii") in html
     assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert b'<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
-    assert b'<script src="pedal-steel-fretboard.js?v=qna-repair-readable-labels-20260813"></script>' in html
+    assert b'<script src="pedal-steel-fretboard.js?v=qna-repair-grip-contract-20260813"></script>' in html
     assert b'<script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>' in html
     assert b'<script src="melody-score.js?v=updated-score-artwork-20260714-1"></script>' in html
     assert b'<script src="landing-home.js?v=landing-bubble-labels-20260713"></script>' in html
