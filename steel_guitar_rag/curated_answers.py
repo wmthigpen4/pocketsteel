@@ -60,6 +60,16 @@ SOURCE_PROVENANCE_FOLLOWUP_RE = re.compile(
     re.I,
 )
 
+SOURCE_BACKED_PROVENANCE_INTENTS = frozenset({
+    "curated_fact_source_check",
+    "factual_biography",
+    "forum_wisdom",
+    "lesson_lookup",
+    "product_value",
+    "unknown_low_confidence",
+    "vendor_buying_guidance",
+})
+
 
 def is_source_provenance_followup(question: str) -> bool:
     """Return whether a turn asks where the preceding answer came from."""
@@ -86,8 +96,32 @@ def source_provenance_followup_answer(
         if normalized.casefold().startswith("user:"):
             prior_question = normalized.split(":", 1)[1].strip()
             break
-    if not prior_question or not mentions_position_strategy(prior_question):
+    if not prior_question:
         return None
+    if not mentions_position_strategy(prior_question):
+        prior_answer = visual_fretboard_curated_answer(prior_question)
+        if prior_answer is None:
+            prior_answer = intent_mode_curated_answer(prior_question)
+        if (
+            prior_answer is None
+            or prior_answer.source_cards
+            or prior_answer.intent in SOURCE_BACKED_PROVENANCE_INTENTS
+        ):
+            return None
+        return CuratedAnswer(
+            intent=prior_answer.intent,
+            confidence="curated_high",
+            answer=(
+                "That preceding answer came from Steel Guitar RAG’s deterministic and curated "
+                "rules layer, not from a Steel Guitar Forum quotation or a language-model guess.\n\n"
+                "For an E9 position or chord question, the service parses the requested chord, "
+                "fret, strings, pedals, and levers; applies the selected copedent’s pitch changes; "
+                "then validates the resulting notes and answer contract. For a local teaching or "
+                "clarifier response, it selects reviewed guidance keyed to the detected request "
+                "type. The preceding answer had no retrieved source card, so it should be read as "
+                "a locally computed or curated answer rather than an SGF citation."
+            ),
+        )
     return CuratedAnswer(
         intent="position_strategy",
         confidence="curated_high",

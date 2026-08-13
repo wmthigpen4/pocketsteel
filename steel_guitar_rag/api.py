@@ -92,6 +92,7 @@ from steel_guitar_rag.canonical_frontier_client import (
     CanonicalFrontierUnavailable,
     configured_canonical_frontier_enabled,
 )
+from steel_guitar_rag.degraded_answer import compose_extractive_degraded_answer
 from steel_guitar_rag.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
@@ -171,6 +172,11 @@ CURATED_GUIDANCE_ADMIN_ROLES = {"admin", "dev", "developer", "backstage"}
 CURATED_GUIDANCE_FORUM_WISDOM_RE = re.compile(
     r"\b(?:what\s+do\s+(?:players|people|forum|steelers)|players?\s+(?:say|think|report)|"
     r"forum\s+(?:players|wisdom|opinions?)|owner\s+reports?|public\s+forum)\b",
+    re.I,
+)
+CONTEXTUAL_FOLLOWUP_RE = re.compile(
+    r"\b(?:he|him|his|she|her|hers|they|them|their|it|its|that|those|this|these|"
+    r"the\s+(?:answer|player|course|product|song|grip|position|recommendation))\b",
     re.I,
 )
 MAX_JSON_BODY_BYTES = 1_048_576
@@ -257,7 +263,62 @@ def _answer_intent_guardrail_answer(domain: str) -> str:
 def _should_gate_answer_intent(decision: dict[str, Any]) -> bool:
     if decision.get("domain") == "unsafe_or_impossible":
         return True
+    # The classifier intentionally labels many underspecified prompts as
+    # off-domain/unknown.  Those still need the local clarifier, curated
+    # teaching, or entity-probe routes below.  Only definite small talk is a
+    # safe off-domain refusal at this point in the router.
     return decision.get("domain") == "off_domain" and decision.get("intent") == "small_talk"
+
+
+def _answer_provenance(kind: str, title: str, summary: str) -> dict[str, str]:
+    """Build the stable, user-facing provenance envelope used by the existing UI."""
+
+    return {"kind": kind, "title": title, "summary": summary}
+
+
+def _prior_user_question(conversation_context: tuple[str, ...]) -> str | None:
+    for item in reversed(conversation_context):
+        normalized = " ".join(str(item or "").split())
+        if normalized.casefold().startswith("user:"):
+            question = normalized.split(":", 1)[1].strip()
+            return question or None
+    return None
+
+
+DETERMINISTIC_E9_PROVENANCE = _answer_provenance(
+    "deterministic_e9_rules",
+    "Deterministic E9 rules",
+    (
+        "Calculated locally from the selected E9 copedent, pitch spelling, grips, "
+        "pedal and lever changes, and answer-contract rules. No forum passage or "
+        "language model is required for this result."
+    ),
+)
+POSITION_STRATEGY_PROVENANCE = _answer_provenance(
+    "deterministic_e9_rules",
+    "Deterministic E9 rules",
+    (
+        "Calculated from standard E9 tuning, the A+B pedal changes, and the resulting "
+        "notes on strings 4-5-6 at the 3rd and 8th frets."
+    ),
+)
+VERIFIED_SYNTHESIS_PROVENANCE = _answer_provenance(
+    "verified_sgf_synthesis",
+    "Verified SGF synthesis",
+    (
+        "Local lexical and BGE retrieval ranked the public SGF evidence; Terra wrote "
+        "passage-linked claims and Luna verified relevance and citation support before "
+        "deterministic formatting."
+    ),
+)
+EXTRACTIVE_DEGRADED_PROVENANCE = _answer_provenance(
+    "sgf_extractive_degraded",
+    "Extractive degraded evidence",
+    (
+        "Terra/Luna synthesis is temporarily unavailable. This response uses only "
+        "bounded sentences selected locally from the displayed public SGF source cards."
+    ),
+)
 
 
 def _attach_tab_example_if_available(
@@ -535,10 +596,64 @@ class RetrievalApi:
         if path == "/health/ready":
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            if not self.canonical_frontier_enabled:
+                return self._json_response(
+                    start_response,
+                    "200 OK",
+                    {"status": "ready"},
+                    extra_headers=(("Cache-Control", "no-store"),),
+                )
+            if self.canonical_frontier_enabled:
+                try:
+                    frontier_client = self.canonical_frontier_client
+                    if frontier_client is None:
+                        raise CanonicalFrontierUnavailable(
+                            "Canonical frontier client is not configured.",
+                            error_code="frontier_not_configured",
+                            retryable=False,
+                        )
+                    frontier_health = frontier_client.readiness(timeout_seconds=1.0)
+                except (CanonicalFrontierUnavailable, RuntimeError) as exc:
+                    return self._json_response(
+                        start_response,
+                        "200 OK",
+                        {
+                            "status": "degraded",
+                            "dependencies": {
+                                "local_answer_paths": "ready",
+                                "canonical_frontier": "not_ready",
+                            },
+                            "reason": getattr(exc, "error_code", "frontier_health_unavailable"),
+                        },
+                        extra_headers=(("Cache-Control", "no-store"),),
+                    )
+                if (
+                    frontier_health.get("status") != "ready"
+                    or int(frontier_health.get("http_status") or 0) != 200
+                ):
+                    return self._json_response(
+                        start_response,
+                        "200 OK",
+                        {
+                            "status": "degraded",
+                            "dependencies": {
+                                "local_answer_paths": "ready",
+                                "canonical_frontier": "not_ready",
+                            },
+                            "reason": str(frontier_health.get("reason") or "frontier_not_ready"),
+                        },
+                        extra_headers=(("Cache-Control", "no-store"),),
+                    )
             return self._json_response(
                 start_response,
                 "200 OK",
-                {"status": "ready"},
+                {
+                    "status": "ready",
+                    "dependencies": {
+                        "local_answer_paths": "ready",
+                        "canonical_frontier": "ready",
+                    },
+                },
                 extra_headers=(("Cache-Control", "no-store"),),
             )
 
@@ -1409,31 +1524,19 @@ class RetrievalApi:
                     "sources": [],
                     "warnings": [],
                     "sections": build_sections(direct_profile_answer),
+                    "answer_provenance": DETERMINISTIC_E9_PROVENANCE,
                 }
                 payload.update(copedent_context_metadata(target_profile, target_revision))
                 return self._answer_success_response(
                     start_response, payload, access, request_payload=request_payload
                 )
 
-            routing_question = "\n".join(
-                [*answer_request.conversation_context, answer_request.question]
-            )
             answer_intent_decision: dict[str, Any] = dict(
                 classify_answer_request(
                     answer_request.question,
                     answer_request.mode,
                 )
             )
-            if (
-                answer_intent_decision.get("domain") == "off_domain"
-                and answer_intent_decision.get("intent") == "unknown"
-                and answer_request.conversation_context
-            ):
-                contextual_decision = dict(
-                    classify_answer_request(routing_question, answer_request.mode)
-                )
-                if contextual_decision.get("domain") == "steel_guitar":
-                    answer_intent_decision = contextual_decision
             route_trace = AnswerRouteTrace(
                 classification=(
                     f"{answer_intent_decision.get('domain', 'unknown')}:"
@@ -1460,14 +1563,11 @@ class RetrievalApi:
                     "sources": [],
                     "warnings": [],
                     "sections": build_sections(final_answer),
-                    "answer_provenance": {
-                        "kind": "deterministic_e9_rules",
-                        "title": "Deterministic E9 rules",
-                        "summary": (
-                            "Calculated from standard E9 tuning, the A+B pedal changes, and the "
-                            "resulting notes on strings 4-5-6 at the 3rd and 8th frets."
-                        ),
-                    },
+                    "answer_provenance": (
+                        POSITION_STRATEGY_PROVENANCE
+                        if provenance_followup.intent == "position_strategy"
+                        else DETERMINISTIC_E9_PROVENANCE
+                    ),
                 }
                 if copedent_context is not None:
                     _personalize_answer_payload(payload, target_profile, target_revision)
@@ -1528,14 +1628,37 @@ class RetrievalApi:
                     request_payload=request_payload,
                 )
 
+            prior_context_question = _prior_user_question(
+                answer_request.conversation_context
+            )
+            if (
+                answer_intent_decision.get("domain") == "off_domain"
+                and answer_intent_decision.get("intent") == "unknown"
+                and prior_context_question
+                and CONTEXTUAL_FOLLOWUP_RE.search(answer_request.question)
+            ):
+                prior_decision = classify_answer_request(
+                    prior_context_question,
+                    answer_request.mode,
+                )
+                if prior_decision.get("domain") == "steel_guitar":
+                    answer_intent_decision = corpus_promoted_decision(
+                        answer_request.question
+                    )
+                    route_trace.classification = "contextual_steel_followup:source_backed"
+
             corpus_probe_response: SearchResponse | None = None
             corpus_promoted = False
+            contextual_probe_question = contextual_entity_probe_question(
+                answer_request.question,
+                answer_request.conversation_context,
+            )
             entity_probe_question = (
-                answer_request.question
-                if is_corpus_entity_candidate(answer_request.question, answer_intent_decision)
-                else contextual_entity_probe_question(
-                    answer_request.question,
-                    answer_request.conversation_context,
+                contextual_probe_question
+                or (
+                    answer_request.question
+                    if is_corpus_entity_candidate(answer_request.question, answer_intent_decision)
+                    else None
                 )
             )
             if entity_probe_question is not None:
@@ -1569,38 +1692,26 @@ class RetrievalApi:
                 route_trace.classification = (
                     f"hybrid_requested:{answer_intent_decision.get('intent', 'unknown')}"
                 )
-            deterministic_resolution_allowed = (
-                deterministic_question != answer_request.question
-                or (
-                    not corpus_promoted
-                    and not (
-                        self.canonical_frontier_enabled
-                        and answer_intent_decision.get("needs_sources")
-                        and answer_intent_decision.get("retrieval_allowed")
-                    )
-                )
+            deterministic_chord_answer = visual_fretboard_curated_answer(
+                deterministic_question
             )
-            if deterministic_resolution_allowed:
-                deterministic_chord_answer = visual_fretboard_curated_answer(
+            if deterministic_chord_answer is None:
+                deterministic_chord_answer = unsupported_chord_position_curated_answer(
                     deterministic_question
                 )
-                if deterministic_chord_answer is None:
-                    deterministic_chord_answer = unsupported_chord_position_curated_answer(
-                        deterministic_question
-                    )
-                deterministic_fretboard_payload = fretboard_payload_for_question(
-                    deterministic_question
-                )
-            else:
-                deterministic_chord_answer = None
-                deterministic_fretboard_payload = None
+            deterministic_fretboard_payload = fretboard_payload_for_question(
+                deterministic_question
+            )
             answer_route = select_answer_route(
                 answer_intent_decision,
-                deterministic_available=(
-                    deterministic_chord_answer is not None
-                    and deterministic_fretboard_payload is not None
-                ),
+                deterministic_available=deterministic_chord_answer is not None,
             )
+            if (
+                deterministic_chord_answer is not None
+                and deterministic_question == answer_request.question
+                and not corpus_promoted
+            ):
+                answer_route = "deterministic"
             route_trace.route = answer_route
             curated_guidance_status: str | None = None
             curated_guidance_count: int | None = None
@@ -1716,6 +1827,7 @@ class RetrievalApi:
                     "sections": build_sections(final_answer),
                     "progression_guide": progression_guide_answer["progression_guide"],
                     "fretboard": progression_guide_answer["fretboard"],
+                    "answer_provenance": DETERMINISTIC_E9_PROVENANCE,
                 }
                 if copedent_context is not None:
                     _personalize_answer_payload(payload, target_profile, target_revision)
@@ -1756,6 +1868,7 @@ class RetrievalApi:
                     "sources": curated_sources,
                     "warnings": [],
                     "sections": build_sections(final_answer),
+                    "answer_provenance": DETERMINISTIC_E9_PROVENANCE,
                 }
                 if fretboard_payload is not None:
                     payload["fretboard"] = fretboard_payload
@@ -1788,7 +1901,6 @@ class RetrievalApi:
 
             if (
                 _should_gate_answer_intent(answer_intent_decision)
-                and not answer_request.conversation_context
             ):
                 final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
                 final_answer = normalize_answer_list_markers(final_answer)
@@ -1844,6 +1956,11 @@ class RetrievalApi:
                     "sources": [],
                     "warnings": [],
                     "sections": build_sections(final_answer),
+                    "answer_provenance": _answer_provenance(
+                        "curated_local_guidance",
+                        "Curated local guidance",
+                        "Selected from reviewed Steel Guitar RAG teaching rules; no retrieved quotation or language model was used.",
+                    ),
                 }
                 _attach_tab_example_if_available(
                     payload,
@@ -1907,15 +2024,34 @@ class RetrievalApi:
                 except (CanonicalFrontierUnavailable, RuntimeError) as exc:
                     frontier_error = exc
                 else:
-                    route_trace.retrieval = "canonical_frontier_complete"
+                    frontier_metadata = frontier_result.get("metadata") or {}
+                    frontier_delivery_mode = (
+                        str(frontier_metadata.get("delivery_mode") or "")
+                        if isinstance(frontier_metadata, dict)
+                        else ""
+                    )
+                    frontier_degraded = frontier_delivery_mode == "sgf_extractive_degraded"
+                    route_trace.retrieval = (
+                        "canonical_frontier_local_extractive"
+                        if frontier_degraded
+                        else "canonical_frontier_complete"
+                    )
                     frontier_mode = str(frontier_result.get("mode") or "complete")
                     frontier_answer = normalize_answer_list_markers(
                         str(frontier_result["answer"])
                     )
                     frontier_sources = concise_source_cards(list(frontier_result["sources"]))
                     route_trace.evidence = f"{len(frontier_sources)}_source_cards"
-                    route_trace.synthesis = f"frontier_{frontier_mode}"
-                    route_trace.verification = "frontier_contract_verified"
+                    route_trace.synthesis = (
+                        "not_run_extractive_degraded"
+                        if frontier_degraded
+                        else f"terra_{frontier_mode}"
+                    )
+                    route_trace.verification = (
+                        "deterministic_sentence_support"
+                        if frontier_degraded
+                        else "luna_claim_entailment"
+                    )
                     final_answer = frontier_answer
                     if answer_route == "hybrid" and deterministic_chord_answer is not None:
                         deterministic_answer = final_answer_quality_gate(
@@ -1935,8 +2071,17 @@ class RetrievalApi:
                         "answer": final_answer,
                         "mode": answer_request.mode,
                         "sources": frontier_sources,
-                        "warnings": [],
+                        "warnings": (
+                            ["verified synthesis is unavailable; showing extractive SGF evidence"]
+                            if frontier_degraded
+                            else []
+                        ),
                         "sections": build_sections(final_answer),
+                        "answer_provenance": (
+                            EXTRACTIVE_DEGRADED_PROVENANCE
+                            if frontier_degraded
+                            else VERIFIED_SYNTHESIS_PROVENANCE
+                        ),
                     }
                     if answer_route == "hybrid" and deterministic_fretboard_payload is not None:
                         payload["fretboard"] = deterministic_fretboard_payload
@@ -1956,29 +2101,104 @@ class RetrievalApi:
                         access_status="authorized",
                         authorized=True,
                         source_count=len(frontier_sources),
-                        warning_count=0,
+                        warning_count=len(payload["warnings"]),
                     )
                     return self._answer_success_response(
                         start_response,
                         payload,
                         access,
                         request_payload=request_payload,
-                        ai_assisted=True,
+                        ai_assisted=not frontier_degraded,
                     )
 
                 if frontier_error is not None:
                     cause = frontier_error.__cause__
+                    frontier_error_code = getattr(
+                        frontier_error,
+                        "error_code",
+                        "canonical_frontier_unavailable",
+                    )
                     LOGGER.warning(
-                        "canonical_frontier_unavailable honest_failure=true error_type=%s cause_type=%s trace_id=%s",
+                        "canonical_frontier_unavailable honest_failure=true error_type=%s cause_type=%s error_code=%s trace_id=%s",
                         type(frontier_error).__name__,
                         type(cause).__name__ if cause is not None else "none",
+                        frontier_error_code,
                         route_trace.trace_id,
                     )
                     route_trace.retrieval = "canonical_frontier_unavailable"
                     route_trace.evidence = "unavailable"
                     route_trace.synthesis = "not_run"
                     route_trace.verification = "not_run"
-                    route_trace.fallback = "honest_unavailable"
+                    route_trace.fallback = "bounded_local_extractive"
+                    degraded_result = None
+                    try:
+                        local_response = self._retrieval_dependencies.run(
+                            lambda: self._search(answer_request.question, limit=10),
+                            timeout_seconds=self._retrieval_wall_timeout,
+                        )
+                    except RuntimeError:
+                        route_trace.fallback = "local_retrieval_unavailable"
+                    else:
+                        degraded_result = compose_extractive_degraded_answer(
+                            answer_request.question,
+                            local_response.results,
+                        )
+                    if degraded_result is not None:
+                        degraded_answer = degraded_result.answer
+                        if answer_route == "hybrid" and deterministic_chord_answer is not None:
+                            deterministic_answer = final_answer_quality_gate(
+                                deterministic_chord_answer.answer,
+                                answer_request.question,
+                            )
+                            deterministic_contract = enforce_answer_contract(
+                                deterministic_answer,
+                                deterministic_chord_answer.intent,
+                            )
+                            degraded_answer = normalize_answer_list_markers(
+                                f"Deterministic E9 result:\n\n{deterministic_contract.answer}"
+                                f"\n\nExtractive SGF evidence:\n\n{degraded_answer}"
+                            )
+                        payload = {
+                            "answer": degraded_answer,
+                            "mode": answer_request.mode,
+                            "sources": degraded_result.sources,
+                            "warnings": [
+                                "verified synthesis is unavailable; showing extractive SGF evidence"
+                            ],
+                            "sections": build_sections(degraded_answer),
+                            "answer_provenance": EXTRACTIVE_DEGRADED_PROVENANCE,
+                        }
+                        if answer_route == "hybrid" and deterministic_fretboard_payload is not None:
+                            payload["fretboard"] = deterministic_fretboard_payload
+                        if profile_personalization_requested:
+                            _personalize_answer_payload(payload, target_profile, target_revision)
+                        route_trace.retrieval = "local_public_sgf_degraded"
+                        route_trace.evidence = f"{len(degraded_result.sources)}_source_cards"
+                        route_trace.synthesis = "not_run_extractive_degraded"
+                        route_trace.verification = "deterministic_sentence_support"
+                        route_trace.displayed_answer = (
+                            "extractive_cards_only"
+                            if degraded_result.cards_only
+                            else "extractive_answer_with_sources"
+                        )
+                        self._log_route_trace(route_trace)
+                        self._log_answer_attempt(
+                            request_payload,
+                            role=access.role,
+                            identity_email=access.identity_email,
+                            access_status="authorized",
+                            authorized=True,
+                            source_count=len(degraded_result.sources),
+                            warning_count=1,
+                        )
+                        return self._answer_success_response(
+                            start_response,
+                            payload,
+                            access,
+                            request_payload=request_payload,
+                            ai_assisted=False,
+                        )
+
                     if answer_route == "hybrid" and deterministic_chord_answer is not None:
                         deterministic_answer = final_answer_quality_gate(
                             deterministic_chord_answer.answer,
@@ -2000,6 +2220,7 @@ class RetrievalApi:
                             "sources": [],
                             "warnings": ["source-backed forum context is temporarily unavailable"],
                             "sections": build_sections(final_answer),
+                            "answer_provenance": DETERMINISTIC_E9_PROVENANCE,
                         }
                         if deterministic_fretboard_payload is not None:
                             payload["fretboard"] = deterministic_fretboard_payload

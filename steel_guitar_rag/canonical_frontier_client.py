@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from typing import Any, Mapping
+from urllib.parse import urlsplit, urlunsplit
 
 
 ENABLE_CANONICAL_FRONTIER_ENV = "STEEL_RAG_CANONICAL_FRONTIER_ENABLED"
@@ -21,6 +22,19 @@ ALLOWED_MODES = {"complete", "partial", "clarify", "abstain"}
 
 class CanonicalFrontierUnavailable(RuntimeError):
     """The candidate service was unavailable or returned an unsafe response."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        error_code: str = "canonical_frontier_unavailable",
+        http_status: int | None = None,
+        retryable: bool = True,
+    ) -> None:
+        super().__init__(message)
+        self.error_code = error_code
+        self.http_status = http_status
+        self.retryable = retryable
 
 
 def _env_flag(value: str | None) -> bool:
@@ -50,6 +64,8 @@ def validate_frontier_result(value: Any) -> dict[str, Any]:
     answer = value.get("answer")
     claims = value.get("claims")
     sources = value.get("sources")
+    metadata = value.get("metadata") or {}
+    delivery_mode = str(metadata.get("delivery_mode") or "") if isinstance(metadata, dict) else ""
     if mode not in ALLOWED_MODES or not isinstance(answer, str) or not answer.strip():
         raise CanonicalFrontierUnavailable("Canonical frontier answer envelope is invalid.")
     if not isinstance(claims, list) or not isinstance(sources, list):
@@ -92,7 +108,11 @@ def validate_frontier_result(value: Any) -> dict[str, Any]:
         ):
             raise CanonicalFrontierUnavailable("Canonical frontier claim support is invalid.")
         claim_ids.add(claim_id)
-    if mode in {"complete", "partial"} and not claims:
+    if (
+        mode in {"complete", "partial"}
+        and not claims
+        and not (delivery_mode == "sgf_extractive_degraded" and bool(sources))
+    ):
         raise CanonicalFrontierUnavailable("An answer response contained no verified claims.")
     return value
 
@@ -102,6 +122,11 @@ class CanonicalFrontierClient:
     url: str
     token: str
     timeout_seconds: float = DEFAULT_CANONICAL_FRONTIER_TIMEOUT_SECONDS
+
+    @property
+    def readiness_url(self) -> str:
+        parts = urlsplit(self.url)
+        return urlunsplit((parts.scheme, parts.netloc, "/health/ready", "", ""))
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "CanonicalFrontierClient":
@@ -138,6 +163,25 @@ class CanonicalFrontierClient:
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                 raw = response.read(1_048_577)
+        except urllib.error.HTTPError as exc:
+            raw_error = exc.read(65_537)
+            code = "canonical_frontier_unavailable"
+            retryable = exc.code >= 500 or exc.code == 429
+            if len(raw_error) <= 65_536:
+                try:
+                    error_value = json.loads(raw_error.decode("utf-8")).get("error") or {}
+                except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+                    error_value = {}
+                candidate = str(error_value.get("code") or "").strip()
+                if candidate and len(candidate) <= 96 and candidate.replace("_", "").replace("-", "").isalnum():
+                    code = candidate
+                retryable = bool(error_value.get("retryable", retryable))
+            raise CanonicalFrontierUnavailable(
+                "Canonical frontier request failed.",
+                error_code=code,
+                http_status=int(exc.code),
+                retryable=retryable,
+            ) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise CanonicalFrontierUnavailable("Canonical frontier request failed.") from exc
         if len(raw) > 1_048_576:
@@ -147,6 +191,49 @@ class CanonicalFrontierClient:
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise CanonicalFrontierUnavailable("Canonical frontier returned invalid JSON.") from exc
         return validate_frontier_result(value)
+
+    def readiness(self, *, timeout_seconds: float = 1.0) -> dict[str, Any]:
+        request = urllib.request.Request(
+            self.readiness_url,
+            headers={"Accept": "application/json"},
+            method="GET",
+        )
+        status = 200
+        try:
+            with urllib.request.urlopen(
+                request,
+                timeout=max(0.1, min(float(timeout_seconds), 5.0)),
+            ) as response:
+                status = int(response.status)
+                raw = response.read(65_537)
+        except urllib.error.HTTPError as exc:
+            status = int(exc.code)
+            raw = exc.read(65_537)
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise CanonicalFrontierUnavailable(
+                "Canonical frontier readiness check failed.",
+                error_code="frontier_health_unreachable",
+            ) from exc
+        if len(raw) > 65_536:
+            raise CanonicalFrontierUnavailable(
+                "Canonical frontier readiness response is too large.",
+                error_code="frontier_health_invalid",
+            )
+        try:
+            value = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise CanonicalFrontierUnavailable(
+                "Canonical frontier readiness response is invalid.",
+                error_code="frontier_health_invalid",
+            ) from exc
+        if not isinstance(value, dict) or value.get("status") not in {"ready", "not_ready"}:
+            raise CanonicalFrontierUnavailable(
+                "Canonical frontier readiness envelope is invalid.",
+                error_code="frontier_health_invalid",
+            )
+        value = dict(value)
+        value["http_status"] = status
+        return value
 
 
 __all__ = [

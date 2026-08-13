@@ -68,11 +68,45 @@ class EntitySearchIndex:
         }
 
 
+class DegradedSearchIndex:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def search(self, query: str, **kwargs: Any) -> dict[str, Any]:
+        del query, kwargs
+        self.calls += 1
+        return {
+            "results": [{
+                "score": 0.91,
+                "excerpt": (
+                    "Forum technicians reported that Webb amp speaker swaps can produce "
+                    "a clearer high end when the replacement speaker suits the cabinet."
+                ),
+                "source_system": "sgf_phpbb_current",
+                "forum_name": "Electronics",
+                "thread_title": "Webb amp speaker swaps",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=399975",
+                "chunk_id": "sgf:degraded:1",
+                "post_uid": "sgf:post:degraded:1",
+            }],
+            "warnings": [],
+        }
+
+
 class FakeFrontierClient:
-    def __init__(self, *, fail: bool = False) -> None:
+    def __init__(self, *, fail: bool = False, ready: bool = True) -> None:
         self.fail = fail
+        self.ready = ready
         self.questions: list[str] = []
         self.contexts: list[list[str]] = []
+
+    def readiness(self, *, timeout_seconds: float = 1.0) -> dict[str, Any]:
+        del timeout_seconds
+        return {
+            "status": "ready" if self.ready else "not_ready",
+            "reason": "ready" if self.ready else "provider_unavailable",
+            "http_status": 200 if self.ready else 503,
+        }
 
     def answer(
         self,
@@ -138,6 +172,22 @@ def call_answer(
     return captured["status"], json.loads(response)
 
 
+def call_get(app: Any, path: str) -> tuple[str, dict[str, Any]]:
+    captured: dict[str, Any] = {}
+
+    def start_response(status: str, headers: list[tuple[str, str]]) -> None:
+        captured["status"] = status
+        captured["headers"] = headers
+
+    response = b"".join(app({
+        "REQUEST_METHOD": "GET",
+        "PATH_INFO": path,
+        "QUERY_STRING": "",
+        "wsgi.input": io.BytesIO(),
+    }, start_response))
+    return captured["status"], json.loads(response)
+
+
 def test_frontier_flag_defaults_off() -> None:
     assert configured_canonical_frontier_enabled({}) is False
     assert configured_canonical_frontier_enabled({ENABLE_CANONICAL_FRONTIER_ENV: "0"}) is False
@@ -173,6 +223,15 @@ def test_result_validation_rejects_uncited_claim() -> None:
 def test_result_validation_accepts_v1034_relevance_entailment_support() -> None:
     value = FakeFrontierClient().answer("question")
     value["claims"][0]["support_mode"] = "independent_relevance_entailment_verifier"
+    assert validate_frontier_result(value) is value
+
+
+def test_result_validation_accepts_explicit_degraded_cards_only_state() -> None:
+    value = FakeFrontierClient().answer("question")
+    value["mode"] = "partial"
+    value["answer"] = "Verified synthesis is unavailable; inspect the relevant source card."
+    value["claims"] = []
+    value["metadata"] = {"delivery_mode": "sgf_extractive_degraded", "cards_only": True}
     assert validate_frontier_result(value) is value
 
 
@@ -277,6 +336,86 @@ def test_position_strategy_content_leads_without_frontier_or_legacy_retrieval() 
     assert frontier.questions == []
     assert search.calls == 0
     assert provider.calls == 0
+
+
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    [
+        ("Where is a Zm chord?", "I don’t recognize “Zm” as a standard chord name."),
+        ("Is this grip a full chord?", "I need the missing context"),
+    ],
+)
+def test_frontier_enabled_never_suppresses_deterministic_authority(
+    question: str,
+    expected: str,
+) -> None:
+    frontier = FakeFrontierClient()
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    status, payload = call_answer(app, question)
+    assert status == "200 OK"
+    assert expected in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["answer_provenance"]["kind"] in {
+        "deterministic_e9_rules", "curated_local_guidance",
+    }
+    assert frontier.questions == []
+    assert search.calls == 0
+
+
+def test_provenance_followup_resolves_preceding_deterministic_chord_answer() -> None:
+    frontier = FakeFrontierClient()
+    app = create_app(
+        EmptySearchIndex(),
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    status, payload = call_answer(
+        app,
+        "What is your source of information for this?",
+        conversation_context=[
+            "User: Where can I play a G chord on E9?",
+            "Assistant: Use the pitch-validated G positions shown above.",
+        ],
+    )
+    assert status == "200 OK"
+    assert "deterministic and curated rules layer" in payload["answer"]
+    assert payload["answer_provenance"]["kind"] == "deterministic_e9_rules"
+    assert frontier.questions == []
+
+
+def test_main_readiness_requires_exact_frontier_ready_but_reports_local_degraded() -> None:
+    ready_app = create_app(
+        EmptySearchIndex(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=FakeFrontierClient(ready=True),
+    )
+    status, payload = call_get(ready_app, "/health/ready")
+    assert status == "200 OK"
+    assert payload["status"] == "ready"
+
+    degraded_app = create_app(
+        EmptySearchIndex(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=FakeFrontierClient(ready=False),
+    )
+    status, payload = call_get(degraded_app, "/health/ready")
+    assert status == "200 OK"
+    assert payload["status"] == "degraded"
+    assert payload["dependencies"] == {
+        "local_answer_paths": "ready",
+        "canonical_frontier": "not_ready",
+    }
 
 
 @pytest.mark.parametrize(
@@ -421,7 +560,7 @@ def test_answer_rejects_invalid_conversation_context(context: Any) -> None:
     assert "conversationContext" in payload["error"]
 
 
-def test_enabled_frontier_failure_is_honest_and_does_not_use_old_path() -> None:
+def test_enabled_frontier_failure_checks_bounded_local_evidence_before_503() -> None:
     search = EmptySearchIndex()
     frontier = FakeFrontierClient(fail=True)
     provider = ExistingAnswerProvider()
@@ -435,10 +574,33 @@ def test_enabled_frontier_failure_is_honest_and_does_not_use_old_path() -> None:
     status, payload = call_answer(app, "What did forum members report about Webb amp speaker swaps?")
     assert status == "503 Service Unavailable"
     assert frontier.questions
-    assert search.calls == 0
+    assert search.calls == 1
     assert provider.calls == 0
     assert "could not complete this answer" in payload["error"]
     assert "No generic answer was substituted" in payload["error"]
+
+
+def test_enabled_frontier_failure_returns_bounded_local_extractive_evidence() -> None:
+    search = DegradedSearchIndex()
+    provider = ExistingAnswerProvider()
+    app = create_app(
+        search,
+        answer_provider=provider,
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=FakeFrontierClient(fail=True),
+    )
+    status, payload = call_answer(
+        app, "What did forum members report about Webb amp speaker swaps?"
+    )
+    assert status == "200 OK"
+    assert search.calls == 1
+    assert provider.calls == 0
+    assert payload["sources"]
+    assert payload["answer_provenance"]["kind"] == "sgf_extractive_degraded"
+    assert payload["warnings"] == [
+        "verified synthesis is unavailable; showing extractive SGF evidence"
+    ]
 
 
 def test_hybrid_route_combines_deterministic_position_with_verified_forum_context() -> None:
@@ -485,7 +647,7 @@ def test_hybrid_frontier_failure_keeps_deterministic_result_with_explicit_warnin
     assert "No forum summary was substituted" in payload["answer"]
     assert payload["warnings"] == ["source-backed forum context is temporarily unavailable"]
     assert payload["fretboard"]["title"] == "F major 7 positions on E9"
-    assert search.calls == 0
+    assert search.calls == 1
     assert provider.calls == 0
 
 
@@ -520,9 +682,9 @@ def test_route_diagnostics_record_every_control_stage(caplog: pytest.LogCaptureF
         "fallback": "none",
         "retrieval": "canonical_frontier_complete",
         "route": "source_backed_rag",
-        "synthesis": "frontier_complete",
+        "synthesis": "terra_complete",
         "traceId": trace["traceId"],
-        "verification": "frontier_contract_verified",
+        "verification": "luna_claim_entailment",
     }
     assert len(trace["traceId"]) == 16
 

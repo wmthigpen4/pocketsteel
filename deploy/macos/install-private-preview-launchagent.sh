@@ -147,14 +147,15 @@ version_matches_expected() {
 
 wait_for_health() {
   local require_supervised="${1:-0}"
-  local deadline live ready version actual
+  local deadline live ready ready_status version actual
   deadline=$(( $(date +%s) + STEEL_RAG_HEALTH_TIMEOUT_SECONDS ))
   while (( $(date +%s) < deadline )); do
     live="$(curl --max-time 3 --fail --silent "http://$STEEL_RAG_HOST:$STEEL_RAG_PORT/health/live" 2>/dev/null || true)"
     ready="$(curl --max-time 3 --fail --silent "http://$STEEL_RAG_HOST:$STEEL_RAG_PORT/health/ready" 2>/dev/null || true)"
+    ready_status="$(python3 -c 'import json,sys; print((json.load(sys.stdin) or {}).get("status", ""))' <<<"$ready" 2>/dev/null || true)"
     version="$(curl --max-time 3 --fail --silent "http://$STEEL_RAG_HOST:$STEEL_RAG_PORT/api/version" 2>/dev/null || true)"
     actual="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("git_sha", ""))' <<<"$version" 2>/dev/null || true)"
-    if [[ "$live" == *'"live"'* && "$ready" == *'"ready"'* ]] && version_matches_expected "$actual"; then
+    if [[ "$live" == *'"live"'* && "$ready_status" == "ready" ]] && version_matches_expected "$actual"; then
       if [[ "$require_supervised" == "0" ]] || supervised_listener_is_ready; then
         printf '%s\n' "$version"
         return 0

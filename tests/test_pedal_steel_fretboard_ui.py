@@ -2204,6 +2204,36 @@ assert.match(html, /role &amp; detail/);
     run_node(script)
 
 
+def test_component_renders_internal_position_labels_as_readable_text() -> None:
+    script = component_eval_script(
+        r"""
+const html = fretboard.renderPedalSteelFretboard({
+  positions: [{
+    id: "g-open-3",
+    label: "G major",
+    fret: 3,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: [],
+    levers: [],
+    family: "open_no_pedals",
+    tier: "beginner",
+    role: "starter_home_position",
+    positionKind: "full_chord_position",
+    visibleByDefault: true
+  }]
+});
+const visibleText = html.replace(/<[^>]+>/g, " ");
+assert.match(visibleText, /Full chord position/);
+assert.match(visibleText, /Open no pedals/);
+assert.doesNotMatch(visibleText, /full_chord_position/);
+assert.doesNotMatch(visibleText, /open_no_pedals/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_demo_page_mounts_the_component_without_touching_landing_pages() -> None:
     if not (REPO_ROOT / DEMO).exists():
         return

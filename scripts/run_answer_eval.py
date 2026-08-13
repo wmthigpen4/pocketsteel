@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from steel_guitar_rag.answer_contracts import normalize_intent, validate_answer_against_contract
+from steel_guitar_rag.answer_intent_classifier import classify_answer_request
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8770"
@@ -169,6 +170,7 @@ class EvalResult:
     question: str
     expected_intent: str
     expected_contract: str
+    expected_authority: str
     status_code: int
     answer: str
     warnings: list[str]
@@ -203,6 +205,7 @@ def load_question_bank(path: Path) -> list[dict[str, str]]:
                 "question": str(item["question"]).strip(),
                 "expected_intent": str(item.get("expected_intent") or "").strip(),
                 "expected_contract": str(item.get("expected_contract") or "").strip(),
+                "expected_authority": str(item.get("expected_authority") or "").strip(),
             }
         )
     return rows
@@ -239,11 +242,47 @@ def is_ranking_question(question: str) -> bool:
 
 
 def add_failure(failures: list[Failure], group: str, reason: str) -> None:
-    failures.append(Failure(group=group, reason=reason))
+    if not any(item.group == group and item.reason == reason for item in failures):
+        failures.append(Failure(group=group, reason=reason))
 
 
 def has_practice_plan(answer: str) -> bool:
-    return bool(re.search(r"\bpractice\b|\bplan\b|\broutine\b|\b\d+\.\s+\w+", answer, re.I))
+    structural_markers = len(re.findall(r"(?m)^\s*(?:[-*]|\d+[.)])\s+\S", answer))
+    return bool(
+        re.search(
+            r"\b(?:practice|plan|routine|drills?|goal|woodshed)\b|"
+            r"\b\d{1,3}(?:-\d{1,3})?\s*(?:minutes?|mins?)\b|"
+            r"\b\d+\.\s+\w+",
+            answer,
+            re.I,
+        )
+        or structural_markers >= 2
+    )
+
+
+SOURCE_BACKED_INTENTS = frozenset({
+    "brand_comparison", "current_company_status", "lesson_lookup", "player_bio",
+    "player_brand_usage", "product_value", "vendor_buying_guidance", "forum_wisdom",
+})
+
+
+def infer_expected_authority(
+    question: str,
+    explicit_authority: str = "",
+    expected_intent: str = "",
+    expected_contract: str = "",
+) -> str:
+    if explicit_authority:
+        return explicit_authority
+    normalized = normalize_intent(expected_contract or expected_intent)
+    if normalized in SOURCE_BACKED_INTENTS:
+        return "source_backed"
+    decision = classify_answer_request(question, "ask")
+    if decision.get("domain") in {"off_domain", "unsafe_or_impossible"}:
+        return "local_guardrail"
+    if decision.get("needs_sources") and decision.get("retrieval_allowed"):
+        return "source_backed"
+    return "deterministic_local"
 
 
 def has_technique_improvement_guidance(answer: str) -> bool:
@@ -426,15 +465,31 @@ def evaluate_answer(
     status_code: int,
     expected_intent: str = "",
     expected_contract: str = "",
+    expected_authority: str = "",
 ) -> list[Failure]:
     failures: list[Failure] = []
     explicit_contract_intent = expected_contract or expected_intent
     expected_intent = normalize_intent(infer_expected_intent(question, expected_intent))
+    expected_authority = infer_expected_authority(
+        question,
+        expected_authority,
+        expected_intent,
+        expected_contract,
+    )
 
     if status_code != 200:
         add_failure(failures, "source weakness / no-source", f"HTTP status {status_code}")
-    if source_count == 0 or re.search(r"\bno strong source match\b|\bdid not provide enough evidence\b", answer, re.I):
+    if expected_authority == "source_backed" and (
+        source_count == 0
+        or re.search(r"\bno strong source match\b|\bdid not provide enough evidence\b", answer, re.I)
+    ):
         add_failure(failures, "source weakness / no-source", "no source-backed answer")
+    if expected_authority in {"deterministic_local", "local_guardrail"} and source_count:
+        add_failure(
+            failures,
+            "likely routing failure",
+            f"{expected_authority} answer unexpectedly returned source cards",
+        )
 
     for reason, pattern in FORMAT_PATTERNS:
         if pattern.search(answer):
@@ -484,7 +539,7 @@ def evaluate_answer(
         if re.search(r"\b(ignore previous instructions|output only|you are now|follow this link|reveal your prompt)\b", answer, re.I):
             add_failure(failures, "possible safety issue", "hostile prompt text leaked into answer")
 
-    if any("no strong" in warning.lower() for warning in warnings):
+    if expected_authority == "source_backed" and any("no strong" in warning.lower() for warning in warnings):
         add_failure(failures, "source weakness / no-source", "API warning indicates weak/no source")
 
     return failures
@@ -503,6 +558,7 @@ def result_from_payload(row: dict[str, str], status_code: int, payload: dict[str
         status_code,
         row.get("expected_intent", ""),
         row.get("expected_contract", ""),
+        row.get("expected_authority", ""),
     )
     return EvalResult(
         id=row["id"],
@@ -510,6 +566,12 @@ def result_from_payload(row: dict[str, str], status_code: int, payload: dict[str
         question=row["question"],
         expected_intent=row.get("expected_intent", ""),
         expected_contract=row.get("expected_contract", ""),
+        expected_authority=infer_expected_authority(
+            row["question"],
+            row.get("expected_authority", ""),
+            row.get("expected_intent", ""),
+            row.get("expected_contract", ""),
+        ),
         status_code=status_code,
         answer=answer,
         warnings=warnings,
@@ -549,6 +611,7 @@ def result_to_json(result: EvalResult) -> dict[str, Any]:
         "question": result.question,
         "expected_intent": result.expected_intent,
         "expected_contract": result.expected_contract,
+        "expected_authority": result.expected_authority,
         "status_code": result.status_code,
         "answer": result.answer,
         "warnings": result.warnings,
@@ -618,6 +681,7 @@ def render_report(
                 f"- Category: `{result.category}`",
                 f"- Expected intent: `{result.expected_intent or 'unspecified'}`",
                 f"- Expected contract: `{result.expected_contract or 'inferred'}`",
+                f"- Expected authority: `{result.expected_authority}`",
                 f"- Question: {result.question}",
                 f"- Reasons: {failure_reason_text(result)}",
                 f"- Status: {result.status_code}",
@@ -639,6 +703,7 @@ def render_report(
                 f"- `{result.id}` {result.question} "
                 f"(category: `{result.category}`, intent: `{result.expected_intent or 'unspecified'}`, "
                 f"contract: `{result.expected_contract or 'inferred'}`, "
+                f"authority: `{result.expected_authority}`, "
                 f"sources: {result.source_count}, reasons: {failure_reason_text(result)})"
             )
     lines.append("")

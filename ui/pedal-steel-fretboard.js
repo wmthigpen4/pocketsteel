@@ -760,6 +760,33 @@
     return normalizeMetadataText(value).toLowerCase().replace(/[\s-]+/g, "_");
   }
 
+  const POSITION_KIND_LABELS = Object.freeze({
+    full_chord_position: "Full chord position",
+    partial_voicing: "Partial voicing",
+    rootless_voicing: "Rootless voicing",
+    starter_position: "Starter position",
+    dominant_pocket: "Dominant pocket",
+    advanced_reference: "Advanced reference",
+    grip_diagnostic: "Grip diagnostic",
+    tab_example_event: "Tab example",
+  });
+
+  function readableMetadataLabel(value) {
+    const text = normalizeMetadataText(value);
+    if (!text) {
+      return "";
+    }
+    const token = normalizedKindToken(text);
+    if (POSITION_KIND_LABELS[token]) {
+      return POSITION_KIND_LABELS[token];
+    }
+    if (!/[ _-]/.test(text)) {
+      return text;
+    }
+    const readable = text.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+    return readable.charAt(0).toUpperCase() + readable.slice(1);
+  }
+
   function isFocusedPositionKind(positionKind) {
     const kind = normalizedKindToken(positionKind);
     return [
@@ -1827,7 +1854,7 @@
     const hiddenStyle = isVisible && isSelected ? "" : " display: none;";
     const voicingValue = voicingExplanation(highlight) || highlight.voicingType || highlight.inversionLabel;
     const kindValue = [
-      highlight.positionKind,
+      readableMetadataLabel(highlight.positionKind),
       highlight.isPartial ? "partial" : "",
       highlight.isRootless ? "rootless" : "",
     ].filter(Boolean).join(" · ");
@@ -1849,9 +1876,9 @@
       </div>
       ${renderTechnicalDetails([
         renderDetailItem("Validation status", highlight.validationStatus),
-        renderDetailItem("Family", highlight.family),
-        renderDetailItem("Tier", highlight.tier),
-        renderDetailItem("Role", highlight.role),
+        renderDetailItem("Family", readableMetadataLabel(highlight.family)),
+        renderDetailItem("Tier", readableMetadataLabel(highlight.tier)),
+        renderDetailItem("Role", readableMetadataLabel(highlight.role)),
         renderDetailItem("Position kind", kindValue),
         renderDetailItem("Why classified", classificationReason(highlight), "is-wide"),
         renderDetailItem("Forum usage evidence", forumEvidenceReason(highlight), "is-wide"),
@@ -1933,7 +1960,7 @@
         const voicingText = voicingExplanation(highlight);
         const controls = [...highlight.pedals, ...highlight.levers];
         const kindTags = [
-          highlight.positionKind,
+          readableMetadataLabel(highlight.positionKind),
           voicingText,
           highlight.isPartial ? "partial" : "",
           highlight.isRootless ? "rootless" : "",

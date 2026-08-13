@@ -510,7 +510,7 @@ def test_common_grip_labels_remain_available_in_canonical_order() -> None:
         if position["fret"] == 3 and position["family"] in {"open_no_pedals", "open_grip"}
     ]
 
-    assert first_fret_family == ["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-7-8"]
+    assert first_fret_family == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
     assert all(max(position["strings"]) <= 10 for position in payload["positions"])
     assert not any("11" in position["grip"] or "12" in position["grip"] for position in payload["positions"])
 
@@ -787,7 +787,7 @@ def test_b_major_expanded_catalog_has_beginner_visible_defaults_and_hidden_alter
             continue
         if position["grip"] not in first_grip_order:
             first_grip_order.append(position["grip"])
-    assert first_grip_order == ["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-7-8"]
+    assert first_grip_order == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
     assert [position["fret"] for position in positions if position["family"] == "e_lower_578"] == [0, 12]
 
 
@@ -810,7 +810,7 @@ def test_g_major_expanded_catalog_includes_pitch_valid_common_grips_and_e_lower_
         for position in positions
         if position["family"] in {"open_grip", "open_no_pedals"} and position["fret"] == 3
     ]
-    assert open_grips == ["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-7-8"]
+    assert open_grips == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
     assert not any(position["grip"] == "5-7-8" and position["pedals"] == ["A", "B"] for position in positions)
     g_578 = by_id["g-open-grip-5-7-8-3"]
     assert g_578["label"] == "G5/add9 (no 3rd)"

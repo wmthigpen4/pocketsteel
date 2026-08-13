@@ -3043,7 +3043,7 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
                 candidate = replace(
                     candidate,
                     tier="advanced" if grip == E_LOWER_578_GRIP else candidate.tier,
-                    sort_order=candidate.sort_order + 45,
+                    sort_order=candidate.sort_order + 5,
                     why_use_it=f"Use this as a contextual {key} color grip only after you know the complete triad positions.",
                     caveats=tuple(
                         dict.fromkeys(

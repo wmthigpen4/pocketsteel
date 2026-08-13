@@ -15,14 +15,13 @@ STEEL_RAG_CANONICAL_FRONTIER_INSTALL_DIR="${STEEL_RAG_CANONICAL_FRONTIER_INSTALL
 STEEL_RAG_CANONICAL_FRONTIER_PLIST_PATH="${STEEL_RAG_CANONICAL_FRONTIER_PLIST_PATH:-$HOME/Library/LaunchAgents/$STEEL_RAG_CANONICAL_FRONTIER_LABEL.plist}"
 STEEL_RAG_CANONICAL_FRONTIER_WRAPPER="${STEEL_RAG_CANONICAL_FRONTIER_WRAPPER:-$STEEL_RAG_CANONICAL_FRONTIER_INSTALL_DIR/run-canonical-frontier-service.sh}"
 STEEL_RAG_CANONICAL_FRONTIER_VERIFIER="${STEEL_RAG_CANONICAL_FRONTIER_VERIFIER:-$STEEL_RAG_CANONICAL_FRONTIER_INSTALL_DIR/verify_canonical_frontier_service.py}"
-STEEL_RAG_CANONICAL_FRONTIER_MANIFEST="${STEEL_RAG_CANONICAL_FRONTIER_MANIFEST:-$STEEL_RAG_CANONICAL_FRONTIER_INSTALL_DIR/canonical-frontier-service-bundle-v931.json}"
+STEEL_RAG_CANONICAL_FRONTIER_MANIFEST="${STEEL_RAG_CANONICAL_FRONTIER_MANIFEST:-$STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT/canonical-frontier-service-bundle-v1035.json}"
 STEEL_RAG_CANONICAL_FRONTIER_HEALTH_TIMEOUT_SECONDS="${STEEL_RAG_CANONICAL_FRONTIER_HEALTH_TIMEOUT_SECONDS:-180}"
 STEEL_RAG_CANONICAL_FRONTIER_DOMAIN="gui/$(id -u)"
 
 TEMPLATE_SOURCE="$SCRIPT_DIR/com.steelguitarrag.canonical-frontier.launchagent.plist.template"
 WRAPPER_SOURCE="$SCRIPT_DIR/run-canonical-frontier-service.sh"
 VERIFIER_SOURCE="$REPO_DIR/scripts/verify_canonical_frontier_service.py"
-MANIFEST_SOURCE="$SCRIPT_DIR/canonical-frontier-service-bundle-v931.json"
 
 fail() {
   printf 'canonical-frontier LaunchAgent: %s\n' "$*" >&2
@@ -57,7 +56,7 @@ require_configuration() {
   [[ -r "$TEMPLATE_SOURCE" ]] || fail "plist template is missing"
   [[ -x "$WRAPPER_SOURCE" ]] || fail "service wrapper is missing or not executable"
   [[ -x "$VERIFIER_SOURCE" ]] || fail "bundle verifier is missing or not executable"
-  [[ -r "$MANIFEST_SOURCE" ]] || fail "bundle manifest is missing"
+  [[ -r "$STEEL_RAG_CANONICAL_FRONTIER_MANIFEST" ]] || fail "bundle manifest is missing"
   [[ "$STEEL_RAG_CANONICAL_FRONTIER_HOST" == "127.0.0.1" ]] || fail "non-loopback binding is prohibited"
   [[ "$STEEL_RAG_CANONICAL_FRONTIER_PORT" =~ ^[0-9]+$ ]] || fail "port must be numeric"
   [[ "$STEEL_RAG_CANONICAL_FRONTIER_HEALTH_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || fail "health timeout must be a positive integer"
@@ -122,13 +121,13 @@ preflight() {
   bash -n "$WRAPPER_SOURCE"
   "$STEEL_RAG_CANONICAL_FRONTIER_PYTHON" "$VERIFIER_SOURCE" \
     --service-root "$STEEL_RAG_CANONICAL_FRONTIER_SERVICE_ROOT" \
-    --manifest "$MANIFEST_SOURCE" >/dev/null
+    --manifest "$STEEL_RAG_CANONICAL_FRONTIER_MANIFEST" >/dev/null
   local temporary_plist
   temporary_plist="$(mktemp "/tmp/$STEEL_RAG_CANONICAL_FRONTIER_LABEL.launchagent.XXXXXX")"
   render_plist > "$temporary_plist"
   plutil -lint "$temporary_plist" >/dev/null
   rm -f "$temporary_plist"
-  printf 'Canonical-frontier LaunchAgent preflight passed: bundle v1034, loopback %s, no state changed.\n' "$STEEL_RAG_CANONICAL_FRONTIER_PORT"
+  printf 'Canonical-frontier LaunchAgent preflight passed: bundle v1035, loopback %s, no state changed.\n' "$STEEL_RAG_CANONICAL_FRONTIER_PORT"
 }
 
 install_service() {
@@ -136,7 +135,6 @@ install_service() {
   mkdir -p "$STEEL_RAG_CANONICAL_FRONTIER_INSTALL_DIR" "$STEEL_RAG_CANONICAL_FRONTIER_LOG_DIR" "$(dirname "$STEEL_RAG_CANONICAL_FRONTIER_PLIST_PATH")"
   install -m 0755 "$WRAPPER_SOURCE" "$STEEL_RAG_CANONICAL_FRONTIER_WRAPPER"
   install -m 0755 "$VERIFIER_SOURCE" "$STEEL_RAG_CANONICAL_FRONTIER_VERIFIER"
-  install -m 0644 "$MANIFEST_SOURCE" "$STEEL_RAG_CANONICAL_FRONTIER_MANIFEST"
   local temporary_plist
   temporary_plist="$(mktemp "/tmp/$STEEL_RAG_CANONICAL_FRONTIER_LABEL.install.XXXXXX")"
   render_plist > "$temporary_plist"
@@ -148,12 +146,13 @@ install_service() {
 
 verify_service() {
   require_configuration
-  local deadline live ready unauthorized_code
+  local deadline live ready ready_body unauthorized_code
   deadline=$((SECONDS + STEEL_RAG_CANONICAL_FRONTIER_HEALTH_TIMEOUT_SECONDS))
   live="http://127.0.0.1:$STEEL_RAG_CANONICAL_FRONTIER_PORT/health/live"
   ready="http://127.0.0.1:$STEEL_RAG_CANONICAL_FRONTIER_PORT/health/ready"
   until curl --silent --show-error --fail --max-time 3 "$live" >/dev/null 2>&1 \
-    && curl --silent --show-error --fail --max-time 3 "$ready" >/dev/null 2>&1; do
+    && ready_body="$(curl --silent --show-error --fail --max-time 3 "$ready" 2>/dev/null)" \
+    && [[ "$(printf '%s' "$ready_body" | python3 -c 'import json,sys; print((json.load(sys.stdin) or {}).get("status", ""))')" == "ready" ]]; do
     (( SECONDS < deadline )) || fail "service health verification timed out"
     sleep 1
   done

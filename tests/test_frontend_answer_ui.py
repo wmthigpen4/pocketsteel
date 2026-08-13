@@ -1163,7 +1163,7 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     assert '<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
-    assert '<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=qna-repair-readable-labels-20260813"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
@@ -1347,6 +1347,9 @@ def test_answer_source_notes_render_deterministic_provenance_without_fake_source
     assert 'response.answerProvenance ? "Answer provenance" : "Source notes"' in html
     assert 'response.answerProvenance?.title || "No sources returned"' in html
     assert "response.answerProvenance?.summary" in html
+    assert "response.sources?.length && response.answerProvenance" in html
+    assert 'provenanceLabel.textContent = "Answer provenance";' in html
+    assert 'source-card source-card--provenance' in html
 
 
 def test_backstage_more_action_pill_centers_summary_text() -> None:

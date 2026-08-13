@@ -24,6 +24,7 @@ REAL_SERVICE_ROOT = Path(
         Path.home() / ".steel-rag/services/canonical-frontier-v1034-fallback-20260806",
     )
 ).expanduser()
+REAL_V1035_MANIFEST = REAL_SERVICE_ROOT / "canonical-frontier-service-bundle-v1035.json"
 
 
 def digest(path: Path) -> str:
@@ -130,12 +131,17 @@ class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
     def test_wrapper_verifies_before_start_and_rejects_non_loopback(self) -> None:
         source = WRAPPER.read_text(encoding="utf-8")
         self.assertIn('== "127.0.0.1"', source)
-        self.assertLess(source.index("--service-root"), source.index("exec \"$STEEL_RAG_CANONICAL_FRONTIER_PYTHON\""))
+        self.assertLess(
+            source.index("--service-root"),
+            source.index('canonical_frontier_http_api_v3.py'),
+        )
         self.assertNotIn("echo $STEEL_RAG_CANONICAL_FRONTIER_TOKEN", source)
         self.assertIn('HF_HUB_OFFLINE="1"', source)
         self.assertIn('TRANSFORMERS_OFFLINE="1"', source)
-        self.assertIn('STEEL_RAG_CANONICAL_FRONTIER_RUNTIME_VERSION="v1034"', source)
-        self.assertIn('STEEL_RAG_CANONICAL_FRONTIER_WARMUP_ROUNDS="2"', source)
+        self.assertIn('OLLAMA_MODELS="$STEEL_RAG_CANONICAL_FRONTIER_OLLAMA_MODELS"', source)
+        self.assertIn('HF_HOME="$STEEL_RAG_CANONICAL_FRONTIER_HF_HOME"', source)
+        self.assertIn('canonical_frontier_http_api_v3.py', source)
+        self.assertNotIn('canonical_frontier_http_api_v2.py', source)
 
     def test_plist_contains_no_secret_values_or_public_binding(self) -> None:
         for path in (PLIST, USER_PLIST):
@@ -168,7 +174,7 @@ class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
             "STEEL_RAG_CANONICAL_FRONTIER_PLIST_PATH": str(temporary / "service.plist"),
         }
 
-    @unittest.skipUnless(REAL_SERVICE_ROOT.is_dir(), "local frozen service bundle is unavailable")
+    @unittest.skipUnless(REAL_V1035_MANIFEST.is_file(), "local frozen v1035 service bundle is unavailable")
     def test_installer_render_and_preflight_are_read_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
@@ -189,7 +195,7 @@ class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
             self.assertIn("no state changed", preflight.stdout)
             self.assertFalse((temporary / "service.plist").exists())
 
-    @unittest.skipUnless(REAL_SERVICE_ROOT.is_dir(), "local frozen service bundle is unavailable")
+    @unittest.skipUnless(REAL_V1035_MANIFEST.is_file(), "local frozen v1035 service bundle is unavailable")
     def test_installer_rejects_non_loopback_before_mutation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             env = self.installer_env(Path(directory))

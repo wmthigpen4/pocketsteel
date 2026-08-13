@@ -6128,7 +6128,7 @@
   <script src="answer-client.e4779a8d19867e6ee4ef356c1d1bb8a4c9aa696efc0bdb896ad80912b2a0cab2.js"></script>
   <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>
-  <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
+  <script src="pedal-steel-fretboard.js?v=qna-repair-readable-labels-20260813"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=updated-score-artwork-20260714-1"></script>
   <script src="landing-home.js?v=landing-bubble-labels-20260713"></script>
@@ -7575,6 +7575,21 @@
       }
       if (response.sources?.length) {
         sourceSection.hidden = false;
+      }
+      if (response.sources?.length && response.answerProvenance) {
+        const provenanceCard = document.createElement("article");
+        provenanceCard.className = "source-card source-card--provenance";
+        const provenanceMeta = document.createElement("div");
+        provenanceMeta.className = "source-meta";
+        const provenanceLabel = document.createElement("span");
+        provenanceLabel.textContent = "Answer provenance";
+        provenanceMeta.appendChild(provenanceLabel);
+        const provenanceTitle = document.createElement("h3");
+        provenanceTitle.textContent = response.answerProvenance.title || "Answer provenance";
+        const provenanceSummary = document.createElement("p");
+        provenanceSummary.textContent = response.answerProvenance.summary || "";
+        provenanceCard.append(provenanceMeta, provenanceTitle, provenanceSummary);
+        sourceGrid.appendChild(provenanceCard);
       }
       (response.sources || []).forEach((source) => {
         const card = document.createElement("article");

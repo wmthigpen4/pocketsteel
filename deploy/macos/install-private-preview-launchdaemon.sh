@@ -296,7 +296,7 @@ version_matches_expected() {
 
 wait_for_health() {
   local require_supervised="${1:-0}"
-  local deadline now live ready version actual
+  local deadline now live ready ready_status version actual
   [[ "$STEEL_RAG_HEALTH_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] || {
     printf 'STEEL_RAG_HEALTH_TIMEOUT_SECONDS must be a positive integer.\n' >&2
     return 1
@@ -313,8 +313,9 @@ wait_for_health() {
     fi
     live="$(curl --max-time 3 --fail --silent --show-error "http://$STEEL_RAG_HOST:$STEEL_RAG_PORT/health/live" 2>/dev/null || true)"
     ready="$(curl --max-time 3 --fail --silent --show-error "http://$STEEL_RAG_HOST:$STEEL_RAG_PORT/health/ready" 2>/dev/null || true)"
+    ready_status="$(python3 -c 'import json,sys; print((json.load(sys.stdin) or {}).get("status", ""))' <<<"$ready" 2>/dev/null || true)"
     version="$(curl --max-time 3 --fail --silent --show-error "http://$STEEL_RAG_HOST:$STEEL_RAG_PORT/api/version" 2>/dev/null || true)"
-    if [[ "$live" == *'"live"'* && "$ready" == *'"ready"'* && -n "$version" ]]; then
+    if [[ "$live" == *'"live"'* && "$ready_status" == "ready" && -n "$version" ]]; then
       actual="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("git_sha", ""))' <<<"$version" 2>/dev/null || true)"
       if version_matches_expected "$actual"; then
         if [[ "$require_supervised" == "1" ]]; then
