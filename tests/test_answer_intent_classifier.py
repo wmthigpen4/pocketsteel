@@ -32,6 +32,38 @@ def assert_contract_shape(decision: dict[str, object]) -> None:
 
 
 @pytest.mark.parametrize(
+    "question",
+    [
+        "How does a steel guitar player decide when to move frets? Why not just stay on one fret?",
+        "When should I move the bar instead of staying in the same position?",
+        "Why would I change positions if pedals can work at one fret?",
+        "Do I need to move the bar for every chord change?",
+    ],
+)
+def test_position_strategy_questions_use_the_deterministic_teacher_route(question: str) -> None:
+    decision = classify_answer_request(question)
+
+    assert_contract_shape(decision)
+    assert decision == {
+        "domain": "steel_guitar",
+        "intent": "position_strategy",
+        "needs_sources": False,
+        "needs_fretboard": False,
+        "needs_copedent": False,
+        "retrieval_allowed": False,
+        "allowed_answer_shape": "position_strategy",
+    }
+
+
+def test_bare_fret_language_does_not_force_a_copedent_position_route() -> None:
+    decision = classify_answer_request("What does a fret marker mean on steel guitar?")
+
+    assert decision["intent"] == "unknown"
+    assert decision["allowed_answer_shape"] == "source_backed"
+    assert decision["retrieval_allowed"] is True
+
+
+@pytest.mark.parametrize(
     ("question", "expected"),
     [
         (

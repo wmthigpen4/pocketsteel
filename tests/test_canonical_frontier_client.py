@@ -40,6 +40,12 @@ class ExistingAnswerProvider:
         return "Existing answer path."
 
 
+class QuarantinedAnswerProvider:
+    def answer(self, request: Any, sources: list[dict[str, Any]]) -> str:
+        del request, sources
+        return "It seems that playing steel guitar has a lot in common with unrelated forum chatter."
+
+
 class EntitySearchIndex:
     def __init__(self) -> None:
         self.calls: list[str] = []
@@ -212,6 +218,65 @@ def test_enabled_frontier_returns_verified_answer_without_old_retrieval() -> Non
         "chunkId": "sgf:passage:1",
         "postUid": "sgf:post:1",
     }]
+
+
+def test_deterministic_miss_promotes_to_verified_frontier_without_old_retrieval(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    search = EmptySearchIndex()
+    frontier = FakeFrontierClient()
+    app = create_app(
+        search,
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    question = "How do E9 positions work?"
+
+    with caplog.at_level(logging.INFO, logger="steel_guitar_rag.api"):
+        status, payload = call_answer(app, question)
+
+    assert status == "200 OK"
+    assert frontier.questions == [question]
+    assert search.calls == 0
+    assert payload["sources"]
+    route_record = next(
+        record.message.removeprefix("answer route event: ")
+        for record in caplog.records
+        if record.message.startswith("answer route event: ")
+    )
+    trace = json.loads(route_record)
+    assert trace["route"] == "source_backed_rag"
+    assert trace["fallback"] == "deterministic_miss_to_source_backed"
+
+
+def test_position_strategy_content_leads_without_frontier_or_legacy_retrieval() -> None:
+    search = EmptySearchIndex()
+    frontier = FakeFrontierClient()
+    provider = ExistingAnswerProvider()
+    app = create_app(
+        search,
+        answer_provider=provider,
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+
+    status, payload = call_answer(
+        app,
+        "How does a steel guitar player decide when to move frets? Why not just stay on one fret?",
+    )
+
+    assert status == "200 OK"
+    assert "stay on one fret" in payload["answer"]
+    assert "move the bar" in payload["answer"]
+    assert "3rd fret" in payload["answer"]
+    assert "8th fret" in payload["answer"]
+    assert payload["sources"] == []
+    assert frontier.questions == []
+    assert search.calls == 0
+    assert provider.calls == 0
 
 
 @pytest.mark.parametrize(
@@ -434,3 +499,27 @@ def test_route_diagnostics_record_every_control_stage(caplog: pytest.LogCaptureF
         "verification": "frontier_contract_verified",
     }
     assert len(trace["traceId"]) == 16
+
+
+def test_route_diagnostics_name_the_generic_sgf_quarantine_fallback(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    app = create_app(
+        EntitySearchIndex(),
+        answer_provider=QuarantinedAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=False,
+    )
+
+    with caplog.at_level(logging.INFO, logger="steel_guitar_rag.api"):
+        status, payload = call_answer(app, "What is a useful steel guitar setup clue?")
+
+    assert status == "200 OK"
+    assert "I need a more specific steel-guitar question" in payload["answer"]
+    route_record = next(
+        record.message.removeprefix("answer route event: ")
+        for record in caplog.records
+        if record.message.startswith("answer route event: ")
+    )
+    trace = json.loads(route_record)
+    assert trace["fallback"] == "sgf_quarantine_specificity_fallback"

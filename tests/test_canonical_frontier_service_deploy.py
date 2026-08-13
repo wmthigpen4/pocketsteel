@@ -16,7 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "deploy/macos/run-canonical-frontier-service.sh"
 PLIST = ROOT / "deploy/macos/com.steelguitarrag.canonical-frontier.plist.template"
 INSTALLER = ROOT / "deploy/macos/install-canonical-frontier-launchdaemon.sh"
-REAL_SERVICE_ROOT = Path("/Users/cory/Documents/sgf-scrape-test")
+REAL_SERVICE_ROOT = Path(
+    os.environ.get(
+        "STEEL_RAG_TEST_CANONICAL_FRONTIER_SERVICE_ROOT",
+        Path.home() / ".steel-rag/services/canonical-frontier-v1034-fallback-20260806",
+    )
+).expanduser()
 
 
 def digest(path: Path) -> str:

@@ -3251,3 +3251,71 @@ prompts:
   forbidden_terms: *id001
   severity_if_fail: P2
   notes: source-backed synthesis with evidence cards as support
+- id: gus-253
+  category: beginner/vague prompts
+  prompt: How does a steel guitar player decide when to move frets? Why not just stay on one fret?
+  expected_intent: beginner_concept
+  direct_answer_required: true
+  requires_fretboard: false
+  allow_source_cards: false
+  allow_sgf_answer_body: false
+  required_terms:
+  - move
+  - fret
+  - pedal
+  - chord
+  - melody
+  forbidden_terms: *id001
+  severity_if_fail: P1
+  notes: explain the musical decision between staying in position and moving the bar
+- id: gus-254
+  category: beginner/vague prompts
+  prompt: When should I move the bar instead of staying in the same position?
+  expected_intent: beginner_concept
+  direct_answer_required: true
+  requires_fretboard: false
+  allow_source_cards: false
+  allow_sgf_answer_body: false
+  required_terms:
+  - move
+  - fret
+  - pedal
+  - chord
+  - melody
+  forbidden_terms: *id001
+  severity_if_fail: P1
+  notes: position-strategy paraphrase must receive the deterministic teaching answer
+- id: gus-255
+  category: beginner/vague prompts
+  prompt: Why would I change positions if pedals can work at one fret?
+  expected_intent: beginner_concept
+  direct_answer_required: true
+  requires_fretboard: false
+  allow_source_cards: false
+  allow_sgf_answer_body: false
+  required_terms:
+  - move
+  - fret
+  - pedal
+  - chord
+  - melody
+  forbidden_terms: *id001
+  severity_if_fail: P1
+  notes: contrast pedals-at-one-fret with alternative voicings and bar travel
+- id: gus-256
+  category: beginner/vague prompts
+  prompt: Do I need to move the bar for every chord change?
+  expected_intent: beginner_concept
+  direct_answer_required: true
+  requires_fretboard: false
+  allow_source_cards: false
+  allow_sgf_answer_body: false
+  required_terms:
+  - move
+  - fret
+  - pedal
+  - chord
+  - melody
+  forbidden_terms: *id001
+  severity_if_fail: P1
+  notes: answer no in substance and explain when staying or moving is preferable
