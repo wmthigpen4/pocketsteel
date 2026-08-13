@@ -1792,6 +1792,59 @@ class RetrievalApi:
                     request_payload=request_payload,
                 )
 
+            early_local_answer = lookup_curated_answer(answer_request.question, [])
+            if (
+                early_local_answer is not None
+                and early_local_answer.intent == "missing_context_clarifier"
+            ):
+                final_answer = final_answer_quality_gate(
+                    early_local_answer.answer,
+                    answer_request.question,
+                )
+                contract_validation = enforce_answer_contract(
+                    final_answer,
+                    early_local_answer.intent,
+                )
+                final_answer = normalize_answer_list_markers(contract_validation.answer)
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                }
+                payload["answer_provenance"] = _answer_provenance(
+                    "curated_local_guidance",
+                    "Curated local guidance",
+                    (
+                        "Selected locally from the missing-context clarifier rules; "
+                        "no retrieval or language model was used."
+                    ),
+                )
+                route_trace.classification = f"local_{early_local_answer.intent}"
+                route_trace.route = "guardrail"
+                route_trace.retrieval = "not_run"
+                route_trace.evidence = "local_request_shape"
+                route_trace.synthesis = "curated_guardrail_copy"
+                route_trace.verification = "answer_contract"
+                route_trace.displayed_answer = early_local_answer.intent
+                self._log_route_trace(route_trace)
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._answer_success_response(
+                    start_response,
+                    payload,
+                    access,
+                    request_payload=request_payload,
+                )
+
             prior_context_question = _prior_user_question(
                 answer_request.conversation_context
             )

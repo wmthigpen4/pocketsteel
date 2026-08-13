@@ -150,7 +150,7 @@ NEGATED_STEEL_REFERENCE_RE = re.compile(
 )
 OFF_DOMAIN_RE = re.compile(
     r"\b(?:"
-    r"weather|capital\s+of\s+france|recipe|pancakes?|super\s+bowl|nba|nfl|stock\s+price|"
+    r"weather|capital\s+of\s+france|recipe|pancakes?|bake|baking|cakes?|super\s+bowl|nba|nfl|stock\s+price|"
     r"bitcoin|election|president\s+of|movie\s+times|flight\s+status|"
     r"javascript|python\s+code|python\s+script|quicksort|sorting\s+algorithm|dishwasher|"
     r"bedtime\s+story|castle|math\s+answer"

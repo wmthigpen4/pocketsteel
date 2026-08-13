@@ -371,6 +371,36 @@ def test_frontier_enabled_never_suppresses_deterministic_authority(
     assert search.calls == 0
 
 
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    [
+        ("How do I bake a chocolate cake?", "outside Steel Guitar RAG’s scope"),
+        ("Where do I go from here?", "I need the missing context"),
+    ],
+)
+def test_local_guardrails_and_clarifiers_run_before_frontier(
+    question: str,
+    expected: str,
+) -> None:
+    frontier = FakeFrontierClient()
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_provider=ExistingAnswerProvider(),
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+
+    status, payload = call_answer(app, question)
+
+    assert status == "200 OK"
+    assert expected in payload["answer"]
+    assert payload["sources"] == []
+    assert frontier.questions == []
+    assert search.calls == 0
+
+
 def test_provenance_followup_resolves_preceding_deterministic_chord_answer() -> None:
     frontier = FakeFrontierClient()
     app = create_app(
