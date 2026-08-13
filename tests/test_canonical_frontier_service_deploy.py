@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.assemble_canonical_frontier_service import inventory
 from scripts.verify_canonical_frontier_service import verify_bundle
 
 
@@ -32,6 +33,30 @@ def digest(path: Path) -> str:
 
 
 class CanonicalFrontierServiceBundleTests(unittest.TestCase):
+    def test_inventory_accepts_only_contained_directory_symlinks(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "root"
+            target = root / "runtime/include/python3.9"
+            target.mkdir(parents=True)
+            (target / "Python.h").write_text("fixture\n", encoding="utf-8")
+            alias = root / "include/python3.9"
+            alias.parent.mkdir(parents=True)
+            alias.symlink_to(Path("../runtime/include/python3.9"), target_is_directory=True)
+            files = inventory(root)
+            self.assertEqual(
+                files["include/python3.9"],
+                {
+                    "entry_type": "directory_symlink",
+                    "symlink": "../runtime/include/python3.9",
+                },
+            )
+
+            outside = Path(directory) / "outside"
+            outside.mkdir()
+            (root / "escaping").symlink_to(outside, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "symlink escapes"):
+                inventory(root)
+
     def fixture(self, root: Path) -> Path:
         candidate_path = root / "rag-evaluation/audit/canonical-frontier-implementation-ready-v931.json"
         index_root = root / "rag-evaluation/index/steel-forum-passages-v1-hybrid-v1"

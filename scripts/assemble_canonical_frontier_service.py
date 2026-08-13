@@ -135,9 +135,16 @@ def inventory(root: Path) -> dict[str, dict[str, Any]]:
             resolved.relative_to(root.resolve())
         except ValueError as exc:
             raise ValueError(f"Service-root symlink escapes the bundle: {relative}") from exc
+        if path.is_symlink() and resolved.is_dir():
+            files[relative] = {
+                "entry_type": "directory_symlink",
+                "symlink": os.readlink(path),
+            }
+            continue
         if not resolved.is_file():
             raise ValueError(f"Bundle entry is not a regular file: {relative}")
         row: dict[str, Any] = {
+            "entry_type": "file_symlink" if path.is_symlink() else "file",
             "sha256": sha256(resolved),
             "size": resolved.stat().st_size,
         }

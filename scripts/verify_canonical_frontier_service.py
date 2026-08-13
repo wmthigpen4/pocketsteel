@@ -114,10 +114,26 @@ def verify_v2_bundle(root: Path, manifest_file: Path, manifest: dict[str, Any]) 
             resolved.relative_to(root)
         except ValueError as exc:
             raise ValueError(f"Bundle symlink escapes the service root: {relative}") from exc
+        entry_type = str(expected.get("entry_type") or "")
+        if entry_type == "directory_symlink":
+            if (
+                not path.is_symlink()
+                or not resolved.is_dir()
+                or expected.get("symlink") != os.readlink(path)
+                or set(expected) != {"entry_type", "symlink"}
+            ):
+                mismatches.append(relative)
+            continue
         if not resolved.is_file():
             mismatches.append(relative)
             continue
-        if path.is_symlink() and expected.get("symlink") != os.readlink(path):
+        if entry_type not in {"file", "file_symlink"}:
+            mismatches.append(relative)
+            continue
+        if (
+            (entry_type == "file_symlink") != path.is_symlink()
+            or (path.is_symlink() and expected.get("symlink") != os.readlink(path))
+        ):
             mismatches.append(relative)
             continue
         if (
