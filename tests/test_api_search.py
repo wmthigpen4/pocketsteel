@@ -3839,6 +3839,69 @@ def test_position_strategy_questions_get_a_direct_deterministic_teacher_answer(q
     assert "fretboard" not in payload
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What is your source of information for this?",
+        "What sources support that answer?",
+        "How do you know this?",
+    ],
+)
+def test_position_strategy_source_followup_explains_deterministic_provenance(question: str) -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={
+            "question": question,
+            "isFollowup": True,
+            "conversationContext": [
+                "User: How does a steel guitar player decide when to move frets? Why not just stay on one fret?",
+                "Assistant: Stay when the chord and melody work; move for a better voicing or next phrase.",
+            ],
+        },
+    )
+
+    assert status == "200 OK"
+    answer = payload["answer"]
+    assert "deterministic E9 rules layer" in answer
+    assert "not from a single Steel Guitar Forum post" in answer
+    assert "3rd fret" in answer
+    assert "G-D-B" in answer
+    assert "G-E-C" in answer
+    assert "8th fret" in answer
+    assert "C-G-E" in answer
+    assert "No forum source was used" in answer
+    assert "I need a more specific steel-guitar question" not in answer
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["answer_provenance"] == {
+        "kind": "deterministic_e9_rules",
+        "title": "Deterministic E9 rules",
+        "summary": (
+            "Calculated from standard E9 tuning, the A+B pedal changes, and the resulting notes "
+            "on strings 4-5-6 at the 3rd and 8th frets."
+        ),
+    }
+
+
+def test_source_followup_without_parent_context_reports_context_loss_honestly() -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={
+            "question": "What is your source of information for this?",
+            "isFollowup": True,
+        },
+    )
+
+    assert status == "200 OK"
+    assert "earlier question and answer were not included" in payload["answer"]
+    assert "deterministic E9 rules" in payload["answer"]
+    assert "I need a more specific steel-guitar question" not in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == ["prior conversation context was unavailable"]
+
+
 def test_teacher_first_screenshot_prompt_regressions_are_synthesized() -> None:
     g_minor = answer_for_question("How do I play a G-minor chord?", noisy_practical_sources())
     assert_clean_answer_body(g_minor)

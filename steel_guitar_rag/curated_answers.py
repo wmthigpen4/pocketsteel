@@ -52,6 +52,62 @@ from steel_guitar_rag.fretboard_examples import (
 from steel_guitar_rag.steel_rules import answer_from_rules
 
 
+SOURCE_PROVENANCE_FOLLOWUP_RE = re.compile(
+    r"(?:\bsource\s+of\s+(?:the\s+)?information\b|"
+    r"\b(?:what|which|where)\b.{0,45}\b(?:sources?|citations?|references?|evidence)\b|"
+    r"\bhow\s+do\s+you\s+know\b|"
+    r"\bwhere\s+did\b.{0,45}\b(?:come\s+from|learn)\b)",
+    re.I,
+)
+
+
+def is_source_provenance_followup(question: str) -> bool:
+    """Return whether a turn asks where the preceding answer came from."""
+
+    return SOURCE_PROVENANCE_FOLLOWUP_RE.search(question or "") is not None
+
+
+def source_provenance_followup_answer(
+    question: str,
+    conversation_context: tuple[str, ...],
+) -> CuratedAnswer | None:
+    """Explain deterministic provenance when the preceding answer is reproducible.
+
+    A provenance question should not be treated as a new off-domain query.  For
+    deterministic position-strategy answers, the honest source is the rules
+    layer and its E9 pitch calculation rather than a forum quotation.
+    """
+
+    if not conversation_context or not is_source_provenance_followup(question):
+        return None
+    prior_question = ""
+    for item in reversed(conversation_context):
+        normalized = " ".join(str(item or "").split())
+        if normalized.casefold().startswith("user:"):
+            prior_question = normalized.split(":", 1)[1].strip()
+            break
+    if not prior_question or not mentions_position_strategy(prior_question):
+        return None
+    return CuratedAnswer(
+        intent="position_strategy",
+        confidence="curated_high",
+        answer=(
+            "That answer came from Steel Guitar RAG’s deterministic E9 rules layer, not from a single "
+            "Steel Guitar Forum post or a retrieved quotation.\n\n"
+            "The mechanical part is calculated from standard E9 tuning and pedal changes. On strings "
+            "4-5-6 at the 3rd fret, the open notes form G-D-B, a G-major inversion. Pressing A+B while "
+            "staying at the 3rd fret changes that grip to G-E-C, a C-major inversion. Moving the bar to "
+            "the 8th fret with no pedals gives C-G-E, another C-major inversion. That pitch calculation "
+            "is the source for the concrete 3rd-fret and 8th-fret example.\n\n"
+            "The broader recommendation—choose between staying on one fret and moving to another "
+            "position according to the chord, melody or top note, voicing, register, tone, and next "
+            "phrase—is curated pedal-steel teaching and arranging guidance. Pedals, knee levers, and "
+            "grips make several choices mechanically valid; the musical context determines which one "
+            "is preferable. No forum source was used to produce the original deterministic answer."
+        ),
+    )
+
+
 
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:

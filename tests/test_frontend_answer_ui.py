@@ -87,6 +87,56 @@ let capturedRequest;
     assert result.returncode == 0, result.stderr
 
 
+def test_frontend_conversation_context_persists_and_stays_bounded() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+const values = new Map();
+const storage = {
+  getItem: (key) => values.get(key) || null,
+  setItem: (key, value) => values.set(key, value),
+  removeItem: (key) => values.delete(key)
+};
+
+let context = answerUi.writeConversationContext([
+  "  User:   Why move the bar?  ",
+  "Assistant: Because the next position has the melody."
+], storage);
+assert.deepEqual(Array.from(context), [
+  "User: Why move the bar?",
+  "Assistant: Because the next position has the melody."
+]);
+assert.deepEqual(Array.from(answerUi.readConversationContext(storage)), Array.from(context));
+
+for (let index = 0; index < 5; index += 1) {
+  context = answerUi.appendConversationExchange(context, `question ${index}`, `answer ${index}`);
+}
+context = answerUi.writeConversationContext(context, storage);
+assert.equal(context.length, 8);
+assert.equal(context[0], "User: question 1");
+assert.equal(context.at(-1), "Assistant: answer 4");
+assert.deepEqual(Array.from(answerUi.clearConversationContext(storage)), []);
+assert.deepEqual(Array.from(answerUi.readConversationContext(storage)), []);
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_frontend_answer_client_fetches_session_and_normalizes_access() -> None:
     script = r"""
 const assert = require("node:assert/strict");
@@ -1106,7 +1156,7 @@ def test_answer_ui_keeps_melody_lesson_renderer_without_cross_feature_header_lin
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=v1034-conversation-context-20260805"></script>' in html
+    assert '<script src="answer-client.js?v=v1035-followup-provenance-20260813"></script>' in html
     assert '<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
@@ -1271,8 +1321,29 @@ def test_opening_new_ask_workspace_clears_prior_conversation_context() -> None:
         'function openAskWorkspace({ prefill = "" } = {}) {', 1
     )[1].split("\n    }", 1)[0]
 
-    assert "conversationContext = [];" in open_ask_workspace
+    assert "conversationContext = STEEL_RAG_ANSWER_UI.clearConversationContext();" in open_ask_workspace
     assert 'followupQuestion.value = "";' in open_ask_workspace
+
+
+def test_followup_request_restores_persisted_parent_exchange() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    show_answer_workspace = html.split(
+        "async function showAnswerWorkspace(rawQuestion, requestPayload = {}) {", 1
+    )[1].split("\n    function submitQuestion", 1)[0]
+
+    assert "STEEL_RAG_ANSWER_UI.readConversationContext()" in show_answer_workspace
+    assert "conversationContext: requestConversationContext" in show_answer_workspace
+    assert "STEEL_RAG_ANSWER_UI.appendConversationExchange(" in show_answer_workspace
+    assert "STEEL_RAG_ANSWER_UI.writeConversationContext(" in show_answer_workspace
+    assert "isFollowup: requestedAsFollowup || requestConversationContext.length > 0" in show_answer_workspace
+
+
+def test_answer_source_notes_render_deterministic_provenance_without_fake_source_link() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert 'response.answerProvenance ? "Answer provenance" : "Source notes"' in html
+    assert 'response.answerProvenance?.title || "No sources returned"' in html
+    assert "response.answerProvenance?.summary" in html
 
 
 def test_backstage_more_action_pill_centers_summary_text() -> None:

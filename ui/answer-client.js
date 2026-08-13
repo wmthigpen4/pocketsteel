@@ -2,6 +2,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
   const ANSWER_ENDPOINT = "/api/answer";
   const SESSION_ENDPOINT = "/api/session";
   const ACCOUNT_USAGE_ENDPOINT = "/api/account/usage";
+  const CONVERSATION_CONTEXT_STORAGE_KEY = "steel-rag.answer-conversation.v1";
   const ACCESS_ROLES = Object.freeze({
     ANONYMOUS: "anonymous",
     BETA_USER: "beta_user",
@@ -52,6 +53,63 @@ const STEEL_RAG_ANSWER_UI = (() => {
 
   function shouldSubmitQuestionKey(event) {
     return event?.key === "Enter" && !event.shiftKey;
+  }
+
+  function normalizeConversationContext(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter((item) => typeof item === "string")
+      .map((item) => item.replace(/\s+/g, " ").trim().slice(0, 8000))
+      .filter(Boolean)
+      .slice(-8);
+  }
+
+  function conversationContextStorage(storage) {
+    if (storage !== undefined) return storage;
+    try {
+      return window.sessionStorage || null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function readConversationContext(storage) {
+    const target = conversationContextStorage(storage);
+    if (!target?.getItem) return [];
+    try {
+      return normalizeConversationContext(JSON.parse(target.getItem(CONVERSATION_CONTEXT_STORAGE_KEY) || "[]"));
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  function writeConversationContext(value, storage) {
+    const normalized = normalizeConversationContext(value);
+    const target = conversationContextStorage(storage);
+    try {
+      target?.setItem?.(CONVERSATION_CONTEXT_STORAGE_KEY, JSON.stringify(normalized));
+    } catch (_error) {
+      // The in-memory caller still receives the normalized context.
+    }
+    return normalized;
+  }
+
+  function clearConversationContext(storage) {
+    const target = conversationContextStorage(storage);
+    try {
+      target?.removeItem?.(CONVERSATION_CONTEXT_STORAGE_KEY);
+    } catch (_error) {
+      // The in-memory caller still resets its context.
+    }
+    return [];
+  }
+
+  function appendConversationExchange(context, question, answer) {
+    return normalizeConversationContext([
+      ...normalizeConversationContext(context),
+      `User: ${String(question || "").trim()}`,
+      `Assistant: ${String(answer || "").trim()}`
+    ]);
   }
 
   function normalizeAccessRole(value) {
@@ -870,6 +928,14 @@ const STEEL_RAG_ANSWER_UI = (() => {
       targetCopedentRevision: Number(payload?.targetCopedentRevision || payload?.target_copedent_revision || 0) || null,
       targetCopedentLabel: firstTextValue(payload?.targetCopedentLabel, payload?.target_copedent_label)
     };
+    const rawAnswerProvenance = payload?.answerProvenance || payload?.answer_provenance;
+    if (isObjectRecord(rawAnswerProvenance)) {
+      normalized.answerProvenance = {
+        kind: firstTextValue(rawAnswerProvenance.kind),
+        title: firstTextValue(rawAnswerProvenance.title, "Answer provenance"),
+        summary: firstTextValue(rawAnswerProvenance.summary)
+      };
+    }
     const tabs = normalizeTabPayloads(payload);
     const progressionGuide = normalizeProgressionGuide(payload);
     const melodyExercise = normalizeMelodyExercise(payload);
@@ -919,9 +985,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
       body: JSON.stringify({
         ...requestPayload,
         question,
-        conversationContext: Array.isArray(conversationContext)
-          ? conversationContext.slice(-8)
-          : []
+        conversationContext: normalizeConversationContext(conversationContext)
       })
     };
     let response = await fetchImpl(ANSWER_ENDPOINT, requestOptions);
@@ -1083,6 +1147,11 @@ const STEEL_RAG_ANSWER_UI = (() => {
     ACCESS_ROLES,
     hasSubmittableQuestion,
     shouldSubmitQuestionKey,
+    normalizeConversationContext,
+    readConversationContext,
+    writeConversationContext,
+    clearConversationContext,
+    appendConversationExchange,
     normalizeAccessRole,
     devAccessHeaders,
     canSubmitLiveQuestion,

@@ -67,7 +67,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b'<link rel="canonical" href="/">' in html
-    assert b'<script src="answer-client.js?v=v1034-conversation-context-20260805"></script>' in html
+    assert b'<script src="answer-client.js?v=v1035-followup-provenance-20260813"></script>' in html
     assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert b'<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
     assert b'<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html

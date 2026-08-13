@@ -6125,7 +6125,7 @@
 
   <script src="copedent-store.js?v=simple-control-dialog-20260714-1"></script>
   <script src="copedent-grid-model.js?v=editable-tab-labels-20260714-1"></script>
-  <script src="answer-client.js?v=v1034-conversation-context-20260805"></script>
+  <script src="answer-client.js?v=v1035-followup-provenance-20260813"></script>
   <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>
   <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
@@ -7563,12 +7563,13 @@
         const meta = document.createElement("div");
         meta.className = "source-meta";
         const forum = document.createElement("span");
-        forum.textContent = "Source notes";
+        forum.textContent = response.answerProvenance ? "Answer provenance" : "Source notes";
         meta.appendChild(forum);
         const title = document.createElement("h3");
-        title.textContent = "No sources returned";
+        title.textContent = response.answerProvenance?.title || "No sources returned";
         const excerpt = document.createElement("p");
-        excerpt.textContent = "The answer service did not return source cards for this response.";
+        excerpt.textContent = response.answerProvenance?.summary
+          || "The answer service did not return source cards for this response.";
         emptyCard.append(meta, title, excerpt);
         sourceGrid.appendChild(emptyCard);
       }
@@ -7681,7 +7682,7 @@
     }
 
     let answerRequestInFlight = false;
-    let conversationContext = [];
+    let conversationContext = STEEL_RAG_ANSWER_UI.readConversationContext();
     let devPreviewAccessEnabled = true;
     let backendSession = {
       authenticated: false,
@@ -7717,7 +7718,7 @@
     }
 
     function openAskWorkspace({ prefill = "" } = {}) {
-      conversationContext = [];
+      conversationContext = STEEL_RAG_ANSWER_UI.clearConversationContext();
       followupQuestion.value = "";
       answerWorkspace.hidden = true;
       homeSections.forEach((section) => {
@@ -7746,21 +7747,30 @@
       followupQuestion.value = "";
       setAnswerBusy(true);
       try {
+        const requestedAsFollowup = requestPayload.isFollowup === true;
+        const persistedContext = requestedAsFollowup
+          ? STEEL_RAG_ANSWER_UI.readConversationContext()
+          : [];
+        const requestConversationContext = requestedAsFollowup && persistedContext.length
+          ? persistedContext
+          : conversationContext;
         const response = await STEEL_RAG_ANSWER_UI.requestAnswer(submittedQuestion, {
           accessRole: mockAccessState,
           requestPayload: {
             ...requestPayload,
-            isFollowup: conversationContext.length > 0
+            isFollowup: requestedAsFollowup || requestConversationContext.length > 0
           },
-          conversationContext
+          conversationContext: requestConversationContext
         });
         answeredQuestion.textContent = response.question || submittedQuestion;
         renderResponse(response);
-        conversationContext = [
-          ...conversationContext,
-          `User: ${submittedQuestion}`,
-          `Assistant: ${response.answer}`
-        ].slice(-8);
+        conversationContext = STEEL_RAG_ANSWER_UI.writeConversationContext(
+          STEEL_RAG_ANSWER_UI.appendConversationExchange(
+            requestConversationContext,
+            submittedQuestion,
+            response.answer
+          )
+        );
       } catch (error) {
         renderErrorState(error.message);
       } finally {
@@ -7809,7 +7819,7 @@
       }
       question.value = "";
       followupQuestion.value = "";
-      conversationContext = [];
+      conversationContext = STEEL_RAG_ANSWER_UI.clearConversationContext();
       answeredQuestion.textContent = HUM_DEMO_QUESTION;
       clearProgressionGuide();
       clearMelodyExercise();

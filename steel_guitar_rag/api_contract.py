@@ -243,3 +243,4 @@ class AnswerResponse(TypedDict):
     tabs: NotRequired[list[TabExamplePayload]]
     progression_guide: NotRequired[dict[str, Any]]
     melody_exercise: NotRequired[MelodyExercisePayload]
+    answer_provenance: NotRequired[dict[str, str]]

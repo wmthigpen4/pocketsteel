@@ -97,10 +97,12 @@ from steel_guitar_rag.curated_answers import (
     WEAK_RETRIEVAL_WARNING,
     generic_sgf_quarantine_fallback_answer,
     intent_mode_curated_answer,
+    is_source_provenance_followup,
     lookup_curated_answer,
     retrieval_looks_weak_for_curated,
     sgf_answer_body_needs_quarantine,
     sgf_quarantine_teacher_answer,
+    source_provenance_followup_answer,
     unsupported_chord_position_curated_answer,
     visual_fretboard_curated_answer,
 )
@@ -1438,6 +1440,94 @@ class RetrievalApi:
                     f"{answer_intent_decision.get('intent', 'unknown')}"
                 )
             )
+            provenance_followup = source_provenance_followup_answer(
+                answer_request.question,
+                answer_request.conversation_context,
+            )
+            if provenance_followup is not None:
+                final_answer = final_answer_quality_gate(
+                    provenance_followup.answer,
+                    answer_request.question,
+                )
+                contract_validation = enforce_answer_contract(
+                    final_answer,
+                    provenance_followup.intent,
+                )
+                final_answer = normalize_answer_list_markers(contract_validation.answer)
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                    "answer_provenance": {
+                        "kind": "deterministic_e9_rules",
+                        "title": "Deterministic E9 rules",
+                        "summary": (
+                            "Calculated from standard E9 tuning, the A+B pedal changes, and the "
+                            "resulting notes on strings 4-5-6 at the 3rd and 8th frets."
+                        ),
+                    },
+                }
+                if copedent_context is not None:
+                    _personalize_answer_payload(payload, target_profile, target_revision)
+                route_trace.classification = "steel_guitar:source_provenance_followup"
+                route_trace.route = "deterministic"
+                route_trace.retrieval = "not_needed"
+                route_trace.evidence = "deterministic_e9_pitch_calculation"
+                route_trace.synthesis = "contextual_provenance_explanation"
+                route_trace.verification = "answer_contract"
+                route_trace.displayed_answer = "answer_with_provenance"
+                self._log_route_trace(route_trace)
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._answer_success_response(
+                    start_response,
+                    payload,
+                    access,
+                    request_payload=request_payload,
+                )
+
+            if (
+                request_payload.get("isFollowup") is True
+                and is_source_provenance_followup(answer_request.question)
+                and not answer_request.conversation_context
+            ):
+                final_answer = (
+                    "I can answer that provenance question, but the earlier question and answer were not "
+                    "included with this follow-up request. Please return to the original answer and use its "
+                    "follow-up box again, or paste the claim you want sourced; I will identify whether it came "
+                    "from deterministic E9 rules, curated guidance, or retrieved source cards."
+                )
+                payload = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": ["prior conversation context was unavailable"],
+                    "sections": build_sections(final_answer),
+                }
+                route_trace.classification = "source_provenance_followup:context_missing"
+                route_trace.route = "guardrail"
+                route_trace.retrieval = "not_run"
+                route_trace.evidence = "prior_turn_missing"
+                route_trace.synthesis = "context_recovery_clarifier"
+                route_trace.verification = "context_required"
+                route_trace.displayed_answer = "context_recovery_clarifier"
+                self._log_route_trace(route_trace)
+                return self._answer_success_response(
+                    start_response,
+                    payload,
+                    access,
+                    request_payload=request_payload,
+                )
+
             corpus_probe_response: SearchResponse | None = None
             corpus_promoted = False
             entity_probe_question = (
