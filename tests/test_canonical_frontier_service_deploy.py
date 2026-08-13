@@ -166,6 +166,9 @@ class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
         self.assertIn('OLLAMA_MODELS="$STEEL_RAG_CANONICAL_FRONTIER_OLLAMA_MODELS"', source)
         self.assertIn('HF_HOME="$STEEL_RAG_CANONICAL_FRONTIER_HF_HOME"', source)
         self.assertIn('canonical_frontier_http_api_v3.py', source)
+        self.assertIn('STEEL_RAG_FRONTIER_RUNTIME_INDEX_ROOT', source)
+        self.assertIn('cp -cR "$STEEL_RAG_CANONICAL_FRONTIER_FROZEN_INDEX/vector"', source)
+        self.assertIn('chmod -R u+rwX "$STEEL_RAG_CANONICAL_FRONTIER_RUNTIME_TEMP/index/vector"', source)
         self.assertNotIn('canonical_frontier_http_api_v2.py', source)
 
     def test_plist_contains_no_secret_values_or_public_binding(self) -> None:
@@ -196,6 +199,7 @@ class CanonicalFrontierLaunchFilesTests(unittest.TestCase):
             "STEEL_RAG_CANONICAL_FRONTIER_ENV_FILE": str(env_file),
             "STEEL_RAG_CANONICAL_FRONTIER_LOG_DIR": str(temporary / "logs"),
             "STEEL_RAG_CANONICAL_FRONTIER_INSTALL_DIR": str(temporary / "installed"),
+            "STEEL_RAG_CANONICAL_FRONTIER_RUNTIME_DIR": str(temporary / "runtime"),
             "STEEL_RAG_CANONICAL_FRONTIER_PLIST_PATH": str(temporary / "service.plist"),
         }
 

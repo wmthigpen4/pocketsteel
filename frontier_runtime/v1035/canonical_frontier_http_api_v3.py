@@ -12,6 +12,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlsplit
+from pathlib import Path
 
 from canonical_frontier_degraded_v2 import degraded_response
 from canonical_frontier_health_v2 import (
@@ -20,10 +21,14 @@ from canonical_frontier_health_v2 import (
     ProviderGateway,
 )
 from canonical_frontier_v1034_runtime_candidate import build_v1034_runtime
+from rag_canonical_frontier_balanced_retriever_v2 import (
+    CanonicalFrontierBalancedRetriever,
+)
 
 
 TOKEN_ENV = "STEEL_RAG_CANONICAL_FRONTIER_TOKEN"
 BUNDLE_VERIFIED_ENV = "STEEL_RAG_FRONTIER_BUNDLE_VERIFIED"
+RUNTIME_INDEX_ENV = "STEEL_RAG_FRONTIER_RUNTIME_INDEX_ROOT"
 MAX_BODY_BYTES = 65_536
 WARMUP_QUERY = "How do players adjust a pedal steel split tuning?"
 
@@ -244,9 +249,16 @@ def build_application(*, allow_unauthenticated_loopback: bool = False) -> Canoni
     )
     if os.environ.get(BUNDLE_VERIFIED_ENV) != "1":
         raise RuntimeError("The immutable frontier bundle was not verified by the supervisor.")
-    health.mark_local_verified()
     gateway = ProviderGateway()
-    runtime = build_v1034_runtime(model_call=gateway)
+    runtime_index = Path(os.environ.get(RUNTIME_INDEX_ENV, "")).expanduser()
+    if not runtime_index.is_dir():
+        raise RuntimeError("The verified copy-on-write runtime index is unavailable.")
+    retriever = CanonicalFrontierBalancedRetriever(
+        index_root=runtime_index,
+        experimental_side_by_side=True,
+    )
+    runtime = build_v1034_runtime(model_call=gateway, retriever=retriever)
+    health.mark_local_verified()
     try:
         warm_sources, _latency = runtime.retriever.retrieve(WARMUP_QUERY, limit=10)
         warmup_passed = 0 < len(warm_sources) <= 10
