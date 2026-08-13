@@ -7,7 +7,7 @@
 - Added a contextual provenance answer for deterministic position-strategy teaching. It explains that the original answer came from the deterministic E9 rules layer, verifies the 3rd-fret/A+B/8th-fret pitches, separates calculated mechanics from curated arranging guidance, and states honestly that no SGF quotation produced the original answer.
 - Added an honest recovery response when a source follow-up is marked as a follow-up but arrives without its parent context.
 - Reused the existing Source notes card presentation to display `Deterministic E9 rules` provenance instead of the misleading `No sources returned` state.
-- Replaced the answer client's semantic cache-buster with its SHA-256 content digest. The first protected smoke exposed that a browser which had requested the future semantic URL before activation could retain the old client under the server's immutable-cache policy; the digest URL makes the asset identity verifiable and collision-free.
+- Replaced the answer client's shared asset path with a SHA-256 content-addressed filename. Protected smoke proved this Cloudflare route can reuse the cached path independently of a query-string cache-buster; a new digest filename is therefore required to make the asset identity verifiable and collision-free.
 - No new page, visual redesign, corpus/vector mutation, scraping, embeddings, auth, DNS, Tunnel, Access, secret, Cloudflare configuration, or `chatgpt.site` work was performed.
 
 ## Files changed
@@ -34,7 +34,8 @@
   - Runtime trace: `steel_guitar:source_provenance_followup` -> `deterministic`; evidence `deterministic_e9_pitch_calculation`; verification `answer_contract`; fallback `none`.
 - Protected cold-client check after the first activation
   - CAUGHT before release handoff: a browser with a pre-activation cached copy of the semantic `v1035` asset loaded stale frontend code and could not initialize the Q&A workspace.
-  - FIXED: the HTML now references the answer client by its exact SHA-256 digest, and regression tests recompute that digest from the file instead of trusting a hand-maintained version label.
+  - A digest query-string retry was deliberately rejected after the protected route still returned the stale shared-path asset.
+  - FIXED: the HTML now references a new answer-client filename containing the exact SHA-256 digest. Regression tests recompute the name, verify the content-addressed file matches the canonical client byte-for-byte, and verify the static server serves it with immutable caching.
 - `.venv/bin/pytest -q tests/test_api_search.py tests/test_frontend_answer_ui.py tests/test_canonical_frontier_client.py tests/test_same_origin_smoke_server.py`
   - PASS: 442 passed.
 - Focused follow-up regression selection
@@ -47,13 +48,24 @@
   - 1,661 passed; one deployment preflight assertion stopped at `release has unstaged tracked changes` before reaching its expected branch-check assertion.
 - Clean-commit full suite on branch checkout
   - PASS: 1,662 passed in 86.60 seconds.
+- Final detached release suite
+  - PASS: 1,660 passed, 2 branch-check tests deliberately deselected because the release checkout is detached, in 86.17 seconds.
+- Final protected-preview browser smoke on the content-addressed release
+  - PASS: the exact position-strategy question returned the deterministic teaching answer.
+  - PASS: the exact follow-up `What is your source of information for this?` returned the contextual provenance explanation instead of the generic specificity refusal.
+  - PASS: Source notes rendered `Answer provenance` / `Deterministic E9 rules` with the pitch-calculation summary.
+  - PASS: no browser console errors or warnings.
+  - Runtime trace: `steel_guitar:source_provenance_followup` -> `deterministic`; evidence `deterministic_e9_pitch_calculation`; synthesis `contextual_provenance_explanation`; verification `answer_contract`; fallback `none`.
+- Existing user LaunchAgent activation
+  - PASS: live, ready, exact version, LaunchAgent supervision, and listener ownership checks.
+  - The existing canonical frontier on port 8771 remained ready and unchanged.
 
 ## Risks
 
 - Same-tab session storage temporarily holds at most eight normalized conversation strings, each capped at 8,000 characters. It is cleared on a new Q&A or return home and is never sent outside the existing same-origin answer request.
 - The direct provenance explanation currently covers deterministic position-strategy answers. Other contextual follow-ups continue through the existing contextual classifier/frontier path.
 - The backend recovery clarifier remains necessary when an old cached client or malformed request marks a provenance question as a follow-up without including context.
-- The previously poisoned semantic asset URL can remain in old browser caches without affecting this release because the page no longer references it.
+- Previously poisoned shared-path asset URLs can remain in browser or edge caches without affecting this release because the page references a distinct content-addressed filename.
 
 ## Human decision needed
 
@@ -82,8 +94,8 @@
 
 ## Recommended next lane
 
-- Lane 01 exact-path commit, then Lane 12 clean detached preflight, existing LaunchAgent activation, and authenticated protected-browser smoke of the exact two-turn exchange.
+- Owner review in the already-open protected Q&A workspace. No additional deployment lane is required for this repair.
 
 ## Commit readiness
 
-Safe to release after detached preflight and protected-browser smoke.
+Released from a clean detached checkout after exact preflight, full-suite verification, supervised health verification, and authenticated protected-browser smoke.

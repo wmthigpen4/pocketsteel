@@ -64,11 +64,13 @@ def smoke_app(controlled_states: bool = False) -> Any:
 
 def test_same_origin_server_serves_ui_and_answer_client() -> None:
     status, headers, html = call_app(smoke_app(), "/ui/steel-guitar-rag-mock.html")
-    answer_client_digest = hashlib.sha256(Path("ui/answer-client.js").read_bytes()).hexdigest().encode("ascii")
+    answer_client = Path("ui/answer-client.js").read_bytes()
+    answer_client_digest = hashlib.sha256(answer_client).hexdigest()
+    answer_client_name = f"answer-client.{answer_client_digest}.js"
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b'<link rel="canonical" href="/">' in html
-    assert b'<script src="answer-client.js?v=' + answer_client_digest + b'"></script>' in html
+    assert f'<script src="{answer_client_name}"></script>'.encode("ascii") in html
     assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert b'<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
     assert b'<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html
@@ -76,6 +78,11 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b'<script src="melody-score.js?v=updated-score-artwork-20260714-1"></script>' in html
     assert b'<script src="landing-home.js?v=landing-bubble-labels-20260713"></script>' in html
     assert b'<link rel="stylesheet" href="workspace-shell.css?v=play-songs-home-20260801-1">' in html
+
+    status, headers, hashed_answer_client = call_app(smoke_app(), f"/ui/{answer_client_name}")
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    assert hashed_answer_client == answer_client
 
     status, headers, score_asset = call_app(smoke_app(), "/ui/assets/landing/melody-score.png")
     assert status == "200 OK"
