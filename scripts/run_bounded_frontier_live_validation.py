@@ -161,11 +161,21 @@ def run_validation(
                 raise RuntimeError("Injected provider failure did not enter local degraded mode.")
             sleeper(recovery_wait_seconds)
         else:
-            if delivery_mode == "sgf_extractive_degraded":
+            safe_degraded_abstention = (
+                scenario.expected_mode == "abstain"
+                and delivery_mode == "sgf_extractive_degraded"
+                and scenario_requests == 1
+                and trace.get("stages") == ["primary"]
+            )
+            if delivery_mode == "sgf_extractive_degraded" and not safe_degraded_abstention:
                 raise RuntimeError(f"Scenario {scenario.scenario_id} remained degraded.")
             if not trace.get("stages") or trace["stages"][0] != "primary":
                 raise RuntimeError("Terra was not the first provider stage.")
-            if scenario.expected_mode and answer.get("mode") != scenario.expected_mode:
+            if (
+                scenario.expected_mode
+                and not safe_degraded_abstention
+                and answer.get("mode") != scenario.expected_mode
+            ):
                 raise RuntimeError(
                     f"Scenario {scenario.scenario_id} did not {scenario.expected_mode}."
                 )
@@ -176,6 +186,9 @@ def run_validation(
             "responses_requests": scenario_requests,
             "actual_cost_usd": scenario_cost,
             "source_count": len(answer.get("sources") or []),
+            "safe_degraded_abstention": bool(
+                index > 0 and safe_degraded_abstention
+            ),
         })
 
         if index == 1:

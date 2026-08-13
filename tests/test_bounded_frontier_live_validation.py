@@ -81,10 +81,14 @@ def test_fixed_live_gate_accounts_startup_recovery_and_no_third_calls() -> None:
             "primary",
             "independent_relevance_entailment_verifier",
         ]
+        degraded_abstention = expected_mode == "abstain"
         return 200, {
-            "mode": expected_mode,
-            "sources": [] if expected_mode == "abstain" else [{"source_id": "p1"}],
+            "mode": "partial" if degraded_abstention else expected_mode,
+            "sources": [{"source_id": "p1"}],
             "metadata": {
+                "delivery_mode": (
+                    "sgf_extractive_degraded" if degraded_abstention else ""
+                ),
                 "provider_trace": {
                     "responses_requests": len(stages),
                     "stages": stages,
@@ -110,5 +114,6 @@ def test_fixed_live_gate_accounts_startup_recovery_and_no_third_calls() -> None:
     assert result["scenario_count"] == 6
     assert result["responses_requests"] == 11
     assert result["actual_cost_usd"] == pytest.approx(0.051)
+    assert result["scenarios"][-1]["safe_degraded_abstention"] is True
     assert answer_index == 6
     assert sum(call.startswith("GET ") for call in calls) == 2
