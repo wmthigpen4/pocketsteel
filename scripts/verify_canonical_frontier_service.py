@@ -155,8 +155,8 @@ def verify_v2_bundle(root: Path, manifest_file: Path, manifest: dict[str, Any]) 
     if not entrypoint.is_file():
         raise ValueError("Canonical-frontier v1035 entrypoint is missing.")
     required_asset_keys = {
-        "ollama_binary", "ollama_bge_m3_manifest", "reranker_revision",
-        "python_runtime", "python_packages", "corpus_manifest",
+        "ollama_binary", "ollama_inference_runtime", "ollama_bge_m3_manifest",
+        "reranker_revision", "python_runtime", "python_packages", "corpus_manifest",
     }
     if set(assets) != required_asset_keys:
         raise ValueError("Canonical-frontier required-asset inventory is invalid.")
@@ -167,6 +167,10 @@ def verify_v2_bundle(root: Path, manifest_file: Path, manifest: dict[str, Any]) 
         resolved_assets["ollama_binary"], os.X_OK
     ):
         raise ValueError("The bundled Ollama executable is missing or not executable.")
+    if not resolved_assets["ollama_inference_runtime"].is_file() or not os.access(
+        resolved_assets["ollama_inference_runtime"], os.X_OK
+    ):
+        raise ValueError("The bundled Ollama inference runtime is missing or not executable.")
     if not resolved_assets["reranker_revision"].is_dir():
         raise ValueError("The pinned BGE reranker revision is missing.")
     for name in ("config.json", "tokenizer.json", "model.safetensors"):

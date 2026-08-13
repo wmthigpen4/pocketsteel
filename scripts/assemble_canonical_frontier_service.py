@@ -199,11 +199,11 @@ def assemble(args: argparse.Namespace) -> Path:
     for source in sorted(overlay.glob("*.py")):
         shutil.copy2(source, output / source.name)
 
-    ollama_binary = args.ollama_binary.expanduser().resolve()
+    ollama_runtime = args.ollama_runtime.expanduser().resolve()
     bundled_ollama = output / "assets/ollama/bin/ollama"
-    bundled_ollama.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ollama_binary, bundled_ollama)
-    bundled_ollama.chmod(0o755)
+    clone_tree(ollama_runtime, bundled_ollama.parent)
+    if not bundled_ollama.is_file() or not (bundled_ollama.parent / "llama-server").is_file():
+        raise ValueError("The complete Ollama inference runtime is required.")
     ollama_manifest_sha = copy_model_manifest(
         args.ollama_models.expanduser().resolve(),
         output / "assets/ollama/models",
@@ -250,6 +250,7 @@ def assemble(args: argparse.Namespace) -> Path:
         },
         "required_assets": {
             "ollama_binary": "assets/ollama/bin/ollama",
+            "ollama_inference_runtime": "assets/ollama/bin/llama-server",
             "ollama_bge_m3_manifest": "assets/ollama/models/manifests/registry.ollama.ai/library/bge-m3/latest",
             "reranker_revision": (
                 "assets/huggingface/hub/models--BAAI--bge-reranker-v2-m3/"
@@ -270,7 +271,7 @@ def main() -> None:
     parser.add_argument("--base-service-root", required=True, type=Path)
     parser.add_argument("--output-service-root", required=True, type=Path)
     parser.add_argument("--overlay", required=True, type=Path)
-    parser.add_argument("--ollama-binary", required=True, type=Path)
+    parser.add_argument("--ollama-runtime", required=True, type=Path)
     parser.add_argument("--ollama-models", required=True, type=Path)
     parser.add_argument("--reranker-cache", required=True, type=Path)
     parser.add_argument("--python-site-packages", required=True, type=Path)
