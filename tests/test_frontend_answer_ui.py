@@ -1203,13 +1203,16 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     answer_client_digest = hashlib.sha256(Path("ui/answer-client.js").read_bytes()).hexdigest()
     answer_client_name = f"answer-client.{answer_client_digest}.js"
+    fretboard_digest = hashlib.sha256(Path("ui/pedal-steel-fretboard.js").read_bytes()).hexdigest()
+    fretboard_name = f"pedal-steel-fretboard.{fretboard_digest}.js"
 
     assert f'<script src="{answer_client_name}"></script>' in html
     assert (Path("ui") / answer_client_name).read_bytes() == Path("ui/answer-client.js").read_bytes()
     assert '<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
-    assert '<script src="pedal-steel-fretboard.js?v=qna-repair-grip-contract-20260813"></script>' in html
+    assert f'<script src="{fretboard_name}"></script>' in html
+    assert (Path("ui") / fretboard_name).read_bytes() == Path("ui/pedal-steel-fretboard.js").read_bytes()
     assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert 'gripOptions: ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]' in html
     assert '<script src="mock-answer-data.js"></script>' not in html

@@ -67,13 +67,16 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     answer_client = Path("ui/answer-client.js").read_bytes()
     answer_client_digest = hashlib.sha256(answer_client).hexdigest()
     answer_client_name = f"answer-client.{answer_client_digest}.js"
+    fretboard = Path("ui/pedal-steel-fretboard.js").read_bytes()
+    fretboard_digest = hashlib.sha256(fretboard).hexdigest()
+    fretboard_name = f"pedal-steel-fretboard.{fretboard_digest}.js"
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b'<link rel="canonical" href="/">' in html
     assert f'<script src="{answer_client_name}"></script>'.encode("ascii") in html
     assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert b'<script src="pedal-steel-fretboard-styles.js?v=bubble-contrast-20260724"></script>' in html
-    assert b'<script src="pedal-steel-fretboard.js?v=qna-repair-grip-contract-20260813"></script>' in html
+    assert f'<script src="{fretboard_name}"></script>'.encode("ascii") in html
     assert b'<script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>' in html
     assert b'<script src="melody-score.js?v=updated-score-artwork-20260714-1"></script>' in html
     assert b'<script src="landing-home.js?v=landing-bubble-labels-20260713"></script>' in html
@@ -83,6 +86,11 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert status == "200 OK"
     assert headers["Cache-Control"] == "public, max-age=31536000, immutable"
     assert hashed_answer_client == answer_client
+
+    status, headers, hashed_fretboard = call_app(smoke_app(), f"/ui/{fretboard_name}")
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    assert hashed_fretboard == fretboard
 
     status, headers, score_asset = call_app(smoke_app(), "/ui/assets/landing/melody-score.png")
     assert status == "200 OK"
