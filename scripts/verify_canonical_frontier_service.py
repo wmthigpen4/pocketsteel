@@ -137,7 +137,7 @@ def verify_v2_bundle(root: Path, manifest_file: Path, manifest: dict[str, Any]) 
             mismatches.append(relative)
             continue
         if (
-            int(expected.get("size") or -1) != resolved.stat().st_size
+            int(expected.get("size", -1)) != resolved.stat().st_size
             or str(expected.get("sha256") or "") != sha256(resolved)
         ):
             mismatches.append(relative)
@@ -245,7 +245,7 @@ def verify_v2_bundle(root: Path, manifest_file: Path, manifest: dict[str, Any]) 
         quick_check = str(connection.execute("pragma quick_check").fetchone()[0])
         row = connection.execute(
             "select count(*), sum(display_eligible), "
-            "sum(case when access_provenance='public_forum' then 1 else 0) from passages"
+            "sum(case when access_provenance='public_forum' then 1 else 0 end) from passages"
         ).fetchone()
     finally:
         connection.close()
