@@ -1,0 +1,178 @@
+{
+  "schemaVersion": "lesson_companion_v1",
+  "companionId": "travis-toy-tutorials-howdy",
+  "revision": "howdy-draft-2026-08-14.1",
+  "runtimeMode": "published_deterministic",
+  "modelCallsAllowed": false,
+  "contentStatus": "draft_review_required",
+  "artifactSha256": "__BUILD__",
+  "buildSha": "__BUILD__",
+  "title": "Howdy Solo",
+  "subtitle": "Lesson companion for the Eddy Dunlap solo taught by Travis Toy",
+  "lesson": {
+    "school": "Travis Toy Tutorials",
+    "provider": "Teachable",
+    "lectureId": "66525061",
+    "lessonTitle": "\"Howdy\" Solo (Eddy Dunlap)",
+    "sourceAttribution": "Companion mechanics are based on Travis Toy's lesson. Musical transcription remains subject to Travis's review.",
+    "sourceUrlIncluded": false
+  },
+  "release": {
+    "intendedProject": "steel-guitar-rag-travis-preview",
+    "intendedHostname": "travis-preview.steelguitarrag.com",
+    "feedbackEmail": "",
+    "previewLabel": "DRAFT - MUSICAL REVIEW REQUIRED",
+    "approvalReferences": [],
+    "testerEmailCount": 0
+  },
+  "approvals": {
+    "musical": false,
+    "chords": false,
+    "tablature": false,
+    "printLayout": false,
+    "audioRights": false,
+    "brandAssets": false,
+    "accessIdentities": false
+  },
+  "media": {
+    "audioRequiredForRelease": true,
+    "audioFileName": "howdy-backing-track.mp3",
+    "audioSha256": "REQUIRED_FOR_RELEASE",
+    "audioUrl": null,
+    "durationMs": 24000,
+    "draftClockOnly": true,
+    "pdfUrl": null
+  },
+  "display": {
+    "key": "Pending review",
+    "meter": "4/4",
+    "tempoBpm": null,
+    "barCount": 8,
+    "defaultMode": "follow-solo",
+    "defaultLayer": "lesson-map"
+  },
+  "copedent": {
+    "id": "travis-review-e9-draft",
+    "label": "10-string E9 - control names pending source-copedent sign-off",
+    "stringsHighToLow": [
+      {"string": 1, "openPitch": "F#4"},
+      {"string": 2, "openPitch": "D#4"},
+      {"string": 3, "openPitch": "G#4"},
+      {"string": 4, "openPitch": "E4"},
+      {"string": 5, "openPitch": "B3"},
+      {"string": 6, "openPitch": "G#3"},
+      {"string": 7, "openPitch": "F#3"},
+      {"string": 8, "openPitch": "E3"},
+      {"string": 9, "openPitch": "D3"},
+      {"string": 10, "openPitch": "B2"}
+    ],
+    "controls": [
+      {"code": "A", "label": "A pedal", "strings": [5, 10]},
+      {"code": "B", "label": "B pedal", "strings": [3, 6]},
+      {"code": "E", "label": "E-lower", "strings": [4, 8]},
+      {"code": "H1", "label": "1st-string half raise", "strings": [1]}
+    ],
+    "approved": false
+  },
+  "layers": [
+    {"id": "lesson-map", "label": "Lesson Map", "description": "See how the four mechanics fit together."},
+    {"id": "phrase-practice", "label": "Phrase Practice", "description": "Loop one reviewed phrase range at a time."},
+    {"id": "play-along", "label": "Play Along", "description": "Follow the authored timeline against the approved backing track."},
+    {"id": "explore", "label": "Explore", "description": "Compare only positions that Travis has approved."}
+  ],
+  "modes": [
+    {"id": "chord-foundation", "label": "Chord Foundation", "description": "Chord labels remain hidden until the reviewed chart is attached."},
+    {"id": "follow-solo", "label": "Follow the Solo", "description": "The exact taught route; draft events below are layout proof only."},
+    {"id": "phrase-builder", "label": "Phrase Builder", "description": "Combine approved phrase ranges without generating notes."}
+  ],
+  "chordTimeline": [
+    {"id": "chord-01", "startMs": 0, "endMs": 6000, "barStart": 1, "barEnd": 2, "symbol": null, "nns": null, "verified": false},
+    {"id": "chord-02", "startMs": 6000, "endMs": 12000, "barStart": 3, "barEnd": 4, "symbol": null, "nns": null, "verified": false},
+    {"id": "chord-03", "startMs": 12000, "endMs": 18000, "barStart": 5, "barEnd": 6, "symbol": null, "nns": null, "verified": false},
+    {"id": "chord-04", "startMs": 18000, "endMs": 24000, "barStart": 7, "barEnd": 8, "symbol": null, "nns": null, "verified": false}
+  ],
+  "phrases": [
+    {
+      "id": "phrase-01",
+      "label": "A+B arrival",
+      "shortLabel": "A+B slide",
+      "startMs": 0,
+      "endMs": 6000,
+      "barStart": 1,
+      "barEnd": 2,
+      "eventIds": ["event-001", "event-002", "event-003"],
+      "lessonNote": "Coordinate the A and B pedals with the move into fret 3, then let the sixth string speak clearly.",
+      "reviewStatus": "mechanic_observed_timing_unverified"
+    },
+    {
+      "id": "phrase-02",
+      "label": "First-string half raise",
+      "shortLabel": "Half raise",
+      "startMs": 6000,
+      "endMs": 12000,
+      "barStart": 3,
+      "barEnd": 4,
+      "eventIds": ["event-004", "event-005", "event-006"],
+      "lessonNote": "Treat the first-string half raise as part of the phrase's articulation, not as an isolated stunt.",
+      "reviewStatus": "mechanic_observed_timing_unverified"
+    },
+    {
+      "id": "phrase-03",
+      "label": "E-lower release",
+      "shortLabel": "Release",
+      "startMs": 12000,
+      "endMs": 18000,
+      "barStart": 5,
+      "barEnd": 6,
+      "eventIds": ["event-007", "event-008", "event-009"],
+      "lessonNote": "Hear the release resolve while the third string keeps the line connected; repick the fifth string deliberately.",
+      "reviewStatus": "mechanic_observed_timing_unverified"
+    },
+    {
+      "id": "phrase-04",
+      "label": "Route integration",
+      "shortLabel": "Put it together",
+      "startMs": 18000,
+      "endMs": 24000,
+      "barStart": 7,
+      "barEnd": 8,
+      "eventIds": ["event-010", "event-011", "event-012"],
+      "lessonNote": "Practice the taught route as one musical sentence. The alternative shown is comparison-only until Travis approves it.",
+      "reviewStatus": "mechanic_observed_timing_unverified"
+    }
+  ],
+  "events": [
+    {"id": "event-001", "phraseId": "phrase-01", "chordEventId": "chord-01", "bar": 1, "beat": 1, "startMs": 0, "endMs": 1800, "durationBeats": 1, "notationPitch": "E4", "rhythm": "quarter", "tabNotes": [{"string": 5, "fret": 3, "controls": ["A"], "technique": "slide-in"}], "instruction": "Engage A+B as the bar arrives at fret 3.", "movement": "slide", "musicalVerified": false},
+    {"id": "event-002", "phraseId": "phrase-01", "chordEventId": "chord-01", "bar": 1, "beat": 2, "startMs": 1800, "endMs": 3600, "durationBeats": 1, "notationPitch": "C4", "rhythm": "quarter", "tabNotes": [{"string": 6, "fret": 3, "controls": ["B"], "technique": "pick"}], "instruction": "Pick string 6 with the B pedal settled.", "movement": "hold", "musicalVerified": false},
+    {"id": "event-003", "phraseId": "phrase-01", "chordEventId": "chord-01", "bar": 2, "beat": 1, "startMs": 3600, "endMs": 6000, "durationBeats": 2, "notationPitch": "E4", "rhythm": "half", "tabNotes": [{"string": 5, "fret": 3, "controls": ["A"], "technique": "sustain"}], "instruction": "Let the arrival breathe before the next color move.", "movement": "sustain", "musicalVerified": false},
+    {"id": "event-004", "phraseId": "phrase-02", "chordEventId": "chord-02", "bar": 3, "beat": 1, "startMs": 6000, "endMs": 7800, "durationBeats": 1, "notationPitch": "A#4", "rhythm": "quarter", "tabNotes": [{"string": 1, "fret": 3, "controls": ["H1"], "technique": "half-raise"}], "instruction": "Use the first-string half raise as the attack speaks.", "movement": "lever-engage", "musicalVerified": false},
+    {"id": "event-005", "phraseId": "phrase-02", "chordEventId": "chord-02", "bar": 3, "beat": 2, "startMs": 7800, "endMs": 9600, "durationBeats": 1, "notationPitch": "A4", "rhythm": "quarter", "tabNotes": [{"string": 1, "fret": 3, "controls": [], "technique": "release"}], "instruction": "Release the half raise without changing the bar position.", "movement": "lever-release", "musicalVerified": false},
+    {"id": "event-006", "phraseId": "phrase-02", "chordEventId": "chord-02", "bar": 4, "beat": 1, "startMs": 9600, "endMs": 12000, "durationBeats": 2, "notationPitch": "G4", "rhythm": "half", "tabNotes": [{"string": 3, "fret": 3, "controls": [], "technique": "sustain"}], "instruction": "Carry the line forward instead of resetting the hand.", "movement": "sustain", "musicalVerified": false},
+    {"id": "event-007", "phraseId": "phrase-03", "chordEventId": "chord-03", "bar": 5, "beat": 1, "startMs": 12000, "endMs": 13800, "durationBeats": 1, "notationPitch": "G4", "rhythm": "quarter", "tabNotes": [{"string": 4, "fret": 3, "controls": ["E"], "technique": "pick"}], "instruction": "Begin with the E-lower engaged.", "movement": "lever-engage", "musicalVerified": false},
+    {"id": "event-008", "phraseId": "phrase-03", "chordEventId": "chord-03", "bar": 5, "beat": 2, "startMs": 13800, "endMs": 15600, "durationBeats": 1, "notationPitch": "G#4", "rhythm": "quarter", "tabNotes": [{"string": 3, "fret": 3, "controls": [], "technique": "pick"}, {"string": 4, "fret": 3, "controls": [], "technique": "release"}], "instruction": "Release the E-lower while string 3 keeps the phrase connected.", "movement": "lever-release", "musicalVerified": false},
+    {"id": "event-009", "phraseId": "phrase-03", "chordEventId": "chord-03", "bar": 6, "beat": 1, "startMs": 15600, "endMs": 18000, "durationBeats": 2, "notationPitch": "E4", "rhythm": "half", "tabNotes": [{"string": 5, "fret": 3, "controls": ["A"], "technique": "repick"}], "instruction": "Repick string 5 cleanly; do not let the release blur the attack.", "movement": "repick", "musicalVerified": false},
+    {"id": "event-010", "phraseId": "phrase-04", "chordEventId": "chord-04", "bar": 7, "beat": 1, "startMs": 18000, "endMs": 19800, "durationBeats": 1, "notationPitch": "C4", "rhythm": "quarter", "tabNotes": [{"string": 6, "fret": 3, "controls": ["B"], "technique": "pick"}], "instruction": "Start the integrated phrase from the settled B-pedal position.", "movement": "hold", "musicalVerified": false},
+    {"id": "event-011", "phraseId": "phrase-04", "chordEventId": "chord-04", "bar": 7, "beat": 2, "startMs": 19800, "endMs": 21600, "durationBeats": 1, "notationPitch": "E4", "rhythm": "quarter", "tabNotes": [{"string": 5, "fret": 3, "controls": ["A"], "technique": "pick"}], "instruction": "Move across the grip without lifting the bar.", "movement": "grip-change", "musicalVerified": false},
+    {"id": "event-012", "phraseId": "phrase-04", "chordEventId": "chord-04", "bar": 8, "beat": 1, "startMs": 21600, "endMs": 24000, "durationBeats": 2, "notationPitch": "C4", "rhythm": "half", "tabNotes": [{"string": 6, "fret": 3, "controls": ["B"], "technique": "release"}], "instruction": "Finish the phrase as a single thought and listen to the release.", "movement": "resolve", "musicalVerified": false}
+  ],
+  "alternatePositions": [
+    {
+      "id": "alternate-01",
+      "forEventId": "event-009",
+      "label": "B-pedal 6-to-5 comparison",
+      "status": "observed_comparison_not_approved_route",
+      "tabNotes": [{"string": 6, "fret": 3, "controls": ["B"]}, {"string": 5, "fret": 3, "controls": ["A"]}],
+      "tradeoff": "Useful comparison for how the route changes the right-hand movement; it cannot replace the taught route without approval."
+    }
+  ],
+  "print": {
+    "title": "Howdy Solo - Companion Tablature",
+    "notation": "treble",
+    "tabStrings": 10,
+    "showChordSymbols": true,
+    "showBarNumbers": true,
+    "showPhraseLabels": true,
+    "footer": "Member-use companion - Travis Toy Tutorials - draft requires approval",
+    "approved": false
+  }
+}

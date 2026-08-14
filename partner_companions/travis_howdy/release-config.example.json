@@ -1,0 +1,44 @@
+{
+  "testerEmails": [
+    "cory@example.com",
+    "travis@example.com"
+  ],
+  "feedbackEmail": "review@example.com",
+  "approvalReferences": [
+    "musical-approval-reference",
+    "chord-chart-approval-reference",
+    "audio-rights-reference",
+    "brand-asset-approval-reference",
+    "print-proof-approval-reference"
+  ],
+  "approvals": {
+    "musical": true,
+    "chords": true,
+    "tablature": true,
+    "printLayout": true,
+    "audioRights": true,
+    "brandAssets": true,
+    "accessIdentities": true
+  },
+  "audio": {
+    "path": "/absolute/private/path/howdy-backing-track.mp3",
+    "sha256": "replace-with-reviewed-sha256"
+  },
+  "brandHero": {
+    "path": "/absolute/private/path/approved-travis-pedal-steel-photo.jpg",
+    "sha256": "replace-with-reviewed-sha256"
+  },
+  "brandFont": {
+    "path": "/absolute/private/path/approved-metropolis.woff2",
+    "sha256": "replace-with-reviewed-sha256"
+  },
+  "access": {
+    "customDomainApplicationId": "replace-after-access-setup",
+    "pagesDevProductionApplicationId": "replace-after-access-setup",
+    "pagesDevPreviewApplicationId": "replace-after-access-setup",
+    "customDomainAnonymousDenied": true,
+    "pagesDevProductionAnonymousDenied": true,
+    "pagesDevPreviewAnonymousDenied": true,
+    "appSteelGuitarRagPolicyUnchanged": true
+  }
+}

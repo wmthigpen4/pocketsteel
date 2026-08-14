@@ -36,6 +36,10 @@ test = [
 deployment = [
   "build>=1.5,<2",
 ]
+companion = [
+  "pypdf>=6,<7",
+  "reportlab>=4.4,<5",
+]
 
 [tool.setuptools]
 packages = ["steel_guitar_rag"]

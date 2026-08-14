@@ -32,6 +32,8 @@ credentials/
 logs/
 run-logs/
 .wrangler/
+/output/pdf/Howdy-companion-draft.pdf
+/partner_companions/travis_howdy/release-config.json
 
 # Local smoke evidence and generated reports
 docs/handoffs/task-completions/assets/
