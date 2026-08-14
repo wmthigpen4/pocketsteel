@@ -94,6 +94,35 @@ def test_all_views_share_one_event_graph() -> None:
     assert all(event["tabNotes"] and event["notationPitch"] for event in events.values())
 
 
+def test_full_song_and_taught_solo_scopes_preserve_solo_relative_tab_timing() -> None:
+    data = load_draft()
+    solo_duration = data["media"]["durationMs"]
+    data["media"]["durationMs"] = 237_187
+    data["media"]["scopes"] = {
+        "fullSong": {
+            "id": "full-song",
+            "label": "Full song",
+            "startMs": 0,
+            "endMs": 237_187,
+            "durationMs": 237_187,
+        },
+        "taughtSolo": {
+            "id": "taught-solo",
+            "label": "Taught solo",
+            "startMs": 118_320,
+            "endMs": 118_320 + solo_duration,
+            "durationMs": solo_duration,
+        },
+    }
+    validate_companion(data, release=False)
+    assert data["events"][-1]["endMs"] == data["media"]["scopes"]["taughtSolo"]["durationMs"]
+    assert data["media"]["scopes"]["fullSong"]["durationMs"] == data["media"]["durationMs"]
+
+    data["media"]["scopes"]["taughtSolo"]["endMs"] += 1
+    with pytest.raises(CompanionReleaseError, match="invalid timing"):
+        validate_companion(data, release=False)
+
+
 def test_chord_boundaries_are_exact_and_never_inferred() -> None:
     data = load_draft()
     by_chord: dict[str, list[dict[str, object]]] = {}
@@ -113,6 +142,7 @@ def test_normalized_artifact_hash_ignores_only_generated_fields() -> None:
     generated["buildSha"] = "different"
     generated["artifactSha256"] = "different"
     generated["media"]["audioUrl"] = "/assets/example/audio.mp3"
+    generated["media"]["soloAudioUrl"] = "/assets/example/solo.mp3"
     generated["media"]["pdfUrl"] = "/assets/example/tab.pdf"
     generated["media"]["brandHeroUrl"] = "/assets/example/photo.jpg"
     assert _normalized_artifact_hash(generated) == first
@@ -196,6 +226,54 @@ def test_local_draft_audio_is_private_and_hash_pinned(tmp_path: Path) -> None:
         )
 
 
+def test_scoped_draft_packages_distinct_full_song_and_taught_solo_assets(tmp_path: Path) -> None:
+    full_audio = tmp_path / "full-song.mp3"
+    solo_audio = tmp_path / "taught-solo.mp3"
+    full_audio.write_bytes(b"ID3-full-song")
+    solo_audio.write_bytes(b"ID3-taught-solo")
+    data = load_draft()
+    solo_duration = data["media"]["durationMs"]
+    data["media"].update(
+        {
+            "audioSha256": hashlib.sha256(full_audio.read_bytes()).hexdigest(),
+            "soloAudioSha256": hashlib.sha256(solo_audio.read_bytes()).hexdigest(),
+            "durationMs": 237_187,
+            "scopes": {
+                "fullSong": {
+                    "id": "full-song",
+                    "label": "Full song",
+                    "startMs": 0,
+                    "endMs": 237_187,
+                    "durationMs": 237_187,
+                },
+                "taughtSolo": {
+                    "id": "taught-solo",
+                    "label": "Taught solo",
+                    "startMs": 118_320,
+                    "endMs": 118_320 + solo_duration,
+                    "durationMs": solo_duration,
+                },
+            },
+        }
+    )
+    companion = tmp_path / "companion.json"
+    companion.write_text(json.dumps(data), encoding="utf-8")
+    bundle = tmp_path / "bundle"
+    build_companion_bundle(
+        bundle,
+        companion_path=companion,
+        draft_audio_path=full_audio,
+        draft_solo_audio_path=solo_audio,
+        source_date_epoch=1,
+    )
+    assert next(bundle.rglob("howdy-backing-track.mp3")).read_bytes() == full_audio.read_bytes()
+    assert next(bundle.rglob("howdy-taught-solo.mp3")).read_bytes() == solo_audio.read_bytes()
+    deployed = json.loads(next(bundle.rglob("lesson-companion.json")).read_text(encoding="utf-8"))
+    assert deployed["media"]["audioUrl"] != deployed["media"]["soloAudioUrl"]
+    assert deployed["media"]["audioUrl"].endswith("howdy-backing-track.mp3")
+    assert deployed["media"]["soloAudioUrl"].endswith("howdy-taught-solo.mp3")
+
+
 def test_bundle_verifier_rejects_access_phase_manifest_drift(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     manifest_path = tmp_path / "manifest.json"
@@ -221,6 +299,7 @@ def test_security_headers_and_route_map_are_fail_closed(tmp_path: Path) -> None:
     headers = (bundle / "_headers").read_text(encoding="utf-8")
     assert "default-src 'self'" in headers
     assert "connect-src 'self'" in headers
+    assert "media-src 'self' blob:" in headers
     assert "frame-ancestors 'none'" in headers
     assert "form-action 'none'" in headers
     assert "X-Robots-Tag: noindex, nofollow, noarchive" in headers
@@ -231,8 +310,9 @@ def test_security_headers_and_route_map_are_fail_closed(tmp_path: Path) -> None:
 
 def test_browser_runtime_has_one_same_origin_fetch_and_no_dynamic_clients() -> None:
     script = (SITE / "companion.js").read_text(encoding="utf-8")
-    assert script.count("fetch(") == 1
+    assert script.count("fetch(") == 2
     assert "fetch(companionUrl.href" in script
+    assert "fetch(mediaUrl.href" in script
     assert "companionUrl.origin !== window.location.origin" in script
     assert "mediaUrl.origin !== window.location.origin" in script
     for token in ("XMLHttpRequest", "WebSocket", "EventSource", "sendBeacon", "Worker("):
@@ -261,7 +341,11 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         "data-explore-panel",
     ):
         assert selector in markup
-    assert 'presentation === "embed-demo" ? compactLabels[layer.id] : layer.label' in script
+    assert '"phrase-practice": "Solo"' in script
+    assert '"play-along": "Full Song"' in script
+    assert "function renderMediaScope()" in script
+    assert "function configureMediaScopeActions()" in script
+    assert "taughtSoloTimeAt" in script
     assert 'if (!terms.length && presentation === "embed-demo") return;' in script
 
 
@@ -271,6 +355,9 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     )
     styles = (SITE / "companion.css").read_text(encoding="utf-8")
     assert 'data-lesson-search-panel' in markup
+    assert 'data-action="open-full-song"' in markup
+    assert 'data-action="open-taught-solo"' in markup
+    assert 'data-action="jump-to-solo"' in markup
     assert '<summary class="search-summary">' in markup
     assert '[data-active-layer]:not([data-active-layer="lesson-map"]) .lesson-search-card { display: none; }' in styles
     assert '[data-active-layer="phrase-practice"] .lesson-map { display: none; }' in styles

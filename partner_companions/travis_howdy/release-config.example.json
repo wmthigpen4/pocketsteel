@@ -24,6 +24,10 @@
     "path": "/absolute/private/path/howdy-backing-track.mp3",
     "sha256": "replace-with-reviewed-sha256"
   },
+  "soloAudio": {
+    "path": "/absolute/private/path/howdy-taught-solo.mp3",
+    "sha256": "replace-with-reviewed-sha256"
+  },
   "brandHero": {
     "path": "/absolute/private/path/approved-travis-pedal-steel-photo.jpg",
     "sha256": "replace-with-reviewed-sha256"

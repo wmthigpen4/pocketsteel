@@ -29,6 +29,11 @@ def main() -> int:
         type=Path,
         help="Use a private hash-pinned audio file for a local draft bundle.",
     )
+    parser.add_argument(
+        "--draft-solo-audio",
+        type=Path,
+        help="Use a private hash-pinned taught-solo excerpt with a scoped local draft bundle.",
+    )
     args = parser.parse_args()
     manifest = build_companion_bundle(
         args.output,
@@ -39,6 +44,7 @@ def main() -> int:
         source_date_epoch=args.source_date_epoch,
         draft_pdf_path=args.draft_pdf,
         draft_audio_path=args.draft_audio,
+        draft_solo_audio_path=args.draft_solo_audio,
     )
     print(json.dumps(manifest, indent=2, sort_keys=True))
     return 0

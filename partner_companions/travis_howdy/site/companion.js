@@ -22,6 +22,8 @@
     searchQuery: "",
     frameId: null,
     previousFrameTime: null,
+    sourceObjectUrls: {},
+    sourceLoadPromises: {},
   };
 
   const q = (selector) => root.querySelector(selector);
@@ -57,6 +59,48 @@
   const eventIndex = (event) => state.data.events.findIndex((item) => item.id === event.id);
   const nextEvent = (event) => state.data.events[Math.min(state.data.events.length - 1, eventIndex(event) + 1)];
   const hasChordChart = () => state.data.chordTimeline.every((item) => item.symbol && item.tabNotes?.length);
+  const mediaScopesFor = (data) => {
+    const media = data.media || {};
+    const scopes = media.scopes || {};
+    const fullDuration = Number(media.durationMs || 0);
+    const fallback = { id: "taught-solo", label: "Taught solo", startMs: 0, endMs: fullDuration, durationMs: fullDuration };
+    return {
+      fullSong: scopes.fullSong || { id: "full-song", label: "Full song", startMs: 0, endMs: fullDuration, durationMs: fullDuration },
+      taughtSolo: scopes.taughtSolo || fallback,
+    };
+  };
+  const mediaScopes = () => mediaScopesFor(state.data);
+  const mediaScopeForLayer = (layerId = state.selectedLayer) => (
+    layerId === "play-along" ? mediaScopes().fullSong : mediaScopes().taughtSolo
+  );
+  const currentMediaScope = () => mediaScopeForLayer();
+  const absoluteMediaTime = (scope, relativeMs) => Number(scope.startMs) + Number(relativeMs || 0);
+  const relativeMediaTime = (scope, absoluteMs) => clamp(
+    Number(absoluteMs || 0) - Number(scope.startMs),
+    0,
+    Number(scope.durationMs),
+  );
+  const taughtSoloTimeAt = (absoluteMs) => {
+    const solo = mediaScopes().taughtSolo;
+    if (absoluteMs < Number(solo.startMs) || absoluteMs >= Number(solo.endMs)) return null;
+    return absoluteMs - Number(solo.startMs);
+  };
+  const scopeUsesSoloAudio = (scope) => (
+    scope.id === mediaScopes().taughtSolo.id
+    && !state.data.media.audioUrl
+    && Boolean(state.data.media.soloAudioUrl)
+  );
+  const sourceUrlForScope = (scope) => (
+    scopeUsesSoloAudio(scope) ? state.data.media.soloAudioUrl : state.data.media.audioUrl
+  );
+  const audioTimeForScope = (scope, relativeMs) => (
+    scopeUsesSoloAudio(scope) ? Number(relativeMs || 0) : absoluteMediaTime(scope, relativeMs)
+  );
+  const scopeTimeFromAudio = (scope, audioMs) => (
+    scopeUsesSoloAudio(scope)
+      ? clamp(Number(audioMs || 0), 0, Number(scope.durationMs))
+      : relativeMediaTime(scope, audioMs)
+  );
 
   function validateCompanion(data) {
     if (!data || data.schemaVersion !== "lesson_companion_v1") throw new Error("Unsupported companion artifact.");
@@ -65,6 +109,19 @@
     }
     if (!Array.isArray(data.events) || !data.events.length || !Array.isArray(data.phrases)) {
       throw new Error("The companion artifact is incomplete.");
+    }
+    const scopes = mediaScopesFor(data);
+    for (const scope of [scopes.fullSong, scopes.taughtSolo]) {
+      if (
+        !Number.isFinite(Number(scope.startMs))
+        || !Number.isFinite(Number(scope.endMs))
+        || Number(scope.endMs) <= Number(scope.startMs)
+        || Number(scope.durationMs) !== Number(scope.endMs) - Number(scope.startMs)
+        || Number(scope.endMs) > Number(data.media.durationMs)
+      ) throw new Error(`Invalid media scope ${scope.id || "unknown"}.`);
+    }
+    if (Number(data.events[data.events.length - 1].endMs) !== Number(scopes.taughtSolo.durationMs)) {
+      throw new Error("The taught solo scope must end with the final authored event.");
     }
     const eventIds = new Set(data.events.map((item) => item.id));
     if (eventIds.size !== data.events.length) throw new Error("Companion event IDs must be unique.");
@@ -105,12 +162,13 @@
       button.setAttribute("aria-pressed", layer.id === state.selectedLayer ? "true" : "false");
       const compactLabels = {
         "lesson-map": "Map",
-        "phrase-practice": "Practice",
-        "play-along": "Chords",
+        "phrase-practice": "Solo",
+        "play-along": "Full Song",
         "explore": "Explore",
       };
+      const fullLabels = { "phrase-practice": "Taught Solo", "play-along": "Full Song" };
       button.append(
-        node("strong", "", presentation === "embed-demo" ? compactLabels[layer.id] : layer.label),
+        node("strong", "", presentation === "embed-demo" ? compactLabels[layer.id] : (fullLabels[layer.id] || layer.label)),
         node("span", "", layer.description),
       );
       button.addEventListener("click", () => setLayer(layer.id));
@@ -129,8 +187,14 @@
     const layer = state.data.layers.find((item) => item.id === layerId);
     if (!layer) return;
     pausePlayback();
+    const previousScope = currentMediaScope();
+    const previousAbsoluteTime = absoluteMediaTime(previousScope, state.timeMs);
     state.selectedLayer = layer.id;
     root.dataset.activeLayer = layer.id;
+    const nextScope = currentMediaScope();
+    state.timeMs = options.preserveTime
+      ? relativeMediaTime(nextScope, previousAbsoluteTime)
+      : 0;
     const studyControls = q("[data-study-controls]");
     const explorePanel = q("[data-explore-panel]");
     if (studyControls) studyControls.hidden = layer.id !== "phrase-practice";
@@ -143,7 +207,8 @@
     } else if (layer.id === "play-along") {
       state.selectedMode = hasChordChart() ? "chord-foundation" : "follow-solo";
       state.loop = false;
-      setSpeed(0.75);
+      setSpeed(1);
+      if (!options.preserveTime) seekTo(0);
     } else {
       state.loop = false;
     }
@@ -151,8 +216,8 @@
     if (loopButton) loopButton.setAttribute("aria-pressed", state.loop ? "true" : "false");
     const layerCopy = {
       "lesson-map": ["Lesson map", "Understand the complete eight-bar route", "Select a phrase or chord bar to choose where your practice begins.", "Overview only · playback is paused"],
-      "phrase-practice": ["Phrase practice", "Slow the lesson down to one move at a time", "Use Previous and Next to study the tab and fretboard without chasing a fast animation. Play is still available at 50% with the selected phrase looped.", "Step study · 50% · phrase loop on"],
-      "play-along": ["Chord play-along", "Play the harmony before following the solo", "The current move and fretboard now follow held chord grips from the backing-track chart, so the visual changes only when the harmony changes.", "Chord view · 75% · full eight bars"],
+      "phrase-practice": ["Taught solo", "Study the exact eight-bar lesson solo", "Use Previous and Next to study the tab and fretboard. The player is scoped to the taught solo inside the full backing track.", "Solo window · 50% · phrase loop on"],
+      "play-along": ["Full song", "Play against the complete backing track", "This player uses the full song. The taught solo is marked at its exact position and keeps its own tab, fretboard, and phrase loops in the Solo tab.", "Full track · 100% · no solo animation"],
       "explore": ["Explore", "Compare only positions shown in the lesson", "These are fixed lesson-demonstrated comparisons, not generated substitutes for Travis’s route.", "Playback paused · primary route unchanged"],
     }[layer.id];
     const kicker = q("[data-layer-kicker]");
@@ -165,6 +230,7 @@
     if (behavior) behavior.textContent = layerCopy[3];
     renderLayerTabs();
     renderModes();
+    renderMediaScope();
     renderPhraseMap();
     renderChordChart();
     updateFrame();
@@ -182,7 +248,9 @@
       button.append(node("strong", "", mode.label), node("span", "", mode.description));
       button.addEventListener("click", () => {
         if (mode.id === "chord-foundation" && hasChordChart()) {
-          setLayer("play-along", { preserveTime: true });
+          state.selectedMode = mode.id;
+          renderModes();
+          updateFrame();
           return;
         }
         state.selectedMode = mode.id;
@@ -202,6 +270,119 @@
     if (meter) meter.textContent = state.data.display.meter;
     if (tempo) tempo.textContent = state.data.display.tempoBpm ? `${state.data.display.tempoBpm} BPM` : "Tempo pending";
     if (chartKey) chartKey.textContent = state.data.display.key;
+  }
+
+  function selectScopeAudio(scope) {
+    const audio = q("[data-audio]");
+    if (!audio) return;
+    const play = q('[data-action="play"]');
+    const rawUrl = sourceUrlForScope(scope);
+    if (!rawUrl) return;
+    const mediaUrl = new URL(rawUrl, window.location.origin);
+    if (mediaUrl.origin !== window.location.origin) throw new Error("Backing audio must be same-origin.");
+    const sourceKey = mediaUrl.href;
+    const applySource = (sourceUrl) => {
+      if (audio.dataset.scopeId === scope.id && audio.src === sourceUrl) return;
+      audio.dataset.scopeId = scope.id;
+      audio.src = sourceUrl;
+      audio.load();
+    };
+    const cachedObjectUrl = state.sourceObjectUrls[sourceKey];
+    if (cachedObjectUrl) {
+      applySource(cachedObjectUrl);
+      if (play) {
+        play.disabled = false;
+        play.textContent = "▶";
+        play.setAttribute("aria-label", "Play backing track");
+      }
+      return;
+    }
+    const note = q("[data-transport-note]");
+    if (play) {
+      play.disabled = true;
+      play.textContent = "…";
+      play.setAttribute("aria-label", `Loading ${scope.label.toLowerCase()}`);
+    }
+    if (note) note.textContent = `Loading ${scope.label.toLowerCase()} audio…`;
+    if (!state.sourceLoadPromises[sourceKey]) {
+      state.sourceLoadPromises[sourceKey] = fetch(mediaUrl.href, { credentials: "same-origin", cache: "force-cache" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`${scope.label} audio returned ${response.status}.`);
+          return response.blob();
+        })
+        .then((blob) => {
+          state.sourceObjectUrls[sourceKey] = URL.createObjectURL(blob);
+          if (currentMediaScope().id === scope.id) {
+            applySource(state.sourceObjectUrls[sourceKey]);
+            if (play) {
+              play.disabled = false;
+              play.textContent = "▶";
+              play.setAttribute("aria-label", "Play backing track");
+            }
+            if (note) note.textContent = scope.id === mediaScopes().fullSong.id
+              ? "Complete same-origin backing track loaded · audio rights approval pending."
+              : `Taught solo window ${formatTime(scope.startMs)}–${formatTime(scope.endMs)} · exact excerpt from the same source track.`;
+          }
+        })
+        .catch((error) => {
+          if (play) {
+            play.disabled = false;
+            play.textContent = "▶";
+            play.setAttribute("aria-label", `Retry ${scope.label.toLowerCase()}`);
+          }
+          if (note) note.textContent = `${scope.label} unavailable: ${error.message}`;
+        })
+        .finally(() => { delete state.sourceLoadPromises[sourceKey]; });
+    }
+  }
+
+  function renderMediaScope() {
+    const scopes = mediaScopes();
+    const scope = currentMediaScope();
+    const fullDuration = q("[data-full-song-duration]");
+    const soloDuration = q("[data-taught-solo-duration]");
+    if (fullDuration) fullDuration.textContent = formatTime(scopes.fullSong.durationMs);
+    if (soloDuration) soloDuration.textContent = formatTime(scopes.taughtSolo.durationMs);
+    const kicker = q("[data-scope-kicker]");
+    const title = q("[data-scope-title]");
+    const description = q("[data-scope-description]");
+    const jump = q('[data-action="jump-to-solo"]');
+    const isFullSong = scope.id === scopes.fullSong.id;
+    if (kicker) kicker.textContent = isFullSong ? "Full song" : "Lesson solo";
+    if (title) title.textContent = `${scope.label} · ${formatTime(scope.durationMs)}`;
+    if (description) description.textContent = isFullSong
+      ? `Complete backing track. The taught solo begins at ${formatTime(scopes.taughtSolo.startMs)}.`
+      : `The eight-bar solo Travis teaches, heard from ${formatTime(scopes.taughtSolo.startMs)} to ${formatTime(scopes.taughtSolo.endMs)} inside the full song.`;
+    if (jump) jump.hidden = !isFullSong;
+    const seek = q("[data-seek]");
+    const duration = q("[data-duration]");
+    if (seek) {
+      seek.max = String(scope.durationMs);
+      seek.value = String(Math.round(state.timeMs));
+    }
+    if (duration) duration.textContent = formatTime(scope.durationMs);
+    const loop = q('[data-action="loop"]');
+    if (loop) loop.hidden = isFullSong;
+    const note = q("[data-transport-note]");
+    if (note) note.textContent = isFullSong
+      ? "Complete same-origin backing track loaded · audio rights approval pending."
+      : `Taught solo window ${formatTime(scopes.taughtSolo.startMs)}–${formatTime(scopes.taughtSolo.endMs)} · same source track.`;
+    selectScopeAudio(scope);
+  }
+
+  function configureMediaScopeActions() {
+    q('[data-action="open-full-song"]')?.addEventListener("click", () => {
+      setLayer("play-along");
+      seekTo(0);
+    });
+    q('[data-action="open-taught-solo"]')?.addEventListener("click", () => {
+      setLayer("phrase-practice");
+      seekTo(0);
+    });
+    q('[data-action="jump-to-solo"]')?.addEventListener("click", () => {
+      setLayer("phrase-practice");
+      seekTo(0);
+    });
   }
 
   function normalizeSearch(value) {
@@ -226,7 +407,6 @@
     const event = state.data.events.find((item) => item.id === moment.eventId);
     if (!event) return;
     state.selectedPhraseId = event.phraseId;
-    state.selectedLayer = "phrase-practice";
     setLayer("phrase-practice", { preserveTime: true });
     seekTo(event.startMs);
     renderPhraseMap();
@@ -298,7 +478,7 @@
     const chartAvailable = hasChordChart();
     const status = q("[data-chord-status]");
     if (status) status.textContent = chartAvailable
-      ? state.data.approvals.chords ? "Travis approved" : "Audio-derived · Travis review required"
+      ? state.data.approvals.chords ? "Travis approved" : "Solo form · audio-derived · Travis review required"
       : "Chord chart not attached";
     for (let bar = 1; bar <= Number(state.data.display.barCount); bar += 1) {
       const cell = node("button", "chord-bar");
@@ -321,18 +501,20 @@
       }
       const first = chords[0];
       if (first) cell.addEventListener("click", () => {
+        setLayer("phrase-practice");
         state.selectedMode = chartAvailable ? "chord-foundation" : state.selectedMode;
-        setLayer("play-along", { preserveTime: true });
         seekTo(first.startMs);
+        renderModes();
+        updateFrame();
       });
       container.append(cell);
     }
   }
 
-  function updateChordChartHighlight(chord, currentBar) {
+  function updateChordChartHighlight(chord, currentBar, active = true) {
     qa("[data-chord-chart] [data-bar]").forEach((cell) => {
       const bar = Number(cell.dataset.bar);
-      cell.classList.toggle("is-current", bar === Number(currentBar));
+      cell.classList.toggle("is-current", active && bar === Number(currentBar));
     });
   }
 
@@ -516,15 +698,19 @@
 
   function updateFrame() {
     if (!state.data) return;
-    const current = eventAt(state.timeMs);
+    const scope = currentMediaScope();
+    const absoluteTime = absoluteMediaTime(scope, state.timeMs);
+    const soloTime = taughtSoloTimeAt(absoluteTime);
+    const taughtSoloActive = soloTime !== null;
+    const current = eventAt(soloTime ?? 0);
     const upcoming = nextEvent(current);
-    const chord = chordAt(state.timeMs);
+    const chord = chordAt(soloTime ?? 0);
     const upcomingChord = nextChord(chord);
-    const chordFocus = hasChordChart() && (state.selectedMode === "chord-foundation" || state.selectedLayer === "play-along");
+    const chordFocus = taughtSoloActive && hasChordChart() && (state.selectedMode === "chord-foundation" || state.selectedLayer === "play-along");
     const visualCurrent = chordFocus ? chord : current;
     const visualUpcoming = chordFocus ? upcomingChord : upcoming;
     const phrase = state.data.phrases.find((item) => item.id === current.phraseId) || currentPhrase();
-    if (state.selectedPhraseId !== phrase.id && !state.loop) {
+    if (taughtSoloActive && state.selectedPhraseId !== phrase.id && !state.loop) {
       state.selectedPhraseId = phrase.id;
       renderPhraseMap();
       if (presentation === "embed-demo") renderTab();
@@ -534,10 +720,14 @@
     const time = q("[data-current-time]");
     if (time) time.textContent = formatTime(state.timeMs);
     const bar = q("[data-current-bar]");
-    if (bar) bar.textContent = `Bar ${current.bar} · beat ${current.beat}`;
+    if (bar) bar.textContent = taughtSoloActive
+      ? `Bar ${current.bar} · beat ${current.beat}`
+      : `Full song · ${formatTime(state.timeMs)}`;
     const chordLabel = q("[data-current-chord]");
     if (chordLabel) {
-      chordLabel.textContent = chord?.symbol
+      chordLabel.textContent = !taughtSoloActive
+        ? `Taught solo at ${formatTime(mediaScopes().taughtSolo.startMs)}`
+        : chord?.symbol
         ? `${chord.symbol}${chord.nns ? ` · ${chord.nns}` : ""}${chord.verified ? "" : " · review"}`
         : "Chord pending Travis review";
     }
@@ -546,24 +736,32 @@
     const technique = q("[data-current-technique]");
     const nextInstruction = q("[data-next-instruction]");
     const chordModeBlocked = state.selectedMode === "chord-foundation" && !hasChordChart();
-    if (currentInstruction) currentInstruction.textContent = chordModeBlocked
+    if (currentInstruction) currentInstruction.textContent = !taughtSoloActive
+      ? "Play the complete backing track."
+      : chordModeBlocked
       ? "Chord chart not attached yet."
       : chordFocus ? chord.instruction : (current.coachingCue || current.instruction);
     if (sourceMoment) {
-      const source = !chordFocus && current.coachingCue ? current.sourceMoment : null;
+      const source = taughtSoloActive && !chordFocus && current.coachingCue ? current.sourceMoment : null;
       sourceMoment.hidden = false;
-      sourceMoment.textContent = chordFocus
+      sourceMoment.textContent = !taughtSoloActive
+        ? "Full song backing track"
+        : chordFocus
         ? "Backing-track chord analysis · Travis review required"
         : source
           ? `Travis · lesson ${formatLessonMoment(source.lessonTimeMs)} · exact excerpt`
           : "Authored technical move from the lesson · not a direct quote";
     }
-    if (technique) technique.textContent = chordModeBlocked
+    if (technique) technique.textContent = !taughtSoloActive
+      ? `The taught solo begins at ${formatTime(mediaScopes().taughtSolo.startMs)} and keeps its own tab, fretboard, and loops.`
+      : chordModeBlocked
       ? "This guardrail prevents the draft from showing a plausible-looking but wrong chord."
       : chordFocus
         ? `Chord grip: ${chord.gripLabel || controlsLabel(chord.tabNotes)}. The visual holds until the harmony changes.`
         : `Literal tab: ${current.instruction} · ${current.notationPitch} · ${controlsLabel(current.tabNotes)}`;
-    if (nextInstruction) nextInstruction.textContent = chordModeBlocked
+    if (nextInstruction) nextInstruction.textContent = !taughtSoloActive
+      ? `Jump to the taught solo at ${formatTime(mediaScopes().taughtSolo.startMs)}.`
+      : chordModeBlocked
       ? "Travis approval unlocks this mode."
       : chordFocus
         ? upcomingChord.id === chord.id ? `Hold ${chord.symbol} through the end.` : upcomingChord.instruction
@@ -596,14 +794,15 @@
         : "Draft · review required";
     renderFretboard(visualCurrent, visualUpcoming);
     updateTabHighlight(current, upcoming);
-    updateChordChartHighlight(chord, current.bar);
+    updateChordChartHighlight(chord, current.bar, taughtSoloActive);
   }
 
   function seekTo(milliseconds) {
-    const duration = Number(state.data.media.durationMs);
+    const scope = currentMediaScope();
+    const duration = Number(scope.durationMs);
     state.timeMs = clamp(Number(milliseconds || 0), 0, duration);
     const audio = q("[data-audio]");
-    if (audio && audio.src) audio.currentTime = state.timeMs / 1000;
+    if (audio && audio.src) audio.currentTime = audioTimeForScope(scope, state.timeMs) / 1000;
     updateFrame();
   }
 
@@ -616,14 +815,15 @@
   function tick(frameTime) {
     if (!state.playing) return;
     const audio = q("[data-audio]");
+    const scope = currentMediaScope();
     if (audio && audio.src) {
-      state.timeMs = audio.currentTime * 1000;
+      state.timeMs = scopeTimeFromAudio(scope, audio.currentTime * 1000);
     } else {
       if (state.previousFrameTime !== null) state.timeMs += (frameTime - state.previousFrameTime) * state.speed;
       state.previousFrameTime = frameTime;
     }
     const phrase = currentPhrase();
-    const limit = state.loop ? phrase.endMs : state.data.media.durationMs;
+    const limit = state.loop ? phrase.endMs : Number(scope.durationMs);
     if (state.timeMs >= limit) {
       if (state.loop) {
         seekTo(phrase.startMs);
@@ -651,12 +851,26 @@
   }
 
   function playPlayback() {
+    const scope = currentMediaScope();
+    const rawSourceUrl = sourceUrlForScope(scope);
+    if (rawSourceUrl) {
+      const sourceKey = new URL(rawSourceUrl, window.location.origin).href;
+      if (!state.sourceObjectUrls[sourceKey]) {
+        selectScopeAudio(scope);
+        return;
+      }
+    }
+    if (state.timeMs >= Number(scope.durationMs)) seekTo(0);
     state.playing = true;
     const audio = q("[data-audio]");
     if (audio && audio.src) {
       audio.playbackRate = state.speed;
       audio.preservesPitch = true;
-      audio.play().catch(() => pausePlayback());
+      audio.play().catch((error) => {
+        const note = q("[data-transport-note]");
+        if (note) note.textContent = `Playback could not start (${error.name || "media error"}).`;
+        pausePlayback();
+      });
     }
     const button = q('[data-action="play"]');
     if (button) {
@@ -669,28 +883,17 @@
 
   function configureTransport() {
     const seek = q("[data-seek]");
-    const duration = q("[data-duration]");
-    const note = q("[data-transport-note]");
     if (seek) {
-      seek.max = String(state.data.media.durationMs);
       seek.addEventListener("input", () => seekTo(Number(seek.value)));
     }
-    if (duration) duration.textContent = formatTime(state.data.media.durationMs);
-    if (note) {
-      note.textContent = state.data.media.audioUrl
-        ? state.data.approvals.audioRights
-          ? "Same-origin reviewed backing track loaded."
-          : "Same-origin owner-review excerpt loaded · audio rights approval pending."
-        : "Draft clock only · reviewed audio is added by the private release packager.";
-    }
     const audio = q("[data-audio]");
-    if (audio && state.data.media.audioUrl) {
-      const mediaUrl = new URL(state.data.media.audioUrl, window.location.origin);
-      if (mediaUrl.origin !== window.location.origin) throw new Error("Backing audio must be same-origin.");
-      audio.src = mediaUrl.href;
+    if (audio) {
+      audio.addEventListener("loadedmetadata", () => {
+        audio.currentTime = audioTimeForScope(currentMediaScope(), state.timeMs) / 1000;
+      });
       audio.addEventListener("timeupdate", () => {
         if (state.playing) {
-          state.timeMs = audio.currentTime * 1000;
+          state.timeMs = scopeTimeFromAudio(currentMediaScope(), audio.currentTime * 1000);
           updateFrame();
         }
       });
@@ -708,6 +911,9 @@
         if (state.timeMs < phrase.startMs || state.timeMs >= phrase.endMs) seekTo(phrase.startMs);
       }
     });
+    window.addEventListener("pagehide", () => {
+      Object.values(state.sourceObjectUrls).forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+    }, { once: true });
   }
 
   function configureFeedback() {
@@ -803,6 +1009,7 @@
     configureTransport();
     configureFeedback();
     configureStudyControls();
+    configureMediaScopeActions();
     configureLessonSearch();
     renderLessonFacts();
     renderAlternates();

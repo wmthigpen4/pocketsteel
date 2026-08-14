@@ -28,7 +28,14 @@ the tracked draft or a release artifact by browser code.
 - Every other path falls through to the root `404.html`, which Cloudflare
   Pages serves with status 404.
 
-All presentations load one `lesson_companion_v1` JSON artifact. Browser logic
+All presentations load one `lesson_companion_v1` JSON artifact. A reviewed
+artifact may define two deterministic playback scopes tied to one source
+recording: `fullSong` covers the complete backing track, while `taughtSolo`
+identifies the exact lesson passage used by tab, fretboard, phrase stepping,
+and looping. The private bundle packages the full recording and a hash-pinned
+copy of that exact excerpt so both scopes seek reliably in static preview
+runtimes.
+Browser logic
 is limited to deterministic indexed lesson search, authored layer switching,
 an authored clock or same-origin audio, speed, phrase looping, step-by-step
 move study, seeking, chord/solo state highlighting, fretboard and tab drawing,
@@ -69,23 +76,30 @@ The standalone printable draft can be regenerated with:
   --output output/pdf/Howdy-companion-draft.pdf
 ```
 
-A local owner-review bundle may also use a private, hash-pinned audio excerpt
+A local owner-review bundle may also use a private, hash-pinned full backing track
 without turning on release mode:
 
 ```bash
 .venv/bin/python scripts/package_travis_companion.py \
   --output tmp/travis-preview-draft \
   --companion ~/.steel-rag/travis-preview/howdy/howdy.transcribed-review.json \
-  --draft-audio ~/.steel-rag/travis-preview/howdy/howdy-backing-solo-preview.mp3 \
+  --draft-audio ~/.steel-rag/travis-preview/howdy/howdy-full-song-preview.mp3 \
+  --draft-solo-audio ~/.steel-rag/travis-preview/howdy/howdy-backing-solo-preview.mp3 \
   --draft-pdf output/pdf/Howdy-transcript-backed-review.pdf
 ```
 
-The companion JSON must contain that file's exact SHA-256. The packager copies
+The companion JSON must contain both files' exact SHA-256 values and exact
+`fullSong` and `taughtSolo` ranges. The short hash-pinned file is the verified
+audio excerpt at the recorded full-song offset and remains review evidence plus
+a portable fallback. The browser loads the same-origin full recording before
+seeking so local static runtimes do not need to implement MP3 byte ranges.
+The packager copies
 the audio and rendered review PDF only into the ignored local bundle; Git is
 never an input or output for the private media. The current owner-review UI
 keeps the lesson key visible, searches seven timestamped technical moments,
-uses `0hA` for an open-position A-pedal hammer, and provides a separate
-chord-centered play-along whose grips change only at analyzed chord boundaries.
+uses `0hA` for an open-position A-pedal hammer, exposes the complete song in
+Full Song, and keeps the lesson's solo tab and phrase loops inside the exact
+taught-solo audio window.
 
 ## Approved private inputs
 
@@ -96,6 +110,7 @@ contains:
 - an approved companion JSON with exact chord, bar, beat, phrase, solo,
   notation, tab, technique, and copedent data;
 - the licensed backing-track file;
+- the reviewed taught-solo excerpt derived from that backing track;
 - an approved black-and-white pedal-steel brand image;
 - the approved Metropolis webfont used by the school;
 - `release-config.json`, based on `release-config.example.json`, with exact

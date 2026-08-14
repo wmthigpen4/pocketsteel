@@ -144,6 +144,7 @@ def _normalized_artifact_hash(data: Mapping[str, Any]) -> str:
     payload["buildSha"] = ""
     media = payload.setdefault("media", {})
     media["audioUrl"] = None
+    media["soloAudioUrl"] = None
     media["pdfUrl"] = None
     media["brandHeroUrl"] = None
     return _sha256_bytes(_canonical_json_bytes(payload))
@@ -204,9 +205,31 @@ def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
                 raise CompanionReleaseError(
                     f"Event {event.get('id')} coaching cue must be a timestamped verbatim excerpt."
                 )
-    duration = int(data.get("media", {}).get("durationMs", -1))
-    if previous_end != duration:
-        raise CompanionReleaseError("The final event must end at the authored duration.")
+    media = data.get("media", {})
+    duration = int(media.get("durationMs", -1))
+    authored_duration = duration
+    scopes = media.get("scopes")
+    if scopes is not None:
+        if not isinstance(scopes, dict) or set(scopes) != {"fullSong", "taughtSolo"}:
+            raise CompanionReleaseError("Media scopes must define exactly fullSong and taughtSolo.")
+        for scope_name in ("fullSong", "taughtSolo"):
+            scope = scopes.get(scope_name) or {}
+            start = int(scope.get("startMs", -1))
+            end = int(scope.get("endMs", -1))
+            scope_duration = int(scope.get("durationMs", -1))
+            if start < 0 or end <= start or scope_duration != end - start or end > duration:
+                raise CompanionReleaseError(f"Media scope {scope_name} has invalid timing.")
+        full_song = scopes["fullSong"]
+        if int(full_song["startMs"]) != 0 or int(full_song["endMs"]) != duration:
+            raise CompanionReleaseError("The fullSong media scope must cover the complete audio asset.")
+        authored_duration = int(scopes["taughtSolo"]["durationMs"])
+    if previous_end != authored_duration:
+        message = (
+            "The final event must end at the taught-solo authored duration."
+            if scopes is not None
+            else "The final event must end at the authored duration."
+        )
+        raise CompanionReleaseError(message)
     for phrase in phrases:
         ids = phrase.get("eventIds") or []
         if not ids or any(item not in event_ids for item in ids):
@@ -608,6 +631,7 @@ def _scan_bundle(bundle_root: Path, asset_token: str) -> None:
         "lesson-companion.json",
         "howdy-tablature.pdf",
         "howdy-backing-track.mp3",
+        "howdy-taught-solo.mp3",
         "travis-hero.jpg",
         "travis-hero.jpeg",
         "travis-hero.png",
@@ -646,6 +670,7 @@ def build_companion_bundle(
     source_date_epoch: int | None = None,
     draft_pdf_path: Path | None = None,
     draft_audio_path: Path | None = None,
+    draft_solo_audio_path: Path | None = None,
 ) -> dict[str, Any]:
     """Assemble a complete static bundle from an explicit, reviewed allowlist."""
 
@@ -670,7 +695,7 @@ def build_companion_bundle(
     if release:
         private_content_seed = "".join(
             str((release_config.get(key) or {}).get("sha256") or "")
-            for key in ("audio", "brandHero", "brandFont")
+            for key in ("audio", "soloAudio", "brandHero", "brandFont")
         )
     static_content_seed = "".join(
         (
@@ -714,6 +739,16 @@ def build_companion_bundle(
             )
             data["media"]["audioSha256"] = private_hashes["audio"]
             data["media"]["audioUrl"] = f"{asset_root_url}/{audio_destination.name}"
+            if data["media"].get("scopes"):
+                solo_audio_destination = assets / "howdy-taught-solo.mp3"
+                private_hashes["soloAudio"] = _copy_private_asset(
+                    release_config,
+                    "soloAudio",
+                    solo_audio_destination,
+                    "taught solo audio",
+                )
+                data["media"]["soloAudioSha256"] = private_hashes["soloAudio"]
+                data["media"]["soloAudioUrl"] = f"{asset_root_url}/{solo_audio_destination.name}"
             data["media"]["draftClockOnly"] = False
             brand_item = release_config.get("brandHero") or {}
             brand_source = Path(str(brand_item.get("path") or "")).expanduser().resolve()
@@ -740,6 +775,7 @@ def build_companion_bundle(
             )
         else:
             data["media"]["brandHeroUrl"] = None
+            data["media"]["soloAudioUrl"] = None
             if draft_audio_path is not None:
                 audio_source = Path(draft_audio_path).expanduser().resolve()
                 expected_audio_hash = str(data["media"].get("audioSha256") or "")
@@ -752,6 +788,21 @@ def build_companion_bundle(
                 shutil.copyfile(audio_source, audio_destination)
                 data["media"]["audioUrl"] = f"{asset_root_url}/{audio_destination.name}"
                 data["media"]["draftClockOnly"] = False
+            if data["media"].get("scopes") and draft_audio_path is not None and draft_solo_audio_path is None:
+                raise CompanionReleaseError("Scoped draft audio requires a hash-pinned taught solo asset.")
+            if draft_solo_audio_path is not None:
+                if not data["media"].get("scopes"):
+                    raise CompanionReleaseError("A draft taught solo asset requires media scopes.")
+                solo_audio_source = Path(draft_solo_audio_path).expanduser().resolve()
+                expected_solo_audio_hash = str(data["media"].get("soloAudioSha256") or "")
+                private_hashes["soloAudio"] = _assert_hash(
+                    solo_audio_source,
+                    expected_solo_audio_hash,
+                    "draft taught solo audio",
+                )
+                solo_audio_destination = assets / "howdy-taught-solo.mp3"
+                shutil.copyfile(solo_audio_source, solo_audio_destination)
+                data["media"]["soloAudioUrl"] = f"{asset_root_url}/{solo_audio_destination.name}"
         pdf_destination = assets / "howdy-tablature.pdf"
         if draft_pdf_path is not None:
             source_pdf = Path(draft_pdf_path).resolve()
@@ -795,7 +846,7 @@ def build_companion_bundle(
         )
         csp = (
             "default-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; "
-            "frame-ancestors 'none'; form-action 'none'; connect-src 'self'; media-src 'self'; "
+            "frame-ancestors 'none'; form-action 'none'; connect-src 'self'; media-src 'self' blob:; "
             "img-src 'self' data:; font-src 'self'; script-src 'self'; style-src 'self'"
         )
         (stage / "_headers").write_text(

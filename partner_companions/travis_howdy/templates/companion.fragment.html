@@ -51,10 +51,22 @@
     <div><p class="section-kicker">Song map</p><h3>The taught route, phrase by phrase</h3></div>
     <p class="map-status" data-map-status>Loading reviewed ranges…</p>
   </div>
+  <div class="scope-summary-grid" aria-label="Lesson playback scopes">
+    <button type="button" class="scope-summary" data-action="open-full-song">
+      <span>Full song</span>
+      <strong data-full-song-duration>3:57</strong>
+      <small>Complete backing track</small>
+    </button>
+    <button type="button" class="scope-summary" data-action="open-taught-solo">
+      <span>Taught solo</span>
+      <strong data-taught-solo-duration>0:24</strong>
+      <small>Eight-bar lesson focus</small>
+    </button>
+  </div>
   <div class="phrase-map" data-phrase-map></div>
   <section class="chord-chart-card" aria-labelledby="chord-chart-title">
     <div class="chord-chart-heading">
-      <div><p class="section-kicker">Chord play-along</p><h3 id="chord-chart-title">Eight-bar chord chart · Key <span data-chart-key>—</span></h3></div>
+      <div><p class="section-kicker">Taught solo harmony</p><h3 id="chord-chart-title">Eight-bar solo form · Key <span data-chart-key>—</span></h3></div>
       <p data-chord-status>Loading chart…</p>
     </div>
     <div class="chord-chart" data-chord-chart></div>
@@ -67,6 +79,14 @@
 </section>
 <section class="practice-grid">
   <div class="practice-main">
+    <section class="media-scope-card" aria-live="polite">
+      <div>
+        <p class="section-kicker" data-scope-kicker>Lesson focus</p>
+        <h3 data-scope-title>Loading playback scope…</h3>
+        <p data-scope-description></p>
+      </div>
+      <button type="button" class="button button-secondary scope-jump" data-action="jump-to-solo" hidden>Jump to taught solo</button>
+    </section>
     <div class="mode-switcher" role="group" aria-label="Practice mode" data-mode-switcher></div>
     <div class="study-controls" data-study-controls hidden>
       <div><strong>Study one move at a time</strong><span>Audio stays paused while you step through the selected phrase.</span></div>
