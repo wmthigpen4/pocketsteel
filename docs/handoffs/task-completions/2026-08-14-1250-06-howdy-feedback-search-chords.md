@@ -172,3 +172,15 @@ Safe to commit
 Open `http://127.0.0.1:8899/howdy/embed-demo/`, search `hammer`, step through
 Phrase Practice, then review each chord transition in Play Along against the
 supplied backing track.
+
+## Commit and post-commit smoke result
+
+- Implementation commit: `bd60cb7bc0f335035ce32db3284136d46acef71b`
+- The local content-hashed bundle was rebuilt from that commit and the
+  allowlist/isolation verifier passed again.
+- Browser smoke confirmed revision
+  `howdy-transcribed-review-2026-08-14.2`, build `bd60cb7bc0f3`, Key D, seven
+  indexed moments, the chord chart, held G chord grip, hidden solo tab in Play
+  Along, and the two isolated Explore comparisons.
+- `integration-status.md` was not refreshed because it already contains a
+  pre-existing unrelated dirty edit; it remains parked and unstaged.
