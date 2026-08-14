@@ -77,6 +77,11 @@ def verify(bundle: Path, manifest_path: Path) -> dict[str, object]:
         raise CompanionReleaseError("Expected exactly one canonical companion artifact.")
     data = json.loads(artifact_paths[0].read_text(encoding="utf-8"))
     validate_companion(data, release=manifest.get("releaseMode") == "release")
+    release_data = data.get("release", {})
+    if manifest.get("reviewPhase") != release_data.get("reviewPhase"):
+        raise CompanionReleaseError("The release manifest review phase differs from the canonical companion.")
+    if manifest.get("accessTesterCount") != int(release_data.get("testerEmailCount", 0)):
+        raise CompanionReleaseError("The release manifest tester count differs from the canonical companion.")
     actual_hashes = {
         path.relative_to(bundle).as_posix(): sha256(path)
         for path in sorted(bundle.rglob("*"))

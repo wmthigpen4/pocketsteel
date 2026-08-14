@@ -23,6 +23,7 @@
     "feedbackEmail": "",
     "previewLabel": "DRAFT - MUSICAL REVIEW REQUIRED",
     "approvalReferences": [],
+    "reviewPhase": "owner_only",
     "testerEmailCount": 0
   },
   "approvals": {

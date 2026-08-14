@@ -1,7 +1,7 @@
 {
+  "reviewPhase": "owner_only",
   "testerEmails": [
-    "cory@example.com",
-    "travis@example.com"
+    "owner@example.com"
   ],
   "feedbackEmail": "review@example.com",
   "approvalReferences": [

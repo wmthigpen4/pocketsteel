@@ -14,7 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from partner_companions.travis_howdy.release import CompanionReleaseError, HOSTNAME, PROJECT_NAME
+from partner_companions.travis_howdy.release import (
+    CompanionReleaseError,
+    HOSTNAME,
+    PROJECT_NAME,
+    REVIEW_PHASE_TESTER_COUNTS,
+)
 from scripts.verify_travis_companion import verify
 
 
@@ -42,8 +47,15 @@ def main() -> int:
         raise CompanionReleaseError("Draft bundles cannot be uploaded.")
     if manifest.get("intendedCloudflareProject") != PROJECT_NAME or manifest.get("intendedHostname") != HOSTNAME:
         raise CompanionReleaseError("Manifest target differs from the isolated Travis preview target.")
-    if manifest.get("accessTesterCount") != 2:
-        raise CompanionReleaseError("The Access allowlist must contain exactly two reviewed identities.")
+    review_phase = manifest.get("reviewPhase")
+    expected_testers = REVIEW_PHASE_TESTER_COUNTS.get(review_phase)
+    if expected_testers is None:
+        raise CompanionReleaseError("The release manifest has an unrecognized review phase.")
+    if manifest.get("accessTesterCount") != expected_testers:
+        raise CompanionReleaseError(
+            f"Review phase {review_phase!r} requires exactly {expected_testers} reviewed Access "
+            f"{'identity' if expected_testers == 1 else 'identities'}."
+        )
     if not args.deploy_reviewed_bundle:
         print(json.dumps({"result": "validated-not-deployed", "verification": report}, indent=2, sort_keys=True))
         return 0

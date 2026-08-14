@@ -12,6 +12,7 @@ from partner_companions.travis_howdy.release import (
     CompanionReleaseError,
     DEFAULT_COMPANION,
     _normalized_artifact_hash,
+    _merge_release_config,
     build_companion_bundle,
     generate_tablature_pdf,
     validate_companion,
@@ -25,6 +26,42 @@ SITE = ROOT / "partner_companions" / "travis_howdy" / "site"
 
 def load_draft() -> dict[str, object]:
     return json.loads(DEFAULT_COMPANION.read_text(encoding="utf-8"))
+
+
+def approved_release_data(*, review_phase: str = "owner_only", tester_count: int = 1) -> dict[str, object]:
+    data = load_draft()
+    data["contentStatus"] = "approved"
+    data["approvals"] = {key: True for key in data["approvals"]}
+    data["copedent"]["approved"] = True
+    data["print"]["approved"] = True
+    data["release"]["approvalReferences"] = ["music", "chords", "audio", "brand", "print"]
+    data["release"]["reviewPhase"] = review_phase
+    data["release"]["testerEmailCount"] = tester_count
+    for event in data["events"]:
+        event["musicalVerified"] = True
+    for chord in data["chordTimeline"]:
+        chord["verified"] = True
+        chord["symbol"] = "C"
+    return data
+
+
+def release_config(*, review_phase: str, tester_emails: list[str]) -> dict[str, object]:
+    return {
+        "reviewPhase": review_phase,
+        "testerEmails": tester_emails,
+        "feedbackEmail": "feedback@example.com",
+        "approvalReferences": ["music", "chords", "audio", "brand", "print"],
+        "approvals": {},
+        "access": {
+            "customDomainApplicationId": "custom-app",
+            "pagesDevProductionApplicationId": "production-app",
+            "pagesDevPreviewApplicationId": "preview-app",
+            "customDomainAnonymousDenied": True,
+            "pagesDevProductionAnonymousDenied": True,
+            "pagesDevPreviewAnonymousDenied": True,
+            "appSteelGuitarRagPolicyUnchanged": True,
+        },
+    }
 
 
 def test_draft_is_deterministic_but_explicitly_unapproved() -> None:
@@ -108,6 +145,18 @@ def test_draft_bundle_is_reproducible_allowlisted_and_isolated(tmp_path: Path) -
     assert not list(first.rglob("*.map"))
 
 
+def test_bundle_verifier_rejects_access_phase_manifest_drift(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    manifest_path = tmp_path / "manifest.json"
+    build_companion_bundle(bundle, manifest_path=manifest_path, source_date_epoch=1)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["reviewPhase"] = "partner_review"
+    manifest["accessTesterCount"] = 2
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(CompanionReleaseError, match="review phase differs"):
+        verify(bundle, manifest_path)
+
+
 def test_security_headers_and_route_map_are_fail_closed(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     build_companion_bundle(bundle, source_date_epoch=1)
@@ -143,24 +192,61 @@ def test_browser_runtime_has_one_same_origin_fetch_and_no_dynamic_clients() -> N
 
 
 def test_release_validation_requires_every_human_signoff() -> None:
-    data = load_draft()
-    data["contentStatus"] = "approved"
-    data["approvals"] = {key: True for key in data["approvals"]}
-    data["copedent"]["approved"] = True
-    data["print"]["approved"] = True
-    data["release"]["approvalReferences"] = ["music", "chords", "audio", "brand", "print"]
-    data["release"]["testerEmailCount"] = 2
-    for event in data["events"]:
-        event["musicalVerified"] = True
-    for chord in data["chordTimeline"]:
-        chord["verified"] = True
-        chord["symbol"] = "C"
+    data = approved_release_data()
     validate_companion(data, release=True)
     for field in sorted(data["approvals"]):
         candidate = copy.deepcopy(data)
         candidate["approvals"][field] = False
         with pytest.raises(CompanionReleaseError, match="Release approvals incomplete"):
             validate_companion(candidate, release=True)
+
+
+@pytest.mark.parametrize(
+    ("review_phase", "tester_count"),
+    (("owner_only", 1), ("partner_review", 2)),
+)
+def test_release_validation_accepts_only_the_identity_count_for_the_review_phase(
+    review_phase: str,
+    tester_count: int,
+) -> None:
+    data = approved_release_data(review_phase=review_phase, tester_count=tester_count)
+    validate_companion(data, release=True)
+
+    data["release"]["testerEmailCount"] = tester_count + 1
+    with pytest.raises(CompanionReleaseError, match="requires exactly"):
+        validate_companion(data, release=True)
+
+
+def test_release_validation_rejects_an_unrecognized_review_phase() -> None:
+    data = approved_release_data(review_phase="automatic_partner_access")
+    with pytest.raises(CompanionReleaseError, match="recognized review phase"):
+        validate_companion(data, release=True)
+
+
+@pytest.mark.parametrize(
+    ("review_phase", "tester_emails"),
+    (("owner_only", ["owner@example.com"]), ("partner_review", ["owner@example.com", "partner@example.com"])),
+)
+def test_private_release_config_enforces_phase_without_emitting_tester_addresses(
+    review_phase: str,
+    tester_emails: list[str],
+) -> None:
+    data = load_draft()
+    _merge_release_config(data, release_config(review_phase=review_phase, tester_emails=tester_emails))
+    assert data["release"]["reviewPhase"] == review_phase
+    assert data["release"]["testerEmailCount"] == len(tester_emails)
+    serialized = json.dumps(data)
+    assert all(email not in serialized for email in tester_emails)
+
+
+def test_owner_only_release_config_rejects_a_second_identity() -> None:
+    data = load_draft()
+    config = release_config(
+        review_phase="owner_only",
+        tester_emails=["owner@example.com", "partner@example.com"],
+    )
+    with pytest.raises(CompanionReleaseError, match="requires exactly 1 tester email"):
+        _merge_release_config(data, config)
 
 
 def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None:

@@ -22,6 +22,10 @@ TEMPLATE_ROOT = PACKAGE_ROOT / "templates"
 DEFAULT_COMPANION = PACKAGE_ROOT / "content" / "howdy.draft.json"
 PROJECT_NAME = "steel-guitar-rag-travis-preview"
 HOSTNAME = "travis-preview.steelguitarrag.com"
+REVIEW_PHASE_TESTER_COUNTS = {
+    "owner_only": 1,
+    "partner_review": 2,
+}
 REQUIRED_APPROVALS = (
     "musical",
     "chords",
@@ -222,8 +226,16 @@ def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
         raise CompanionReleaseError("Every chord boundary must be verified and labeled.")
     if len(data.get("release", {}).get("approvalReferences") or []) < 5:
         raise CompanionReleaseError("Release mode requires approval references for music, rights, brand, and print.")
-    if int(data.get("release", {}).get("testerEmailCount", 0)) != 2:
-        raise CompanionReleaseError("The dedicated Access policy must contain exactly Cory and Travis.")
+    release_data = data.get("release", {})
+    review_phase = str(release_data.get("reviewPhase") or "")
+    expected_testers = REVIEW_PHASE_TESTER_COUNTS.get(review_phase)
+    if expected_testers is None:
+        raise CompanionReleaseError("Release mode requires a recognized review phase.")
+    if int(release_data.get("testerEmailCount", 0)) != expected_testers:
+        raise CompanionReleaseError(
+            f"Review phase {review_phase!r} requires exactly {expected_testers} Access tester "
+            f"{'identity' if expected_testers == 1 else 'identities'}."
+        )
 
 
 def _ascii(value: Any) -> str:
@@ -437,17 +449,28 @@ def _copy_private_asset(config: Mapping[str, Any], key: str, destination: Path, 
 
 
 def _merge_release_config(data: dict[str, Any], config: Mapping[str, Any]) -> None:
+    review_phase = str(config.get("reviewPhase") or "").strip()
+    expected_testers = REVIEW_PHASE_TESTER_COUNTS.get(review_phase)
+    if expected_testers is None:
+        allowed = ", ".join(sorted(REVIEW_PHASE_TESTER_COUNTS))
+        raise CompanionReleaseError(f"Release configuration reviewPhase must be one of: {allowed}.")
     tester_emails = config.get("testerEmails")
-    if not isinstance(tester_emails, list) or len(tester_emails) != 2:
-        raise CompanionReleaseError("Release configuration requires exactly two tester emails.")
+    if not isinstance(tester_emails, list) or len(tester_emails) != expected_testers:
+        raise CompanionReleaseError(
+            f"Review phase {review_phase!r} requires exactly {expected_testers} tester email"
+            f"{'s' if expected_testers != 1 else ''}."
+        )
     email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     normalized_emails = {str(email).strip().lower() for email in tester_emails}
-    if len(normalized_emails) != 2 or any(not email_pattern.fullmatch(email) for email in normalized_emails):
-        raise CompanionReleaseError("Tester emails must be two distinct valid addresses.")
+    if len(normalized_emails) != expected_testers or any(
+        not email_pattern.fullmatch(email) for email in normalized_emails
+    ):
+        raise CompanionReleaseError("Tester emails must be distinct valid addresses for the selected review phase.")
     feedback_email = str(config.get("feedbackEmail") or "").strip()
     if not email_pattern.fullmatch(feedback_email):
         raise CompanionReleaseError("A valid feedback email is required for release.")
-    data.setdefault("release", {})["testerEmailCount"] = 2
+    data.setdefault("release", {})["reviewPhase"] = review_phase
+    data["release"]["testerEmailCount"] = expected_testers
     data["release"]["feedbackEmail"] = feedback_email
     data["release"]["approvalReferences"] = list(config.get("approvalReferences") or [])
     data["release"]["previewLabel"] = "PRIVATE PREVIEW"
@@ -465,7 +488,7 @@ def _merge_release_config(data: dict[str, Any], config: Mapping[str, Any]) -> No
         "appSteelGuitarRagPolicyUnchanged",
     )
     if any(not access.get(key) for key in required_access):
-        raise CompanionReleaseError("Both Access applications and fail-closed checks must be recorded before release.")
+        raise CompanionReleaseError("All three Access applications and fail-closed checks must be recorded before release.")
 
 
 def _write_root_redirect(path: Path) -> None:
@@ -722,6 +745,7 @@ def build_companion_bundle(
         "intendedCloudflareProject": PROJECT_NAME,
         "intendedHostname": HOSTNAME,
         "allowedRoutes": ["/", "/howdy", "/howdy/embed-demo", "/howdy/print", f"/assets/{asset_token}/*"],
+        "reviewPhase": data["release"].get("reviewPhase"),
         "accessTesterCount": int(data["release"].get("testerEmailCount", 0)),
         "immutablePagesDeploymentUrl": None,
     }

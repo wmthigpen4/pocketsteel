@@ -11,8 +11,11 @@ project while carrying it out.
 
 ## 1. Human inputs required before external changes
 
-- Cory's exact tester email.
-- Travis's exact tester email.
+- Use the already-known project-owner email as the only Access identity for
+  the initial `owner_only` phase. Keep it in the ignored private release
+  configuration; do not commit or print it.
+- Do not add the partner tester yet. Moving to `partner_review` is a separate,
+  explicitly authorized promotion step.
 - Written approval to package the backing track in this private preview.
 - Written approval to use the selected Travis Toy Tutorials imagery/wordmark.
 - Travis's approval of the chord timeline, exact taught solo, source
@@ -53,7 +56,7 @@ before the applications below.
 
 Enable One-time PIN in Zero Trust if it is not already an available login
 method. An OTP login method by itself is not an allowlist; the Allow policy
-must include the two exact email addresses.
+must include only the exact project-owner email during the initial phase.
 
 Configure three Access applications/policies:
 
@@ -67,7 +70,7 @@ For each application:
 
 - application type: self-hosted;
 - action: Allow;
-- Include: the two exact email addresses only;
+- Include: the one exact project-owner email only;
 - Require: One-time PIN login method;
 - no Everyone, email-domain, or login-method-only Include rule;
 - short pilot session duration;
@@ -81,7 +84,8 @@ Cloudflare's [OTP guidance](https://developers.cloudflare.com/cloudflare-one/int
 confirms that approved email addresses belong in the policy.
 
 Record the three application IDs and anonymous-denial checks in the private
-`release-config.json`. Do not add Travis to the application for
+`release-config.json` with `reviewPhase: "owner_only"`. Do not add the partner
+tester to any policy in this phase, and never change the application for
 `app.steelguitarrag.com`.
 
 ## 5. Package and preflight
@@ -115,14 +119,22 @@ reports `validated-not-deployed`, rerun it with
 `--deploy-reviewed-bundle`. This is the only upload step.
 
 The publisher records the immutable `*.pages.dev` deployment URL in the
-private manifest. Do not send that address to Travis. Verify anonymously that
-the custom, production Pages, and immutable/preview Pages addresses all fail
-closed at Access. Then verify Cory's OTP access at the branded URL before
-adding or testing Travis.
+private manifest. Do not share that address. Verify anonymously that the
+custom, production Pages, and immutable/preview Pages addresses all fail
+closed at Access. Then verify the project owner's OTP access at the branded
+URL. Stop there during the `owner_only` phase.
 
-After Travis's policy entry is active, send only:
+## 7. Promote to partner review later
 
-`https://travis-preview.steelguitarrag.com/howdy`
+Only after explicit authorization to add the partner tester:
+
+1. Add the partner's exact email to each of the three dedicated preview
+   Access policies, and nowhere else.
+2. Change the ignored private release configuration to
+   `reviewPhase: "partner_review"` with exactly two tester emails.
+3. Package a new immutable release manifest and rerun anonymous plus both-
+   identity Access smoke.
+4. Send only `https://travis-preview.steelguitarrag.com/howdy`.
 
 Suggested review checklist:
 
@@ -136,7 +148,7 @@ Suggested review checklist:
 - backing-track synchronization;
 - feedback button context.
 
-## 7. Rollback or closure
+## 8. Rollback or closure
 
 Rollback by promoting the prior immutable Pages deployment. Do not edit files
 in a live deployment. To close the pilot, remove/disable the custom hostname

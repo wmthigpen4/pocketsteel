@@ -74,16 +74,21 @@ contains:
 - an approved black-and-white pedal-steel brand image;
 - the approved Metropolis webfont used by the school;
 - `release-config.json`, based on `release-config.example.json`, with exact
-  file hashes, approval references, feedback address, tester identities, and
-  three Cloudflare Access application IDs.
+  file hashes, approval references, feedback address, the current review
+  phase, tester identities, and three Cloudflare Access application IDs.
 
-Tester emails are used to validate the two-person release gate but are not
-written into the deployment bundle or release manifest.
+The initial `owner_only` phase requires exactly one private tester identity.
+That identity is supplied through the ignored private release configuration;
+it is never written into the deployment bundle or release manifest. The
+`partner_review` phase requires exactly two identities and must be selected
+explicitly in a later release configuration after partner access is approved.
 
 Release packaging requires all of these conditions:
 
 - `contentStatus: "approved"`;
-- exactly two Access tester emails;
+- `reviewPhase: "owner_only"` with exactly one Access tester email for the
+  initial review, or an explicitly promoted `partner_review` phase with
+  exactly two;
 - every approval flag true;
 - every solo event `musicalVerified: true`;
 - every chord boundary `verified: true` with a reviewed symbol;
@@ -102,10 +107,10 @@ Package the private release into a temporary Direct Upload directory:
 SOURCE_DATE_EPOCH=<approved-unix-time> \
 .venv/bin/python scripts/package_travis_companion.py \
   --release \
-  --companion /Users/cory/.steel-rag/travis-preview/howdy/howdy.approved.json \
-  --release-config /Users/cory/.steel-rag/travis-preview/howdy/release-config.json \
+  --companion ~/.steel-rag/travis-preview/howdy/howdy.approved.json \
+  --release-config ~/.steel-rag/travis-preview/howdy/release-config.json \
   --output tmp/travis-preview-release \
-  --manifest /Users/cory/.steel-rag/travis-preview/howdy/release-manifest.json
+  --manifest ~/.steel-rag/travis-preview/howdy/release-manifest.json
 ```
 
 Running the publisher without its final acknowledgement performs another
@@ -114,7 +119,7 @@ verification and does not upload:
 ```bash
 .venv/bin/python scripts/publish_travis_companion.py \
   --bundle tmp/travis-preview-release \
-  --manifest /Users/cory/.steel-rag/travis-preview/howdy/release-manifest.json
+  --manifest ~/.steel-rag/travis-preview/howdy/release-manifest.json
 ```
 
 Only after Access and custom-domain verification should the same command be
