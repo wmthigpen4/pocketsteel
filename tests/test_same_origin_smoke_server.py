@@ -216,8 +216,9 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"Review Song" in setup
     assert b"practice-reference-validation-v1.js" in setup
-    assert b"setup-song-tonic-cadence-v11.js" in setup
-    assert b"play-song-route-options-v6.js" in player
+    assert b"practice-analysis-client-audio-led-key-v11.js" in setup
+    assert b"setup-song-audio-led-key-v12.js" in setup
+    assert b"play-song-analysis-calibration-v7.js" in player
     assert b"play-songs-rest-size-v3.css" in player
     assert b"play-songs-key-regions-v1.css" in setup
     assert b"practice-tools-key-regions-v1.js" in setup
@@ -225,7 +226,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     for asset_path, marker in (
         ("/ui/play-songs.css", b".play-cue-deck"),
         ("/ui/songs.js", b"STEEL_RAG_ANALYSIS_CLIENT"),
-        ("/ui/practice-analysis-client.js", b"practice-analysis-worker-tonic-cadence-v10.js"),
+        ("/ui/practice-analysis-client.js", b"practice-analysis-worker-audio-led-key-v11.js"),
         ("/ui/practice-analysis-worker.js", b"ANALYSIS_VERSION = 2"),
         ("/ui/practice-reference-validation.js", b"loadProviderReference"),
         ("/ui/practice-tools.js", b"navigator.storage"),
@@ -365,7 +366,7 @@ def test_changed_play_along_assets_use_content_digest_urls() -> None:
     expected_consumers = {
         "song-projects.js": {"melody-workbench.html", "play-song.html"},
         "practice-tools-key-regions-v1.js": {"play-song.html", "setup-song.html", "songs.html"},
-        "play-song-route-options-v6.js": {"play-song.html"},
+        "play-song-analysis-calibration-v7.js": {"play-song.html"},
     }
 
     for asset_name, expected_html in expected_consumers.items():

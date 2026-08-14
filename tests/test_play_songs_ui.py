@@ -68,6 +68,9 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert 'uploaded: false, networkAllowed: false' in songs_js
     assert "MAX_BYTES = 250 * 1024 * 1024" in songs_js
     assert "MAX_DURATION_SECONDS = 15 * 60" in songs_js
+    assert "CURRENT_ANALYSIS_CALIBRATION_VERSION = 11" in songs_js
+    assert "function analysisIsCurrent" in songs_js
+    assert "Analysis update required" in songs_js
     import_slice = songs_js[songs_js.index("async function importTrack"):songs_js.index("function songCard")]
     assert "fetch(" not in import_slice
     assert "XMLHttpRequest" not in import_slice
@@ -96,6 +99,9 @@ def test_device_import_is_opfs_only_and_player_is_audio_clock_driven() -> None:
     assert 'track.playAlongReady === true' in songs_js
     assert "track.availabilityLabel" in songs_js
     assert 'track.playAlongReady !== true' in player_js
+    assert "CURRENT_ANALYSIS_CALIBRATION_VERSION = 11" in player_js
+    assert 'global.location.replace(`/setup/${encodeURIComponent(project.id)}`)' in player_js
+    assert "This song map needs the current local analysis" in player_js
     assert "setInterval" not in player_js
     assert "function leftAlignSvgStringLabels" in player_js
     assert 'leftAlignSvgStringLabels("play-current")' in player_js
@@ -214,7 +220,7 @@ def test_review_automatically_replaces_legacy_map_and_keeps_timing_preview() -> 
     assert "preserveManualChordEdits" in setup_js
     assert "seventhEvidenceTeaching" in setup_js
     assert "Audio ♭7 evidence" in setup_js
-    assert 'qualityCalibrationVersion || 0) < 10) await upgradeLegacyAnalysis(false)' in setup_js
+    assert 'qualityCalibrationVersion || 0) < 11) await upgradeLegacyAnalysis(false)' in setup_js
     assert "New key ·" in setup_js
     assert 'event.symbol === "N.C." ? "No chord"' in setup_js
     assert 'NO\\s+CHORD' in setup_js
@@ -245,7 +251,7 @@ def test_play_along_surfaces_key_changes_in_now_and_next_cues() -> None:
     assert "activeKey.region?.startBar === currentBar" in player_js
     assert ".play-key-change.is-ahead" in player_css
     assert ".play-cue.has-key-change" in player_css
-    assert "play-song-route-options-v6.js" in player_html
+    assert "play-song-analysis-calibration-v7.js" in player_html
     assert "play-songs-rest-size-v3.css" in player_html
 
 
@@ -261,4 +267,4 @@ def test_play_along_keeps_a_fretboard_position_visible_during_no_chord() -> None
     assert '"<span>No chord</span>"' in player_js
     assert 'classList.toggle("is-no-chord", currentIsNoChord)' in player_js
     assert ".play-cue__chord.is-no-chord" in (REPO_ROOT / "ui" / "play-songs.css").read_text(encoding="utf-8")
-    assert "play-song-route-options-v6.js" in player_html
+    assert "play-song-analysis-calibration-v7.js" in player_html

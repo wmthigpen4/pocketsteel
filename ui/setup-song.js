@@ -603,7 +603,7 @@
     confirmButton.onclick = async () => { project.timeline.confirmationState = "confirmed"; await persist(); global.location.assign(`/play/${encodeURIComponent(project.id)}`); };
     app.hidden = false;
     if (needsUpgrade) await upgradeLegacyAnalysis(true);
-    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 10) await upgradeLegacyAnalysis(false);
+    else if (Number(project.timeline.analysisState?.qualityCalibrationVersion || 0) < 11) await upgradeLegacyAnalysis(false);
     else { renderReview(); updateConfirmation(); }
   }
 
