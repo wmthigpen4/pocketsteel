@@ -99,4 +99,6 @@ scope until an explicitly authorized isolated preview deployment.
 
 ## Commit readiness
 
-Safe to commit after the final diff and status checks pass.
+Safe to commit
+
+Reusable implementation commit: `03e93734c7a79db7ebbc8acbfe15e5d7cfe200a2`.
