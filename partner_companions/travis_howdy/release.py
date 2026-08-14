@@ -183,6 +183,27 @@ def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
         for note in notes:
             if int(note.get("string", 0)) not in range(1, 11) or int(note.get("fret", -1)) not in range(0, 25):
                 raise CompanionReleaseError(f"Event {event.get('id')} has an invalid string or fret.")
+            if note.get("toFret") is not None and int(note["toFret"]) not in range(0, 25):
+                raise CompanionReleaseError(f"Event {event.get('id')} has an invalid slide destination.")
+            fret_path = note.get("fretPath")
+            if fret_path is not None and (
+                not isinstance(fret_path, list)
+                or not fret_path
+                or int(fret_path[0]) != int(note["fret"])
+                or any(int(fret) not in range(0, 25) for fret in fret_path)
+            ):
+                raise CompanionReleaseError(f"Event {event.get('id')} has an invalid fret path.")
+        coaching_cue = event.get("coachingCue")
+        if coaching_cue:
+            source_moment = event.get("sourceMoment") or {}
+            if (
+                source_moment.get("quoteKind") != "verbatim_excerpt"
+                or source_moment.get("excerpt") != coaching_cue
+                or int(source_moment.get("lessonTimeMs", -1)) < 0
+            ):
+                raise CompanionReleaseError(
+                    f"Event {event.get('id')} coaching cue must be a timestamped verbatim excerpt."
+                )
     duration = int(data.get("media", {}).get("durationMs", -1))
     if previous_end != duration:
         raise CompanionReleaseError("The final event must end at the authored duration.")
@@ -395,7 +416,13 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
             for note in event["tabNotes"]:
                 y = tab_top - (int(note["string"]) - 1) * tab_gap
                 controls = "".join(note.get("controls") or [])
-                token = f"{note['fret']}{controls}"
+                destination_controls = "".join(note.get("toControls") or note.get("controls") or [])
+                fret_path = note.get("fretPath") or [note["fret"]]
+                path_tail = [str(fret) for fret in fret_path[1:]]
+                if not path_tail and note.get("toFret") is not None:
+                    path_tail = [str(note["toFret"])]
+                destination = (">" + ">".join(path_tail) + destination_controls) if path_tail else ""
+                token = f"{note['fret']}{controls}{destination}"
                 page.setFillColor(colors.white)
                 token_width = max(11, stringWidth(token, "Helvetica-Bold", 6.5) + 4)
                 page.rect(x - token_width / 2, y - 4, token_width, 8, stroke=0, fill=1)
@@ -554,6 +581,7 @@ def build_companion_bundle(
     manifest_path: Path | None = None,
     source_date_epoch: int | None = None,
     draft_pdf_path: Path | None = None,
+    draft_audio_path: Path | None = None,
 ) -> dict[str, Any]:
     """Assemble a complete static bundle from an explicit, reviewed allowlist."""
 
@@ -648,6 +676,18 @@ def build_companion_bundle(
             )
         else:
             data["media"]["brandHeroUrl"] = None
+            if draft_audio_path is not None:
+                audio_source = Path(draft_audio_path).expanduser().resolve()
+                expected_audio_hash = str(data["media"].get("audioSha256") or "")
+                private_hashes["audio"] = _assert_hash(
+                    audio_source,
+                    expected_audio_hash,
+                    "draft backing track",
+                )
+                audio_destination = assets / "howdy-backing-track.mp3"
+                shutil.copyfile(audio_source, audio_destination)
+                data["media"]["audioUrl"] = f"{asset_root_url}/{audio_destination.name}"
+                data["media"]["draftClockOnly"] = False
         pdf_destination = assets / "howdy-tablature.pdf"
         if draft_pdf_path is not None:
             source_pdf = Path(draft_pdf_path).resolve()

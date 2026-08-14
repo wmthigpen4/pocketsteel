@@ -115,6 +115,21 @@ def test_normalized_artifact_hash_ignores_only_generated_fields() -> None:
     assert _normalized_artifact_hash(generated) != first
 
 
+def test_coaching_cues_must_be_verbatim_and_timestamped() -> None:
+    data = load_draft()
+    event = data["events"][0]
+    event["coachingCue"] = "Short exact lesson excerpt."
+    event["sourceMoment"] = {
+        "lessonTimeMs": 123_000,
+        "quoteKind": "verbatim_excerpt",
+        "excerpt": event["coachingCue"],
+    }
+    validate_companion(data, release=False)
+    event["sourceMoment"]["excerpt"] = "A paraphrase is not allowed."
+    with pytest.raises(CompanionReleaseError, match="verbatim excerpt"):
+        validate_companion(data, release=False)
+
+
 def test_draft_bundle_is_reproducible_allowlisted_and_isolated(tmp_path: Path) -> None:
     first = tmp_path / "first"
     second = tmp_path / "second"
@@ -143,6 +158,37 @@ def test_draft_bundle_is_reproducible_allowlisted_and_isolated(tmp_path: Path) -
     assert not list(first.rglob("*.vtt"))
     assert not list(first.rglob("*.srt"))
     assert not list(first.rglob("*.map"))
+
+
+def test_local_draft_audio_is_private_and_hash_pinned(tmp_path: Path) -> None:
+    audio = tmp_path / "private-preview.mp3"
+    audio.write_bytes(b"ID3-local-owner-review")
+    data = load_draft()
+    data["media"]["audioSha256"] = hashlib.sha256(audio.read_bytes()).hexdigest()
+    companion = tmp_path / "companion.json"
+    companion.write_text(json.dumps(data), encoding="utf-8")
+    bundle = tmp_path / "bundle"
+    build_companion_bundle(
+        bundle,
+        companion_path=companion,
+        draft_audio_path=audio,
+        source_date_epoch=1,
+    )
+    packaged = list(bundle.rglob("howdy-backing-track.mp3"))
+    assert len(packaged) == 1
+    assert packaged[0].read_bytes() == audio.read_bytes()
+    deployed_data = json.loads(next(bundle.rglob("lesson-companion.json")).read_text(encoding="utf-8"))
+    assert deployed_data["media"]["audioUrl"].startswith("/assets/")
+    assert deployed_data["media"]["draftClockOnly"] is False
+
+    data["media"]["audioSha256"] = "0" * 64
+    companion.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(CompanionReleaseError, match="hash mismatch"):
+        build_companion_bundle(
+            tmp_path / "bad-bundle",
+            companion_path=companion,
+            draft_audio_path=audio,
+        )
 
 
 def test_bundle_verifier_rejects_access_phase_manifest_drift(tmp_path: Path) -> None:

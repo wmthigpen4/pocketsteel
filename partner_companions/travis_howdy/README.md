@@ -62,6 +62,20 @@ The standalone printable draft can be regenerated with:
   --output output/pdf/Howdy-companion-draft.pdf
 ```
 
+A local owner-review bundle may also use a private, hash-pinned audio excerpt
+without turning on release mode:
+
+```bash
+.venv/bin/python scripts/package_travis_companion.py \
+  --output tmp/travis-preview-draft \
+  --companion ~/.steel-rag/travis-preview/howdy/howdy.transcribed-review.json \
+  --draft-audio ~/.steel-rag/travis-preview/howdy/howdy-backing-solo-preview.mp3
+```
+
+The companion JSON must contain that file's exact SHA-256. The packager copies
+the audio only into the ignored local bundle; Git is never an input or output
+for the private media.
+
 ## Approved private inputs
 
 The release bundle must be assembled from a private directory outside Git,

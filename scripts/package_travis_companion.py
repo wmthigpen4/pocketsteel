@@ -24,6 +24,11 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, help="Internal manifest path outside the upload directory.")
     parser.add_argument("--source-date-epoch", type=int, help="Deterministic manifest timestamp.")
     parser.add_argument("--draft-pdf", type=Path, help="Use an already rendered draft PDF.")
+    parser.add_argument(
+        "--draft-audio",
+        type=Path,
+        help="Use a private hash-pinned audio file for a local draft bundle.",
+    )
     args = parser.parse_args()
     manifest = build_companion_bundle(
         args.output,
@@ -33,6 +38,7 @@ def main() -> int:
         manifest_path=args.manifest,
         source_date_epoch=args.source_date_epoch,
         draft_pdf_path=args.draft_pdf,
+        draft_audio_path=args.draft_audio,
     )
     print(json.dumps(manifest, indent=2, sort_keys=True))
     return 0

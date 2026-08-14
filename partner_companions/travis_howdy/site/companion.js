@@ -36,6 +36,10 @@
     const totalSeconds = Math.max(0, Math.floor(Number(milliseconds || 0) / 1000));
     return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
   };
+  const formatLessonMoment = (milliseconds) => {
+    const totalSeconds = Math.max(0, Math.floor(Number(milliseconds || 0) / 1000));
+    return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+  };
   const currentPhrase = () => state.data.phrases.find((item) => item.id === state.selectedPhraseId) || state.data.phrases[0];
   const eventAt = (milliseconds) => {
     const events = state.data.events;
@@ -58,6 +62,16 @@
     data.phrases.forEach((phrase) => phrase.eventIds.forEach((id) => {
       if (!eventIds.has(id)) throw new Error(`Phrase references missing event ${id}.`);
     }));
+    data.events.forEach((event) => {
+      if (!event.coachingCue) return;
+      const source = event.sourceMoment;
+      if (!source || source.quoteKind !== "verbatim_excerpt" || source.excerpt !== event.coachingCue) {
+        throw new Error(`Coaching cue ${event.id} must be a verbatim sourced excerpt.`);
+      }
+      if (!Number.isFinite(Number(source.lessonTimeMs)) || Number(source.lessonTimeMs) < 0) {
+        throw new Error(`Coaching cue ${event.id} has no lesson timestamp.`);
+      }
+    });
   }
 
   function renderPreviewMarker() {
@@ -133,7 +147,9 @@
     if (status) {
       status.textContent = state.data.approvals.musical
         ? `${state.data.phrases.length} approved phrase ranges`
-        : `${state.data.phrases.length} deterministic layout ranges · approval pending`;
+        : state.data.contentStatus === "transcribed_review_required"
+          ? `${state.data.phrases.length} transcript-backed ranges · Travis review required`
+          : `${state.data.phrases.length} deterministic layout ranges · approval pending`;
     }
   }
 
@@ -160,11 +176,17 @@
       for (let fret = 0; fret <= 12; fret += 1) {
         const currentNote = currentByString.get(stringDefinition.string);
         const upcomingNote = upcomingByString.get(stringDefinition.string);
+        const currentPath = currentNote
+          ? (currentNote.fretPath || [currentNote.fret, currentNote.toFret]).filter((item) => Number.isFinite(Number(item)))
+          : [];
         let className = "fret-cell";
         let label = "";
         if (currentNote && Number(currentNote.fret) === fret) {
           className += " is-current";
           label = (currentNote.controls || []).join("");
+        } else if (currentNote && currentPath.slice(1).some((item) => Number(item) === fret)) {
+          className += " is-path";
+          label = (currentNote.toControls || currentNote.controls || []).join("");
         } else if (upcomingNote && Number(upcomingNote.fret) === fret) {
           className += " is-next";
           label = (upcomingNote.controls || []).join("");
@@ -180,8 +202,13 @@
 
   function tabToken(note) {
     const controls = (note.controls || []).join("");
-    const technique = note.technique === "slide-in" ? "↗" : note.technique === "release" ? "~" : "";
-    return `${technique}${note.fret}${controls}`;
+    const destinationControls = (note.toControls || note.controls || []).join("");
+    const fretPath = (note.fretPath || [note.fret, note.toFret]).filter((item) => Number.isFinite(Number(item)));
+    const destination = fretPath.length > 1
+      ? `→${fretPath.slice(1).join("→")}${destinationControls}`
+      : "";
+    const technique = note.technique === "hammer-on" ? "h" : note.technique === "release" ? "~" : "";
+    return `${technique}${note.fret}${controls}${destination}`;
   }
 
   function buildTabTable(events, className) {
@@ -253,14 +280,26 @@
         : "Chord pending Travis review";
     }
     const currentInstruction = q("[data-current-instruction]");
+    const sourceMoment = q("[data-source-moment]");
     const technique = q("[data-current-technique]");
     const nextInstruction = q("[data-next-instruction]");
     const chordModeBlocked = state.selectedMode === "chord-foundation" && !state.data.approvals.chords;
-    if (currentInstruction) currentInstruction.textContent = chordModeBlocked ? "Reviewed chord chart not attached yet." : current.instruction;
+    if (currentInstruction) currentInstruction.textContent = chordModeBlocked
+      ? "Reviewed chord chart not attached yet."
+      : (current.coachingCue || "Transcript excerpt not attached to this layout proof.");
+    if (sourceMoment) {
+      const source = !chordModeBlocked && current.coachingCue ? current.sourceMoment : null;
+      sourceMoment.hidden = !source;
+      sourceMoment.textContent = source
+        ? `Travis · lesson ${formatLessonMoment(source.lessonTimeMs)} · verbatim excerpt`
+        : "";
+    }
     if (technique) technique.textContent = chordModeBlocked
       ? "This guardrail prevents the draft from showing a plausible-looking but wrong chord."
-      : `${current.notationPitch} · ${controlsLabel(current.tabNotes)} · ${current.movement.replaceAll("-", " ")}`;
-    if (nextInstruction) nextInstruction.textContent = chordModeBlocked ? "Travis approval unlocks this mode." : upcoming.instruction;
+      : `Literal tab: ${current.instruction} · ${current.notationPitch} · ${controlsLabel(current.tabNotes)}`;
+    if (nextInstruction) nextInstruction.textContent = chordModeBlocked
+      ? "Travis approval unlocks this mode."
+      : (upcoming.coachingCue || "Transcript excerpt not attached to this layout proof.");
     const position = q("[data-position-label]");
     if (position) position.textContent = `Fret ${current.tabNotes[0].fret} · ${controlsLabel(current.tabNotes)}`;
     const phraseTitle = q("[data-phrase-title]");
@@ -272,7 +311,11 @@
     if (phraseNote) phraseNote.textContent = phrase.lessonNote;
     if (phraseBars) phraseBars.textContent = `${phrase.barStart}–${phrase.barEnd}`;
     if (phraseMove) phraseMove.textContent = current.movement.replaceAll("-", " ");
-    if (status) status.textContent = state.data.approvals.musical ? "Travis approved" : "Draft · review required";
+    if (status) status.textContent = state.data.approvals.musical
+      ? "Travis approved"
+      : state.data.contentStatus === "transcribed_review_required"
+        ? "Transcribed · Travis review required"
+        : "Draft · review required";
     renderFretboard(current, upcoming);
     updateTabHighlight(current, upcoming);
   }
@@ -356,7 +399,9 @@
     if (duration) duration.textContent = formatTime(state.data.media.durationMs);
     if (note) {
       note.textContent = state.data.media.audioUrl
-        ? "Same-origin reviewed backing track loaded."
+        ? state.data.approvals.audioRights
+          ? "Same-origin reviewed backing track loaded."
+          : "Same-origin owner-review excerpt loaded · audio rights approval pending."
         : "Draft clock only · reviewed audio is added by the private release packager.";
     }
     const audio = q("[data-audio]");
