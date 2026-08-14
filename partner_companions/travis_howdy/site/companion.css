@@ -190,6 +190,19 @@ button { color: inherit; }
 .chord-chart { display: grid; grid-template-columns: repeat(8, minmax(86px,1fr)); gap: 6px; margin-top: 14px; overflow-x: auto; }
 .chord-bar { min-width: 86px; min-height: 73px; padding: 9px; border: 1px solid rgba(255,255,255,.26); border-radius: var(--radius); color: var(--white); background: rgba(255,255,255,.08); text-align: left; cursor: pointer; }.chord-bar > span { display: block; color: rgba(255,255,255,.66); font-size: 8px; text-transform: uppercase; }.chord-bar > strong { display: block; margin-top: 8px; font-size: 16px; }.chord-bar.is-current { border-color: #ffb9aa; box-shadow: inset 0 -4px 0 var(--coral); background: rgba(255,63,32,.17); }
 .chord-symbols { display: flex !important; align-items: center; gap: 4px; }.chord-symbols > span { display: grid; }.chord-symbols b { font-size: 16px; }.chord-symbols small { color: #ffd1c9; font-size: 7px; }.chord-symbols i { color: rgba(255,255,255,.52); font-size: 9px; font-style: normal; }
+.song-chart-card { display: none; margin-top: 18px; }
+.song-now { display: grid; grid-template-columns: auto minmax(110px,auto) auto 1fr; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.24); border-radius: var(--radius); background: rgba(255,255,255,.08); }
+.song-now > span { color: #ffd1c9; font-size: 11px; font-variant-numeric: tabular-nums; }.song-now strong { font-size: 18px; }.song-now b { display: inline-flex; justify-content: center; min-width: 44px; padding: 4px 7px; border-radius: 3px; color: var(--teal-900); background: #ffd1c9; font-size: 10px; }.song-now small { color: rgba(255,255,255,.72); font-size: 9px; line-height: 1.35; text-align: right; }
+.song-scroll-window { position: relative; margin-top: 10px; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-color: #ff9c8a rgba(255,255,255,.12); scrollbar-width: thin; }
+.song-scroll-window:focus-visible { outline: 3px solid rgba(255,63,32,.45); outline-offset: 3px; }
+.song-playhead { position: sticky; left: 35%; z-index: 3; display: block; width: 2px; height: 92px; margin-bottom: -92px; pointer-events: none; background: var(--coral); box-shadow: 0 0 0 2px rgba(255,255,255,.65); }
+.song-playhead::before { content: ""; position: absolute; top: -1px; left: -5px; width: 0; height: 0; border-top: 7px solid var(--coral); border-right: 6px solid transparent; border-left: 6px solid transparent; }
+.song-timeline { display: flex; align-items: stretch; gap: 4px; width: max-content; min-width: 100%; padding: 8px 0 12px; }
+.song-segment { flex: 0 0 var(--song-segment-width,120px); min-height: 84px; padding: 9px 10px; border: 1px solid rgba(255,255,255,.28); border-radius: var(--radius); color: var(--white); background: rgba(255,255,255,.09); text-align: left; cursor: pointer; }
+.song-segment > * { display: block; }.song-segment span { color: rgba(255,255,255,.62); font-size: 8px; font-variant-numeric: tabular-nums; }.song-segment strong { margin-top: 8px; font-size: 17px; }.song-segment small { margin-top: 3px; color: #ffd1c9; font-size: 8px; font-weight: 750; }
+.song-segment.is-pending { border-style: dashed; color: rgba(255,255,255,.76); background: rgba(255,255,255,.035); }.song-segment.is-pending strong { font-size: 12px; }.song-segment.is-pending small { color: rgba(255,255,255,.5); font-weight: 500; }
+.song-segment.is-current { border-color: #ffb9aa; background: rgba(255,63,32,.22); box-shadow: inset 0 -4px 0 var(--coral); }.song-segment:hover, .song-segment:focus-visible { border-color: #ffb9aa; }
+.song-chart-guardrail { margin: 8px 0 0; color: rgba(255,255,255,.62); font-size: 9px; line-height: 1.4; }
 
 .explore-card { padding: 27px 28px; border: 1px solid var(--line); border-top: 0; background: var(--white); }.explore-card[hidden] { display: none; }.explore-card h3 { margin: 0; font-size: 21px; }.explore-card > p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
 .alternate-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 18px; }.alternate-card { padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: #f7fafb; }.alternate-card > span { color: var(--coral-dark); font-size: 9px; font-weight: 800; text-transform: uppercase; }.alternate-card h4 { margin: 6px 0; }.alternate-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }.quiet-button { margin-top: 12px; padding: 0; border: 0; color: var(--teal-900); background: transparent; font-weight: 800; cursor: pointer; }
@@ -199,7 +212,8 @@ button { color: inherit; }
 [data-active-layer="phrase-practice"] .lesson-map { display: none; }
 [data-active-layer="play-along"] .lesson-map > .section-heading-row,
 [data-active-layer="play-along"] .phrase-map { display: none; }
-[data-active-layer="play-along"] .chord-chart-card { margin-top: 0; padding-top: 0; border-top: 0; }
+[data-active-layer="play-along"] .chord-chart-card { display: none; }
+[data-active-layer="play-along"] .song-chart-card { display: block; }
 [data-active-layer="play-along"] .tab-card { display: none; }
 [data-active-layer="play-along"] .move-card,
 [data-active-layer="play-along"] .fretboard-card,
@@ -375,6 +389,7 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
   .lesson-map { padding: 20px 15px; }.map-status { display: none; }.scope-summary-grid, .phrase-map { grid-template-columns: 1fr 1fr; }.phrase-chip { min-height: 83px; }
   .mode-switcher { grid-template-columns: 1fr; }.mode-button { min-height: 43px; }.mode-button span { display: none; }
   .transport-card { padding: 16px; }.transport-options { align-items: flex-start; flex-direction: column; }
+  .song-now { grid-template-columns: auto minmax(0,1fr) auto; }.song-now small { grid-column: 1 / -1; text-align: left; }.song-playhead { left: 28%; }
   .study-controls { align-items: flex-start; flex-direction: column; }.study-actions { width: 100%; }.study-actions button { flex: 1; }
   .media-scope-card { align-items: flex-start; flex-direction: column; }.scope-jump { width: 100%; }
   .move-card, .compact-shell .move-card { grid-template-columns: 1fr; }.move-next { border-left: 0; border-top: 1px solid var(--line); }

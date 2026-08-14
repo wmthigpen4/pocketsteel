@@ -71,6 +71,23 @@
     </div>
     <div class="chord-chart" data-chord-chart></div>
   </section>
+  <section class="song-chart-card" aria-labelledby="song-chart-title">
+    <div class="chord-chart-heading">
+      <div><p class="section-kicker">Chord play-along</p><h3 id="song-chart-title">Full-song chord lane · Key <span data-song-chart-key>—</span></h3></div>
+      <p data-song-chart-status>Loading full-song chart…</p>
+    </div>
+    <div class="song-now" aria-live="polite">
+      <span data-song-now-time>0:00</span>
+      <strong data-song-now-chord>Chart pending</strong>
+      <b data-song-now-nns>—</b>
+      <small data-song-now-note>The lesson solo is marked at its source position.</small>
+    </div>
+    <div class="song-scroll-window" data-song-scroll tabindex="0" role="region" aria-label="Full-song scrolling chord and Nashville number timeline">
+      <span class="song-playhead" aria-hidden="true"></span>
+      <div class="song-timeline" data-song-timeline></div>
+    </div>
+    <p class="song-chart-guardrail">The lane follows the complete backing track. Only source-timed chord data is shown; uncharted regions remain visibly pending.</p>
+  </section>
 </section>
 <section class="explore-card" data-explore-panel hidden>
   <div><p class="section-kicker">Explore</p><h3>Lesson-demonstrated comparisons</h3></div>

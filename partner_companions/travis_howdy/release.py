@@ -223,6 +223,26 @@ def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
         if int(full_song["startMs"]) != 0 or int(full_song["endMs"]) != duration:
             raise CompanionReleaseError("The fullSong media scope must cover the complete audio asset.")
         authored_duration = int(scopes["taughtSolo"]["durationMs"])
+    song_chords = data.get("songChordTimeline")
+    if song_chords is not None:
+        if not isinstance(song_chords, list):
+            raise CompanionReleaseError("The full-song chord timeline must be a list when present.")
+        previous_song_chord_end = 0
+        for chord in song_chords:
+            start = int(chord.get("startMs", -1))
+            end = int(chord.get("endMs", -1))
+            if (
+                start != previous_song_chord_end
+                or end <= start
+                or not str(chord.get("symbol") or "").strip()
+                or not str(chord.get("nns") or "").strip()
+            ):
+                raise CompanionReleaseError(
+                    "The full-song chord timeline must be contiguous and fully labeled."
+                )
+            previous_song_chord_end = end
+        if song_chords and previous_song_chord_end != duration:
+            raise CompanionReleaseError("The full-song chord timeline must cover the complete song scope.")
     if previous_end != authored_duration:
         message = (
             "The final event must end at the taught-solo authored duration."

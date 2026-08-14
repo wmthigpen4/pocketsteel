@@ -101,6 +101,14 @@ uses `0hA` for an open-position A-pedal hammer, exposes the complete song in
 Full Song, and keeps the lesson's solo tab and phrase loops inside the exact
 taught-solo audio window.
 
+Full Song has its own horizontally scrolling chord/NNS lane, synchronized to
+the complete recording. A complete reviewed chart can be supplied as the
+optional root-level `songChordTimeline`; it must be contiguous and cover the
+entire full-song duration. Until that authored chart is attached, the lane
+places the current lesson-solo chord events at their absolute song times and
+labels every other region `Chart pending`. The browser never analyzes audio or
+guesses a missing chord.
+
 ## Approved private inputs
 
 The release bundle must be assembled from a private directory outside Git,

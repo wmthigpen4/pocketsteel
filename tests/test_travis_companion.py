@@ -123,6 +123,24 @@ def test_full_song_and_taught_solo_scopes_preserve_solo_relative_tab_timing() ->
         validate_companion(data, release=False)
 
 
+def test_optional_full_song_chord_timeline_must_cover_complete_song() -> None:
+    data = load_draft()
+    duration = data["media"]["durationMs"]
+    data["songChordTimeline"] = [
+        {"id": "song-chord-1", "startMs": 0, "endMs": duration, "symbol": "D", "nns": "I"}
+    ]
+    validate_companion(data, release=False)
+
+    data["songChordTimeline"][0]["startMs"] = 1
+    with pytest.raises(CompanionReleaseError, match="contiguous and fully labeled"):
+        validate_companion(data, release=False)
+
+    data["songChordTimeline"][0]["startMs"] = 0
+    data["songChordTimeline"][0]["endMs"] = duration - 1
+    with pytest.raises(CompanionReleaseError, match="cover the complete song scope"):
+        validate_companion(data, release=False)
+
+
 def test_chord_boundaries_are_exact_and_never_inferred() -> None:
     data = load_draft()
     by_chord: dict[str, list[dict[str, object]]] = {}
@@ -330,12 +348,20 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function renderLessonSearch()" in script
     assert "function setLayer(" in script
     assert "function renderChordChart()" in script
+    assert "function renderSongTimeline()" in script
+    assert "function updateSongTimeline(" in script
+    assert 'pending ? "No guessed chord"' in script
+    assert "scroll.scrollLeft = target" in script
     assert "function stepMove(" in script
     assert 'return `${note.fret}h${pedal}`' in script
     for selector in (
         "data-lesson-search",
         "data-layer-title",
         "data-chord-chart",
+        "data-song-timeline",
+        "data-song-scroll",
+        "data-song-chart-status",
+        "data-song-now-chord",
         "data-key-label",
         "data-study-controls",
         "data-explore-panel",
@@ -347,6 +373,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function configureMediaScopeActions()" in script
     assert "taughtSoloTimeAt" in script
     assert 'if (!terms.length && presentation === "embed-demo") return;' in script
+    assert 'aria-label="Full-song scrolling chord and Nashville number timeline"' in markup
 
 
 def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
@@ -361,6 +388,8 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert '<summary class="search-summary">' in markup
     assert '[data-active-layer]:not([data-active-layer="lesson-map"]) .lesson-search-card { display: none; }' in styles
     assert '[data-active-layer="phrase-practice"] .lesson-map { display: none; }' in styles
+    assert '[data-active-layer="play-along"] .chord-chart-card { display: none; }' in styles
+    assert '[data-active-layer="play-along"] .song-chart-card { display: block; }' in styles
     assert '.compact-shell .layer-context, .compact-shell .mode-switcher, .compact-shell .source-card { display: none; }' in styles
 
 
