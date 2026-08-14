@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
 
 import pytest
 
@@ -139,6 +140,41 @@ def test_optional_full_song_chord_timeline_must_cover_complete_song() -> None:
     data["songChordTimeline"][0]["endMs"] = duration - 1
     with pytest.raises(CompanionReleaseError, match="cover the complete song scope"):
         validate_companion(data, release=False)
+
+
+def test_full_song_authoring_overlays_exact_solo_and_derives_nns() -> None:
+    script = ROOT / "scripts" / "author_travis_song_chords.js"
+    payload = subprocess.run(
+        [
+            "node",
+            "-e",
+            """
+            const a=require(process.argv[1]);
+            const companion={display:{key:'D'},media:{scopes:{fullSong:{durationMs:12000},taughtSolo:{startMs:4000,endMs:8000}}},chordTimeline:[
+              {id:'solo-g',startMs:0,endMs:2000,barStart:1,barEnd:1,symbol:'G',nns:'IV'},
+              {id:'solo-a',startMs:2000,endMs:4000,barStart:2,barEnd:2,symbol:'A',nns:'V'}
+            ]};
+            const analysis={analysisVersion:2,barStartsMs:[0,4000,8000],chords:[
+              {id:'d1',bar:1,startMs:0,endMs:4000,symbol:'D',confidence:.9,needsAttention:false},
+              {id:'a1',bar:2,startMs:4000,endMs:8000,symbol:'A',confidence:.7,needsAttention:true},
+              {id:'g1',bar:3,startMs:8000,endMs:12000,symbol:'G7',confidence:.8,needsAttention:false}
+            ]};
+            console.log(JSON.stringify({timeline:a.buildSongChordTimeline(analysis,companion),nns:[a.nnsForSymbol('D','D'),a.nnsForSymbol('G7','D'),a.nnsForSymbol('Bm7','D'),a.nnsForSymbol('Dmaj7','D')]}));
+            """,
+            str(script),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    result = json.loads(payload.stdout)
+    assert result["nns"] == ["I", "IV7", "vi7", "Imaj7"]
+    assert [(item["startMs"], item["endMs"]) for item in result["timeline"]] == [
+        (0, 4000), (4000, 6000), (6000, 8000), (8000, 12000)
+    ]
+    assert [item["symbol"] for item in result["timeline"]] == ["D", "G", "A", "G7"]
+    assert result["timeline"][1]["sourceKind"] == "taught_solo_chord_timeline"
 
 
 def test_chord_boundaries_are_exact_and_never_inferred() -> None:
@@ -352,6 +388,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function updateSongTimeline(" in script
     assert 'pending ? "No guessed chord"' in script
     assert "scroll.scrollLeft = target" in script
+    assert "needs-attention" in script
     assert "function stepMove(" in script
     assert 'return `${note.fret}h${pedal}`' in script
     for selector in (
@@ -361,6 +398,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         "data-song-timeline",
         "data-song-scroll",
         "data-song-chart-status",
+        "data-song-chart-guardrail",
         "data-song-now-chord",
         "data-key-label",
         "data-study-controls",

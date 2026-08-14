@@ -109,6 +109,23 @@ places the current lesson-solo chord events at their absolute song times and
 labels every other region `Chart pending`. The browser never analyzes audio or
 guesses a missing chord.
 
+Create the review-coded full-song chart outside the learner runtime with the
+existing deterministic Play Along reader:
+
+```bash
+node scripts/author_travis_song_chords.js \
+  --audio /private/howdy-full-song.mp3 \
+  --companion /private/howdy-review.json \
+  --output /private/howdy-review-next.json \
+  --revision howdy-transcribed-review-YYYY-MM-DD.N
+```
+
+The authoring command pins the companion's known key, meter, and tempo, forces
+one D-major song context, preserves the reader's confidence and attention
+metadata, and replaces the taught-solo window with the companion's exact
+source-timed solo chord events. The generated `songChordTimeline` remains
+unapproved until Travis reviews it.
+
 ## Approved private inputs
 
 The release bundle must be assembled from a private directory outside Git,

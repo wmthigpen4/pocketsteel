@@ -201,6 +201,7 @@ button { color: inherit; }
 .song-segment { flex: 0 0 var(--song-segment-width,120px); min-height: 84px; padding: 9px 10px; border: 1px solid rgba(255,255,255,.28); border-radius: var(--radius); color: var(--white); background: rgba(255,255,255,.09); text-align: left; cursor: pointer; }
 .song-segment > * { display: block; }.song-segment span { color: rgba(255,255,255,.62); font-size: 8px; font-variant-numeric: tabular-nums; }.song-segment strong { margin-top: 8px; font-size: 17px; }.song-segment small { margin-top: 3px; color: #ffd1c9; font-size: 8px; font-weight: 750; }
 .song-segment.is-pending { border-style: dashed; color: rgba(255,255,255,.76); background: rgba(255,255,255,.035); }.song-segment.is-pending strong { font-size: 12px; }.song-segment.is-pending small { color: rgba(255,255,255,.5); font-weight: 500; }
+.song-segment.needs-attention:not(.is-current) { border-color: #ff9c8a; background: rgba(255,63,32,.1); }.song-segment.needs-attention small { color: #ffb9aa; }
 .song-segment.is-current { border-color: #ffb9aa; background: rgba(255,63,32,.22); box-shadow: inset 0 -4px 0 var(--coral); }.song-segment:hover, .song-segment:focus-visible { border-color: #ffb9aa; }
 .song-chart-guardrail { margin: 8px 0 0; color: rgba(255,255,255,.62); font-size: 9px; line-height: 1.4; }
 

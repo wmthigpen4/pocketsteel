@@ -305,6 +305,8 @@ def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
         raise CompanionReleaseError("Every solo event must be musically verified.")
     if any(item.get("verified") is not True or not item.get("symbol") for item in chords):
         raise CompanionReleaseError("Every chord boundary must be verified and labeled.")
+    if song_chords and any(item.get("verified") is not True for item in song_chords):
+        raise CompanionReleaseError("Every full-song chord event must be verified before release.")
     if len(data.get("release", {}).get("approvalReferences") or []) < 5:
         raise CompanionReleaseError("Release mode requires approval references for music, rights, brand, and print.")
     release_data = data.get("release", {})

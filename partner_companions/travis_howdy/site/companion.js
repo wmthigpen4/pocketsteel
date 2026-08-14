@@ -549,7 +549,7 @@
         endMs: end,
         symbol: null,
         nns: null,
-        sourceKind: "pending",
+        timelineKind: "pending",
       });
     }
     return segments;
@@ -559,13 +559,13 @@
     const scope = mediaScopes().fullSong;
     const solo = mediaScopes().taughtSolo;
     const authored = hasFullSongChordChart()
-      ? state.data.songChordTimeline.map((chord) => ({ ...chord, sourceKind: "full-song" }))
+      ? state.data.songChordTimeline.map((chord) => ({ ...chord, timelineKind: "full-song" }))
       : state.data.chordTimeline.map((chord) => ({
         ...chord,
         id: `taught-solo-${chord.id}`,
         startMs: Number(solo.startMs) + Number(chord.startMs),
         endMs: Number(solo.startMs) + Number(chord.endMs),
-        sourceKind: "taught-solo",
+        timelineKind: "taught-solo",
       }));
     const segments = [];
     let cursor = 0;
@@ -588,27 +588,33 @@
     const complete = hasFullSongChordChart();
     const status = q("[data-song-chart-status]");
     if (status) status.textContent = complete
-      ? state.data.approvals.chords ? "Complete chart · Travis approved" : "Complete chart · Travis review required"
+      ? state.data.approvals.chords ? "Complete detected chart · Travis approved" : "Complete detected chart · Travis review required"
       : "Lesson solo populated · full-song chart pending";
+    const guardrail = q("[data-song-chart-guardrail]");
+    if (guardrail) guardrail.textContent = complete
+      ? "Detected locally from the complete backing track. Coral ‘check’ events need human review; no model or runtime analyzer is involved."
+      : "The lane follows the complete backing track. Only source-timed chord data is shown; uncharted regions remain visibly pending.";
     state.songTimelineSegments = buildSongTimelineSegments();
     container.replaceChildren();
     state.songTimelineSegments.forEach((segment) => {
-      const pending = segment.sourceKind === "pending";
+      const pending = segment.timelineKind === "pending";
       const duration = Number(segment.endMs) - Number(segment.startMs);
       const width = pending
         ? clamp(Math.round(duration * 0.026), 120, 320)
         : clamp(Math.round(duration * 0.052), 88, 230);
-      const button = node("button", `song-segment${pending ? " is-pending" : ""}`);
+      const button = node("button", `song-segment${pending ? " is-pending" : ""}${segment.needsAttention ? " needs-attention" : ""}`);
       button.type = "button";
       button.dataset.songSegmentId = segment.id;
       button.style.setProperty("--song-segment-width", `${width}px`);
-      const sourceLabel = segment.sourceKind === "taught-solo"
+      const taughtSoloSource = segment.timelineKind === "taught-solo"
+        || segment.sourceKind === "taught_solo_chord_timeline";
+      const sourceLabel = segment.sectionLabel || (taughtSoloSource
         ? `Solo · bar ${segment.barStart}`
-        : segment.sectionLabel || `Song · ${formatTime(segment.startMs)}`;
+        : `Bar ${segment.barStart || "—"} · audio-detected`);
       button.append(
         node("span", "", `${formatTime(segment.startMs)} · ${formatTime(segment.endMs)}`),
         node("strong", "", pending ? "Chart pending" : segment.symbol),
-        node("small", "", pending ? "No guessed chord" : `${segment.nns} · ${sourceLabel}`),
+        node("small", "", pending ? "No guessed chord" : `${segment.nns} · ${sourceLabel}${segment.needsAttention ? " · check" : ""}`),
       );
       button.addEventListener("click", () => {
         if (state.selectedLayer !== "play-along") setLayer("play-along");
@@ -625,7 +631,7 @@
     ));
     if (index < 0) index = state.songTimelineSegments.length - 1;
     const segment = state.songTimelineSegments[index] || state.songTimelineSegments[state.songTimelineSegments.length - 1];
-    const pending = segment.sourceKind === "pending";
+    const pending = segment.timelineKind === "pending";
     const currentElement = qa("[data-song-segment-id]").find((item) => item.dataset.songSegmentId === segment.id);
     qa("[data-song-segment-id]").forEach((item) => item.classList.toggle("is-current", item === currentElement));
     const time = q("[data-song-now-time]");
@@ -637,9 +643,9 @@
     if (nns) nns.textContent = pending ? "—" : segment.nns;
     if (note) note.textContent = pending
       ? "No reviewed full-song chord is attached for this region."
-      : segment.sourceKind === "taught-solo"
-        ? `Taught solo · bar ${segment.barStart} · review required`
-        : segment.sectionLabel || "Authored full-song chord event";
+      : segment.timelineKind === "taught-solo" || segment.sourceKind === "taught_solo_chord_timeline"
+        ? `Taught solo · song bar ${segment.barStart} · solo bar ${segment.soloBarStart || segment.barStart} · review required`
+        : `Audio-detected · bar ${segment.barStart || "—"} · ${segment.needsAttention ? "check this chord" : "review required"}`;
     const scroll = q("[data-song-scroll]");
     if (state.selectedLayer !== "play-along" || !scroll || !currentElement) return;
     const duration = Math.max(1, Number(segment.endMs) - Number(segment.startMs));
