@@ -14,10 +14,12 @@
     "7": [[0, 1], [4, 0.82], [7, 0.64], [10, 0.76]],
     m7: [[0, 1], [3, 0.82], [7, 0.64], [10, 0.76]]
   };
-  const QUALITY_CALIBRATION_VERSION = 10;
+  const QUALITY_CALIBRATION_VERSION = 11;
   const MIN_EXTENSION_GAIN = 0.09;
   const MIN_SEVENTH_CORE_RATIO = 0.8;
-  const MIN_KEY_REGION_BARS = 6;
+  const MIN_KEY_REGION_BARS = 8;
+  const DECODE_KEY_PRIOR_WEIGHT = 0.35;
+  const MAX_CONTEXT_ROOT_CHANGE_SCORE_GAP = 0.04;
   const METER_OPTIONS = [
     { meter: "2/4", beats: 2 },
     { meter: "3/4", beats: 3 },
@@ -416,6 +418,11 @@
   function candidateScore(evidence, symbol) {
     const candidate = evidence.candidates.find((item) => item.symbol === symbol);
     if (candidate?.extensionSupported === false) return -1;
+    const audioLeading = evidence.top;
+    const audioRoot = parseSymbol(audioLeading?.symbol).root;
+    const candidateRoot = parseSymbol(candidate?.symbol).root;
+    if (audioRoot != null && candidateRoot != null && audioRoot !== candidateRoot
+        && Number(audioLeading.score) - Number(candidate.score) >= MAX_CONTEXT_ROOT_CHANGE_SCORE_GAP) return -1;
     return candidate?.score ?? -0.4;
   }
 
@@ -426,7 +433,7 @@
     evidences.forEach((evidence, index) => {
       scores[index] = new Map(); paths[index] = new Map();
       for (const state of states) {
-        const emission = 3.4 * candidateScore(evidence, state) + keyPrior(state, key) + Number(repeatBonus.get(`${index}:${state}`) || 0);
+        const emission = 3.4 * candidateScore(evidence, state) + DECODE_KEY_PRIOR_WEIGHT * keyPrior(state, key) + Number(repeatBonus.get(`${index}:${state}`) || 0);
         if (!index) { scores[index].set(state, emission); paths[index].set(state, null); continue; }
         let bestScore = -Infinity, bestPrevious = null;
         for (const previous of states) {
@@ -521,7 +528,7 @@
     const previous = decoded[index - 1] || null;
     const next = decoded[index + 1] || null;
     const localScore = (symbol) => {
-      let score = 3.4 * candidateScore(evidence, symbol) + keyPrior(symbol, key);
+      let score = 3.4 * candidateScore(evidence, symbol) + DECODE_KEY_PRIOR_WEIGHT * keyPrior(symbol, key);
       if (previous) score += 0.72 * transitionPrior(previous, symbol, key);
       if (next) score += 0.72 * transitionPrior(symbol, next, key);
       return score;
@@ -554,8 +561,13 @@
   }
 
   function keyEvidenceScore(bar, key) {
-    const candidates = (bar.full.scored.candidates || []).filter((candidate) => candidate.symbol !== "N.C.").slice(0, 18);
-    const chordFit = candidates.length ? Math.max(...candidates.map((candidate) => Number(candidate.score) + keyPrior(candidate.symbol, key) * 0.72)) : -0.4;
+    const audioLeading = bar.full.scored.top;
+    // A proposed key must score the chord the audio actually led with. Letting
+    // it substitute a weaker, key-friendly chord makes the key guess prove
+    // itself and can turn an A-flat ii minor into an E-flat V major.
+    const chordFit = audioLeading && parseSymbol(audioLeading.symbol).root != null
+      ? Number(audioLeading.score) + keyPrior(audioLeading.symbol, key) * 0.72
+      : -0.4;
     const profile = key.keyMode === "minor" ? MINOR_PROFILE : MAJOR_PROFILE;
     const primaryFit = primaryHarmonyFit(bar.full.scored.top?.symbol, key);
     return chordFit + profileScore(bar.full.chroma, key.root, profile) * 0.24 + primaryFit * 0.12;

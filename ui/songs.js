@@ -5,6 +5,7 @@
   const analysisClient = global.STEEL_RAG_ANALYSIS_CLIENT;
   const MAX_BYTES = 250 * 1024 * 1024;
   const MAX_DURATION_SECONDS = 15 * 60;
+  const CURRENT_ANALYSIS_CALIBRATION_VERSION = 11;
   const ACCEPTED_EXTENSIONS = new Set(["mp3", "m4a", "aac", "wav"]);
   const list = document.querySelector("#curated-song-list");
   const localList = document.querySelector("#local-track-list");
@@ -21,6 +22,10 @@
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]); }
   function formatDuration(ms) { const seconds = Math.max(0, Math.round(Number(ms || 0) / 1000)); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`; }
   function apiHeaders() { const headers = { Accept: "application/json" }; if (["127.0.0.1", "localhost"].includes(global.location.hostname)) headers["X-Steel-Rag-Dev-Access-Role"] = "beta_user"; return headers; }
+  function analysisIsCurrent(project) {
+    return Number(project.timeline?.analysisVersion || 0) >= 2
+      && Number(project.timeline?.analysisState?.qualityCalibrationVersion || 0) >= CURRENT_ANALYSIS_CALIBRATION_VERSION;
+  }
 
   function updateStage(stage, detail = "") {
     progressTitle.textContent = stage;
@@ -46,7 +51,7 @@
       document.querySelector("#open-existing").onclick = () => finish("open");
       document.querySelector("#cancel-duplicate").onclick = () => finish("cancel");
       duplicateDialog.oncancel = (event) => { event.preventDefault(); finish("cancel"); };
-    }).then((choice) => { if (choice === "open") global.location.assign(project.timeline?.confirmationState === "confirmed" ? `/play/${encodeURIComponent(project.id)}` : `/setup/${encodeURIComponent(project.id)}`); return choice; });
+    }).then((choice) => { if (choice === "open") global.location.assign(project.timeline?.confirmationState === "confirmed" && analysisIsCurrent(project) ? `/play/${encodeURIComponent(project.id)}` : `/setup/${encodeURIComponent(project.id)}`); return choice; });
   }
 
   async function importTrack(file) {
@@ -117,7 +122,7 @@
     try { projects = await tools.listProjects(); } catch (_error) { localList.innerHTML = `<p class="songs-status">Device storage is unavailable in this browser.</p>`; return; }
     if (!projects.length) { localList.innerHTML = `<div class="empty-tracks"><strong>Your songs will appear here.</strong><p>Choose an MP3, M4A/AAC, or WAV recording to analyze it locally.</p><button class="songs-button is-primary" data-empty-add type="button">Add a Song</button></div>`; localList.querySelector("[data-empty-add]").onclick = () => fileInput.click(); return; }
     const audioStates = await Promise.all(projects.map((project) => tools.hasAudio(project.audio?.opfsPath || `${project.id}.audio`)));
-    localList.innerHTML = projects.map((project, index) => { const ready = project.timeline?.confirmationState === "confirmed" || project.timeline?.confirmationState === "reviewed"; const audioReady = audioStates[index]; return `<article class="local-track" data-local-track="${escapeHtml(project.id)}"><div><strong>${escapeHtml(project.title)}</strong><small>${formatDuration(project.audio?.durationMs)} · ${escapeHtml(project.timeline?.key || "Key?")} · ${escapeHtml(project.timeline?.meter || "Meter?")} · ${ready ? "Ready to play" : "Ready to review"}${audioReady ? "" : " · Audio needs relinking"}</small></div><div class="local-track__actions">${audioReady ? `<a class="songs-button${ready ? " is-primary" : ""}" href="/${ready ? "play" : "setup"}/${encodeURIComponent(project.id)}">${ready ? "Play Along" : "Review"}</a>` : `<button class="songs-button is-primary" type="button" data-relink>Relink Audio</button>`}<button class="songs-button is-quiet" type="button" data-export-track>Export metadata</button><button class="songs-button is-quiet" type="button" data-remove-track>Remove</button></div></article>`; }).join("");
+    localList.innerHTML = projects.map((project, index) => { const needsAnalysisUpdate = !analysisIsCurrent(project); const ready = !needsAnalysisUpdate && (project.timeline?.confirmationState === "confirmed" || project.timeline?.confirmationState === "reviewed"); const audioReady = audioStates[index]; const readiness = needsAnalysisUpdate ? "Analysis update required" : ready ? "Ready to play" : "Ready to review"; return `<article class="local-track" data-local-track="${escapeHtml(project.id)}"><div><strong>${escapeHtml(project.title)}</strong><small>${formatDuration(project.audio?.durationMs)} · ${escapeHtml(project.timeline?.key || "Key?")} · ${escapeHtml(project.timeline?.meter || "Meter?")} · ${readiness}${audioReady ? "" : " · Audio needs relinking"}</small></div><div class="local-track__actions">${audioReady ? `<a class="songs-button${ready ? " is-primary" : ""}" href="/${ready ? "play" : "setup"}/${encodeURIComponent(project.id)}">${ready ? "Play Along" : needsAnalysisUpdate ? "Update analysis" : "Review"}</a>` : `<button class="songs-button is-primary" type="button" data-relink>Relink Audio</button>`}<button class="songs-button is-quiet" type="button" data-export-track>Export metadata</button><button class="songs-button is-quiet" type="button" data-remove-track>Remove</button></div></article>`; }).join("");
     localList.querySelectorAll("[data-local-track]").forEach((row) => { const project = projects.find((item) => item.id === row.dataset.localTrack); row.querySelector("[data-export-track]").onclick = () => exportMetadata(project); row.querySelector("[data-remove-track]").onclick = async () => { await tools.deleteProject(project); await renderLocalTracks(); }; if (row.querySelector("[data-relink]")) row.querySelector("[data-relink]").onclick = () => relinkProject(project); });
   }
 

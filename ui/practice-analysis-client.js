@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const WORKER_URL = "/ui/practice-analysis-worker-tonic-cadence-v10.js";
+  const WORKER_URL = "/ui/practice-analysis-worker-audio-led-key-v11.js";
 
   async function decodeAudio(file) {
     const bytes = await file.arrayBuffer();

@@ -4,6 +4,7 @@
   const songTools = global.STEEL_RAG_SONG_PROJECTS;
   const practiceTools = global.STEEL_RAG_PRACTICE;
   const ACCOUNT_COPEDENT_STARTUP_BUDGET_MS = 1500;
+  const CURRENT_ANALYSIS_CALIBRATION_VERSION = 11;
   const DEFAULT_PLAY_ALONG_COPEDENT = Object.freeze({ profileId: "emmons-e9-basic" });
   const app = document.querySelector("#play-app");
   const errorPanel = document.querySelector("#play-error");
@@ -727,6 +728,10 @@
 
   async function trackFromLocalProject(project) {
     const timeline = project.timeline || {};
+    if (Number(timeline.analysisVersion || 0) < 2 || Number(timeline.analysisState?.qualityCalibrationVersion || 0) < CURRENT_ANALYSIS_CALIBRATION_VERSION) {
+      global.location.replace(`/setup/${encodeURIComponent(project.id)}`);
+      throw new Error("This song map needs the current local analysis. Redirecting to Review Song.");
+    }
     const chords = Array.isArray(timeline.chords) ? timeline.chords : [];
     if (!chords.length || !Array.isArray(timeline.barStartsMs) || !timeline.barStartsMs.length) throw new Error(`${project.title} still needs chord and timing review.`);
     const file = await practiceTools.readAudio(project.audio?.opfsPath || `${project.id}.audio`).catch(() => null);
