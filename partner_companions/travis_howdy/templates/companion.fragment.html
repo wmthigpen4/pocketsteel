@@ -4,6 +4,11 @@
     <p class="eyebrow">Practice workspace</p>
     <h2>Learn the phrase. Keep the feel.</h2>
     <p class="companion-intro">Everything on screen comes from one authored event timeline - playback, tab, fretboard, chords, and print.</p>
+    <div class="lesson-facts" aria-label="Lesson details">
+      <span data-key-label>Key —</span>
+      <span data-meter-label>Meter —</span>
+      <span data-tempo-label>Tempo —</span>
+    </div>
   </div>
   <div class="heading-actions">
     <a class="button button-secondary full-only" href="/howdy/embed-demo">View embed demo</a>
@@ -12,16 +17,58 @@
   </div>
 </header>
 <nav class="layer-tabs" aria-label="Companion layer" data-layer-tabs></nav>
+<section class="layer-context" aria-live="polite">
+  <div>
+    <p class="section-kicker" data-layer-kicker>Lesson map</p>
+    <h3 data-layer-title>Understand the complete route</h3>
+    <p data-layer-description></p>
+  </div>
+  <p class="layer-behavior" data-layer-behavior></p>
+</section>
+<section class="lesson-search-card" aria-labelledby="lesson-search-title">
+  <div class="search-heading">
+    <div>
+      <p class="section-kicker">Transcript-backed lesson search</p>
+      <h3 id="lesson-search-title">Find the moment Travis explains a move</h3>
+    </div>
+    <span data-search-count>Loading index…</span>
+  </div>
+  <label class="search-field">
+    <span class="visually-hidden">Search the lesson transcript index</span>
+    <input type="search" data-lesson-search placeholder="Try “hammer”, “B pedal”, “double stop”, or “release A”" autocomplete="off">
+  </label>
+  <p class="search-guardrail">Deterministic search over timestamped technical moments. Short excerpts are shown only when they are Travis’s exact words; the raw transcript is not shipped.</p>
+  <div class="lesson-search-results" data-lesson-search-results></div>
+</section>
 <section class="lesson-map" aria-label="Phrase map">
   <div class="section-heading-row">
     <div><p class="section-kicker">Song map</p><h3>The taught route, phrase by phrase</h3></div>
     <p class="map-status" data-map-status>Loading reviewed ranges…</p>
   </div>
   <div class="phrase-map" data-phrase-map></div>
+  <section class="chord-chart-card" aria-labelledby="chord-chart-title">
+    <div class="chord-chart-heading">
+      <div><p class="section-kicker">Chord play-along</p><h3 id="chord-chart-title">Eight-bar chord chart · Key <span data-chart-key>—</span></h3></div>
+      <p data-chord-status>Loading chart…</p>
+    </div>
+    <div class="chord-chart" data-chord-chart></div>
+  </section>
+</section>
+<section class="explore-card" data-explore-panel hidden>
+  <div><p class="section-kicker">Explore</p><h3>Lesson-demonstrated comparisons</h3></div>
+  <p>These positions are comparisons Travis demonstrates; they never replace the primary route.</p>
+  <div class="alternate-grid" data-alternate-grid></div>
 </section>
 <section class="practice-grid">
   <div class="practice-main">
     <div class="mode-switcher" role="group" aria-label="Practice mode" data-mode-switcher></div>
+    <div class="study-controls" data-study-controls hidden>
+      <div><strong>Study one move at a time</strong><span>Audio stays paused while you step through the selected phrase.</span></div>
+      <div class="study-actions">
+        <button type="button" data-action="previous-move">← Previous move</button>
+        <button type="button" data-action="next-move">Next move →</button>
+      </div>
+    </div>
     <section class="transport-card" aria-label="Backing track controls">
       <audio preload="metadata" data-audio></audio>
       <div class="transport-row">

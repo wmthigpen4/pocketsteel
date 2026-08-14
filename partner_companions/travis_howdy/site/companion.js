@@ -19,6 +19,7 @@
     selectedPhraseId: null,
     selectedMode: null,
     selectedLayer: null,
+    searchQuery: "",
     frameId: null,
     previousFrameTime: null,
   };
@@ -45,9 +46,17 @@
     const events = state.data.events;
     return events.find((item) => milliseconds >= item.startMs && milliseconds < item.endMs) || events[events.length - 1];
   };
-  const chordFor = (event) => state.data.chordTimeline.find((item) => item.id === event.chordEventId);
+  const chordAt = (milliseconds) => state.data.chordTimeline.find(
+    (item) => milliseconds >= item.startMs && milliseconds < item.endMs,
+  ) || state.data.chordTimeline[state.data.chordTimeline.length - 1];
+  const chordIndex = (chord) => state.data.chordTimeline.findIndex((item) => item.id === chord.id);
+  const nextChord = (chord) => state.data.chordTimeline[Math.min(
+    state.data.chordTimeline.length - 1,
+    chordIndex(chord) + 1,
+  )];
   const eventIndex = (event) => state.data.events.findIndex((item) => item.id === event.id);
   const nextEvent = (event) => state.data.events[Math.min(state.data.events.length - 1, eventIndex(event) + 1)];
+  const hasChordChart = () => state.data.chordTimeline.every((item) => item.symbol && item.tabNotes?.length);
 
   function validateCompanion(data) {
     if (!data || data.schemaVersion !== "lesson_companion_v1") throw new Error("Unsupported companion artifact.");
@@ -91,14 +100,61 @@
       button.dataset.layerId = layer.id;
       button.setAttribute("aria-pressed", layer.id === state.selectedLayer ? "true" : "false");
       button.append(node("strong", "", layer.label), node("span", "", layer.description));
-      button.addEventListener("click", () => {
-        state.selectedLayer = layer.id;
-        renderLayerTabs();
-        const note = q("[data-transport-note]");
-        if (note) note.textContent = layer.description;
-      });
+      button.addEventListener("click", () => setLayer(layer.id));
       container.append(button);
     });
+  }
+
+  function setSpeed(value) {
+    state.speed = Number(value);
+    qa("[data-speed]").forEach((item) => item.classList.toggle("is-active", Number(item.dataset.speed) === state.speed));
+    const audio = q("[data-audio]");
+    if (audio?.src) audio.playbackRate = state.speed;
+  }
+
+  function setLayer(layerId, options = {}) {
+    const layer = state.data.layers.find((item) => item.id === layerId);
+    if (!layer) return;
+    pausePlayback();
+    state.selectedLayer = layer.id;
+    root.dataset.activeLayer = layer.id;
+    const studyControls = q("[data-study-controls]");
+    const explorePanel = q("[data-explore-panel]");
+    if (studyControls) studyControls.hidden = layer.id !== "phrase-practice";
+    if (explorePanel) explorePanel.hidden = layer.id !== "explore";
+    if (layer.id === "phrase-practice") {
+      state.selectedMode = "follow-solo";
+      state.loop = true;
+      setSpeed(0.5);
+      if (!options.preserveTime) seekTo(currentPhrase().startMs);
+    } else if (layer.id === "play-along") {
+      state.selectedMode = hasChordChart() ? "chord-foundation" : "follow-solo";
+      state.loop = false;
+      setSpeed(0.75);
+    } else {
+      state.loop = false;
+    }
+    const loopButton = q('[data-action="loop"]');
+    if (loopButton) loopButton.setAttribute("aria-pressed", state.loop ? "true" : "false");
+    const layerCopy = {
+      "lesson-map": ["Lesson map", "Understand the complete eight-bar route", "Select a phrase or chord bar to choose where your practice begins.", "Overview only · playback is paused"],
+      "phrase-practice": ["Phrase practice", "Slow the lesson down to one move at a time", "Use Previous and Next to study the tab and fretboard without chasing a fast animation. Play is still available at 50% with the selected phrase looped.", "Step study · 50% · phrase loop on"],
+      "play-along": ["Chord play-along", "Play the harmony before following the solo", "The current move and fretboard now follow held chord grips from the backing-track chart, so the visual changes only when the harmony changes.", "Chord view · 75% · full eight bars"],
+      "explore": ["Explore", "Compare only positions shown in the lesson", "These are fixed lesson-demonstrated comparisons, not generated substitutes for Travis’s route.", "Playback paused · primary route unchanged"],
+    }[layer.id];
+    const kicker = q("[data-layer-kicker]");
+    const title = q("[data-layer-title]");
+    const description = q("[data-layer-description]");
+    const behavior = q("[data-layer-behavior]");
+    if (kicker) kicker.textContent = layerCopy[0];
+    if (title) title.textContent = layerCopy[1];
+    if (description) description.textContent = layerCopy[2];
+    if (behavior) behavior.textContent = layerCopy[3];
+    renderLayerTabs();
+    renderModes();
+    renderPhraseMap();
+    renderChordChart();
+    updateFrame();
   }
 
   function renderModes() {
@@ -112,12 +168,194 @@
       button.setAttribute("aria-pressed", mode.id === state.selectedMode ? "true" : "false");
       button.append(node("strong", "", mode.label), node("span", "", mode.description));
       button.addEventListener("click", () => {
+        if (mode.id === "chord-foundation" && hasChordChart()) {
+          setLayer("play-along", { preserveTime: true });
+          return;
+        }
         state.selectedMode = mode.id;
         renderModes();
         updateFrame();
       });
       container.append(button);
     });
+  }
+
+  function renderLessonFacts() {
+    const key = q("[data-key-label]");
+    const meter = q("[data-meter-label]");
+    const tempo = q("[data-tempo-label]");
+    const chartKey = q("[data-chart-key]");
+    if (key) key.textContent = `Key ${state.data.display.key}`;
+    if (meter) meter.textContent = state.data.display.meter;
+    if (tempo) tempo.textContent = state.data.display.tempoBpm ? `${state.data.display.tempoBpm} BPM` : "Tempo pending";
+    if (chartKey) chartKey.textContent = state.data.display.key;
+  }
+
+  function normalizeSearch(value) {
+    return String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9#]+/g, " ").trim();
+  }
+
+  function lessonMoments() {
+    if (Array.isArray(state.data.lessonMoments) && state.data.lessonMoments.length) return state.data.lessonMoments;
+    return state.data.events.map((event) => ({
+      id: `index-${event.id}`,
+      eventId: event.id,
+      lessonTimeMs: event.sourceMoment?.lessonTimeMs,
+      label: event.movement.replaceAll("-", " "),
+      summary: event.instruction,
+      searchTerms: [event.notationPitch, controlsLabel(event.tabNotes)],
+      excerpt: event.coachingCue || null,
+      quoteKind: event.coachingCue ? "verbatim_excerpt" : "technical_summary",
+    }));
+  }
+
+  function activateLessonMoment(moment) {
+    const event = state.data.events.find((item) => item.id === moment.eventId);
+    if (!event) return;
+    state.selectedPhraseId = event.phraseId;
+    state.selectedLayer = "phrase-practice";
+    setLayer("phrase-practice", { preserveTime: true });
+    seekTo(event.startMs);
+    renderPhraseMap();
+    renderTab();
+  }
+
+  function renderLessonSearch() {
+    const input = q("[data-lesson-search]");
+    const container = q("[data-lesson-search-results]");
+    const count = q("[data-search-count]");
+    if (!input || !container) return;
+    const moments = lessonMoments();
+    if (count) count.textContent = `${moments.length} indexed moments`;
+    const terms = normalizeSearch(state.searchQuery).split(" ").filter(Boolean);
+    const ranked = moments.map((moment) => {
+      const event = state.data.events.find((item) => item.id === moment.eventId);
+      const haystack = normalizeSearch([
+        moment.label,
+        moment.summary,
+        moment.excerpt,
+        ...(moment.searchTerms || []),
+        event?.instruction,
+        event?.movement,
+      ].join(" "));
+      return { moment, event, score: terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0), 0) };
+    }).filter((item) => item.event && (!terms.length || item.score === terms.length))
+      .sort((left, right) => right.score - left.score || Number(left.moment.lessonTimeMs || 0) - Number(right.moment.lessonTimeMs || 0));
+    container.replaceChildren();
+    const visible = terms.length ? ranked.slice(0, 8) : ranked.filter((item) => item.moment.featured).slice(0, 3);
+    if (!visible.length) {
+      container.append(node("p", "search-empty", terms.length
+        ? "No indexed technical moment matches every search word. Try a string number, fret, pedal, lever, slide, or phrase name."
+        : "Search by pedal, string, fret, technique, or phrase."));
+      return;
+    }
+    visible.forEach(({ moment, event }) => {
+      const button = node("button", "search-result");
+      button.type = "button";
+      const sourceLabel = Number.isFinite(Number(moment.lessonTimeMs))
+        ? `Lesson ${formatLessonMoment(moment.lessonTimeMs)}`
+        : `Bar ${event.bar}`;
+      const kind = moment.quoteKind === "verbatim_excerpt" ? "Travis · exact excerpt" : "Technical index summary";
+      button.append(
+        node("span", "search-result-meta", `${sourceLabel} · ${kind}`),
+        node("strong", "", moment.excerpt || moment.label),
+        node("span", "", moment.summary),
+        node("small", "", `Go to bar ${event.bar}, beat ${event.beat} →`),
+      );
+      button.addEventListener("click", () => activateLessonMoment(moment));
+      container.append(button);
+    });
+  }
+
+  function configureLessonSearch() {
+    const input = q("[data-lesson-search]");
+    if (!input) return;
+    input.addEventListener("input", () => {
+      state.searchQuery = input.value;
+      renderLessonSearch();
+    });
+    renderLessonSearch();
+  }
+
+  function renderChordChart() {
+    const container = q("[data-chord-chart]");
+    if (!container) return;
+    container.replaceChildren();
+    const chartAvailable = hasChordChart();
+    const status = q("[data-chord-status]");
+    if (status) status.textContent = chartAvailable
+      ? state.data.approvals.chords ? "Travis approved" : "Audio-derived · Travis review required"
+      : "Chord chart not attached";
+    for (let bar = 1; bar <= Number(state.data.display.barCount); bar += 1) {
+      const cell = node("button", "chord-bar");
+      cell.type = "button";
+      cell.dataset.bar = String(bar);
+      const chords = state.data.chordTimeline.filter((item) => Number(item.barStart) <= bar && Number(item.barEnd) >= bar);
+      const labels = chords.filter((item, index, items) => item.symbol && (index === 0 || item.symbol !== items[index - 1].symbol));
+      cell.append(node("span", "", `Bar ${bar}`));
+      if (labels.length) {
+        const symbols = node("strong", "chord-symbols");
+        labels.forEach((chord, index) => {
+          if (index) symbols.append(node("i", "", "→"));
+          const group = node("span");
+          group.append(node("b", "", chord.symbol), node("small", "", chord.nns || ""));
+          symbols.append(group);
+        });
+        cell.append(symbols);
+      } else {
+        cell.append(node("strong", "", "Review pending"));
+      }
+      const first = chords[0];
+      if (first) cell.addEventListener("click", () => {
+        state.selectedMode = chartAvailable ? "chord-foundation" : state.selectedMode;
+        setLayer("play-along", { preserveTime: true });
+        seekTo(first.startMs);
+      });
+      container.append(cell);
+    }
+  }
+
+  function updateChordChartHighlight(chord, currentBar) {
+    qa("[data-chord-chart] [data-bar]").forEach((cell) => {
+      const bar = Number(cell.dataset.bar);
+      cell.classList.toggle("is-current", bar === Number(currentBar));
+    });
+  }
+
+  function renderAlternates() {
+    const container = q("[data-alternate-grid]");
+    if (!container) return;
+    container.replaceChildren();
+    (state.data.alternatePositions || []).forEach((alternate) => {
+      const sourceEvent = state.data.events.find((item) => item.id === alternate.forEventId);
+      const card = node("article", "alternate-card");
+      card.append(
+        node("span", "", sourceEvent ? `Bar ${sourceEvent.bar} · lesson comparison` : "Lesson comparison"),
+        node("h4", "", alternate.label),
+        node("p", "", alternate.tradeoff),
+      );
+      if (sourceEvent) {
+        const button = node("button", "quiet-button", "Compare on the fretboard →");
+        button.type = "button";
+        button.addEventListener("click", () => activateLessonMoment({ eventId: sourceEvent.id }));
+        card.append(button);
+      }
+      container.append(card);
+    });
+  }
+
+  function stepMove(direction) {
+    pausePlayback();
+    const phrase = currentPhrase();
+    const events = phrase.eventIds.map((id) => state.data.events.find((item) => item.id === id)).filter(Boolean);
+    const current = eventAt(state.timeMs);
+    const index = Math.max(0, events.findIndex((item) => item.id === current.id));
+    seekTo(events[clamp(index + direction, 0, events.length - 1)].startMs);
+  }
+
+  function configureStudyControls() {
+    q('[data-action="previous-move"]')?.addEventListener("click", () => stepMove(-1));
+    q('[data-action="next-move"]')?.addEventListener("click", () => stepMove(1));
   }
 
   function renderPhraseMap() {
@@ -137,6 +375,7 @@
       button.addEventListener("click", () => {
         state.selectedPhraseId = phrase.id;
         seekTo(phrase.startMs);
+        if (state.selectedLayer !== "phrase-practice") setLayer("phrase-practice", { preserveTime: true });
         renderPhraseMap();
         renderTab();
         updateFrame();
@@ -201,6 +440,11 @@
   }
 
   function tabToken(note) {
+    if (note.technique === "pedal-hammer") {
+      const pedal = (note.toControls || note.controls || []).join("");
+      return `${note.fret}h${pedal}`;
+    }
+    if (note.technique === "sustain" && note.tieFromPrevious) return "—";
     const controls = (note.controls || []).join("");
     const destinationControls = (note.toControls || note.controls || []).join("");
     const fretPath = (note.fretPath || [note.fret, note.toFret]).filter((item) => Number.isFinite(Number(item)));
@@ -260,8 +504,12 @@
     if (!state.data) return;
     const current = eventAt(state.timeMs);
     const upcoming = nextEvent(current);
+    const chord = chordAt(state.timeMs);
+    const upcomingChord = nextChord(chord);
+    const chordFocus = hasChordChart() && (state.selectedMode === "chord-foundation" || state.selectedLayer === "play-along");
+    const visualCurrent = chordFocus ? chord : current;
+    const visualUpcoming = chordFocus ? upcomingChord : upcoming;
     const phrase = state.data.phrases.find((item) => item.id === current.phraseId) || currentPhrase();
-    const chord = chordFor(current);
     if (state.selectedPhraseId !== phrase.id && !state.loop) {
       state.selectedPhraseId = phrase.id;
       renderPhraseMap();
@@ -275,49 +523,66 @@
     if (bar) bar.textContent = `Bar ${current.bar} · beat ${current.beat}`;
     const chordLabel = q("[data-current-chord]");
     if (chordLabel) {
-      chordLabel.textContent = chord && chord.verified && chord.symbol
-        ? `${chord.symbol}${chord.nns ? ` · ${chord.nns}` : ""}`
+      chordLabel.textContent = chord?.symbol
+        ? `${chord.symbol}${chord.nns ? ` · ${chord.nns}` : ""}${chord.verified ? "" : " · review"}`
         : "Chord pending Travis review";
     }
     const currentInstruction = q("[data-current-instruction]");
     const sourceMoment = q("[data-source-moment]");
     const technique = q("[data-current-technique]");
     const nextInstruction = q("[data-next-instruction]");
-    const chordModeBlocked = state.selectedMode === "chord-foundation" && !state.data.approvals.chords;
+    const chordModeBlocked = state.selectedMode === "chord-foundation" && !hasChordChart();
     if (currentInstruction) currentInstruction.textContent = chordModeBlocked
-      ? "Reviewed chord chart not attached yet."
-      : (current.coachingCue || "Transcript excerpt not attached to this layout proof.");
+      ? "Chord chart not attached yet."
+      : chordFocus ? chord.instruction : (current.coachingCue || current.instruction);
     if (sourceMoment) {
-      const source = !chordModeBlocked && current.coachingCue ? current.sourceMoment : null;
-      sourceMoment.hidden = !source;
-      sourceMoment.textContent = source
-        ? `Travis · lesson ${formatLessonMoment(source.lessonTimeMs)} · verbatim excerpt`
-        : "";
+      const source = !chordFocus && current.coachingCue ? current.sourceMoment : null;
+      sourceMoment.hidden = false;
+      sourceMoment.textContent = chordFocus
+        ? "Backing-track chord analysis · Travis review required"
+        : source
+          ? `Travis · lesson ${formatLessonMoment(source.lessonTimeMs)} · exact excerpt`
+          : "Authored technical move from the lesson · not a direct quote";
     }
     if (technique) technique.textContent = chordModeBlocked
       ? "This guardrail prevents the draft from showing a plausible-looking but wrong chord."
-      : `Literal tab: ${current.instruction} · ${current.notationPitch} · ${controlsLabel(current.tabNotes)}`;
+      : chordFocus
+        ? `Chord grip: ${chord.gripLabel || controlsLabel(chord.tabNotes)}. The visual holds until the harmony changes.`
+        : `Literal tab: ${current.instruction} · ${current.notationPitch} · ${controlsLabel(current.tabNotes)}`;
     if (nextInstruction) nextInstruction.textContent = chordModeBlocked
       ? "Travis approval unlocks this mode."
-      : (upcoming.coachingCue || "Transcript excerpt not attached to this layout proof.");
+      : chordFocus
+        ? upcomingChord.id === chord.id ? `Hold ${chord.symbol} through the end.` : upcomingChord.instruction
+        : (upcoming.coachingCue || upcoming.instruction);
     const position = q("[data-position-label]");
-    if (position) position.textContent = `Fret ${current.tabNotes[0].fret} · ${controlsLabel(current.tabNotes)}`;
+    if (position) {
+      const first = visualCurrent.tabNotes[0];
+      const pedalHammer = !chordFocus && first.technique === "pedal-hammer";
+      position.textContent = pedalHammer
+        ? `Open fret · A-pedal hammer · bar stays put`
+        : chordFocus
+          ? (chord.gripLabel || `${Number(first.fret) === 0 ? "Open fret" : `Fret ${first.fret}`} · ${controlsLabel(chord.tabNotes)}`)
+          : `${Number(first.fret) === 0 ? "Open fret" : `Fret ${first.fret}`} · ${controlsLabel(current.tabNotes)}`;
+    }
     const phraseTitle = q("[data-phrase-title]");
     const phraseNote = q("[data-phrase-note]");
     const phraseBars = q("[data-phrase-bars]");
     const phraseMove = q("[data-phrase-move]");
     const status = q("[data-review-status]");
-    if (phraseTitle) phraseTitle.textContent = phrase.label;
-    if (phraseNote) phraseNote.textContent = phrase.lessonNote;
-    if (phraseBars) phraseBars.textContent = `${phrase.barStart}–${phrase.barEnd}`;
-    if (phraseMove) phraseMove.textContent = current.movement.replaceAll("-", " ");
+    if (phraseTitle) phraseTitle.textContent = chordFocus ? `${chord.symbol} chord` : phrase.label;
+    if (phraseNote) phraseNote.textContent = chordFocus
+      ? (chord.practiceNote || `Hold ${chord.symbol} until the next authored chord boundary.`)
+      : phrase.lessonNote;
+    if (phraseBars) phraseBars.textContent = chordFocus ? `${chord.barStart}–${chord.barEnd}` : `${phrase.barStart}–${phrase.barEnd}`;
+    if (phraseMove) phraseMove.textContent = chordFocus ? chord.movement.replaceAll("-", " ") : current.movement.replaceAll("-", " ");
     if (status) status.textContent = state.data.approvals.musical
       ? "Travis approved"
       : state.data.contentStatus === "transcribed_review_required"
         ? "Transcribed · Travis review required"
         : "Draft · review required";
-    renderFretboard(current, upcoming);
+    renderFretboard(visualCurrent, visualUpcoming);
     updateTabHighlight(current, upcoming);
+    updateChordChartHighlight(chord, current.bar);
   }
 
   function seekTo(milliseconds) {
@@ -419,11 +684,7 @@
     }
     const play = q('[data-action="play"]');
     if (play) play.addEventListener("click", () => state.playing ? pausePlayback() : playPlayback());
-    qa("[data-speed]").forEach((button) => button.addEventListener("click", () => {
-      state.speed = Number(button.dataset.speed);
-      qa("[data-speed]").forEach((item) => item.classList.toggle("is-active", item === button));
-      if (audio && audio.src) audio.playbackRate = state.speed;
-    }));
+    qa("[data-speed]").forEach((button) => button.addEventListener("click", () => setSpeed(button.dataset.speed)));
     const loop = q('[data-action="loop"]');
     if (loop) loop.addEventListener("click", () => {
       state.loop = !state.loop;
@@ -474,6 +735,20 @@
     if (!state.data.approvals.printLayout) {
       root.append(node("div", "print-warning", "DRAFT LAYOUT PROOF - NOT MUSICAL OR PRINT APPROVED"));
     }
+    if (hasChordChart()) {
+      const chart = node("section", "print-chord-chart");
+      chart.append(node("h2", "", `Chord chart · Key ${state.data.display.key}`));
+      const bars = node("div", "print-chord-bars");
+      for (let bar = 1; bar <= Number(state.data.display.barCount); bar += 1) {
+        const chords = state.data.chordTimeline.filter((item) => Number(item.barStart) <= bar && Number(item.barEnd) >= bar && item.symbol);
+        const labels = chords.filter((item, index, items) => index === 0 || item.symbol !== items[index - 1].symbol);
+        const cell = node("div", "");
+        cell.append(node("span", "", `Bar ${bar}`), node("strong", "", labels.map((item) => item.symbol).join(" → ")));
+        bars.append(cell);
+      }
+      chart.append(bars, node("p", "", state.data.approvals.chords ? "Travis approved" : "Audio-derived review chart · Travis approval required"));
+      root.append(chart);
+    }
     state.data.phrases.forEach((phrase) => {
       const section = node("section", "print-phrase");
       section.append(node("h2", "", `Bars ${phrase.barStart}–${phrase.barEnd} · ${phrase.label}`), node("p", "", phrase.lessonNote));
@@ -482,7 +757,7 @@
       root.append(section);
     });
     const controls = state.data.copedent.controls.map((item) => `${item.code} = ${item.label} (strings ${item.strings.join(", ")})`).join(" · ");
-    root.append(node("footer", "print-legend", `${controls}. ${state.data.print.footer}. Source copedent: ${state.data.copedent.label}.`));
+    root.append(node("footer", "print-legend", `${controls}. 0hA = hold the open fret and press A without repicking; the bar does not move. ${state.data.print.footer}. Source copedent: ${state.data.copedent.label}.`));
     const browserPrint = document.querySelector('[data-action="browser-print"]');
     if (browserPrint) browserPrint.addEventListener("click", () => window.print());
     const pdfLink = document.querySelector("[data-pdf-link]");
@@ -509,15 +784,16 @@
       return;
     }
     renderPreviewMarker();
-    renderLayerTabs();
-    renderModes();
-    renderPhraseMap();
-    renderTab();
     configureTransport();
     configureFeedback();
+    configureStudyControls();
+    configureLessonSearch();
+    renderLessonFacts();
+    renderAlternates();
+    renderTab();
     const attribution = q("[data-source-attribution]");
     if (attribution) attribution.textContent = data.lesson.sourceAttribution;
-    updateFrame();
+    setLayer(data.display.defaultLayer, { preserveTime: true });
   }
 
   initialize().catch((error) => {

@@ -10,6 +10,11 @@ approved musical transcription. Unreviewed chord symbols are withheld instead
 of guessed, every draft event is marked `musicalVerified: false`, and the UI
 and PDF carry a review-required banner.
 
+The ignored owner-review artifact may additionally carry a timestamped
+technical lesson index and an audio-derived chord chart. Those labels remain
+visibly review-required until Travis approves them; they are not promoted into
+the tracked draft or a release artifact by browser code.
+
 ## Presentations
 
 - `/howdy` is the expanded Travis Toy Tutorials practice workspace.
@@ -24,9 +29,11 @@ and PDF carry a review-required banner.
   Pages serves with status 404.
 
 All presentations load one `lesson_companion_v1` JSON artifact. Browser logic
-is limited to an authored clock or same-origin audio, speed, phrase looping,
-seeking, event highlighting, fretboard and tab drawing, display mode, print,
-and feedback-context assembly. There is no generative or retrieval client.
+is limited to deterministic indexed lesson search, authored layer switching,
+an authored clock or same-origin audio, speed, phrase looping, step-by-step
+move study, seeking, chord/solo state highlighting, fretboard and tab drawing,
+print, and feedback-context assembly. There is no generative or retrieval
+client.
 
 ## Local draft
 
@@ -69,12 +76,16 @@ without turning on release mode:
 .venv/bin/python scripts/package_travis_companion.py \
   --output tmp/travis-preview-draft \
   --companion ~/.steel-rag/travis-preview/howdy/howdy.transcribed-review.json \
-  --draft-audio ~/.steel-rag/travis-preview/howdy/howdy-backing-solo-preview.mp3
+  --draft-audio ~/.steel-rag/travis-preview/howdy/howdy-backing-solo-preview.mp3 \
+  --draft-pdf output/pdf/Howdy-transcript-backed-review.pdf
 ```
 
 The companion JSON must contain that file's exact SHA-256. The packager copies
-the audio only into the ignored local bundle; Git is never an input or output
-for the private media.
+the audio and rendered review PDF only into the ignored local bundle; Git is
+never an input or output for the private media. The current owner-review UI
+keeps the lesson key visible, searches seven timestamped technical moments,
+uses `0hA` for an open-position A-pedal hammer, and provides a separate
+chord-centered play-along whose grips change only at analyzed chord boundaries.
 
 ## Approved private inputs
 

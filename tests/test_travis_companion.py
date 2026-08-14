@@ -42,6 +42,11 @@ def approved_release_data(*, review_phase: str = "owner_only", tester_count: int
     for chord in data["chordTimeline"]:
         chord["verified"] = True
         chord["symbol"] = "C"
+        chord["tabNotes"] = [
+            {"string": 3, "fret": 8, "controls": [], "technique": "hold"},
+            {"string": 4, "fret": 8, "controls": [], "technique": "hold"},
+            {"string": 5, "fret": 8, "controls": [], "technique": "hold"},
+        ]
     return data
 
 
@@ -235,6 +240,27 @@ def test_browser_runtime_has_one_same_origin_fetch_and_no_dynamic_clients() -> N
     lowered = script.lower()
     for endpoint in ("/api/answer", "/api/search", "ollama", "chroma", "openai.com/v1", "anthropic.com"):
         assert endpoint not in lowered
+
+
+def test_companion_has_deterministic_search_layers_chords_and_step_study() -> None:
+    script = (SITE / "companion.js").read_text(encoding="utf-8")
+    markup = (ROOT / "partner_companions" / "travis_howdy" / "templates" / "companion.fragment.html").read_text(
+        encoding="utf-8"
+    )
+    assert "function renderLessonSearch()" in script
+    assert "function setLayer(" in script
+    assert "function renderChordChart()" in script
+    assert "function stepMove(" in script
+    assert 'return `${note.fret}h${pedal}`' in script
+    for selector in (
+        "data-lesson-search",
+        "data-layer-title",
+        "data-chord-chart",
+        "data-key-label",
+        "data-study-controls",
+        "data-explore-panel",
+    ):
+        assert selector in markup
 
 
 def test_release_validation_requires_every_human_signoff() -> None:

@@ -216,6 +216,19 @@ def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
             raise CompanionReleaseError(f"Phrase {phrase.get('id')} start does not match its events.")
         if int(phrase.get("endMs", -1)) != phrase_events[-1]["endMs"]:
             raise CompanionReleaseError(f"Phrase {phrase.get('id')} end does not match its events.")
+    for moment in data.get("lessonMoments") or []:
+        if moment.get("eventId") not in event_ids or int(moment.get("lessonTimeMs", -1)) < 0:
+            raise CompanionReleaseError(f"Lesson moment {moment.get('id')} must point to a timestamped event.")
+        if moment.get("quoteKind") == "verbatim_excerpt":
+            source_event = next(event for event in events if event["id"] == moment["eventId"])
+            if not moment.get("excerpt") or moment.get("excerpt") != source_event.get("coachingCue"):
+                raise CompanionReleaseError(
+                    f"Lesson moment {moment.get('id')} must reuse the event's sourced verbatim excerpt."
+                )
+        elif moment.get("excerpt"):
+            raise CompanionReleaseError(
+                f"Lesson moment {moment.get('id')} cannot label a technical summary as an excerpt."
+            )
     for chord in chords:
         covered = [
             event
@@ -227,6 +240,10 @@ def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
         expected = [event for event in events if event["chordEventId"] == chord["id"]]
         if len(covered) != len(expected) or not expected:
             raise CompanionReleaseError(f"Chord boundary {chord.get('id')} is not aligned to its events within 50 ms.")
+        if chord.get("symbol") and not chord.get("tabNotes"):
+            raise CompanionReleaseError(f"Labeled chord {chord.get('id')} requires a fixed fretboard grip.")
+    if data.get("sourceEvidence") and data.get("sourceEvidence", {}).get("rawTranscriptIncluded") is not False:
+        raise CompanionReleaseError("The deployable artifact must state that the raw transcript is excluded.")
     if data.get("print", {}).get("tabStrings") != 10:
         raise CompanionReleaseError("The print artifact must use ten-string E9 tab.")
     if not release:
@@ -332,7 +349,11 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
         page.setFont("Helvetica", 7)
         page.drawRightString(width - 42, height - 28, _ascii(data["revision"]))
         page.drawRightString(width - 42, height - 40, f"Page {page_number} of {page_count}")
-        page.drawRightString(width - 42, height - 52, _ascii(data["display"]["meter"]))
+        tempo = data["display"].get("tempoBpm")
+        musical_context = f"Key {data['display']['key']} | {data['display']['meter']}"
+        if tempo:
+            musical_context += f" | {tempo} BPM"
+        page.drawRightString(width - 42, height - 52, _ascii(musical_context))
         if not data.get("approvals", {}).get("printLayout"):
             page.saveState()
             page.setFillColor(colors.HexColor("#fff0ed"))
@@ -341,6 +362,39 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
             page.setFont("Helvetica-Bold", 7)
             page.drawCentredString(width / 2, height - 94, "DRAFT LAYOUT PROOF - NOT MUSICAL OR PRINT APPROVED")
             page.restoreState()
+
+    def draw_chord_chart(top: float) -> None:
+        left = 42
+        right = width - 42
+        bar_width = (right - left) / int(data["display"]["barCount"])
+        page.setFillColor(teal)
+        page.setFont("Helvetica-Bold", 8)
+        page.drawString(left, top, _ascii(f"CHORD CHART - KEY {data['display']['key']}"))
+        page.setFillColor(coral if not data.get("approvals", {}).get("chords") else teal)
+        page.setFont("Helvetica-Bold", 5.5)
+        chart_status = "AUDIO-DERIVED - TRAVIS REVIEW REQUIRED" if not data.get("approvals", {}).get("chords") else "TRAVIS APPROVED"
+        page.drawRightString(right, top, chart_status)
+        box_top = top - 8
+        box_height = 34
+        for bar in range(1, int(data["display"]["barCount"]) + 1):
+            x = left + (bar - 1) * bar_width
+            page.setStrokeColor(colors.HexColor("#77848a"))
+            page.setFillColor(colors.white)
+            page.rect(x, box_top - box_height, bar_width, box_height, stroke=1, fill=1)
+            page.setFillColor(gray)
+            page.setFont("Helvetica", 5)
+            page.drawString(x + 4, box_top - 8, f"Bar {bar}")
+            chords = [
+                chord for chord in data["chordTimeline"]
+                if chord.get("symbol") and int(chord["barStart"]) <= bar <= int(chord["barEnd"])
+            ]
+            labels = [
+                chord["symbol"] for index, chord in enumerate(chords)
+                if index == 0 or chord["symbol"] != chords[index - 1]["symbol"]
+            ]
+            page.setFillColor(teal)
+            page.setFont("Helvetica-Bold", 9)
+            page.drawCentredString(x + bar_width / 2, box_top - 25, _ascii(" > ".join(labels) or "PENDING"))
 
     def draw_phrase(phrase: Mapping[str, Any], top: float) -> None:
         events = [event_by_id[item] for item in phrase["eventIds"]]
@@ -374,7 +428,9 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
             chord_id = event.get("chordEventId")
             if chord_id != previous_chord_id:
                 chord = chord_by_id.get(chord_id, {})
-                chord_label = chord.get("symbol") if chord.get("verified") else "CHORD REVIEW PENDING"
+                chord_label = chord.get("symbol") or "CHORD REVIEW PENDING"
+                if chord.get("symbol") and not chord.get("verified"):
+                    chord_label += "*"
                 page.setFillColor(teal if chord.get("verified") else coral)
                 page.setFont("Helvetica-Bold", 5.5)
                 page.drawCentredString(x, staff_top + 22, _ascii(chord_label))
@@ -415,14 +471,19 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
             x = left + 40 + column_width * (index + 0.5)
             for note in event["tabNotes"]:
                 y = tab_top - (int(note["string"]) - 1) * tab_gap
-                controls = "".join(note.get("controls") or [])
-                destination_controls = "".join(note.get("toControls") or note.get("controls") or [])
-                fret_path = note.get("fretPath") or [note["fret"]]
-                path_tail = [str(fret) for fret in fret_path[1:]]
-                if not path_tail and note.get("toFret") is not None:
-                    path_tail = [str(note["toFret"])]
-                destination = (">" + ">".join(path_tail) + destination_controls) if path_tail else ""
-                token = f"{note['fret']}{controls}{destination}"
+                if note.get("technique") == "pedal-hammer":
+                    token = f"{note['fret']}h{''.join(note.get('toControls') or note.get('controls') or [])}"
+                elif note.get("technique") == "sustain" and note.get("tieFromPrevious"):
+                    token = "-"
+                else:
+                    controls = "".join(note.get("controls") or [])
+                    destination_controls = "".join(note.get("toControls") or note.get("controls") or [])
+                    fret_path = note.get("fretPath") or [note["fret"]]
+                    path_tail = [str(fret) for fret in fret_path[1:]]
+                    if not path_tail and note.get("toFret") is not None:
+                        path_tail = [str(note["toFret"])]
+                    destination = (">" + ">".join(path_tail) + destination_controls) if path_tail else ""
+                    token = f"{note['fret']}{controls}{destination}"
                 page.setFillColor(colors.white)
                 token_width = max(11, stringWidth(token, "Helvetica-Bold", 6.5) + 4)
                 page.rect(x - token_width / 2, y - 4, token_width, 8, stroke=0, fill=1)
@@ -435,9 +496,12 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
 
     for page_index in range(page_count):
         draw_page_header(page_index + 1)
+        if page_index == 0 and any(chord.get("symbol") for chord in data["chordTimeline"]):
+            draw_chord_chart(height - 113)
         page_phrases = phrases[page_index * phrases_per_page : (page_index + 1) * phrases_per_page]
         for phrase_index, phrase in enumerate(page_phrases):
-            draw_phrase(phrase, height - 126 - phrase_index * 300)
+            first_page_chart_offset = 58 if page_index == 0 and any(chord.get("symbol") for chord in data["chordTimeline"]) else 0
+            draw_phrase(phrase, height - 126 - first_page_chart_offset - phrase_index * 300)
         page.setStrokeColor(light)
         page.line(42, 39, width - 42, 39)
         page.setFillColor(gray)
@@ -447,8 +511,8 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
             for item in data["copedent"]["controls"]
         )
         page.drawString(42, 27, _ascii(controls)[:112])
-        page.drawString(42, 17, _ascii(f"Source copedent: {data['copedent']['label']}")[:78])
-        page.drawRightString(width - 42, 17, _ascii(data["print"]["footer"])[:78])
+        page.drawString(42, 17, "0hA=pedal hammer; bar stays at open fret. Source E9 copedent: review pending.")
+        page.drawRightString(width - 42, 17, "Member-use review draft - Travis Toy Tutorials")
         page.showPage()
     page.save()
     return output_path
