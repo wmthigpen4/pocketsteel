@@ -263,6 +263,25 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         assert selector in markup
 
 
+def test_embed_matches_teachable_typeset_and_preserves_discussion_space() -> None:
+    template = (ROOT / "partner_companions" / "travis_howdy" / "templates" / "embed.html").read_text(
+        encoding="utf-8"
+    )
+    styles = (SITE / "companion.css").read_text(encoding="utf-8")
+    assert 'data-demo-discussion' in template
+    assert 'Member discussion stays in Teachable' in template
+    assert 'aria-label="Comment box preview"' in template
+    assert 'disabled></textarea>' in template
+    assert template.index('id="companion"') < template.index('data-demo-discussion')
+    for exact_typeset in (
+        "font-size: 22.784px",
+        "font-weight: 600; line-height: 34.176px",
+        "font-size: 18px; font-weight: 600; line-height: 19.8px",
+        "font-size: 15px; font-weight: 400; line-height: 21.4286px",
+    ):
+        assert exact_typeset in styles
+
+
 def test_release_validation_requires_every_human_signoff() -> None:
     data = approved_release_data()
     validate_companion(data, release=True)

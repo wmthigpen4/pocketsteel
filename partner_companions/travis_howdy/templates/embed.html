@@ -26,6 +26,24 @@
     <section id="companion" class="companion-shell compact-shell" data-companion-url="{{COMPANION_URL}}" data-pdf-url="{{PDF_URL}}">
       {{COMPANION_MARKUP}}
     </section>
+    <section class="demo-discussion" data-demo-discussion aria-labelledby="demo-discussion-title">
+      <div class="demo-discussion-label" id="demo-discussion-title">Discussion</div>
+      <div class="demo-discussion-content">
+        <h2>Post a comment</h2>
+        <div class="demo-comment-layout">
+          <div class="demo-comment-avatar" aria-hidden="true">M</div>
+          <div class="demo-comment-composer">
+            <strong>Member discussion stays in Teachable</strong>
+            <textarea aria-label="Comment box preview" placeholder="Leave a comment..." disabled></textarea>
+            <div class="demo-comment-actions" aria-hidden="true">
+              <span>Add Image</span>
+              <button type="button" disabled>Post Comment</button>
+            </div>
+          </div>
+        </div>
+        <p class="demo-discussion-note">Reserved for the lesson’s existing comments and replies. The companion does not collect, replace, or move member discussion.</p>
+      </div>
+    </section>
   </main>
   <script src="{{SCRIPT_URL}}" defer></script>
 </body>
