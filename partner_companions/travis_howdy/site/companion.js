@@ -87,7 +87,11 @@
     const marker = q("[data-preview-marker]");
     if (!marker) return;
     const sha = String(state.data.buildSha || "local").slice(0, 12);
-    marker.textContent = `${state.data.release.previewLabel} · ${state.data.revision} · ${sha}`;
+    marker.textContent = presentation === "embed-demo"
+      ? `Owner preview · ${state.data.revision} · ${sha}`
+      : `${state.data.release.previewLabel} · ${state.data.revision} · ${sha}`;
+    const title = q("[data-companion-title]");
+    if (title && presentation === "embed-demo") title.textContent = "“Howdy” practice companion";
   }
 
   function renderLayerTabs() {
@@ -99,7 +103,16 @@
       button.type = "button";
       button.dataset.layerId = layer.id;
       button.setAttribute("aria-pressed", layer.id === state.selectedLayer ? "true" : "false");
-      button.append(node("strong", "", layer.label), node("span", "", layer.description));
+      const compactLabels = {
+        "lesson-map": "Map",
+        "phrase-practice": "Practice",
+        "play-along": "Chords",
+        "explore": "Explore",
+      };
+      button.append(
+        node("strong", "", presentation === "embed-demo" ? compactLabels[layer.id] : layer.label),
+        node("span", "", layer.description),
+      );
       button.addEventListener("click", () => setLayer(layer.id));
       container.append(button);
     });
@@ -242,6 +255,7 @@
     }).filter((item) => item.event && (!terms.length || item.score === terms.length))
       .sort((left, right) => right.score - left.score || Number(left.moment.lessonTimeMs || 0) - Number(right.moment.lessonTimeMs || 0));
     container.replaceChildren();
+    if (!terms.length && presentation === "embed-demo") return;
     const visible = terms.length ? ranked.slice(0, 8) : ranked.filter((item) => item.moment.featured).slice(0, 3);
     if (!visible.length) {
       container.append(node("p", "search-empty", terms.length
@@ -784,6 +798,8 @@
       return;
     }
     renderPreviewMarker();
+    const searchPanel = q("[data-lesson-search-panel]");
+    if (searchPanel && presentation === "embed-demo") searchPanel.open = false;
     configureTransport();
     configureFeedback();
     configureStudyControls();

@@ -261,6 +261,20 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         "data-explore-panel",
     ):
         assert selector in markup
+    assert 'presentation === "embed-demo" ? compactLabels[layer.id] : layer.label' in script
+    assert 'if (!terms.length && presentation === "embed-demo") return;' in script
+
+
+def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
+    markup = (ROOT / "partner_companions" / "travis_howdy" / "templates" / "companion.fragment.html").read_text(
+        encoding="utf-8"
+    )
+    styles = (SITE / "companion.css").read_text(encoding="utf-8")
+    assert 'data-lesson-search-panel' in markup
+    assert '<summary class="search-summary">' in markup
+    assert '[data-active-layer]:not([data-active-layer="lesson-map"]) .lesson-search-card { display: none; }' in styles
+    assert '[data-active-layer="phrase-practice"] .lesson-map { display: none; }' in styles
+    assert '.compact-shell .layer-context, .compact-shell .mode-switcher, .compact-shell .source-card { display: none; }' in styles
 
 
 def test_embed_matches_teachable_typeset_and_preserves_discussion_space() -> None:

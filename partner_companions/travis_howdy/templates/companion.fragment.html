@@ -2,7 +2,7 @@
 <header class="companion-heading">
   <div>
     <p class="eyebrow">Practice workspace</p>
-    <h2>Learn the phrase. Keep the feel.</h2>
+    <h2 data-companion-title>Learn the phrase. Keep the feel.</h2>
     <p class="companion-intro">Everything on screen comes from one authored event timeline - playback, tab, fretboard, chords, and print.</p>
     <div class="lesson-facts" aria-label="Lesson details">
       <span data-key-label>Key —</span>
@@ -25,21 +25,27 @@
   </div>
   <p class="layer-behavior" data-layer-behavior></p>
 </section>
-<section class="lesson-search-card" aria-labelledby="lesson-search-title">
-  <div class="search-heading">
-    <div>
-      <p class="section-kicker">Transcript-backed lesson search</p>
-      <h3 id="lesson-search-title">Find the moment Travis explains a move</h3>
+<details class="lesson-search-card" data-lesson-search-panel open>
+  <summary class="search-summary">
+    <strong>Search lesson moments</strong>
+    <span>Exact quotes + technical index</span>
+  </summary>
+  <div class="search-body">
+    <div class="search-heading">
+      <div>
+        <p class="section-kicker">Transcript-backed lesson search</p>
+        <h3 id="lesson-search-title">Find the moment Travis explains a move</h3>
+      </div>
+      <span data-search-count>Loading index…</span>
     </div>
-    <span data-search-count>Loading index…</span>
+    <label class="search-field">
+      <span class="visually-hidden">Search the lesson transcript index</span>
+      <input type="search" data-lesson-search placeholder="Try “hammer”, “B pedal”, “double stop”, or “release A”" autocomplete="off">
+    </label>
+    <p class="search-guardrail">Deterministic search over timestamped technical moments. Short excerpts are shown only when they are Travis’s exact words; the raw transcript is not shipped.</p>
+    <div class="lesson-search-results" data-lesson-search-results></div>
   </div>
-  <label class="search-field">
-    <span class="visually-hidden">Search the lesson transcript index</span>
-    <input type="search" data-lesson-search placeholder="Try “hammer”, “B pedal”, “double stop”, or “release A”" autocomplete="off">
-  </label>
-  <p class="search-guardrail">Deterministic search over timestamped technical moments. Short excerpts are shown only when they are Travis’s exact words; the raw transcript is not shipped.</p>
-  <div class="lesson-search-results" data-lesson-search-results></div>
-</section>
+</details>
 <section class="lesson-map" aria-label="Phrase map">
   <div class="section-heading-row">
     <div><p class="section-kicker">Song map</p><h3>The taught route, phrase by phrase</h3></div>
