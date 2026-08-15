@@ -157,9 +157,10 @@
         throw new Error("The full-song chord timeline must cover the complete song scope.");
       }
     }
-    if (!Array.isArray(data.relatedLessons) || data.relatedLessons.length < 2 || data.relatedLessons.length > 3) {
+    if (!Array.isArray(data.relatedLessons) || data.relatedLessons.length > 6) {
       throw new Error("The related video cards are incomplete.");
     }
+    const relatedCoverage = new Map(data.phrases.map((phrase) => [phrase.id, 0]));
     data.relatedLessons.forEach((lesson) => {
       if (!/^https:\/\/travis-toy-tutorials\.teachable\.com\/courses\/[^\s]+\/lectures\/\d+$/.test(lesson.url)) {
         throw new Error(`Invalid related lesson URL for ${lesson.id}.`);
@@ -167,7 +168,28 @@
       if (lesson.thumbnailUrl && new URL(lesson.thumbnailUrl, window.location.origin).origin !== window.location.origin) {
         throw new Error(`Related lesson thumbnail must be same-origin for ${lesson.id}.`);
       }
+      if (!Array.isArray(lesson.matches) || !lesson.matches.length) {
+        throw new Error(`Related lesson ${lesson.id} has no phrase match.`);
+      }
+      lesson.matches.forEach((match) => {
+        if (
+          !relatedCoverage.has(match.phraseId)
+          || !String(match.reason || "").trim()
+          || !String(match.conceptId || "").trim()
+          || !String(match.relation || "").trim()
+          || !Array.isArray(match.sourceEventIds)
+          || !match.sourceEventIds.length
+          || match.sourceEventIds.some((eventId) => !data.phrases
+            .find((phrase) => phrase.id === match.phraseId)?.eventIds.includes(eventId))
+        ) {
+          throw new Error(`Related lesson ${lesson.id} has an invalid phrase match.`);
+        }
+        relatedCoverage.set(match.phraseId, relatedCoverage.get(match.phraseId) + 1);
+      });
     });
+    if (data.relatedLessons.length && [...relatedCoverage.values()].some((count) => count < 1 || count > 2)) {
+      throw new Error("Each phrase must have one or two specific related-video matches.");
+    }
   }
 
   function renderPreviewMarker() {
@@ -258,6 +280,7 @@
     renderPhraseMap();
     renderChordChart();
     renderSongTimeline();
+    renderRelatedLessons();
     updateFrame();
   }
 
@@ -683,7 +706,18 @@
     const container = q("[data-related-lessons]");
     if (!container) return;
     container.replaceChildren();
-    state.data.relatedLessons.forEach((lesson) => {
+    const section = container.closest(".related-videos");
+    const phrase = currentPhrase();
+    const suggestions = state.data.relatedLessons.flatMap((lesson) => (
+      lesson.matches
+        .filter((match) => match.phraseId === phrase.id)
+        .map((match) => ({ lesson, match }))
+    ));
+    if (section) section.hidden = state.selectedLayer !== "phrase-practice" || !suggestions.length;
+    const heading = q("[data-related-heading]");
+    if (heading) heading.textContent = `Related to “${phrase.label}”`;
+    container.classList.toggle("is-single", suggestions.length === 1);
+    suggestions.forEach(({ lesson, match }) => {
       const link = node("a", "related-video-card");
       link.href = lesson.url;
       link.target = "_blank";
@@ -705,7 +739,8 @@
       copy.append(
         node("span", "related-label", lesson.label),
         node("strong", "", lesson.title),
-        node("span", "related-reason", lesson.reason),
+        node("span", "related-why", "Why this lesson"),
+        node("span", "related-reason", match.reason),
         node("span", "related-open", "Open video ↗"),
       );
       link.append(visual, copy);
@@ -747,6 +782,7 @@
         if (state.selectedLayer !== "phrase-practice") setLayer("phrase-practice", { preserveTime: true });
         renderPhraseMap();
         renderTab();
+        renderRelatedLessons();
         updateFrame();
       });
       container.append(button);
@@ -807,6 +843,10 @@
   }
 
   function tabToken(note) {
+    if (note.technique === "bar-hammer") {
+      const destination = note.toFret ?? (note.fretPath || [])[1];
+      return `${note.fret}h${destination}`;
+    }
     if (note.technique === "pedal-hammer") {
       const pedal = (note.toControls || note.controls || []).join("");
       return `${note.fret}h${pedal}`;
@@ -854,10 +894,21 @@
     if (!container) return;
     const phrase = currentPhrase();
     const phraseIds = new Set(phrase.eventIds);
-    const events = presentation === "embed-demo"
-      ? state.data.events.filter((event) => phraseIds.has(event.id))
-      : state.data.events;
-    container.replaceChildren(buildTabTable(events, "tab-table"));
+    if (presentation === "embed-demo") {
+      const events = state.data.events.filter((event) => phraseIds.has(event.id));
+      container.replaceChildren(buildTabTable(events, "tab-table"));
+      return;
+    }
+    const systems = state.data.phrases.map((systemPhrase) => {
+      const system = node("section", "tab-system");
+      system.append(node("h4", "", `Bars ${systemPhrase.barStart}–${systemPhrase.barEnd} · ${systemPhrase.label}`));
+      const scroll = node("div", "tab-system-scroll");
+      const eventIds = new Set(systemPhrase.eventIds);
+      scroll.append(buildTabTable(state.data.events.filter((event) => eventIds.has(event.id)), "tab-table"));
+      system.append(scroll);
+      return system;
+    });
+    container.replaceChildren(...systems);
   }
 
   function updateTabHighlight(current, upcoming) {
@@ -886,6 +937,7 @@
       state.selectedPhraseId = phrase.id;
       renderPhraseMap();
       if (presentation === "embed-demo") renderTab();
+      renderRelatedLessons();
     }
     const seek = q("[data-seek]");
     if (seek) seek.value = String(Math.round(state.timeMs));
@@ -912,7 +964,7 @@
       ? "Play the complete backing track."
       : chordModeBlocked
       ? "Chord chart not attached yet."
-      : chordFocus ? chord.instruction : (current.coachingCue || current.instruction);
+      : chordFocus ? chord.instruction : current.instruction;
     if (sourceMoment) {
       const source = taughtSoloActive && !chordFocus && current.coachingCue ? current.sourceMoment : null;
       sourceMoment.hidden = !source;
@@ -921,7 +973,7 @@
         : chordFocus
         ? ""
         : source
-          ? `Travis · ${formatLessonMoment(source.lessonTimeMs)}`
+          ? `Travis at ${formatLessonMoment(source.lessonTimeMs)}: “${current.coachingCue}”`
           : "";
     }
     if (technique) technique.textContent = !taughtSoloActive
@@ -937,12 +989,15 @@
       ? "—"
       : chordFocus
         ? upcomingChord.id === chord.id ? `Hold ${chord.symbol} through the end.` : upcomingChord.instruction
-        : (upcoming.coachingCue || upcoming.instruction);
+        : upcoming.instruction;
     const position = q("[data-position-label]");
     if (position) {
       const first = visualCurrent.tabNotes[0];
       const pedalHammer = !chordFocus && first.technique === "pedal-hammer";
-      position.textContent = pedalHammer
+      const barHammer = !chordFocus && first.technique === "bar-hammer";
+      position.textContent = barHammer
+        ? `Open fret → fret ${first.toFret ?? first.fretPath?.[1]} · bar hammer`
+        : pedalHammer
         ? `Open fret · A-pedal hammer · bar stays put`
         : chordFocus
           ? (chord.gripLabel || `${Number(first.fret) === 0 ? "Open fret" : `Fret ${first.fret}`} · ${controlsLabel(chord.tabNotes)}`)
@@ -1147,7 +1202,11 @@
       root.append(section);
     });
     const controls = state.data.copedent.controls.map((item) => `${item.code} = ${item.label} (strings ${item.strings.join(", ")})`).join(" · ");
-    root.append(node("footer", "print-legend", `${controls}. 0hA = hold the open fret and press A without repicking; the bar does not move. ${state.data.print.footer}. Source copedent: ${state.data.copedent.label}.`));
+    const hasBarHammer = state.data.events.some((event) => event.tabNotes.some((note) => note.technique === "bar-hammer"));
+    const hammerLegend = hasBarHammer
+      ? "0h1 = hammer the bar from open to fret 1 without repicking."
+      : "0hA = hold the open fret and press A without repicking; the bar does not move.";
+    root.append(node("footer", "print-legend", `${controls}. ${hammerLegend} ${state.data.print.footer}. Source copedent: ${state.data.copedent.label}.`));
     const browserPrint = document.querySelector('[data-action="browser-print"]');
     if (browserPrint) browserPrint.addEventListener("click", () => window.print());
     const pdfLink = document.querySelector("[data-pdf-link]");
@@ -1183,8 +1242,9 @@
     configureLessonSearch();
     renderLessonFacts();
     renderAlternates();
-    renderRelatedLessons();
     renderTab();
+    const positionDetails = q(".position-details");
+    if (positionDetails && presentation === "full") positionDetails.open = true;
     const attribution = q("[data-source-attribution]");
     if (attribution) attribution.textContent = data.lesson.sourceAttribution;
     setLayer("phrase-practice", { preserveTime: true });

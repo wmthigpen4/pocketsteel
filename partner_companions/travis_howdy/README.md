@@ -97,9 +97,14 @@ The packager copies
 the audio and rendered review PDF only into the ignored local bundle; Git is
 never an input or output for the private media. The current owner-review UI
 keeps the lesson key visible, searches seven timestamped technical moments,
-uses `0hA` for an open-position A-pedal hammer, exposes the complete song in
+uses `0h1` for the opening bar hammer from the open fret to fret 1, exposes the complete song in
 Full Song, and keeps the lesson's solo tab and phrase loops inside the exact
 taught-solo audio window.
+
+Related-video cards are bound to the reviewed 54-event Howdy route profile.
+Every card must identify a canonical concept, relationship, selected phrase,
+and exact source event IDs from that phrase. The packager rejects missing,
+cross-phrase, or overcrowded matches instead of attaching a generic video list.
 
 Full Song has its own horizontally scrolling chord/NNS lane, synchronized to
 the complete recording. A complete reviewed chart can be supplied as the

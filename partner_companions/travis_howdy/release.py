@@ -158,15 +158,15 @@ def validate_related_lessons(payload: Mapping[str, Any]) -> list[dict[str, Any]]
     if payload.get("schemaVersion") != "ttt_related_video_cards_v1":
         raise CompanionReleaseError("Related lessons require ttt_related_video_cards_v1.")
     lessons = payload.get("lessons")
-    if not isinstance(lessons, list) or not 2 <= len(lessons) <= 3:
-        raise CompanionReleaseError("Howdy requires two or three related video cards.")
+    if not isinstance(lessons, list) or not 1 <= len(lessons) <= 6:
+        raise CompanionReleaseError("Howdy requires one to six phrase-matched related videos.")
     ids: set[str] = set()
     for lesson in lessons:
         lesson_id = str(lesson.get("id") or "")
         if not lesson_id or lesson_id in ids:
             raise CompanionReleaseError("Related video IDs must be present and unique.")
         ids.add(lesson_id)
-        if not all(str(lesson.get(field) or "").strip() for field in ("label", "title", "reason", "evidenceExcerpt")):
+        if not all(str(lesson.get(field) or "").strip() for field in ("label", "title", "evidenceExcerpt")):
             raise CompanionReleaseError(f"Related video {lesson_id} requires learner-facing copy and source evidence.")
         if len(str(lesson["evidenceExcerpt"]).split()) > 22:
             raise CompanionReleaseError(f"Related video {lesson_id} exceeds the short-excerpt limit.")
@@ -182,7 +182,67 @@ def validate_related_lessons(payload: Mapping[str, Any]) -> list[dict[str, Any]]
         thumbnail_file = str(lesson.get("thumbnailFile") or "")
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]*\.jpg", thumbnail_file):
             raise CompanionReleaseError(f"Related video {lesson_id} has an unsafe thumbnail filename.")
+        matches = lesson.get("matches")
+        if not isinstance(matches, list) or not matches:
+            raise CompanionReleaseError(f"Related video {lesson_id} requires at least one phrase match.")
+        matched_phrases: set[str] = set()
+        for match in matches:
+            phrase_id = str(match.get("phraseId") or "")
+            reason = str(match.get("reason") or "").strip()
+            if not re.fullmatch(r"phrase-\d{2}", phrase_id) or phrase_id in matched_phrases:
+                raise CompanionReleaseError(f"Related video {lesson_id} has an invalid or duplicate phrase match.")
+            if not 8 <= len(reason.split()) <= 40:
+                raise CompanionReleaseError(
+                    f"Related video {lesson_id} requires a concise phrase-specific recommendation reason."
+                )
+            source_event_ids = match.get("sourceEventIds")
+            if not isinstance(source_event_ids, list) or not source_event_ids or not all(
+                re.fullmatch(r"event-\d{3}", str(event_id or "")) for event_id in source_event_ids
+            ):
+                raise CompanionReleaseError(
+                    f"Related video {lesson_id} requires exact source events for every phrase match."
+                )
+            if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", str(match.get("conceptId") or "")):
+                raise CompanionReleaseError(f"Related video {lesson_id} requires a canonical matched concept.")
+            if match.get("relation") not in {
+                "same-technique",
+                "prerequisite",
+                "theory-explanation",
+                "fretboard-transfer",
+                "contrast",
+                "application",
+            }:
+                raise CompanionReleaseError(f"Related video {lesson_id} has an unsupported match relationship.")
+            matched_phrases.add(phrase_id)
     return [copy.deepcopy(dict(item)) for item in lessons]
+
+
+def validate_related_lesson_coverage(data: Mapping[str, Any]) -> None:
+    phrase_events = {
+        str(item.get("id") or ""): {str(event_id) for event_id in item.get("eventIds") or []}
+        for item in data.get("phrases") or []
+    }
+    phrase_ids = set(phrase_events)
+    coverage = {phrase_id: 0 for phrase_id in phrase_ids}
+    for lesson in data.get("relatedLessons") or []:
+        for match in lesson.get("matches") or []:
+            phrase_id = str(match.get("phraseId") or "")
+            if phrase_id not in phrase_ids:
+                raise CompanionReleaseError(
+                    f"Related video {lesson.get('id')} references unknown phrase {phrase_id}."
+                )
+            source_event_ids = {str(event_id) for event_id in match.get("sourceEventIds") or []}
+            if not source_event_ids.issubset(phrase_events[phrase_id]):
+                raise CompanionReleaseError(
+                    f"Related video {lesson.get('id')} must cite events inside its matched phrase {phrase_id}."
+                )
+            coverage[phrase_id] += 1
+    missing = sorted(phrase_id for phrase_id, count in coverage.items() if count == 0)
+    crowded = sorted(phrase_id for phrase_id, count in coverage.items() if count > 2)
+    if missing:
+        raise CompanionReleaseError(f"Every Howdy phrase needs a related-video match; missing: {', '.join(missing)}.")
+    if crowded:
+        raise CompanionReleaseError(f"Howdy phrases may show at most two related videos; crowded: {', '.join(crowded)}.")
 
 
 def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
@@ -551,7 +611,13 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
             x = left + 40 + column_width * (index + 0.5)
             for note in event["tabNotes"]:
                 y = tab_top - (int(note["string"]) - 1) * tab_gap
-                if note.get("technique") == "pedal-hammer":
+                if note.get("technique") == "bar-hammer":
+                    destination = note.get("toFret")
+                    if destination is None:
+                        fret_path = note.get("fretPath") or []
+                        destination = fret_path[1] if len(fret_path) > 1 else "?"
+                    token = f"{note['fret']}h{destination}"
+                elif note.get("technique") == "pedal-hammer":
                     token = f"{note['fret']}h{''.join(note.get('toControls') or note.get('controls') or [])}"
                 elif note.get("technique") == "sustain" and note.get("tieFromPrevious"):
                     token = "-"
@@ -591,7 +657,17 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
             for item in data["copedent"]["controls"]
         )
         page.drawString(42, 27, _ascii(controls)[:112])
-        page.drawString(42, 17, "0hA=pedal hammer; bar stays at open fret. Source E9 copedent: review pending.")
+        has_bar_hammer = any(
+            note.get("technique") == "bar-hammer"
+            for event in data["events"]
+            for note in event["tabNotes"]
+        )
+        hammer_legend = (
+            "0h1=bar hammer from open to fret 1 without repicking."
+            if has_bar_hammer
+            else "0hA=pedal hammer; bar stays at open fret."
+        )
+        page.drawString(42, 17, f"{hammer_legend} Source E9 copedent: review pending.")
         page.drawRightString(width - 42, 17, "Member-use review draft - Travis Toy Tutorials")
         page.showPage()
     page.save()
@@ -753,7 +829,16 @@ def build_companion_bundle(
             raise CompanionReleaseError("Release mode requires a private release configuration.")
         _ensure_static_sources_committed()
     data = _json(Path(companion_path).resolve())
-    related_lessons = validate_related_lessons(_json(Path(related_lessons_path).resolve()))
+    related_payload = _json(Path(related_lessons_path).resolve())
+    available_related_lessons = validate_related_lessons(related_payload)
+    related_profile_id = str(related_payload.get("companionProfileId") or "")
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", related_profile_id):
+        raise CompanionReleaseError("Related lessons require a canonical companion profile ID.")
+    related_lessons = (
+        available_related_lessons
+        if data.get("relatedLessonProfileId") == related_profile_id
+        else []
+    )
     thumbnail_sources: dict[str, Path] = {}
     if related_thumbnails_dir is not None:
         thumbnail_root = Path(related_thumbnails_dir).expanduser().resolve()
@@ -773,6 +858,8 @@ def build_companion_bundle(
             lesson["thumbnailSha256"] = None
             lesson["thumbnailUrl"] = None
     data["relatedLessons"] = related_lessons
+    if related_lessons:
+        validate_related_lesson_coverage(data)
     release_config: dict[str, Any] = {}
     if release:
         release_config = _json(Path(release_config_path).resolve())

@@ -1,39 +1,104 @@
 {
   "schemaVersion": "ttt_related_video_cards_v1",
-  "revision": "howdy-related-videos-2026-08-15.1",
+  "revision": "howdy-related-videos-2026-08-15.2",
+  "companionProfileId": "howdy-54-event-route-v1",
   "lessons": [
     {
+      "id": "hammer-ons-and-pull-offs",
+      "label": "Same technique",
+      "title": "Hammer-Ons And Pull-Offs",
+      "startMs": 38510,
+      "endMs": 60000,
+      "evidenceExcerpt": "bar control comes into play here very very much",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16831118",
+      "thumbnailFile": "hammer-ons.jpg",
+      "matches": [
+        {
+          "phraseId": "phrase-01",
+          "sourceEventIds": ["event-002"],
+          "conceptId": "bar-hammer-control",
+          "relation": "same-technique",
+          "reason": "This phrase begins with a bar hammer from open to fret 1. Travis shows the bar-hand control that keeps that motion stable."
+        }
+      ]
+    },
+    {
       "id": "pedals-really-doing",
-      "label": "Pedal primer",
+      "label": "Pedal prerequisite",
       "title": "What Are The Pedals Really Doing?",
       "startMs": 111650,
       "endMs": 120000,
-      "reason": "Hear exactly what the A and B pedals change before practicing the opening hammer.",
       "evidenceExcerpt": "my A pedal takes my 5ths to 6ths, my B pedal takes my 3rds to 4ths",
       "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16819719",
-      "thumbnailFile": "pedals-really-doing.jpg"
+      "thumbnailFile": "pedals-really-doing.jpg",
+      "matches": [
+        {
+          "phraseId": "phrase-02",
+          "sourceEventIds": ["event-008", "event-009"],
+          "conceptId": "pedal-pitch-functions",
+          "relation": "prerequisite",
+          "reason": "This climb keeps B down while the bar moves, then adds A. This lesson explains exactly which scale tones those pedals change."
+        },
+        {
+          "phraseId": "phrase-03",
+          "sourceEventIds": ["event-017", "event-023"],
+          "conceptId": "pedal-release-and-engage",
+          "relation": "prerequisite",
+          "reason": "The upper double stops release and re-engage A and B. This lesson makes those pitch changes easier to anticipate."
+        },
+        {
+          "phraseId": "phrase-05",
+          "sourceEventIds": ["event-034", "event-035"],
+          "conceptId": "a-pedal-pitch-function",
+          "relation": "prerequisite",
+          "reason": "The turnaround moves the fifth string with A, releases it, and repicks. This lesson isolates what the A pedal is doing."
+        }
+      ]
     },
     {
       "id": "intervals-make-chords",
-      "label": "Chord builder",
+      "label": "Hear the chord tones",
       "title": "How Intervals Make Chords",
       "startMs": 24630,
       "endMs": 36000,
-      "reason": "Connect those pedal changes to the 1, 3, and 5 that make the chord.",
       "evidenceExcerpt": "Our major chord is going to be a 1, a 3, and a 5",
       "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16839319",
-      "thumbnailFile": "intervals-make-chords.jpg"
+      "thumbnailFile": "intervals-make-chords.jpg",
+      "matches": [
+        {
+          "phraseId": "phrase-03",
+          "sourceEventIds": ["event-016", "event-019", "event-021"],
+          "conceptId": "double-stop-chord-tones",
+          "relation": "theory-explanation",
+          "reason": "This phrase stacks and moves double stops through the harmony. The interval lesson explains how those notes function inside the chord."
+        }
+      ]
     },
     {
       "id": "pockets-positions-1",
-      "label": "Fretboard connection",
+      "label": "Position connection",
       "title": "Pockets & Positions - Volume 1",
       "startMs": 79930,
       "endMs": 90000,
-      "reason": "See how the notes around one position belong to the same playable neighborhood.",
       "evidenceExcerpt": "notes that work on either side of this position",
       "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16841613",
-      "thumbnailFile": "pockets-positions-1.jpg"
+      "thumbnailFile": "pockets-positions-1.jpg",
+      "matches": [
+        {
+          "phraseId": "phrase-04",
+          "sourceEventIds": ["event-024", "event-027"],
+          "conceptId": "connected-fretboard-positions",
+          "relation": "fretboard-transfer",
+          "reason": "This phrase leaves the fret-10 pocket for fret 13 and returns. Travis’s position lesson explains how nearby notes stay connected."
+        },
+        {
+          "phraseId": "phrase-06",
+          "sourceEventIds": ["event-047", "event-049", "event-054"],
+          "conceptId": "connected-fretboard-positions",
+          "relation": "fretboard-transfer",
+          "reason": "The closing descent crosses several positions quickly. This lesson helps treat those frets as one connected route instead of isolated stops."
+        }
+      ]
     }
   ]
 }

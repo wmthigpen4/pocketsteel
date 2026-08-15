@@ -18,6 +18,7 @@ from partner_companions.travis_howdy.release import (
     build_companion_bundle,
     generate_tablature_pdf,
     validate_companion,
+    validate_related_lesson_coverage,
     validate_related_lessons,
 )
 from scripts.verify_travis_companion import BLOCKED_ROUTES, verify
@@ -215,9 +216,12 @@ def test_normalized_artifact_hash_ignores_only_generated_fields() -> None:
 
 
 def test_related_video_cards_are_short_source_grounded_and_real() -> None:
-    lessons = validate_related_lessons(json.loads(DEFAULT_RELATED_LESSONS.read_text(encoding="utf-8")))
-    assert len(lessons) == 3
+    payload = json.loads(DEFAULT_RELATED_LESSONS.read_text(encoding="utf-8"))
+    lessons = validate_related_lessons(payload)
+    assert payload["companionProfileId"] == "howdy-54-event-route-v1"
+    assert len(lessons) == 4
     assert {lesson["id"] for lesson in lessons} == {
+        "hammer-ons-and-pull-offs",
         "pedals-really-doing",
         "intervals-make-chords",
         "pockets-positions-1",
@@ -225,9 +229,25 @@ def test_related_video_cards_are_short_source_grounded_and_real() -> None:
     assert all(lesson["url"].startswith("https://travis-toy-tutorials.teachable.com/") for lesson in lessons)
     assert all(lesson["startMs"] >= 0 and lesson["endMs"] > lesson["startMs"] for lesson in lessons)
     assert all(len(lesson["evidenceExcerpt"].split()) <= 22 for lesson in lessons)
+    matches = [match for lesson in lessons for match in lesson["matches"]]
+    assert {match["phraseId"] for match in matches} == {f"phrase-{number:02}" for number in range(1, 7)}
+    assert all(match["sourceEventIds"] and match["conceptId"] and match["relation"] for match in matches)
+
+    phrase_events: dict[str, set[str]] = {}
+    for match in matches:
+        phrase_events.setdefault(match["phraseId"], set()).update(match["sourceEventIds"])
+    validate_related_lesson_coverage(
+        {
+            "phrases": [
+                {"id": phrase_id, "eventIds": sorted(event_ids)}
+                for phrase_id, event_ids in phrase_events.items()
+            ],
+            "relatedLessons": lessons,
+        }
+    )
 
 
-def test_private_related_video_thumbnails_are_hash_pinned_and_same_origin(tmp_path: Path) -> None:
+def test_profile_specific_related_videos_are_not_attached_to_an_unmatched_companion(tmp_path: Path) -> None:
     thumbnail_dir = tmp_path / "thumbnails"
     thumbnail_dir.mkdir()
     lessons = validate_related_lessons(json.loads(DEFAULT_RELATED_LESSONS.read_text(encoding="utf-8")))
@@ -237,11 +257,8 @@ def test_private_related_video_thumbnails_are_hash_pinned_and_same_origin(tmp_pa
     bundle = tmp_path / "bundle"
     build_companion_bundle(bundle, related_thumbnails_dir=thumbnail_dir, source_date_epoch=1)
     deployed = json.loads(next(bundle.rglob("lesson-companion.json")).read_text(encoding="utf-8"))
-    for lesson in deployed["relatedLessons"]:
-        thumbnail = bundle / lesson["thumbnailUrl"].removeprefix("/")
-        assert thumbnail.is_file()
-        assert lesson["thumbnailUrl"].startswith("/assets/")
-        assert lesson["thumbnailSha256"] == hashlib.sha256(thumbnail.read_bytes()).hexdigest()
+    assert deployed["relatedLessons"] == []
+    assert not any(path.name.endswith(".jpg") for path in bundle.rglob("*.jpg"))
 
 
 def test_coaching_cues_must_be_verbatim_and_timestamped() -> None:
@@ -463,6 +480,15 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function renderRelatedLessons()" in script
     assert 'link.target = "_blank"' in script
     assert 'return `${note.fret}h${pedal}`' in script
+    assert 'return `${note.fret}h${destination}`' in script
+    assert 'node("span", "related-why", "Why this lesson")' in script
+    assert "match.sourceEventIds" in script
+    assert "match.conceptId" in script
+    assert "match.relation" in script
+    assert "current.instruction" in script
+    assert "upcoming.instruction" in script
+    assert "current.coachingCue || current.instruction" not in script
+    assert "upcoming.coachingCue || upcoming.instruction" not in script
     for selector in (
         "data-lesson-search",
         "data-chord-chart",
@@ -496,6 +522,8 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert 'data-tab' in markup
     assert 'data-related-lessons' in markup
     assert 'Complete printable tab' in markup
+    assert 'Open larger practice view' in markup
+    assert 'All six tab systems + expanded fretboard' in markup
     assert '<summary class="search-summary">' in markup
     assert '[data-active-layer]:not([data-active-layer="lesson-map"]) .lesson-search-card { display: none; }' in styles
     assert '[data-active-layer="phrase-practice"] .lesson-map { display: block; }' in styles
@@ -503,6 +531,11 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert '[data-active-layer="play-along"] .song-chart-card { display: block; }' in styles
     assert '[data-active-layer="phrase-practice"].companion-shell .lesson-search-card { display: block; }' in styles
     assert '.related-video-grid { display: grid;' in styles
+    assert '.related-video-grid.is-single' in styles
+    assert '.tab-system + .tab-system' in styles
+    assert 'if (positionDetails && presentation === "full") positionDetails.open = true;' in (
+        SITE / "companion.js"
+    ).read_text(encoding="utf-8")
     assert '.compact-shell .layer-context, .compact-shell .mode-switcher, .compact-shell .source-card { display: none; }' in styles
     for rejected_copy in ("mechanical landmarks", "unverified transcription", "Use Travis’s own lesson moments"):
         assert rejected_copy not in markup
@@ -600,3 +633,25 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
     assert "A=A pedal" in extracted
     assert all(phrase["label"] in extracted for phrase in data["phrases"])
     assert re.search(r"Page 1 of 2", extracted)
+
+
+def test_pdf_renders_a_bar_hammer_as_a_fret_change(tmp_path: Path) -> None:
+    pypdf = pytest.importorskip("pypdf")
+    data = load_draft()
+    note = data["events"][0]["tabNotes"][0]
+    note.update(
+        {
+            "fret": 0,
+            "controls": [],
+            "technique": "bar-hammer",
+            "toFret": 1,
+            "fretPath": [0, 1],
+            "tieFromPrevious": True,
+        }
+    )
+    note.pop("toControls", None)
+    output = generate_tablature_pdf(data, tmp_path / "howdy-bar-hammer.pdf")
+    extracted = "\n".join(page.extract_text() or "" for page in pypdf.PdfReader(str(output)).pages)
+    assert "0h1" in extracted
+    assert "bar hammer from open to fret 1 without repicking" in extracted
+    assert "bar stays at open fret" not in extracted
