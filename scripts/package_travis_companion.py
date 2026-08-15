@@ -34,6 +34,16 @@ def main() -> int:
         type=Path,
         help="Use a private hash-pinned taught-solo excerpt with a scoped local draft bundle.",
     )
+    parser.add_argument(
+        "--related-video-thumbnails",
+        type=Path,
+        help="Private directory containing the allowlisted related-lesson JPG thumbnails.",
+    )
+    parser.add_argument(
+        "--practice-guide-alias",
+        action="store_true",
+        help="Also expose the Teachable-style page at /practice-guide/howdy for local review.",
+    )
     args = parser.parse_args()
     manifest = build_companion_bundle(
         args.output,
@@ -45,6 +55,8 @@ def main() -> int:
         draft_pdf_path=args.draft_pdf,
         draft_audio_path=args.draft_audio,
         draft_solo_audio_path=args.draft_solo_audio,
+        related_thumbnails_dir=args.related_video_thumbnails,
+        practice_guide_alias=args.practice_guide_alias,
     )
     print(json.dumps(manifest, indent=2, sort_keys=True))
     return 0

@@ -20,6 +20,7 @@ REPOSITORY_ROOT = PACKAGE_ROOT.parents[1]
 SITE_ROOT = PACKAGE_ROOT / "site"
 TEMPLATE_ROOT = PACKAGE_ROOT / "templates"
 DEFAULT_COMPANION = PACKAGE_ROOT / "content" / "howdy.draft.json"
+DEFAULT_RELATED_LESSONS = PACKAGE_ROOT / "content" / "related-lessons.json"
 PROJECT_NAME = "steel-guitar-rag-travis-preview"
 HOSTNAME = "travis-preview.steelguitarrag.com"
 REVIEW_PHASE_TESTER_COUNTS = {
@@ -59,6 +60,7 @@ ALLOWED_STATIC_SOURCES = (
     TEMPLATE_ROOT / "print.html",
     TEMPLATE_ROOT / "404.html",
     TEMPLATE_ROOT / "companion.fragment.html",
+    DEFAULT_RELATED_LESSONS,
 )
 
 
@@ -147,7 +149,40 @@ def _normalized_artifact_hash(data: Mapping[str, Any]) -> str:
     media["soloAudioUrl"] = None
     media["pdfUrl"] = None
     media["brandHeroUrl"] = None
+    for lesson in payload.get("relatedLessons") or []:
+        lesson["thumbnailUrl"] = None
     return _sha256_bytes(_canonical_json_bytes(payload))
+
+
+def validate_related_lessons(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if payload.get("schemaVersion") != "ttt_related_video_cards_v1":
+        raise CompanionReleaseError("Related lessons require ttt_related_video_cards_v1.")
+    lessons = payload.get("lessons")
+    if not isinstance(lessons, list) or not 2 <= len(lessons) <= 3:
+        raise CompanionReleaseError("Howdy requires two or three related video cards.")
+    ids: set[str] = set()
+    for lesson in lessons:
+        lesson_id = str(lesson.get("id") or "")
+        if not lesson_id or lesson_id in ids:
+            raise CompanionReleaseError("Related video IDs must be present and unique.")
+        ids.add(lesson_id)
+        if not all(str(lesson.get(field) or "").strip() for field in ("label", "title", "reason", "evidenceExcerpt")):
+            raise CompanionReleaseError(f"Related video {lesson_id} requires learner-facing copy and source evidence.")
+        if len(str(lesson["evidenceExcerpt"]).split()) > 22:
+            raise CompanionReleaseError(f"Related video {lesson_id} exceeds the short-excerpt limit.")
+        start_ms = int(lesson.get("startMs", -1))
+        end_ms = int(lesson.get("endMs", -1))
+        if start_ms < 0 or end_ms <= start_ms:
+            raise CompanionReleaseError(f"Related video {lesson_id} has invalid timing.")
+        if not re.fullmatch(
+            r"https://travis-toy-tutorials\.teachable\.com/courses/[^\s]+/lectures/\d+",
+            str(lesson.get("url") or ""),
+        ):
+            raise CompanionReleaseError(f"Related video {lesson_id} must link to a Travis Toy Tutorials lesson.")
+        thumbnail_file = str(lesson.get("thumbnailFile") or "")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*\.jpg", thumbnail_file):
+            raise CompanionReleaseError(f"Related video {lesson_id} has an unsafe thumbnail filename.")
+    return [copy.deepcopy(dict(item)) for item in lessons]
 
 
 def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
@@ -637,7 +672,13 @@ def _write_root_redirect(path: Path) -> None:
     )
 
 
-def _scan_bundle(bundle_root: Path, asset_token: str) -> None:
+def _scan_bundle(
+    bundle_root: Path,
+    asset_token: str,
+    *,
+    related_asset_names: set[str] | None = None,
+    practice_guide_alias: bool = False,
+) -> None:
     allowed_files = {
         "_headers",
         "_redirects",
@@ -647,6 +688,8 @@ def _scan_bundle(bundle_root: Path, asset_token: str) -> None:
         "howdy/embed-demo/index.html",
         "howdy/print/index.html",
     }
+    if practice_guide_alias:
+        allowed_files.add("practice-guide/howdy/index.html")
     allowed_asset_names = {
         "companion.css",
         "companion.js",
@@ -660,6 +703,7 @@ def _scan_bundle(bundle_root: Path, asset_token: str) -> None:
         "travis-hero.webp",
         "metropolis.woff2",
     }
+    allowed_asset_names.update(related_asset_names or set())
     for path in bundle_root.rglob("*"):
         if not path.is_file():
             continue
@@ -693,6 +737,9 @@ def build_companion_bundle(
     draft_pdf_path: Path | None = None,
     draft_audio_path: Path | None = None,
     draft_solo_audio_path: Path | None = None,
+    related_lessons_path: Path = DEFAULT_RELATED_LESSONS,
+    related_thumbnails_dir: Path | None = None,
+    practice_guide_alias: bool = False,
 ) -> dict[str, Any]:
     """Assemble a complete static bundle from an explicit, reviewed allowlist."""
 
@@ -700,10 +747,32 @@ def build_companion_bundle(
     if output_dir == Path(output_dir.anchor) or len(output_dir.parts) < 4:
         raise CompanionReleaseError("Refusing to package into a broad filesystem path.")
     if release:
+        if practice_guide_alias:
+            raise CompanionReleaseError("The practice-guide alias is local-preview only.")
         if release_config_path is None:
             raise CompanionReleaseError("Release mode requires a private release configuration.")
         _ensure_static_sources_committed()
     data = _json(Path(companion_path).resolve())
+    related_lessons = validate_related_lessons(_json(Path(related_lessons_path).resolve()))
+    thumbnail_sources: dict[str, Path] = {}
+    if related_thumbnails_dir is not None:
+        thumbnail_root = Path(related_thumbnails_dir).expanduser().resolve()
+        if not thumbnail_root.is_dir():
+            raise CompanionReleaseError(f"Related-video thumbnail directory not found: {thumbnail_root}")
+        for lesson in related_lessons:
+            source = (thumbnail_root / lesson["thumbnailFile"]).resolve()
+            if source.parent != thumbnail_root or not source.is_file():
+                raise CompanionReleaseError(f"Missing related-video thumbnail: {lesson['thumbnailFile']}")
+            if source.stat().st_size > 2 * 1024 * 1024:
+                raise CompanionReleaseError(f"Related-video thumbnail is too large: {source.name}")
+            lesson["thumbnailSha256"] = _sha256_file(source)
+            lesson["thumbnailUrl"] = None
+            thumbnail_sources[lesson["id"]] = source
+    else:
+        for lesson in related_lessons:
+            lesson["thumbnailSha256"] = None
+            lesson["thumbnailUrl"] = None
+    data["relatedLessons"] = related_lessons
     release_config: dict[str, Any] = {}
     if release:
         release_config = _json(Path(release_config_path).resolve())
@@ -725,6 +794,7 @@ def build_companion_bundle(
             _sha256_file(SITE_ROOT / "companion.css"),
             _sha256_file(SITE_ROOT / "companion.js"),
             private_content_seed,
+            "".join(str(item.get("thumbnailSha256") or "") for item in related_lessons),
         )
     )
     approved_content_hash = _sha256_bytes(static_content_seed.encode("ascii"))
@@ -750,6 +820,13 @@ def build_companion_bundle(
             )
         (assets / "companion.css").write_text(css_text, encoding="utf-8")
         shutil.copyfile(SITE_ROOT / "companion.js", assets / "companion.js")
+        for lesson in related_lessons:
+            source = thumbnail_sources.get(lesson["id"])
+            if source is None:
+                continue
+            destination = assets / lesson["thumbnailFile"]
+            shutil.copyfile(source, destination)
+            lesson["thumbnailUrl"] = f"{asset_root_url}/{destination.name}"
         private_hashes: dict[str, str] = {}
         if release:
             audio_destination = assets / "howdy-backing-track.mp3"
@@ -852,6 +929,12 @@ def build_companion_bundle(
         (stage / "howdy" / "embed-demo" / "index.html").write_text(
             _render_template(TEMPLATE_ROOT / "embed.html", replacements), encoding="utf-8"
         )
+        if practice_guide_alias:
+            (stage / "practice-guide" / "howdy").mkdir(parents=True)
+            shutil.copyfile(
+                stage / "howdy" / "embed-demo" / "index.html",
+                stage / "practice-guide" / "howdy" / "index.html",
+            )
         (stage / "howdy" / "print" / "index.html").write_text(
             _render_template(TEMPLATE_ROOT / "print.html", replacements), encoding="utf-8"
         )
@@ -859,13 +942,18 @@ def build_companion_bundle(
             _render_template(TEMPLATE_ROOT / "404.html", replacements), encoding="utf-8"
         )
         _write_root_redirect(stage / "index.html")
-        (stage / "_redirects").write_text(
+        redirects = (
             "/ /howdy 302\n"
             "/howdy /howdy/index.html 200\n"
             "/howdy/embed-demo /howdy/embed-demo/index.html 200\n"
-            "/howdy/print /howdy/print/index.html 200\n",
-            encoding="utf-8",
+            "/howdy/print /howdy/print/index.html 200\n"
         )
+        if practice_guide_alias:
+            redirects += (
+                "/practice-guide/howdy /practice-guide/howdy/index.html 200\n"
+                "/practice-guide/howdy/ /practice-guide/howdy/index.html 200\n"
+            )
+        (stage / "_redirects").write_text(redirects, encoding="utf-8")
         csp = (
             "default-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; "
             "frame-ancestors 'none'; form-action 'none'; connect-src 'self'; media-src 'self' blob:; "
@@ -893,7 +981,12 @@ def build_companion_bundle(
             "  Cache-Control: no-store\n",
             encoding="utf-8",
         )
-        _scan_bundle(stage, asset_token)
+        _scan_bundle(
+            stage,
+            asset_token,
+            related_asset_names={item["thumbnailFile"] for item in related_lessons if item.get("thumbnailUrl")},
+            practice_guide_alias=practice_guide_alias,
+        )
         if output_dir.exists():
             if not output_dir.is_dir():
                 raise CompanionReleaseError(f"Output path exists and is not a directory: {output_dir}")
@@ -921,7 +1014,14 @@ def build_companion_bundle(
         "releaseMode": "release" if release else "draft",
         "intendedCloudflareProject": PROJECT_NAME,
         "intendedHostname": HOSTNAME,
-        "allowedRoutes": ["/", "/howdy", "/howdy/embed-demo", "/howdy/print", f"/assets/{asset_token}/*"],
+        "allowedRoutes": [
+            "/",
+            "/howdy",
+            "/howdy/embed-demo",
+            "/howdy/print",
+            *(["/practice-guide/howdy"] if practice_guide_alias else []),
+            f"/assets/{asset_token}/*",
+        ],
         "reviewPhase": data["release"].get("reviewPhase"),
         "accessTesterCount": int(data["release"].get("testerEmailCount", 0)),
         "immutablePagesDeploymentUrl": None,

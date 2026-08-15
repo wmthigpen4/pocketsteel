@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "ttt_related_video_cards_v1",
+  "revision": "howdy-related-videos-2026-08-15.1",
+  "lessons": [
+    {
+      "id": "pedals-really-doing",
+      "label": "Pedal primer",
+      "title": "What Are The Pedals Really Doing?",
+      "startMs": 111650,
+      "endMs": 120000,
+      "reason": "Hear exactly what the A and B pedals change before practicing the opening hammer.",
+      "evidenceExcerpt": "my A pedal takes my 5ths to 6ths, my B pedal takes my 3rds to 4ths",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16819719",
+      "thumbnailFile": "pedals-really-doing.jpg"
+    },
+    {
+      "id": "intervals-make-chords",
+      "label": "Chord builder",
+      "title": "How Intervals Make Chords",
+      "startMs": 24630,
+      "endMs": 36000,
+      "reason": "Connect those pedal changes to the 1, 3, and 5 that make the chord.",
+      "evidenceExcerpt": "Our major chord is going to be a 1, a 3, and a 5",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16839319",
+      "thumbnailFile": "intervals-make-chords.jpg"
+    },
+    {
+      "id": "pockets-positions-1",
+      "label": "Fretboard connection",
+      "title": "Pockets & Positions - Volume 1",
+      "startMs": 79930,
+      "endMs": 90000,
+      "reason": "See how the notes around one position belong to the same playable neighborhood.",
+      "evidenceExcerpt": "notes that work on either side of this position",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16841613",
+      "thumbnailFile": "pockets-positions-1.jpg"
+    }
+  ]
+}

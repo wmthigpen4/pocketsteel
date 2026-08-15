@@ -55,8 +55,19 @@ def verify(bundle: Path, manifest_path: Path) -> dict[str, object]:
         "/howdy/embed-demo /howdy/embed-demo/index.html 200",
         "/howdy/print /howdy/print/index.html 200",
     )
-    if tuple(line for line in redirects.splitlines() if line.strip()) != expected_redirects:
-        raise CompanionReleaseError("The route allowlist differs from the reviewed five-rule map.")
+    local_alias_redirects = (
+        "/practice-guide/howdy /practice-guide/howdy/index.html 200",
+        "/practice-guide/howdy/ /practice-guide/howdy/index.html 200",
+    )
+    actual_redirects = tuple(line for line in redirects.splitlines() if line.strip())
+    local_alias_allowed = (
+        manifest.get("releaseMode") == "draft"
+        and "/practice-guide/howdy" in (manifest.get("allowedRoutes") or [])
+        and (bundle / "practice-guide" / "howdy" / "index.html").is_file()
+    )
+    permitted_redirects = expected_redirects + local_alias_redirects if local_alias_allowed else expected_redirects
+    if actual_redirects != permitted_redirects:
+        raise CompanionReleaseError("The route allowlist differs from the reviewed companion map.")
     headers = (bundle / "_headers").read_text(encoding="utf-8")
     required_headers = (
         "Content-Security-Policy:",

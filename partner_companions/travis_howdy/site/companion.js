@@ -157,6 +157,17 @@
         throw new Error("The full-song chord timeline must cover the complete song scope.");
       }
     }
+    if (!Array.isArray(data.relatedLessons) || data.relatedLessons.length < 2 || data.relatedLessons.length > 3) {
+      throw new Error("The related video cards are incomplete.");
+    }
+    data.relatedLessons.forEach((lesson) => {
+      if (!/^https:\/\/travis-toy-tutorials\.teachable\.com\/courses\/[^\s]+\/lectures\/\d+$/.test(lesson.url)) {
+        throw new Error(`Invalid related lesson URL for ${lesson.id}.`);
+      }
+      if (lesson.thumbnailUrl && new URL(lesson.thumbnailUrl, window.location.origin).origin !== window.location.origin) {
+        throw new Error(`Related lesson thumbnail must be same-origin for ${lesson.id}.`);
+      }
+    });
   }
 
   function renderPreviewMarker() {
@@ -167,28 +178,24 @@
       ? `Owner preview · ${state.data.revision} · ${sha}`
       : `${state.data.release.previewLabel} · ${state.data.revision} · ${sha}`;
     const title = q("[data-companion-title]");
-    if (title && presentation === "embed-demo") title.textContent = "“Howdy” practice companion";
+    if (title) title.textContent = "Practice the “Howdy” solo";
   }
 
   function renderLayerTabs() {
     const container = q("[data-layer-tabs]");
     if (!container) return;
     container.replaceChildren();
-    state.data.layers.forEach((layer) => {
+    state.data.layers.filter((layer) => ["phrase-practice", "play-along"].includes(layer.id)).forEach((layer) => {
       const button = node("button", `layer-tab${layer.id === state.selectedLayer ? " is-active" : ""}`);
       button.type = "button";
       button.dataset.layerId = layer.id;
       button.setAttribute("aria-pressed", layer.id === state.selectedLayer ? "true" : "false");
-      const compactLabels = {
-        "lesson-map": "Map",
-        "phrase-practice": "Solo",
-        "play-along": "Full Song",
-        "explore": "Explore",
+      const labels = {
+        "phrase-practice": `Taught solo · ${formatTime(mediaScopes().taughtSolo.durationMs)}`,
+        "play-along": `Full song · ${formatTime(mediaScopes().fullSong.durationMs)}`,
       };
-      const fullLabels = { "phrase-practice": "Taught Solo", "play-along": "Full Song" };
       button.append(
-        node("strong", "", presentation === "embed-demo" ? compactLabels[layer.id] : (fullLabels[layer.id] || layer.label)),
-        node("span", "", layer.description),
+        node("strong", "", labels[layer.id]),
       );
       button.addEventListener("click", () => setLayer(layer.id));
       container.append(button);
@@ -234,11 +241,9 @@
     const loopButton = q('[data-action="loop"]');
     if (loopButton) loopButton.setAttribute("aria-pressed", state.loop ? "true" : "false");
     const layerCopy = {
-      "lesson-map": ["Lesson map", "Understand the complete eight-bar route", "Select a phrase or chord bar to choose where your practice begins.", "Overview only · playback is paused"],
-      "phrase-practice": ["Taught solo", "Study the exact eight-bar lesson solo", "Use Previous and Next to study the tab and fretboard. The player is scoped to the taught solo inside the full backing track.", "Solo window · 50% · phrase loop on"],
-      "play-along": ["Full song", "Play against the complete backing track", "This player uses the full song. The taught solo is marked at its exact position and keeps its own tab, fretboard, and phrase loops in the Solo tab.", "Full track · 100% · no solo animation"],
-      "explore": ["Explore", "Compare only positions shown in the lesson", "These are fixed lesson-demonstrated comparisons, not generated substitutes for Travis’s route.", "Playback paused · primary route unchanged"],
-    }[layer.id];
+      "phrase-practice": ["Taught solo", "Loop one phrase", "Choose a phrase, slow it down, and follow the highlighted tab.", "50% · phrase loop on"],
+      "play-along": ["Full song", "Follow the chords", "Play the complete backing track while the chord and Nashville number lane scrolls.", "3:57 · complete track"],
+    }[layer.id] || ["", "", "", ""];
     const kicker = q("[data-layer-kicker]");
     const title = q("[data-layer-title]");
     const description = q("[data-layer-description]");
@@ -339,9 +344,7 @@
               play.textContent = "▶";
               play.setAttribute("aria-label", "Play backing track");
             }
-            if (note) note.textContent = scope.id === mediaScopes().fullSong.id
-              ? "Complete same-origin backing track loaded · audio rights approval pending."
-              : `Taught solo window ${formatTime(scope.startMs)}–${formatTime(scope.endMs)} · exact excerpt from the same source track.`;
+            if (note) note.textContent = "";
           }
         })
         .catch((error) => {
@@ -371,8 +374,8 @@
     if (kicker) kicker.textContent = isFullSong ? "Full song" : "Lesson solo";
     if (title) title.textContent = `${scope.label} · ${formatTime(scope.durationMs)}`;
     if (description) description.textContent = isFullSong
-      ? `Complete backing track. The taught solo begins at ${formatTime(scopes.taughtSolo.startMs)}.`
-      : `The eight-bar solo Travis teaches, heard from ${formatTime(scopes.taughtSolo.startMs)} to ${formatTime(scopes.taughtSolo.endMs)} inside the full song.`;
+      ? `Complete backing track; the taught solo begins at ${formatTime(scopes.taughtSolo.startMs)}.`
+      : "The eight-bar solo from the lesson.";
     if (jump) jump.hidden = !isFullSong;
     const seek = q("[data-seek]");
     const duration = q("[data-duration]");
@@ -384,9 +387,7 @@
     const loop = q('[data-action="loop"]');
     if (loop) loop.hidden = isFullSong;
     const note = q("[data-transport-note]");
-    if (note) note.textContent = isFullSong
-      ? "Complete same-origin backing track loaded · audio rights approval pending."
-      : `Taught solo window ${formatTime(scopes.taughtSolo.startMs)}–${formatTime(scopes.taughtSolo.endMs)} · same source track.`;
+    if (note) note.textContent = "";
     selectScopeAudio(scope);
   }
 
@@ -498,8 +499,8 @@
     const chartAvailable = hasChordChart();
     const status = q("[data-chord-status]");
     if (status) status.textContent = chartAvailable
-      ? state.data.approvals.chords ? "Travis approved" : "Solo form · audio-derived · Travis review required"
-      : "Chord chart not attached";
+      ? state.data.approvals.chords ? "Travis approved" : "Draft chart"
+      : "Chart unavailable";
     for (let bar = 1; bar <= Number(state.data.display.barCount); bar += 1) {
       const cell = node("button", "chord-bar");
       cell.type = "button";
@@ -588,12 +589,12 @@
     const complete = hasFullSongChordChart();
     const status = q("[data-song-chart-status]");
     if (status) status.textContent = complete
-      ? state.data.approvals.chords ? "Complete detected chart · Travis approved" : "Complete detected chart · Travis review required"
-      : "Lesson solo populated · full-song chart pending";
+      ? state.data.approvals.chords ? "Travis approved" : "Draft chart · check marked bars"
+      : "Full-song chart unavailable";
     const guardrail = q("[data-song-chart-guardrail]");
     if (guardrail) guardrail.textContent = complete
-      ? "Detected locally from the complete backing track. Coral ‘check’ events need human review; no model or runtime analyzer is involved."
-      : "The lane follows the complete backing track. Only source-timed chord data is shown; uncharted regions remain visibly pending.";
+      ? "Coral dots mark chords that still need an ear check."
+      : "Only source-timed chords are shown.";
     state.songTimelineSegments = buildSongTimelineSegments();
     container.replaceChildren();
     state.songTimelineSegments.forEach((segment) => {
@@ -610,12 +611,13 @@
         || segment.sourceKind === "taught_solo_chord_timeline";
       const sourceLabel = segment.sectionLabel || (taughtSoloSource
         ? `Solo · bar ${segment.barStart}`
-        : `Bar ${segment.barStart || "—"} · audio-detected`);
+        : `Bar ${segment.barStart || "—"}`);
       button.append(
         node("span", "", `${formatTime(segment.startMs)} · ${formatTime(segment.endMs)}`),
-        node("strong", "", pending ? "Chart pending" : segment.symbol),
-        node("small", "", pending ? "No guessed chord" : `${segment.nns} · ${sourceLabel}${segment.needsAttention ? " · check" : ""}`),
+        node("strong", "", pending ? "—" : segment.symbol),
+        node("small", "", pending ? "Uncharted" : `${segment.nns} · ${sourceLabel}`),
       );
+      if (segment.needsAttention) button.title = "Draft chord - check by ear";
       button.addEventListener("click", () => {
         if (state.selectedLayer !== "play-along") setLayer("play-along");
         seekTo(segment.startMs);
@@ -639,13 +641,13 @@
     const nns = q("[data-song-now-nns]");
     const note = q("[data-song-now-note]");
     if (time) time.textContent = formatTime(absoluteTime);
-    if (chord) chord.textContent = pending ? "Chart pending" : segment.symbol;
+    if (chord) chord.textContent = pending ? "—" : segment.symbol;
     if (nns) nns.textContent = pending ? "—" : segment.nns;
     if (note) note.textContent = pending
-      ? "No reviewed full-song chord is attached for this region."
+      ? "Uncharted"
       : segment.timelineKind === "taught-solo" || segment.sourceKind === "taught_solo_chord_timeline"
-        ? `Taught solo · song bar ${segment.barStart} · solo bar ${segment.soloBarStart || segment.barStart} · review required`
-        : `Audio-detected · bar ${segment.barStart || "—"} · ${segment.needsAttention ? "check this chord" : "review required"}`;
+        ? `Taught solo · bar ${segment.soloBarStart || segment.barStart}`
+        : `Bar ${segment.barStart || "—"}${segment.needsAttention ? " · check by ear" : ""}`;
     const scroll = q("[data-song-scroll]");
     if (state.selectedLayer !== "play-along" || !scroll || !currentElement) return;
     const duration = Math.max(1, Number(segment.endMs) - Number(segment.startMs));
@@ -674,6 +676,40 @@
         card.append(button);
       }
       container.append(card);
+    });
+  }
+
+  function renderRelatedLessons() {
+    const container = q("[data-related-lessons]");
+    if (!container) return;
+    container.replaceChildren();
+    state.data.relatedLessons.forEach((lesson) => {
+      const link = node("a", "related-video-card");
+      link.href = lesson.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.setAttribute("aria-label", `Open video: ${lesson.title}, starting at ${formatLessonMoment(lesson.startMs)}`);
+      const visual = node("span", "related-video-visual");
+      if (lesson.thumbnailUrl) {
+        const image = node("img");
+        image.src = lesson.thumbnailUrl;
+        image.alt = `Video thumbnail for ${lesson.title}`;
+        image.loading = "lazy";
+        visual.append(image);
+      }
+      visual.append(
+        node("span", "related-play", "▶"),
+        node("span", "related-time", `Start at ${formatLessonMoment(lesson.startMs)}`),
+      );
+      const copy = node("span", "related-video-copy");
+      copy.append(
+        node("span", "related-label", lesson.label),
+        node("strong", "", lesson.title),
+        node("span", "related-reason", lesson.reason),
+        node("span", "related-open", "Open video ↗"),
+      );
+      link.append(visual, copy);
+      container.append(link);
     });
   }
 
@@ -718,10 +754,8 @@
     const status = q("[data-map-status]");
     if (status) {
       status.textContent = state.data.approvals.musical
-        ? `${state.data.phrases.length} approved phrase ranges`
-        : state.data.contentStatus === "transcribed_review_required"
-          ? `${state.data.phrases.length} transcript-backed ranges · Travis review required`
-          : `${state.data.phrases.length} deterministic layout ranges · approval pending`;
+        ? `${state.data.phrases.length} phrases`
+        : `${state.data.phrases.length} phrases · owner review`;
     }
   }
 
@@ -864,10 +898,10 @@
     const chordLabel = q("[data-current-chord]");
     if (chordLabel) {
       chordLabel.textContent = !taughtSoloActive
-        ? `Taught solo at ${formatTime(mediaScopes().taughtSolo.startMs)}`
+        ? `Solo begins at ${formatTime(mediaScopes().taughtSolo.startMs)}`
         : chord?.symbol
-        ? `${chord.symbol}${chord.nns ? ` · ${chord.nns}` : ""}${chord.verified ? "" : " · review"}`
-        : "Chord pending Travis review";
+        ? `${chord.symbol}${chord.nns ? ` · ${chord.nns}` : ""}`
+        : "—";
     }
     const currentInstruction = q("[data-current-instruction]");
     const sourceMoment = q("[data-source-moment]");
@@ -881,26 +915,26 @@
       : chordFocus ? chord.instruction : (current.coachingCue || current.instruction);
     if (sourceMoment) {
       const source = taughtSoloActive && !chordFocus && current.coachingCue ? current.sourceMoment : null;
-      sourceMoment.hidden = false;
+      sourceMoment.hidden = !source;
       sourceMoment.textContent = !taughtSoloActive
-        ? "Full song backing track"
+        ? ""
         : chordFocus
-        ? "Backing-track chord analysis · Travis review required"
+        ? ""
         : source
-          ? `Travis · lesson ${formatLessonMoment(source.lessonTimeMs)} · exact excerpt`
-          : "Authored technical move from the lesson · not a direct quote";
+          ? `Travis · ${formatLessonMoment(source.lessonTimeMs)}`
+          : "";
     }
     if (technique) technique.textContent = !taughtSoloActive
-      ? `The taught solo begins at ${formatTime(mediaScopes().taughtSolo.startMs)} and keeps its own tab, fretboard, and loops.`
+      ? ""
       : chordModeBlocked
-      ? "This guardrail prevents the draft from showing a plausible-looking but wrong chord."
+      ? ""
       : chordFocus
-        ? `Chord grip: ${chord.gripLabel || controlsLabel(chord.tabNotes)}. The visual holds until the harmony changes.`
-        : `Literal tab: ${current.instruction} · ${current.notationPitch} · ${controlsLabel(current.tabNotes)}`;
+        ? `${chord.gripLabel || controlsLabel(chord.tabNotes)}`
+        : `${current.notationPitch} · ${controlsLabel(current.tabNotes)}`;
     if (nextInstruction) nextInstruction.textContent = !taughtSoloActive
-      ? `Jump to the taught solo at ${formatTime(mediaScopes().taughtSolo.startMs)}.`
+      ? `Solo at ${formatTime(mediaScopes().taughtSolo.startMs)}`
       : chordModeBlocked
-      ? "Travis approval unlocks this mode."
+      ? "—"
       : chordFocus
         ? upcomingChord.id === chord.id ? `Hold ${chord.symbol} through the end.` : upcomingChord.instruction
         : (upcoming.coachingCue || upcoming.instruction);
@@ -927,9 +961,7 @@
     if (phraseMove) phraseMove.textContent = chordFocus ? chord.movement.replaceAll("-", " ") : current.movement.replaceAll("-", " ");
     if (status) status.textContent = state.data.approvals.musical
       ? "Travis approved"
-      : state.data.contentStatus === "transcribed_review_required"
-        ? "Transcribed · Travis review required"
-        : "Draft · review required";
+      : "Owner review";
     renderFretboard(visualCurrent, visualUpcoming);
     updateTabHighlight(current, upcoming);
     updateChordChartHighlight(chord, current.bar, taughtSoloActive);
@@ -1151,10 +1183,11 @@
     configureLessonSearch();
     renderLessonFacts();
     renderAlternates();
+    renderRelatedLessons();
     renderTab();
     const attribution = q("[data-source-attribution]");
     if (attribution) attribution.textContent = data.lesson.sourceAttribution;
-    setLayer(data.display.defaultLayer, { preserveTime: true });
+    setLayer("phrase-practice", { preserveTime: true });
   }
 
   initialize().catch((error) => {

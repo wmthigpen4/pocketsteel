@@ -407,6 +407,95 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
   .scope-summary-grid { grid-template-columns: 1fr; }
 }
 
+/* Music-first owner preview */
+.companion-heading { position: relative; padding: 22px 24px; }
+.companion-heading h2 { margin-bottom: 5px; }
+.companion-intro { max-width: 560px; font-size: 13px; }
+.review-chip { color: #7a210f !important; background: #fff0ed !important; }
+.preview-ribbon { padding: 5px 10px; border-color: var(--line); color: var(--muted); background: #f8fafb; font-size: 9px; font-weight: 650; text-align: right; text-transform: none; }
+.layer-tabs { grid-template-columns: repeat(2, 1fr); }
+.layer-tab { min-height: 52px; padding: 14px; border-bottom: 0; }
+.layer-tab strong { font-size: 14px; }
+.layer-tab:nth-child(2) { border-right: 0; }
+.solo-route-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+.solo-route-heading h3 { margin: 0; font-size: 19px; }
+.phrase-map { grid-template-columns: repeat(6, minmax(105px, 1fr)); }
+.phrase-chip { min-height: 72px; padding: 11px 12px; }
+.chord-chart-card { margin-top: 17px; padding-top: 16px; }
+.chord-bar { min-height: 62px; }
+[data-active-layer="phrase-practice"] .lesson-map { display: block; }
+[data-active-layer="phrase-practice"] .song-chart-card { display: none; }
+[data-active-layer="play-along"] .solo-route-heading,
+[data-active-layer="play-along"] .phrase-map,
+[data-active-layer="play-along"] .chord-chart-card { display: none; }
+[data-active-layer="phrase-practice"].companion-shell .lesson-search-card { display: block; }
+[data-active-layer="play-along"] .lesson-search-card { display: none; }
+.practice-grid { grid-template-columns: minmax(0, 1fr) 250px; margin-top: 14px; }
+.study-controls { padding: 10px 13px; }
+.study-controls > span { display: none; }
+.transport-card { margin-top: 0; padding: 17px; }
+.transport-note:empty { display: none; }
+.move-card { grid-template-columns: minmax(0, 1fr) 220px; }
+.move-current, .move-next { padding: 18px; }
+.move-current h3 { margin-top: 10px; font-size: 20px; }
+.move-current > p:last-child:empty { display: none; }
+.source-moment { margin-bottom: 0; }
+.tab-card { padding: 18px 16px; }
+.position-details { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); }
+.position-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 16px; color: var(--teal-900); cursor: pointer; }
+.position-details > summary span { font-size: 12px; font-weight: 750; }
+.position-details > summary strong { color: var(--muted); font-size: 10px; }
+.position-details .visual-card { margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+.phrase-notes-card { margin-top: 0; padding: 17px; }
+.phrase-notes-card > p:not(.section-kicker) { font-size: 11px; line-height: 1.45; }
+.feedback-button { min-height: 38px; font-size: 11px; }
+.song-segment.needs-attention::after { content: ""; float: right; width: 7px; height: 7px; margin-top: 2px; border-radius: 50%; background: var(--coral); }
+.song-chart-guardrail { margin-top: 4px; }
+.related-videos { margin-top: 18px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); }
+.related-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.related-heading h3 { margin: 0; font-size: 21px; }
+.related-heading > span { color: var(--muted); font-size: 10px; }
+.related-video-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.related-video-card { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); color: inherit; background: #fbfcfd; text-decoration: none; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+.related-video-card:hover, .related-video-card:focus-visible { border-color: var(--coral); outline: 0; transform: translateY(-2px); box-shadow: 0 10px 24px rgba(9,40,58,.12); }
+.related-video-visual { position: relative; display: block; aspect-ratio: 16 / 9; overflow: hidden; background: linear-gradient(145deg, var(--teal-900), var(--black)); }
+.related-video-visual img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.related-play { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; display: grid; place-items: center; padding-left: 3px; border: 2px solid rgba(255,255,255,.9); border-radius: 50%; color: white; background: rgba(9,40,58,.66); transform: translate(-50%,-50%); }
+.related-time { position: absolute; right: 8px; bottom: 8px; padding: 5px 7px; border-radius: 4px; color: white; background: rgba(9,40,58,.9); font-size: 9px; font-weight: 800; }
+.related-video-copy { display: flex; flex-direction: column; min-height: 155px; padding: 14px; }
+.related-label { color: var(--coral-dark); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.related-video-copy strong { margin-top: 5px; color: var(--teal-900); font-size: 14px; line-height: 1.25; }
+.related-reason { margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.related-open { margin-top: auto; padding-top: 11px; color: var(--teal-900); font-size: 10px; font-weight: 800; }
+.lesson-search-card { margin-top: 14px; border-top: 1px solid var(--line); border-radius: var(--radius); }
+.search-summary { padding: 14px 17px; }
+.search-body { padding: 0 17px 17px; }
+.demo-discussion { margin-top: 30px; }
+.demo-discussion-content { padding-bottom: 24px; }
+.demo-comment-composer { padding: 10px; }
+.demo-discussion-note { display: none; }
+.compact-shell .lesson-map { padding: 18px; }
+.compact-shell .practice-aside { display: block; }
+.compact-shell .related-videos { padding: 18px; }
+.compact-shell .related-video-copy { min-height: 145px; }
+
+@media (max-width: 760px) {
+  .phrase-map { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .practice-grid { grid-template-columns: 1fr; }
+  .related-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .related-video-grid { grid-template-columns: 1fr; }
+  .related-video-card { display: grid; grid-template-columns: 42% 58%; }
+  .related-video-copy { min-height: 0; }
+  .move-card { grid-template-columns: 1fr; }
+  .move-next { border-left: 0; border-top: 1px solid var(--line); }
+}
+
+@media (max-width: 480px) {
+  .related-video-card { display: block; }
+  .layer-tab strong { font-size: 12px; }
+  .companion-heading { padding: 18px; }
+}
+
 @media print {
   @page { size: letter portrait; margin: 0.5in; }
   .no-print { display: none !important; }

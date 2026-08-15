@@ -1,117 +1,64 @@
 <div class="preview-ribbon" data-preview-marker>Loading companion revision…</div>
 <header class="companion-heading">
   <div>
-    <p class="eyebrow">Practice workspace</p>
-    <h2 data-companion-title>Learn the phrase. Keep the feel.</h2>
-    <p class="companion-intro">Everything on screen comes from one authored event timeline - playback, tab, fretboard, chords, and print.</p>
+    <p class="eyebrow">Howdy lesson companion</p>
+    <h2 data-companion-title>Practice the “Howdy” solo</h2>
+    <p class="companion-intro">Loop the eight-bar solo Travis teaches, or follow the complete backing track in D.</p>
     <div class="lesson-facts" aria-label="Lesson details">
       <span data-key-label>Key —</span>
       <span data-meter-label>Meter —</span>
       <span data-tempo-label>Tempo —</span>
+      <span class="review-chip">Owner review</span>
     </div>
   </div>
   <div class="heading-actions">
-    <a class="button button-secondary full-only" href="/howdy/embed-demo">View embed demo</a>
+    <a class="button button-secondary full-only" href="/howdy/embed-demo">View lesson layout</a>
     <a class="button button-secondary compact-only" href="/howdy">Open full companion</a>
-    <a class="button button-primary" href="/howdy/print">Print tablature</a>
+    <a class="button button-primary" href="/howdy/print">Print tab</a>
   </div>
 </header>
-<nav class="layer-tabs" aria-label="Companion layer" data-layer-tabs></nav>
-<section class="layer-context" aria-live="polite">
-  <div>
-    <p class="section-kicker" data-layer-kicker>Lesson map</p>
-    <h3 data-layer-title>Understand the complete route</h3>
-    <p data-layer-description></p>
-  </div>
-  <p class="layer-behavior" data-layer-behavior></p>
-</section>
-<details class="lesson-search-card" data-lesson-search-panel open>
-  <summary class="search-summary">
-    <strong>Search lesson moments</strong>
-    <span>Exact quotes + technical index</span>
-  </summary>
-  <div class="search-body">
-    <div class="search-heading">
-      <div>
-        <p class="section-kicker">Transcript-backed lesson search</p>
-        <h3 id="lesson-search-title">Find the moment Travis explains a move</h3>
-      </div>
-      <span data-search-count>Loading index…</span>
+
+<nav class="layer-tabs" aria-label="Choose a practice view" data-layer-tabs></nav>
+
+<section class="lesson-map" aria-label="Musical roadmap">
+  <div class="solo-route-heading">
+    <div>
+      <p class="section-kicker">Choose a phrase</p>
+      <h3>Eight bars, six practice loops</h3>
     </div>
-    <label class="search-field">
-      <span class="visually-hidden">Search the lesson transcript index</span>
-      <input type="search" data-lesson-search placeholder="Try “hammer”, “B pedal”, “double stop”, or “release A”" autocomplete="off">
-    </label>
-    <p class="search-guardrail">Deterministic search over timestamped technical moments. Short excerpts are shown only when they are Travis’s exact words; the raw transcript is not shipped.</p>
-    <div class="lesson-search-results" data-lesson-search-results></div>
-  </div>
-</details>
-<section class="lesson-map" aria-label="Phrase map">
-  <div class="section-heading-row">
-    <div><p class="section-kicker">Song map</p><h3>The taught route, phrase by phrase</h3></div>
-    <p class="map-status" data-map-status>Loading reviewed ranges…</p>
-  </div>
-  <div class="scope-summary-grid" aria-label="Lesson playback scopes">
-    <button type="button" class="scope-summary" data-action="open-full-song">
-      <span>Full song</span>
-      <strong data-full-song-duration>3:57</strong>
-      <small>Complete backing track</small>
-    </button>
-    <button type="button" class="scope-summary" data-action="open-taught-solo">
-      <span>Taught solo</span>
-      <strong data-taught-solo-duration>0:24</strong>
-      <small>Eight-bar lesson focus</small>
-    </button>
+    <p class="map-status" data-map-status></p>
   </div>
   <div class="phrase-map" data-phrase-map></div>
+
   <section class="chord-chart-card" aria-labelledby="chord-chart-title">
     <div class="chord-chart-heading">
-      <div><p class="section-kicker">Taught solo harmony</p><h3 id="chord-chart-title">Eight-bar solo form · Key <span data-chart-key>—</span></h3></div>
+      <div><p class="section-kicker">Solo chords</p><h3 id="chord-chart-title">Eight-bar form · Key <span data-chart-key>—</span></h3></div>
       <p data-chord-status>Loading chart…</p>
     </div>
     <div class="chord-chart" data-chord-chart></div>
   </section>
+
   <section class="song-chart-card" aria-labelledby="song-chart-title">
     <div class="chord-chart-heading">
-      <div><p class="section-kicker">Chord play-along</p><h3 id="song-chart-title">Full-song chord lane · Key <span data-song-chart-key>—</span></h3></div>
-      <p data-song-chart-status>Loading full-song chart…</p>
+      <div><p class="section-kicker">Chord play-along</p><h3 id="song-chart-title">Full song · Key <span data-song-chart-key>—</span></h3></div>
+      <p data-song-chart-status>Loading chart…</p>
     </div>
     <div class="song-now" aria-live="polite">
       <span data-song-now-time>0:00</span>
-      <strong data-song-now-chord>Chart pending</strong>
+      <strong data-song-now-chord>—</strong>
       <b data-song-now-nns>—</b>
-      <small data-song-now-note>The lesson solo is marked at its source position.</small>
+      <small data-song-now-note></small>
     </div>
-    <div class="song-scroll-window" data-song-scroll tabindex="0" role="region" aria-label="Full-song scrolling chord and Nashville number timeline">
+    <div class="song-scroll-window" data-song-scroll tabindex="0" role="region" aria-label="Scrolling full-song chords and Nashville numbers">
       <span class="song-playhead" aria-hidden="true"></span>
       <div class="song-timeline" data-song-timeline></div>
     </div>
-    <p class="song-chart-guardrail" data-song-chart-guardrail>The lane follows the complete backing track. Only source-timed chord data is shown; uncharted regions remain visibly pending.</p>
+    <p class="song-chart-guardrail" data-song-chart-guardrail></p>
   </section>
 </section>
-<section class="explore-card" data-explore-panel hidden>
-  <div><p class="section-kicker">Explore</p><h3>Lesson-demonstrated comparisons</h3></div>
-  <p>These positions are comparisons Travis demonstrates; they never replace the primary route.</p>
-  <div class="alternate-grid" data-alternate-grid></div>
-</section>
+
 <section class="practice-grid">
   <div class="practice-main">
-    <section class="media-scope-card" aria-live="polite">
-      <div>
-        <p class="section-kicker" data-scope-kicker>Lesson focus</p>
-        <h3 data-scope-title>Loading playback scope…</h3>
-        <p data-scope-description></p>
-      </div>
-      <button type="button" class="button button-secondary scope-jump" data-action="jump-to-solo" hidden>Jump to taught solo</button>
-    </section>
-    <div class="mode-switcher" role="group" aria-label="Practice mode" data-mode-switcher></div>
-    <div class="study-controls" data-study-controls hidden>
-      <div><strong>Study one move at a time</strong><span>Audio stays paused while you step through the selected phrase.</span></div>
-      <div class="study-actions">
-        <button type="button" data-action="previous-move">← Previous move</button>
-        <button type="button" data-action="next-move">Next move →</button>
-      </div>
-    </div>
     <section class="transport-card" aria-label="Backing track controls">
       <audio preload="metadata" data-audio></audio>
       <div class="transport-row">
@@ -132,11 +79,19 @@
       </div>
       <p class="transport-note" data-transport-note></p>
     </section>
+
+    <div class="study-controls" data-study-controls>
+      <strong>Step through the tab</strong>
+      <div class="study-actions">
+        <button type="button" data-action="previous-move">← Previous</button>
+        <button type="button" data-action="next-move">Next →</button>
+      </div>
+    </div>
+
     <section class="move-card" aria-live="polite">
       <div class="move-current">
-        <p class="section-kicker">Current move</p>
-        <div class="move-meta"><span data-current-bar>Bar 1</span><span data-current-chord>Chord pending review</span></div>
-        <h3 data-current-instruction>Loading the authored route…</h3>
+        <div class="move-meta"><span data-current-bar>Bar 1</span><span data-current-chord>—</span></div>
+        <h3 data-current-instruction>Loading the first move…</h3>
         <p class="source-moment" data-source-moment hidden></p>
         <p data-current-technique></p>
       </div>
@@ -145,39 +100,56 @@
         <strong data-next-instruction>—</strong>
       </div>
     </section>
-    <section class="visual-card fretboard-card">
-      <div class="section-heading-row">
-        <div><p class="section-kicker">Position</p><h3>10-string E9 fretboard</h3></div>
-        <p data-position-label>Fret 3</p>
-      </div>
-      <div class="fretboard-scroll" data-fretboard></div>
-    </section>
+
     <section class="visual-card tab-card">
       <div class="section-heading-row">
-        <div><p class="section-kicker">Same event IDs</p><h3>Compact tablature</h3></div>
-        <a class="quiet-link" href="/howdy/print">Complete tab →</a>
+        <div><p class="section-kicker">Taught solo</p><h3>10-string E9 tablature</h3></div>
+        <a class="quiet-link" href="/howdy/print">Complete printable tab →</a>
       </div>
       <div class="tab-scroll" data-tab></div>
     </section>
+
+    <details class="position-details">
+      <summary><span>Show fretboard position</span><strong data-position-label>Open fret</strong></summary>
+      <section class="visual-card fretboard-card">
+        <div class="fretboard-scroll" data-fretboard></div>
+      </section>
+    </details>
   </div>
+
   <aside class="practice-aside">
     <section class="phrase-notes-card">
-      <p class="section-kicker">Phrase note</p>
+      <p class="section-kicker">Selected phrase</p>
       <h3 data-phrase-title>Loading phrase…</h3>
       <p data-phrase-note></p>
       <dl class="phrase-facts">
         <div><dt>Bars</dt><dd data-phrase-bars>—</dd></div>
         <div><dt>Move</dt><dd data-phrase-move>—</dd></div>
-        <div><dt>Status</dt><dd data-review-status>—</dd></div>
+        <div class="visually-hidden"><dt>Status</dt><dd data-review-status>—</dd></div>
       </dl>
     </section>
-    <section class="source-card">
-      <p class="section-kicker">Source</p>
-      <h3>Travis’s lesson is authoritative</h3>
-      <p data-source-attribution></p>
-      <p class="guardrail-copy">The companion never invents a chord or reroutes the published transcription in the learner’s browser.</p>
-    </section>
-    <button type="button" class="feedback-button" data-action="feedback">Send feedback on this moment</button>
+    <button type="button" class="feedback-button" data-action="feedback">Send feedback on this move</button>
   </aside>
 </section>
+
+<section class="related-videos" aria-labelledby="related-videos-title">
+  <div class="related-heading">
+    <div><p class="section-kicker">Need help with this move?</p><h3 id="related-videos-title">Watch a related Travis lesson</h3></div>
+    <span>Each card opens a video in a new tab.</span>
+  </div>
+  <div class="related-video-grid" data-related-lessons></div>
+</section>
+
+<details class="lesson-search-card" data-lesson-search-panel>
+  <summary class="search-summary"><strong>Find a moment in this lesson</strong><span>7 indexed moves</span></summary>
+  <div class="search-body">
+    <label class="search-field">
+      <span class="visually-hidden">Search the lesson moments</span>
+      <input type="search" data-lesson-search placeholder="Try “hammer”, “B pedal”, or “double stop”" autocomplete="off">
+    </label>
+    <span class="visually-hidden" data-search-count></span>
+    <div class="lesson-search-results" data-lesson-search-results></div>
+  </div>
+</details>
+
 <div class="error-panel" data-error hidden></div>

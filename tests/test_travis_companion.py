@@ -12,11 +12,13 @@ import pytest
 from partner_companions.travis_howdy.release import (
     CompanionReleaseError,
     DEFAULT_COMPANION,
+    DEFAULT_RELATED_LESSONS,
     _normalized_artifact_hash,
     _merge_release_config,
     build_companion_bundle,
     generate_tablature_pdf,
     validate_companion,
+    validate_related_lessons,
 )
 from scripts.verify_travis_companion import BLOCKED_ROUTES, verify
 
@@ -191,7 +193,6 @@ def test_chord_boundaries_are_exact_and_never_inferred() -> None:
 
 def test_normalized_artifact_hash_ignores_only_generated_fields() -> None:
     data = load_draft()
-    first = _normalized_artifact_hash(data)
     generated = copy.deepcopy(data)
     generated["buildSha"] = "different"
     generated["artifactSha256"] = "different"
@@ -199,9 +200,48 @@ def test_normalized_artifact_hash_ignores_only_generated_fields() -> None:
     generated["media"]["soloAudioUrl"] = "/assets/example/solo.mp3"
     generated["media"]["pdfUrl"] = "/assets/example/tab.pdf"
     generated["media"]["brandHeroUrl"] = "/assets/example/photo.jpg"
-    assert _normalized_artifact_hash(generated) == first
+    generated["relatedLessons"] = validate_related_lessons(
+        json.loads(DEFAULT_RELATED_LESSONS.read_text(encoding="utf-8"))
+    )
+    for lesson in generated["relatedLessons"]:
+        lesson["thumbnailUrl"] = "/assets/example/lesson.jpg"
+    baseline = copy.deepcopy(data)
+    baseline["relatedLessons"] = copy.deepcopy(generated["relatedLessons"])
+    for lesson in baseline["relatedLessons"]:
+        lesson["thumbnailUrl"] = None
+    assert _normalized_artifact_hash(generated) == _normalized_artifact_hash(baseline)
     generated["events"][0]["instruction"] = "Changed music-facing content"
-    assert _normalized_artifact_hash(generated) != first
+    assert _normalized_artifact_hash(generated) != _normalized_artifact_hash(baseline)
+
+
+def test_related_video_cards_are_short_source_grounded_and_real() -> None:
+    lessons = validate_related_lessons(json.loads(DEFAULT_RELATED_LESSONS.read_text(encoding="utf-8")))
+    assert len(lessons) == 3
+    assert {lesson["id"] for lesson in lessons} == {
+        "pedals-really-doing",
+        "intervals-make-chords",
+        "pockets-positions-1",
+    }
+    assert all(lesson["url"].startswith("https://travis-toy-tutorials.teachable.com/") for lesson in lessons)
+    assert all(lesson["startMs"] >= 0 and lesson["endMs"] > lesson["startMs"] for lesson in lessons)
+    assert all(len(lesson["evidenceExcerpt"].split()) <= 22 for lesson in lessons)
+
+
+def test_private_related_video_thumbnails_are_hash_pinned_and_same_origin(tmp_path: Path) -> None:
+    thumbnail_dir = tmp_path / "thumbnails"
+    thumbnail_dir.mkdir()
+    lessons = validate_related_lessons(json.loads(DEFAULT_RELATED_LESSONS.read_text(encoding="utf-8")))
+    for index, lesson in enumerate(lessons):
+        (thumbnail_dir / lesson["thumbnailFile"]).write_bytes(b"jpeg-preview-" + bytes([index]))
+
+    bundle = tmp_path / "bundle"
+    build_companion_bundle(bundle, related_thumbnails_dir=thumbnail_dir, source_date_epoch=1)
+    deployed = json.loads(next(bundle.rglob("lesson-companion.json")).read_text(encoding="utf-8"))
+    for lesson in deployed["relatedLessons"]:
+        thumbnail = bundle / lesson["thumbnailUrl"].removeprefix("/")
+        assert thumbnail.is_file()
+        assert lesson["thumbnailUrl"].startswith("/assets/")
+        assert lesson["thumbnailSha256"] == hashlib.sha256(thumbnail.read_bytes()).hexdigest()
 
 
 def test_coaching_cues_must_be_verbatim_and_timestamped() -> None:
@@ -362,6 +402,36 @@ def test_security_headers_and_route_map_are_fail_closed(tmp_path: Path) -> None:
     assert "Access-Control-Allow-Origin" not in headers
 
 
+def test_local_practice_guide_alias_reuses_the_music_first_embed(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    manifest_path = tmp_path / "manifest.json"
+    manifest = build_companion_bundle(
+        bundle,
+        manifest_path=manifest_path,
+        practice_guide_alias=True,
+        source_date_epoch=1,
+    )
+    alias = bundle / "practice-guide" / "howdy" / "index.html"
+    assert alias.read_bytes() == (bundle / "howdy" / "embed-demo" / "index.html").read_bytes()
+    assert "/practice-guide/howdy" in manifest["allowedRoutes"]
+    assert "/practice-guide/howdy/ /practice-guide/howdy/index.html 200" in (
+        bundle / "_redirects"
+    ).read_text(encoding="utf-8")
+    assert verify(bundle, manifest_path)["result"] == "pass"
+
+    data = approved_release_data()
+    companion = tmp_path / "approved.json"
+    companion.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(CompanionReleaseError, match="local-preview only"):
+        build_companion_bundle(
+            tmp_path / "release",
+            companion_path=companion,
+            release=True,
+            release_config_path=tmp_path / "config.json",
+            practice_guide_alias=True,
+        )
+
+
 def test_browser_runtime_has_one_same_origin_fetch_and_no_dynamic_clients() -> None:
     script = (SITE / "companion.js").read_text(encoding="utf-8")
     assert script.count("fetch(") == 2
@@ -386,14 +456,15 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function renderChordChart()" in script
     assert "function renderSongTimeline()" in script
     assert "function updateSongTimeline(" in script
-    assert 'pending ? "No guessed chord"' in script
+    assert 'pending ? "—" : segment.symbol' in script
     assert "scroll.scrollLeft = target" in script
     assert "needs-attention" in script
     assert "function stepMove(" in script
+    assert "function renderRelatedLessons()" in script
+    assert 'link.target = "_blank"' in script
     assert 'return `${note.fret}h${pedal}`' in script
     for selector in (
         "data-lesson-search",
-        "data-layer-title",
         "data-chord-chart",
         "data-song-timeline",
         "data-song-scroll",
@@ -402,16 +473,16 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         "data-song-now-chord",
         "data-key-label",
         "data-study-controls",
-        "data-explore-panel",
+        "data-related-lessons",
     ):
         assert selector in markup
-    assert '"phrase-practice": "Solo"' in script
-    assert '"play-along": "Full Song"' in script
+    assert '"phrase-practice": `Taught solo · ${formatTime(mediaScopes().taughtSolo.durationMs)}`' in script
+    assert '"play-along": `Full song · ${formatTime(mediaScopes().fullSong.durationMs)}`' in script
     assert "function renderMediaScope()" in script
     assert "function configureMediaScopeActions()" in script
     assert "taughtSoloTimeAt" in script
     assert 'if (!terms.length && presentation === "embed-demo") return;' in script
-    assert 'aria-label="Full-song scrolling chord and Nashville number timeline"' in markup
+    assert 'aria-label="Scrolling full-song chords and Nashville numbers"' in markup
 
 
 def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
@@ -420,15 +491,21 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     )
     styles = (SITE / "companion.css").read_text(encoding="utf-8")
     assert 'data-lesson-search-panel' in markup
-    assert 'data-action="open-full-song"' in markup
-    assert 'data-action="open-taught-solo"' in markup
-    assert 'data-action="jump-to-solo"' in markup
+    assert 'data-layer-tabs' in markup
+    assert 'data-action="play"' in markup
+    assert 'data-tab' in markup
+    assert 'data-related-lessons' in markup
+    assert 'Complete printable tab' in markup
     assert '<summary class="search-summary">' in markup
     assert '[data-active-layer]:not([data-active-layer="lesson-map"]) .lesson-search-card { display: none; }' in styles
-    assert '[data-active-layer="phrase-practice"] .lesson-map { display: none; }' in styles
+    assert '[data-active-layer="phrase-practice"] .lesson-map { display: block; }' in styles
     assert '[data-active-layer="play-along"] .chord-chart-card { display: none; }' in styles
     assert '[data-active-layer="play-along"] .song-chart-card { display: block; }' in styles
+    assert '[data-active-layer="phrase-practice"].companion-shell .lesson-search-card { display: block; }' in styles
+    assert '.related-video-grid { display: grid;' in styles
     assert '.compact-shell .layer-context, .compact-shell .mode-switcher, .compact-shell .source-card { display: none; }' in styles
+    for rejected_copy in ("mechanical landmarks", "unverified transcription", "Use Travis’s own lesson moments"):
+        assert rejected_copy not in markup
 
 
 def test_embed_matches_teachable_typeset_and_preserves_discussion_space() -> None:
@@ -437,7 +514,9 @@ def test_embed_matches_teachable_typeset_and_preserves_discussion_space() -> Non
     )
     styles = (SITE / "companion.css").read_text(encoding="utf-8")
     assert 'data-demo-discussion' in template
-    assert 'Member discussion stays in Teachable' in template
+    assert '>Discussion<' in template
+    assert 'Post a comment' in template
+    assert 'Member discussion stays in Teachable' not in template
     assert 'aria-label="Comment box preview"' in template
     assert 'disabled></textarea>' in template
     assert template.index('id="companion"') < template.index('data-demo-discussion')
