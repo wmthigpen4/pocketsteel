@@ -1,0 +1,369 @@
+{
+  "schemaVersion": "practice_guide_collection_v1",
+  "revision": "ttt-practice-guide-2026-08-15.2",
+  "runtimeMode": "published_deterministic",
+  "modelCallsAllowed": false,
+  "contentStatus": "owner_preview_source_validated",
+  "sourcePolicy": {
+    "rawTranscriptsIncluded": false,
+    "rawCommentsIncluded": false,
+    "memberIdentitiesIncluded": false,
+    "uncertainRecommendationsPublished": false,
+    "learnerRuntimeUsesModels": false
+  },
+  "guides": [
+    {
+      "schemaVersion": "lesson_companion_v2",
+      "companionId": "ttt-right-hand-exercise-1",
+      "slug": "right-hand-exercise",
+      "lessonId": "right-hand-exercise-1",
+      "type": "technique_coach",
+      "title": "My #1 Right Hand Exercise — Part 1",
+      "eyebrow": "Technique Coach",
+      "durationMs": 722000,
+      "searchEnabled": true,
+      "runtime": {"mode": "published_deterministic", "modelCallsAllowed": false},
+      "orderedGuideBlocks": ["point", "moments", "practice", "diagnostics", "conceptTrails", "visualization", "nextLessons"],
+      "claims": [
+        {"id": "rh-claim-outcome", "text": "The lesson's practice target is efficient picking and blocking with quiet inactive fingers.", "provenance": "editorial", "reviewStatus": "owner_preview"},
+        {"id": "rh-claim-moments", "text": "Published Travis excerpts match exact transcript cue windows.", "provenance": "transcript", "reviewStatus": "source_validated"},
+        {"id": "rh-claim-diagnostics", "text": "The diagnostic priorities synthesize recurring learner problems without quoting members.", "provenance": "editorial", "reviewStatus": "comment_theme_anonymized"}
+      ],
+      "setup": {
+        "key": "No fixed key",
+        "copedent": "Standard 10-string E9; pedals and levers are not required",
+        "requirements": ["Thumb, index, and middle picks", "A relaxed blocking position"],
+        "prerequisites": ["Know which finger normally plays each string"]
+      },
+      "point": {
+        "outcome": "Train one picking finger to move while the other fingers stay quiet enough to block on purpose.",
+        "sessions": [
+          {"minutes": 2, "label": "Isolate", "instruction": "Choose one picking-and-blocking motion and repeat it slowly."},
+          {"minutes": 5, "label": "Build control", "instruction": "Alternate the four-note pattern with a short rest and reset."},
+          {"minutes": 10, "label": "Make it musical", "instruction": "Keep the same quiet motion while moving the pattern across adjacent strings."}
+        ]
+      },
+      "moments": [
+        {"id": "rh-m01", "startMs": 163770, "endMs": 169340, "label": "The real assignment", "excerpt": "efficiently can I actually just pick and block some notes", "quoteKind": "verbatim_excerpt", "conceptIds": ["pick_blocking"]},
+        {"id": "rh-m02", "startMs": 254680, "endMs": 261890, "label": "Build finger confidence", "excerpt": "it's about confidence and it's about having confidence in what your fingers are going to do", "quoteKind": "verbatim_excerpt", "conceptIds": ["right_hand_independence"]},
+        {"id": "rh-m03", "startMs": 331720, "endMs": 336000, "label": "Watch one finger", "excerpt": "the finger doing the picking", "quoteKind": "verbatim_excerpt", "conceptIds": ["right_hand_independence"]},
+        {"id": "rh-m04", "startMs": 384020, "endMs": 408000, "label": "Four-note sequence", "excerpt": "four note pattern it looks like this", "quoteKind": "verbatim_excerpt", "conceptIds": ["pick_blocking"]},
+        {"id": "rh-m05", "startMs": 470710, "endMs": 472680, "label": "Isolate the hard move", "excerpt": "should practice just that right", "quoteKind": "verbatim_excerpt", "conceptIds": ["right_hand_independence"]}
+      ],
+      "practice": {
+        "title": "One digit moves",
+        "tempo": "No metronome at first; then 50–60 BPM",
+        "repetitions": "5 clean repetitions, rest, repeat 3 times",
+        "steps": ["Pick one note with the thumb.", "Return the blocking finger to its string without lifting the other fingers.", "Repeat with index and middle as separate motions.", "Play the four-note sequence only after all three motions feel small."],
+        "hearSeeFeel": ["Hear a clean stop with no extra string ringing.", "See the non-picking fingers remain nearly still.", "Feel no squeeze in the wrist or thumb joint."],
+        "success": "Five repetitions sound alike and the resting fingers do not travel with the active finger.",
+        "easier": "Mute the strings with the bar hand and practice only the right-hand motion.",
+        "challenge": "Move the same four-note pattern to a neighboring string group without making the motion larger."
+      },
+      "diagnostics": [
+        {"problem": "All three fingers move together", "response": "Freeze two fingers on their strings and let only the active digit complete one pick-and-return cycle.", "sourceKind": "comment_theme"},
+        {"problem": "The block makes a loud clank", "response": "Reduce the return distance and land on the string instead of striking through it.", "sourceKind": "comment_theme"},
+        {"problem": "Palm blocking feels more natural", "response": "Keep your normal musical approach. Use this drill to learn the pick-blocking motion as an additional choice.", "sourceKind": "comment_theme"}
+      ],
+      "conceptTrails": [
+        {
+          "conceptId": "pick_blocking",
+          "momentId": "rh-m01",
+          "prompt": "Need the blocking motion defined first?",
+          "targets": [
+            {"role": "learn_first", "lessonId": "picking-blocking-choices", "startMs": 72730, "endMs": 102000, "label": "Picking And Blocking Choices", "reason": "Travis defines the motion and shows how a pick returns to stop a note.", "evidenceExcerpt": "classically been called pick blocking", "estimatedDetour": "0:30"}
+          ]
+        },
+        {
+          "conceptId": "right_hand_independence",
+          "momentId": "rh-m03",
+          "prompt": "Why does small motion matter?",
+          "targets": [
+            {"role": "go_deeper", "lessonId": "lack-of-motion", "startMs": 111740, "endMs": 144000, "label": "Lack Of Motion And Why It Matters", "reason": "A focused explanation of unnecessary motion and why it limits speed and control.", "evidenceExcerpt": "my whole concept is I try to minimize every movement", "estimatedDetour": "0:32"}
+          ]
+        }
+      ],
+      "visualization": {
+        "type": "motion_sequence",
+        "title": "Pick → stop → reset",
+        "steps": [
+          {"label": "Ready", "detail": "All three picks close to their strings.", "active": "none"},
+          {"label": "Pick", "detail": "One digit moves through the string.", "active": "one digit"},
+          {"label": "Block", "detail": "The assigned pick returns to stop the previous note.", "active": "blocking digit"},
+          {"label": "Reset", "detail": "The hand returns to the same compact shape.", "active": "none"}
+        ]
+      },
+      "nextLessons": ["picking-blocking-choices", "lack-of-motion", "right-hand-technique"],
+      "print": {"title": "Right-Hand Independence — Practice Card", "subtitle": "My #1 Right Hand Exercise — Part 1"}
+    },
+    {
+      "schemaVersion": "lesson_companion_v2",
+      "companionId": "ttt-pedals-really-doing",
+      "slug": "pedals-really-doing",
+      "lessonId": "pedals-really-doing",
+      "type": "pedal_theory_lab",
+      "title": "What Are the Pedals Really Doing?",
+      "eyebrow": "Pedal & Theory Lab",
+      "durationMs": 345000,
+      "searchEnabled": false,
+      "runtime": {"mode": "published_deterministic", "modelCallsAllowed": false},
+      "orderedGuideBlocks": ["point", "moments", "practice", "diagnostics", "conceptTrails", "visualization", "nextLessons"],
+      "claims": [
+        {"id": "pd-claim-outcome", "text": "Pedal changes are taught as interval functions, with licks as musical results.", "provenance": "transcript", "reviewStatus": "source_validated"},
+        {"id": "pd-claim-formulas", "text": "Major, minor, dominant-seven, and major-seven formulas are checked against deterministic interval rules.", "provenance": "deterministic_rule", "reviewStatus": "rule_validated"},
+        {"id": "pd-claim-practice", "text": "The listen-name-play sequence is companion practice guidance.", "provenance": "editorial", "reviewStatus": "owner_preview"}
+      ],
+      "setup": {
+        "key": "E at the open fret",
+        "copedent": "Standard 10-string E9; A and B pedals, E raises/lowers",
+        "requirements": ["Know the open E major grip", "Be able to engage one pedal at a time"],
+        "prerequisites": ["Basic scale-degree numbers are helpful, not required"]
+      },
+      "point": {
+        "outcome": "Hear pedals as changes to interval roles instead of memorizing them only as lick controls.",
+        "sessions": [
+          {"minutes": 2, "label": "Name one change", "instruction": "Pick one affected string, engage one pedal, and say both interval roles aloud."},
+          {"minutes": 5, "label": "Map A and B", "instruction": "Compare the fifth-to-sixth and third-to-fourth changes."},
+          {"minutes": 10, "label": "Build a chord", "instruction": "Hold a small grip and identify how each pedal changes the harmony."}
+        ]
+      },
+      "moments": [
+        {"id": "pd-m01", "startMs": 50590, "endMs": 52540, "label": "Pedals manipulate the tuning", "excerpt": "manipulating the tuning", "quoteKind": "verbatim_excerpt", "conceptIds": ["pedal_functions"]},
+        {"id": "pd-m02", "startMs": 91510, "endMs": 94880, "label": "The lesson points forward", "excerpt": "going to explain this in a little bit more depth in a later lesson", "quoteKind": "verbatim_excerpt", "conceptIds": ["intervals"]},
+        {"id": "pd-m03", "startMs": 111650, "endMs": 120000, "label": "A and B in interval language", "excerpt": "my A pedal takes my 5ths to 6ths, my B pedal takes my 3rds to 4ths", "quoteKind": "verbatim_excerpt", "conceptIds": ["intervals", "pedal_functions"]},
+        {"id": "pd-m04", "startMs": 244690, "endMs": 246000, "label": "Licks are the result", "excerpt": "They're manipulating the intervals on the instrument", "quoteKind": "verbatim_excerpt", "conceptIds": ["intervals", "pedal_functions"]}
+      ],
+      "practice": {
+        "title": "Say the interval before the lick",
+        "tempo": "Free time; let each pitch settle",
+        "repetitions": "3 listen-and-name cycles per control",
+        "steps": ["Play the open string without a pedal.", "Name its role in the E chord.", "Engage only the assigned pedal or lever and name the new role.", "Play the two-note change inside a grip and describe the chord color it creates."],
+        "hearSeeFeel": ["Hear the destination pitch before pressing the control.", "See which strings change and which remain anchors.", "Feel the pedal stop without adding bar pressure."],
+        "success": "You can predict the interval change before you hear it on three different strings.",
+        "easier": "Work only with the A pedal: fifth to sixth.",
+        "challenge": "Describe one familiar lick entirely as interval changes."
+      },
+      "diagnostics": [
+        {"problem": "I remember the pedal but not what it changes", "response": "Use one string at a time and say the before/after interval out loud before playing.", "sourceKind": "comment_theme"},
+        {"problem": "The number names feel abstract", "response": "Anchor every number to an audible open-E note, then move the same relationship to another key.", "sourceKind": "comment_theme"},
+        {"problem": "A lever produces a chord name I do not recognize", "response": "List the sounding intervals first; name the chord only after the notes are accounted for.", "sourceKind": "comment_theme"}
+      ],
+      "conceptTrails": [
+        {
+          "conceptId": "intervals",
+          "momentId": "pd-m02",
+          "prompt": "Need scale-degree language first?",
+          "targets": [
+            {"role": "learn_first", "lessonId": "intervals-explained", "startMs": 13170, "endMs": 36000, "label": "Intervals Explained", "reason": "A short primer that attaches interval numbers to the major scale.", "evidenceExcerpt": "when I'm saying intervals that's all I'm referring to", "estimatedDetour": "0:23"},
+            {"role": "go_deeper", "lessonId": "intervals-make-chords", "startMs": 24630, "endMs": 36000, "label": "How Intervals Make Chords", "reason": "Builds a major chord directly from 1, 3, and 5.", "evidenceExcerpt": "Our major chord is going to be a 1, a 3, and a 5", "estimatedDetour": "0:11"}
+          ]
+        },
+        {
+          "conceptId": "major_7",
+          "momentId": "pd-m04",
+          "prompt": "Major 7 and dominant 7 sound similar on paper. What changes?",
+          "targets": [
+            {"role": "compare", "lessonId": "dominant-seven-positions", "startMs": 69930, "endMs": 72000, "label": "Dom7th Chords — Common Positions", "reason": "Travis states the dominant-seven ingredients: root, third, fifth, and flat seven.", "evidenceExcerpt": "a root a third a fifth a Flat 7 note", "estimatedDetour": "0:02"},
+            {"role": "hear_it_used", "lessonId": "pockets-positions-1", "startMs": 437870, "endMs": 446720, "label": "Pockets & Positions — Volume 1", "reason": "A major-seven position is named and placed in a real fretboard context.", "evidenceExcerpt": "It's a G major 7", "estimatedDetour": "0:09"}
+          ]
+        }
+      ],
+      "visualization": {
+        "type": "pedal_interval_map",
+        "title": "Before and after",
+        "rows": [
+          {"control": "A pedal", "before": "5", "after": "6", "example": "B → C♯ in open E"},
+          {"control": "B pedal", "before": "3", "after": "4", "example": "G♯ → A in open E"},
+          {"control": "E lower", "before": "1", "after": "7", "example": "E → D♯ in open E"},
+          {"control": "F lever", "before": "1", "after": "♯1 / ♭2", "example": "E → F in open E"}
+        ]
+      },
+      "nextLessons": ["intervals-explained", "intervals-make-chords", "diatonic-harmony"],
+      "print": {"title": "Pedals as Intervals — Practice Card", "subtitle": "What Are the Pedals Really Doing?"}
+    },
+    {
+      "schemaVersion": "lesson_companion_v2",
+      "companionId": "ttt-pockets-positions-1",
+      "slug": "pockets-positions",
+      "lessonId": "pockets-positions-1",
+      "type": "fretboard_path_guide",
+      "title": "Pockets & Positions — Volume 1",
+      "eyebrow": "Fretboard Path Guide",
+      "durationMs": 1401000,
+      "searchEnabled": true,
+      "runtime": {"mode": "published_deterministic", "modelCallsAllowed": false},
+      "orderedGuideBlocks": ["point", "moments", "practice", "diagnostics", "conceptTrails", "visualization", "nextLessons"],
+      "claims": [
+        {"id": "pp-claim-outcome", "text": "A position can be practiced as a home area with usable notes on both sides.", "provenance": "transcript", "reviewStatus": "source_validated"},
+        {"id": "pp-claim-definition", "text": "The pocket definition is a reusable curriculum rule derived from the source-grounded examples.", "provenance": "deterministic_rule", "reviewStatus": "taxonomy_validated"},
+        {"id": "pp-claim-path", "text": "The generic home-neighbor path is not note-for-note tablature.", "provenance": "editorial", "reviewStatus": "owner_preview"}
+      ],
+      "setup": {
+        "key": "G examples; transfer the relationships to any key",
+        "copedent": "Standard 10-string E9; A/B pedals and common knee levers",
+        "requirements": ["Locate one pedals-up and one pedals-down major position", "Name the I chord in the chosen key"],
+        "prerequisites": ["Intervals", "Major-triad positions"]
+      },
+      "point": {
+        "outcome": "Stop treating a chord position as a single fret and learn to see useful notes on both sides of it.",
+        "sessions": [
+          {"minutes": 2, "label": "Choose a home", "instruction": "Name one position and play its stable chord tones."},
+          {"minutes": 5, "label": "Look both ways", "instruction": "Find one usable note below and above the position, then return home."},
+          {"minutes": 10, "label": "Connect positions", "instruction": "Build two short horizontal routes to the neighboring position."}
+        ]
+      },
+      "moments": [
+        {"id": "pp-m01", "startMs": 85250, "endMs": 90000, "label": "A position has neighbors", "excerpt": "notes that work on either side of this position", "quoteKind": "verbatim_excerpt", "conceptIds": ["pockets_positions"]},
+        {"id": "pp-m02", "startMs": 107930, "endMs": 114000, "label": "Chromatic connection", "excerpt": "I can also move to and from both of those chromatically", "quoteKind": "verbatim_excerpt", "conceptIds": ["chromatic_pathways"]},
+        {"id": "pp-m03", "startMs": 394550, "endMs": 396000, "label": "Practice horizontally", "excerpt": "It's practicing these moves horizontally", "quoteKind": "verbatim_excerpt", "conceptIds": ["pockets_positions"]},
+        {"id": "pp-m04", "startMs": 437870, "endMs": 438000, "label": "Major-seven pocket", "excerpt": "It's a G major 7", "quoteKind": "verbatim_excerpt", "conceptIds": ["major_7"]},
+        {"id": "pp-m05", "startMs": 1251970, "endMs": 1260000, "label": "Look left and right", "excerpt": "where do things exist to the left and right", "quoteKind": "verbatim_excerpt", "conceptIds": ["pockets_positions"]},
+        {"id": "pp-m06", "startMs": 1351690, "endMs": 1359580, "label": "Connect deliberately", "excerpt": "I'll look in both directions", "quoteKind": "verbatim_excerpt", "conceptIds": ["chromatic_pathways"]}
+      ],
+      "practice": {
+        "title": "Home → neighbor → home",
+        "tempo": "55 BPM, two beats per destination",
+        "repetitions": "4 routes left, 4 routes right",
+        "steps": ["Play the home-position chord and name its function.", "Choose one chord tone or scale tone one or two frets away.", "Move to it without changing the chord context in your head.", "Return to a stable chord tone, then build a route in the other direction."],
+        "hearSeeFeel": ["Hear the home chord continuing underneath the connecting note.", "See a destination before moving the bar.", "Feel the bar arrive squarely instead of searching after the attack."],
+        "success": "You can leave and return to the position in both directions without losing the chord sound.",
+        "easier": "Use only one string and one neighboring fret.",
+        "challenge": "Connect the same two positions with a different string group or pedal state."
+      },
+      "diagnostics": [
+        {"problem": "I can copy the lick but cannot find another route", "response": "Name the destination interval, then search for that same role on a nearby string before adding chromatic notes.", "sourceKind": "comment_theme"},
+        {"problem": "Major 7 and dominant 7 are blurring together", "response": "Check the seventh: natural 7 for major 7, flat 7 for dominant 7. Keep the concepts separate before locating grips.", "sourceKind": "comment_theme"},
+        {"problem": "I lose track of which pedal state I am in", "response": "Pause at every destination and say pedals up, A, B, A+B, or lever name before continuing.", "sourceKind": "comment_theme"}
+      ],
+      "conceptTrails": [
+        {
+          "conceptId": "pockets_positions",
+          "momentId": "pp-m01",
+          "prompt": "What does “connect the dots” mean before this lesson?",
+          "targets": [
+            {"role": "learn_first", "lessonId": "life-outside-pedals-up-down", "startMs": 71090, "endMs": 108000, "label": "Life Outside of Pedals Up and Pedals Down", "reason": "Travis frames positions as sources of single notes and intervals, not isolated grips.", "evidenceExcerpt": "what people call pockets or positions", "estimatedDetour": "0:37"}
+          ]
+        },
+        {
+          "conceptId": "major_7",
+          "momentId": "pp-m04",
+          "prompt": "Not sure how major 7 differs from dominant 7?",
+          "targets": [
+            {"role": "learn_first", "lessonId": "intervals-explained", "startMs": 13170, "endMs": 36000, "label": "Intervals Explained", "reason": "Establishes the scale-degree language used to distinguish 7 from flat 7.", "evidenceExcerpt": "when I'm saying intervals that's all I'm referring to", "estimatedDetour": "0:23"},
+            {"role": "compare", "lessonId": "dominant-seven-positions", "startMs": 69930, "endMs": 72000, "label": "Dom7th Chords — Common Positions", "reason": "The dominant-seven formula is stated directly before the position work begins.", "evidenceExcerpt": "a root a third a fifth a Flat 7 note", "estimatedDetour": "0:02"}
+          ]
+        },
+        {
+          "conceptId": "chromatic_pathways",
+          "momentId": "pp-m06",
+          "prompt": "How do connecting notes stay musical?",
+          "targets": [
+            {"role": "go_deeper", "lessonId": "life-outside-pedals-up-down", "startMs": 207310, "endMs": 216000, "label": "Life Outside of Pedals Up and Pedals Down", "reason": "Shows that every fret can be purposeful as a destination or a chromatic connector.", "evidenceExcerpt": "it's a chromatic move to a note that works", "estimatedDetour": "0:09"}
+          ]
+        }
+      ],
+      "visualization": {
+        "type": "position_path",
+        "title": "Position is home; pocket is the neighborhood",
+        "nodes": [
+          {"fret": "left", "role": "connector", "label": "approach note"},
+          {"fret": "home − 1", "role": "neighbor", "label": "nearby scale/chord tone"},
+          {"fret": "home", "role": "home", "label": "stable chord position"},
+          {"fret": "home + 1", "role": "neighbor", "label": "nearby scale/chord tone"},
+          {"fret": "right", "role": "connector", "label": "next position route"}
+        ],
+        "rules": ["Name the chord before leaving home.", "Know the destination before using a chromatic connector.", "Practice the route in both directions."]
+      },
+      "nextLessons": ["life-outside-pedals-up-down", "bar-control-accuracy", "nashville-number-positions"],
+      "print": {"title": "Position Neighborhood — Practice Card", "subtitle": "Pockets & Positions — Volume 1"}
+    },
+    {
+      "schemaVersion": "lesson_companion_v2",
+      "companionId": "ttt-howdy-concept-guide",
+      "slug": "howdy",
+      "lessonId": "howdy-solo",
+      "type": "application_guide",
+      "title": "“Howdy” Solo (Eddy Dunlap)",
+      "eyebrow": "Application Guide",
+      "durationMs": 1020000,
+      "searchEnabled": true,
+      "runtime": {"mode": "published_deterministic", "modelCallsAllowed": false},
+      "orderedGuideBlocks": ["point", "moments", "practice", "diagnostics", "conceptTrails", "visualization", "nextLessons"],
+      "claims": [
+        {"id": "hw-claim-key", "text": "The lesson/transcription context is key D; chord names remain review-gated.", "provenance": "human_transcription", "reviewStatus": "travis_review_required"},
+        {"id": "hw-claim-moments", "text": "The six published landmarks match the reviewed private lesson-moment index.", "provenance": "transcript", "reviewStatus": "source_validated"},
+        {"id": "hw-claim-no-tab", "text": "This guide intentionally withholds unapproved tablature and harmony.", "provenance": "editorial", "reviewStatus": "owner_preview"}
+      ],
+      "setup": {
+        "key": "D; chord names and note-for-note harmony remain review-gated",
+        "copedent": "Travis’s lesson E9 setup; exact musical route remains review-gated",
+        "requirements": ["A and B pedals", "Comfort with double stops"],
+        "prerequisites": ["Basic pedal-state awareness", "Clean two-note grips"]
+      },
+      "point": {
+        "outcome": "Use Travis’s own lesson moments to remember the solo’s mechanical landmarks without publishing another unverified transcription.",
+        "sessions": [
+          {"minutes": 2, "label": "Locate", "instruction": "Jump to one landmark and say the pedal action before replaying it."},
+          {"minutes": 5, "label": "Link two moments", "instruction": "Practice the transition between two adjacent lesson landmarks."},
+          {"minutes": 10, "label": "Retell the route", "instruction": "Describe the solo as a sequence of double stops and pedal actions before playing."}
+        ]
+      },
+      "moments": [
+        {"id": "hw-m01", "startMs": 135100, "endMs": 135100, "label": "Opening setup", "excerpt": "this starts in a cool way", "quoteKind": "verbatim_excerpt", "conceptIds": ["pockets_positions"], "evidenceRef": "howdy-transcribed-review-2026-08-14.4"},
+        {"id": "hw-m02", "startMs": 318170, "endMs": 318170, "label": "Double-stop move", "excerpt": "double stop", "quoteKind": "verbatim_excerpt", "conceptIds": [], "evidenceRef": "howdy-transcribed-review-2026-08-14.4"},
+        {"id": "hw-m03", "startMs": 513890, "endMs": 513890, "label": "Pedals enter", "excerpt": "squeezed into A and B, okay", "quoteKind": "verbatim_excerpt", "conceptIds": ["pedal_functions"], "evidenceRef": "howdy-transcribed-review-2026-08-14.4"},
+        {"id": "hw-m04", "startMs": 620320, "endMs": 620320, "label": "Pedal-state reminder", "excerpt": "B pedal back in", "quoteKind": "verbatim_excerpt", "conceptIds": ["pedal_functions"], "evidenceRef": "howdy-transcribed-review-2026-08-14.4"},
+        {"id": "hw-m05", "startMs": 711830, "endMs": 711830, "label": "Release landmark", "excerpt": "release A pedal", "quoteKind": "verbatim_excerpt", "conceptIds": ["pedal_functions"], "evidenceRef": "howdy-transcribed-review-2026-08-14.4"},
+        {"id": "hw-m06", "startMs": 981470, "endMs": 981470, "label": "Final double stop", "excerpt": "this is the end", "quoteKind": "verbatim_excerpt", "conceptIds": [], "evidenceRef": "howdy-transcribed-review-2026-08-14.4"}
+      ],
+      "practice": {
+        "title": "Say it, then play it",
+        "tempo": "Lesson speed first; slow only after the exact move is located",
+        "repetitions": "3 clean transitions between adjacent landmarks",
+        "steps": ["Choose two adjacent moments.", "Replay Travis’s explanation and say the pedal or grip change aloud.", "Practice only the connection between those landmarks.", "Return to the lesson and compare your motion to Travis’s demonstration."],
+        "hearSeeFeel": ["Hear both notes of each double stop speak together.", "See the bar destination before moving.", "Feel the A or B pedal reach its stop before the next attack."],
+        "success": "You can name and execute the next pedal or grip change before replaying the lesson.",
+        "easier": "Shadow the pedal motion without picking.",
+        "challenge": "Play the transition once, then describe why the pedal action fits the current sound."
+      },
+      "diagnostics": [
+        {"problem": "The lesson moves too quickly to remember the pedal state", "response": "Use the landmark list as a verbal route and practice only one transition at a time.", "sourceKind": "comment_theme"},
+        {"problem": "The double stop is uneven", "response": "Mute the strings, place both picks, and rehearse a simultaneous attack before adding the bar move.", "sourceKind": "editorial"},
+        {"problem": "A pedal release sounds disconnected", "response": "Separate the release from the pick, then recombine them after both motions are predictable.", "sourceKind": "editorial"}
+      ],
+      "conceptTrails": [
+        {
+          "conceptId": "pedal_functions",
+          "momentId": "hw-m03",
+          "prompt": "What are A and B changing underneath the lick?",
+          "targets": [
+            {"role": "learn_first", "lessonId": "pedals-really-doing", "startMs": 111650, "endMs": 120000, "label": "What Are the Pedals Really Doing?", "reason": "Travis names the A- and B-pedal changes as interval movement.", "evidenceExcerpt": "my A pedal takes my 5ths to 6ths, my B pedal takes my 3rds to 4ths", "estimatedDetour": "0:08"},
+            {"role": "go_deeper", "lessonId": "intervals-make-chords", "startMs": 24630, "endMs": 36000, "label": "How Intervals Make Chords", "reason": "Connects the changed intervals to the chord they form.", "evidenceExcerpt": "Our major chord is going to be a 1, a 3, and a 5", "estimatedDetour": "0:11"}
+          ]
+        },
+        {
+          "conceptId": "pockets_positions",
+          "momentId": "hw-m01",
+          "prompt": "Why can a short move belong to a larger position?",
+          "targets": [
+            {"role": "go_deeper", "lessonId": "pockets-positions-1", "startMs": 79930, "endMs": 90000, "label": "Pockets & Positions — Volume 1", "reason": "Shows how nearby notes belong to the same position neighborhood.", "evidenceExcerpt": "notes that work on either side of this position", "estimatedDetour": "0:10"}
+          ]
+        }
+      ],
+      "visualization": {
+        "type": "phrase_map",
+        "title": "Lesson landmarks, not unverified tab",
+        "steps": [
+          {"momentId": "hw-m01", "label": "Opening setup"},
+          {"momentId": "hw-m02", "label": "Double stop"},
+          {"momentId": "hw-m03", "label": "A+B enter"},
+          {"momentId": "hw-m04", "label": "B returns"},
+          {"momentId": "hw-m05", "label": "A releases"},
+          {"momentId": "hw-m06", "label": "Final double stop"}
+        ]
+      },
+      "nextLessons": ["pedals-really-doing", "pockets-positions-1", "bar-control-accuracy"],
+      "print": {"title": "Howdy Landmark Route — Practice Card", "subtitle": "Source-backed lesson moments; no unapproved tab"}
+    }
+  ]
+}

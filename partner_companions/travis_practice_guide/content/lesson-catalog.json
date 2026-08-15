@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "ttt_lesson_catalog_v1",
+  "revision": "ttt-catalog-2026-08-15.2",
+  "lessons": [
+    {
+      "id": "right-hand-exercise-1",
+      "title": "My #1 Right Hand Exercise - Part 1",
+      "sourceSlug": "My-1-Right-Hand-Exercise---Part-1",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16830192",
+      "durationMs": 722000,
+      "depth": "focused",
+      "dedicatedConceptIds": ["right_hand_independence"],
+      "isZoom": false
+    },
+    {
+      "id": "picking-blocking-choices",
+      "title": "Picking And Blocking Choices",
+      "sourceSlug": "Picking-And-Blocking-Choices",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16830191",
+      "durationMs": 140000,
+      "depth": "foundation",
+      "dedicatedConceptIds": ["pick_blocking"],
+      "isZoom": false
+    },
+    {
+      "id": "right-hand-technique",
+      "title": "My Right Hand Technique",
+      "sourceSlug": "My-Right-Hand-Technique",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16830190",
+      "durationMs": 209000,
+      "depth": "foundation",
+      "dedicatedConceptIds": ["pick_blocking", "right_hand_independence"],
+      "isZoom": false
+    },
+    {
+      "id": "lack-of-motion",
+      "title": "Lack Of Motion And Why It Matters",
+      "sourceSlug": "Lack-Of-Motion-And-Why-It-Matters",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16830189",
+      "durationMs": 289000,
+      "depth": "focused",
+      "dedicatedConceptIds": ["right_hand_independence"],
+      "isZoom": false
+    },
+    {
+      "id": "pedals-really-doing",
+      "title": "What Are The Pedals Really Doing?",
+      "sourceSlug": "What-Are-The-Pedals-Really-Doing",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16819719",
+      "durationMs": 345000,
+      "depth": "foundation",
+      "dedicatedConceptIds": ["pedal_functions"],
+      "isZoom": false
+    },
+    {
+      "id": "intervals-explained",
+      "title": "Intervals Explained",
+      "sourceSlug": "Intervals-Explained",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16839054",
+      "durationMs": 151000,
+      "depth": "quick",
+      "dedicatedConceptIds": ["intervals"],
+      "isZoom": false
+    },
+    {
+      "id": "intervals-make-chords",
+      "title": "How Intervals Make Chords, Chord Types, & How to Find Them",
+      "sourceSlug": "How-Intervals-Make-Chords-Chord-Types-How-to-Find-Them",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16839319",
+      "durationMs": 1162000,
+      "depth": "foundation",
+      "dedicatedConceptIds": ["major_triad", "minor_triad"],
+      "isZoom": false
+    },
+    {
+      "id": "diatonic-harmony",
+      "title": "Diatonic Harmony (Major + Natural Minor)",
+      "sourceSlug": "Diatonic-Harmony-Major-Natural-Minor",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16839839",
+      "durationMs": 516000,
+      "depth": "foundation",
+      "dedicatedConceptIds": ["diatonic_harmony"],
+      "isZoom": false
+    },
+    {
+      "id": "nashville-number-positions",
+      "title": "Nashville Number System Chord Positions",
+      "sourceSlug": "Nashville-Number-System-Chord-Positions",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/21175215",
+      "durationMs": 784000,
+      "depth": "focused",
+      "dedicatedConceptIds": ["nashville_numbers"],
+      "isZoom": false
+    },
+    {
+      "id": "dominant-seven-positions",
+      "title": "Dom7th Chords - Common Positions",
+      "sourceSlug": "Dom7th-Chords---Common-Positions",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/51315526",
+      "durationMs": 1306000,
+      "depth": "focused",
+      "dedicatedConceptIds": ["dominant_7"],
+      "isZoom": false
+    },
+    {
+      "id": "dominant-seven-flat-nine",
+      "title": "Advanced Chord Concepts - Dom7b9",
+      "sourceSlug": "Advanced-Chord-Concepts---Dom7b9",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/17477650",
+      "durationMs": 1033000,
+      "depth": "advanced",
+      "dedicatedConceptIds": ["dominant_7_flat_9"],
+      "isZoom": false
+    },
+    {
+      "id": "pockets-positions-1",
+      "title": "Pockets & Positions - Volume 1",
+      "sourceSlug": "Pockets-Positions---Volume-1",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16841613",
+      "durationMs": 1401000,
+      "depth": "focused",
+      "dedicatedConceptIds": ["pockets_positions"],
+      "isZoom": false
+    },
+    {
+      "id": "life-outside-pedals-up-down",
+      "title": "Life Outside Of Pedals Up And Pedals Down",
+      "sourceSlug": "Life-Outside-Of-Pedals-Up-And-Pedals-Down",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16841612",
+      "durationMs": 700000,
+      "depth": "focused",
+      "dedicatedConceptIds": ["chromatic_pathways"],
+      "isZoom": false
+    },
+    {
+      "id": "bar-control-accuracy",
+      "title": "Bar Control, Accuracy, And Tuning",
+      "sourceSlug": "Bar-Control-Accuracy-And-Tuning",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16831117",
+      "durationMs": 390000,
+      "depth": "foundation",
+      "dedicatedConceptIds": ["bar_accuracy"],
+      "isZoom": false
+    },
+    {
+      "id": "bc-pedal-concepts",
+      "title": "B+C Pedal Concepts",
+      "sourceSlug": "BC-Pedal-Concepts",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/55361940",
+      "durationMs": 1446000,
+      "depth": "application",
+      "dedicatedConceptIds": [],
+      "isZoom": false
+    },
+    {
+      "id": "howdy-solo",
+      "title": "Howdy Solo (Eddy Dunlap)",
+      "sourceSlug": "Howdy-Solo-Eddy-Dunlap",
+      "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/66525061",
+      "durationMs": 1020000,
+      "depth": "application",
+      "dedicatedConceptIds": [],
+      "isZoom": false
+    }
+  ]
+}

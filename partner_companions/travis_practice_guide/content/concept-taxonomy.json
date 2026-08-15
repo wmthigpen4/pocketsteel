@@ -1,0 +1,151 @@
+{
+  "schemaVersion": "ttt_concept_taxonomy_v1",
+  "revision": "ttt-concepts-2026-08-15.2",
+  "concepts": [
+    {
+      "id": "intervals",
+      "label": "Intervals",
+      "aliases": ["interval", "intervals", "scale degree", "scale degrees"],
+      "semanticSeeds": ["distance between two notes", "numbered note relationship"],
+      "definition": "Intervals name a note by its distance and role inside the current key.",
+      "prerequisiteConceptIds": [],
+      "deeperConceptIds": ["major_triad", "minor_triad", "dominant_7", "major_7", "diatonic_harmony"],
+      "confusionConceptIds": []
+    },
+    {
+      "id": "major_triad",
+      "label": "Major triads",
+      "aliases": ["major triad", "major chord", "one three five", "1 3 5"],
+      "semanticSeeds": ["root third and fifth", "three note major harmony"],
+      "definition": "A major triad contains the root, major third, and fifth.",
+      "formula": "1-3-5",
+      "prerequisiteConceptIds": ["intervals"],
+      "deeperConceptIds": ["major_7", "diatonic_harmony"],
+      "confusionConceptIds": ["minor_triad"]
+    },
+    {
+      "id": "minor_triad",
+      "label": "Minor triads",
+      "aliases": ["minor triad", "minor chord", "flat third", "flat 3"],
+      "semanticSeeds": ["lower the third of a major chord", "root flat third and fifth"],
+      "definition": "A minor triad lowers the major triad's third by one half step.",
+      "formula": "1-b3-5",
+      "prerequisiteConceptIds": ["intervals", "major_triad"],
+      "deeperConceptIds": ["diatonic_harmony"],
+      "confusionConceptIds": ["major_triad"]
+    },
+    {
+      "id": "dominant_7",
+      "label": "Dominant 7",
+      "aliases": ["dominant 7", "dominant 7th", "dominant seventh", "dom7", "dom7th", "flat seven note", "flat 7 note", "dominant chord"],
+      "semanticSeeds": ["major chord with a lowered seventh", "root third fifth and flat seventh"],
+      "definition": "A dominant-seven chord adds the flat seventh to a major triad.",
+      "formula": "1-3-5-b7",
+      "prerequisiteConceptIds": ["intervals", "major_triad"],
+      "deeperConceptIds": ["dominant_7_flat_9"],
+      "confusionConceptIds": ["major_7"]
+    },
+    {
+      "id": "major_7",
+      "label": "Major 7",
+      "aliases": ["major 7", "major 7th", "major seventh", "natural 7", "natural seven"],
+      "semanticSeeds": ["major chord with a natural seventh", "root third fifth and seventh"],
+      "definition": "A major-seven chord adds the natural seventh to a major triad.",
+      "formula": "1-3-5-7",
+      "prerequisiteConceptIds": ["intervals", "major_triad"],
+      "deeperConceptIds": ["pockets_positions"],
+      "confusionConceptIds": ["dominant_7"]
+    },
+    {
+      "id": "dominant_7_flat_9",
+      "label": "Dominant 7 flat 9",
+      "aliases": ["dominant 7 flat 9", "dom7b9", "dominant seven flat nine", "13 flat 9", "flat 9 voicing"],
+      "semanticSeeds": ["dominant chord with a flat ninth", "flat nine added to dominant seven"],
+      "definition": "A dominant-seven-flat-nine sound adds the flat ninth above a dominant-seven foundation.",
+      "formula": "1-3-5-b7-b9",
+      "prerequisiteConceptIds": ["dominant_7", "intervals"],
+      "deeperConceptIds": [],
+      "confusionConceptIds": ["major_7"]
+    },
+    {
+      "id": "diatonic_harmony",
+      "label": "Diatonic harmony",
+      "aliases": ["diatonic harmony", "harmonized scale", "harmonized scales", "chords that relate to a key"],
+      "semanticSeeds": ["chords belonging to one key", "build a chord on every scale degree"],
+      "definition": "Diatonic harmony organizes the chords and notes that naturally belong to a key.",
+      "prerequisiteConceptIds": ["intervals", "major_triad", "minor_triad"],
+      "deeperConceptIds": ["nashville_numbers", "pockets_positions"],
+      "confusionConceptIds": []
+    },
+    {
+      "id": "nashville_numbers",
+      "label": "Nashville numbers",
+      "aliases": ["Nashville number", "Nashville numbers", "number system", "putting these in numbers"],
+      "semanticSeeds": ["name chords by scale number", "transpose the same chord functions"],
+      "definition": "Nashville numbers describe chord function relative to the current major key.",
+      "prerequisiteConceptIds": ["intervals", "diatonic_harmony"],
+      "deeperConceptIds": ["pockets_positions"],
+      "confusionConceptIds": []
+    },
+    {
+      "id": "pedal_functions",
+      "label": "Pedal functions",
+      "aliases": ["pedal function", "pedal functionality", "manipulating the tuning", "manipulate the tuning", "manipulating the intervals"],
+      "semanticSeeds": ["what the pedal changes", "before and after interval role"],
+      "definition": "Pedals and levers change interval roles; familiar licks are musical results of those changes.",
+      "prerequisiteConceptIds": ["intervals"],
+      "deeperConceptIds": ["diatonic_harmony", "pockets_positions"],
+      "confusionConceptIds": []
+    },
+    {
+      "id": "pick_blocking",
+      "label": "Pick blocking",
+      "aliases": ["pick blocking", "pick and block", "picking and blocking", "finger blocks", "block the string"],
+      "semanticSeeds": ["return the pick to stop the note", "stop a ringing string with the picking finger"],
+      "definition": "Pick blocking ends a note by returning a picking finger or thumb to the string deliberately.",
+      "prerequisiteConceptIds": [],
+      "deeperConceptIds": ["right_hand_independence"],
+      "confusionConceptIds": []
+    },
+    {
+      "id": "right_hand_independence",
+      "label": "Right-hand independence",
+      "aliases": ["lack of motion", "only finger moving", "staying put", "finger independence", "all of these move"],
+      "semanticSeeds": ["one finger moves while the others stay still", "remove unnecessary hand movement"],
+      "definition": "Right-hand independence keeps resting fingers quiet while one digit picks or blocks.",
+      "prerequisiteConceptIds": ["pick_blocking"],
+      "deeperConceptIds": [],
+      "confusionConceptIds": []
+    },
+    {
+      "id": "bar_accuracy",
+      "label": "Bar accuracy and intonation",
+      "aliases": ["bar accuracy", "bar control", "intonation", "hit the fret", "land on the fret"],
+      "semanticSeeds": ["center the bar over the fret", "listen for accurate pitch"],
+      "definition": "Bar accuracy combines a centered landing, stable pressure, and listening for pitch against the musical context.",
+      "prerequisiteConceptIds": [],
+      "deeperConceptIds": ["pockets_positions"],
+      "confusionConceptIds": []
+    },
+    {
+      "id": "pockets_positions",
+      "label": "Pockets and positions",
+      "aliases": ["pockets and positions", "pocket and position", "horizontal scale pattern", "notes on either side of this position", "connect back up"],
+      "semanticSeeds": ["nearby notes around a chord position", "look left and right from a position"],
+      "definition": "A position is a home area; a pocket includes nearby chord tones, scale tones, and usable connecting notes.",
+      "prerequisiteConceptIds": ["intervals", "diatonic_harmony"],
+      "deeperConceptIds": ["chromatic_pathways"],
+      "confusionConceptIds": []
+    },
+    {
+      "id": "chromatic_pathways",
+      "label": "Chromatic pathways",
+      "aliases": ["chromatic movement", "chromatic movements", "chromatically", "chromatic move", "connecting two notes"],
+      "semanticSeeds": ["half step connector between destinations", "use every fret to approach a target note"],
+      "definition": "A chromatic pathway uses nearby half-step motion to connect stable musical destinations.",
+      "prerequisiteConceptIds": ["intervals", "pockets_positions"],
+      "deeperConceptIds": [],
+      "confusionConceptIds": []
+    }
+  ]
+}
