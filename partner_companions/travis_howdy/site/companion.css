@@ -231,7 +231,7 @@ button { color: inherit; }
 .practice-aside { display: flex; flex-direction: column; gap: 14px; }
 .media-scope-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 12px; padding: 16px 18px; border: 1px solid #9fc5d6; border-radius: var(--radius); background: #eef8fc; }
 .media-scope-card h3 { margin: 0; font-size: 17px; }.media-scope-card p:last-child { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
-.scope-jump { flex: 0 0 auto; min-height: 36px; font-size: 11px; }.scope-jump[hidden], .loop-button[hidden] { display: none; }
+.scope-jump { flex: 0 0 auto; min-height: 36px; font-size: 11px; }.scope-jump[hidden] { display: none; }
 .mode-switcher { display: grid; grid-template-columns: repeat(3, 1fr); padding: 5px; border: 1px solid var(--line); border-radius: var(--radius); background: #e9eef0; }
 .mode-button { min-height: 50px; padding: 9px 10px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }
 .mode-button strong { display: block; font-size: 12px; }.mode-button span { display: block; margin-top: 3px; font-size: 9px; }
@@ -254,8 +254,8 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
 .transport-options { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
 .speed-control { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; }
 .speed-control > span { margin-right: 4px; font-weight: 700; }
-.speed-control button, .loop-button { padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); font-size: 11px; cursor: pointer; }
-.speed-control button.is-active, .loop-button[aria-pressed="true"] { border-color: var(--teal-900); background: var(--teal-900); color: var(--white); }
+.speed-control button { padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); font-size: 11px; cursor: pointer; }
+.speed-control button.is-active { border-color: var(--teal-900); background: var(--teal-900); color: var(--white); }
 .transport-note { min-height: 16px; margin: 11px 0 0; color: var(--muted); font-size: 11px; }
 
 .move-card { display: grid; grid-template-columns: minmax(0, 1fr) 240px; overflow: hidden; }

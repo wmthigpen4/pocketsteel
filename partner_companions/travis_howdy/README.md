@@ -37,7 +37,7 @@ copy of that exact excerpt so both scopes seek reliably in static preview
 runtimes.
 Browser logic
 is limited to deterministic indexed lesson search, authored layer switching,
-an authored clock or same-origin audio, speed, phrase looping, step-by-step
+an authored clock or same-origin audio, speed control, phrase-start cues, step-by-step
 move study, seeking, chord/solo state highlighting, fretboard and tab drawing,
 print, and feedback-context assembly. There is no generative or retrieval
 client.
@@ -98,7 +98,7 @@ the audio and rendered review PDF only into the ignored local bundle; Git is
 never an input or output for the private media. The current owner-review UI
 keeps the lesson key visible, searches seven timestamped technical moments,
 uses `0h1` for the opening bar hammer from the open fret to fret 1, exposes the complete song in
-Full Song, and keeps the lesson's solo tab and phrase loops inside the exact
+Full Song, and keeps the lesson's solo tab and phrase starts inside the exact
 taught-solo audio window.
 
 Related-video cards are bound to the reviewed 54-event Howdy route profile.

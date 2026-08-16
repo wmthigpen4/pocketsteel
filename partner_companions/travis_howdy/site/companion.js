@@ -15,7 +15,6 @@
     timeMs: 0,
     speed: 1,
     playing: false,
-    loop: false,
     selectedPhraseId: null,
     selectedMode: null,
     selectedLayer: null,
@@ -249,21 +248,15 @@
     if (explorePanel) explorePanel.hidden = layer.id !== "explore";
     if (layer.id === "phrase-practice") {
       state.selectedMode = "follow-solo";
-      state.loop = true;
       setSpeed(0.5);
       if (!options.preserveTime) seekTo(currentPhrase().startMs);
     } else if (layer.id === "play-along") {
       state.selectedMode = hasChordChart() ? "chord-foundation" : "follow-solo";
-      state.loop = false;
       setSpeed(1);
       if (!options.preserveTime) seekTo(0);
-    } else {
-      state.loop = false;
     }
-    const loopButton = q('[data-action="loop"]');
-    if (loopButton) loopButton.setAttribute("aria-pressed", state.loop ? "true" : "false");
     const layerCopy = {
-      "phrase-practice": ["Taught solo", "Loop one phrase", "Choose a phrase, slow it down, and follow the highlighted tab.", "50% · phrase loop on"],
+      "phrase-practice": ["Taught solo", "Start from any phrase", "Choose a phrase, slow it down, and let the solo continue naturally.", "50% · continuous playback"],
       "play-along": ["Full song", "Follow the chords", "Play the complete backing track while the chord and Nashville number lane scrolls.", "3:57 · complete track"],
     }[layer.id] || ["", "", "", ""];
     const kicker = q("[data-layer-kicker]");
@@ -407,8 +400,6 @@
       seek.value = String(Math.round(state.timeMs));
     }
     if (duration) duration.textContent = formatTime(scope.durationMs);
-    const loop = q('[data-action="loop"]');
-    if (loop) loop.hidden = isFullSong;
     const note = q("[data-transport-note]");
     if (note) note.textContent = "";
     selectScopeAudio(scope);
@@ -933,7 +924,7 @@
     const visualCurrent = chordFocus ? chord : current;
     const visualUpcoming = chordFocus ? upcomingChord : upcoming;
     const phrase = state.data.phrases.find((item) => item.id === current.phraseId) || currentPhrase();
-    if (taughtSoloActive && state.selectedPhraseId !== phrase.id && !state.loop) {
+    if (taughtSoloActive && state.selectedPhraseId !== phrase.id) {
       state.selectedPhraseId = phrase.id;
       renderPhraseMap();
       if (presentation === "embed-demo") renderTab();
@@ -1047,17 +1038,10 @@
       if (state.previousFrameTime !== null) state.timeMs += (frameTime - state.previousFrameTime) * state.speed;
       state.previousFrameTime = frameTime;
     }
-    const phrase = currentPhrase();
-    const limit = state.loop ? phrase.endMs : Number(scope.durationMs);
-    if (state.timeMs >= limit) {
-      if (state.loop) {
-        seekTo(phrase.startMs);
-        if (audio && audio.src) audio.play().catch(() => pausePlayback());
-      } else {
-        seekTo(0);
-        pausePlayback();
-        return;
-      }
+    if (state.timeMs >= Number(scope.durationMs)) {
+      seekTo(0);
+      pausePlayback();
+      return;
     }
     updateFrame();
     state.frameId = requestAnimationFrame(tick);
@@ -1127,15 +1111,6 @@
     const play = q('[data-action="play"]');
     if (play) play.addEventListener("click", () => state.playing ? pausePlayback() : playPlayback());
     qa("[data-speed]").forEach((button) => button.addEventListener("click", () => setSpeed(button.dataset.speed)));
-    const loop = q('[data-action="loop"]');
-    if (loop) loop.addEventListener("click", () => {
-      state.loop = !state.loop;
-      loop.setAttribute("aria-pressed", state.loop ? "true" : "false");
-      if (state.loop) {
-        const phrase = currentPhrase();
-        if (state.timeMs < phrase.startMs || state.timeMs >= phrase.endMs) seekTo(phrase.startMs);
-      }
-    });
     window.addEventListener("pagehide", () => {
       Object.values(state.sourceObjectUrls).forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
     }, { once: true });

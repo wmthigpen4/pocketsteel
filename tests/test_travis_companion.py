@@ -522,6 +522,8 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert 'data-tab' in markup
     assert 'data-related-lessons' in markup
     assert 'Complete printable tab' in markup
+    assert 'six practice sections' in markup
+    assert 'data-action="loop"' not in markup
     assert 'Open larger practice view' in markup
     assert 'All six tab systems + expanded fretboard' in markup
     assert '<summary class="search-summary">' in markup
@@ -539,6 +541,16 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert '.compact-shell .layer-context, .compact-shell .mode-switcher, .compact-shell .source-card { display: none; }' in styles
     for rejected_copy in ("mechanical landmarks", "unverified transcription", "Use Travis’s own lesson moments"):
         assert rejected_copy not in markup
+
+
+def test_taught_solo_uses_phrase_starts_without_forced_looping() -> None:
+    script = (SITE / "companion.js").read_text(encoding="utf-8")
+    assert '"Start from any phrase"' in script
+    assert '"50% · continuous playback"' in script
+    assert "seekTo(phrase.startMs);" in script
+    assert "state.loop" not in script
+    assert 'data-action="loop"' not in script
+    assert "state.timeMs >= phrase.endMs" not in script
 
 
 def test_embed_matches_teachable_typeset_and_preserves_discussion_space() -> None:
