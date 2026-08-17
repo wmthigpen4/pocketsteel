@@ -68,7 +68,8 @@
       "evidenceExcerpt": "Our major chord is going to be a 1, a 3, and a 5",
       "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16839319",
       "thumbnailFile": "intervals-make-chords.jpg",
-      "featuredForCompanion": false,
+      "featuredForCompanion": true,
+      "companionReason": "Howdy’s upper double stops move through the harmony as chord tones. This lesson explains how intervals combine into the chords underneath the solo.",
       "matches": [
         {
           "phraseId": "phrase-03",

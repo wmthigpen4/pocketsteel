@@ -177,8 +177,8 @@
     }
     const relatedCoverage = new Map(data.phrases.map((phrase) => [phrase.id, 0]));
     const featuredLessons = data.relatedLessons.filter((lesson) => lesson.featuredForCompanion);
-    if (data.relatedLessons.length && (featuredLessons.length < 1 || featuredLessons.length > 3)) {
-      throw new Error("The companion needs one to three static related-video recommendations.");
+    if (data.relatedLessons.length && (featuredLessons.length < 1 || featuredLessons.length > 6)) {
+      throw new Error("The companion needs one to six static related-video recommendations.");
     }
     data.relatedLessons.forEach((lesson) => {
       if (!/^https:\/\/travis-toy-tutorials\.teachable\.com\/courses\/[^\s]+\/lectures\/\d+$/.test(lesson.url)) {
@@ -870,6 +870,21 @@
     });
   }
 
+  function configureRelatedScroller() {
+    const scroller = q("[data-related-lessons]");
+    if (!scroller) return;
+    qa("[data-related-scroll]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const card = scroller.querySelector(".related-video-card");
+        const distance = card ? card.getBoundingClientRect().width + 12 : scroller.clientWidth * 0.8;
+        scroller.scrollBy({
+          left: Number(button.dataset.relatedScroll) * distance,
+          behavior: "smooth",
+        });
+      });
+    });
+  }
+
   function stepMove(direction) {
     pausePlayback();
     const phrase = currentPhrase();
@@ -1355,6 +1370,7 @@
     if (attribution) attribution.textContent = data.lesson.sourceAttribution;
     setLayer("phrase-practice", { preserveTime: true });
     renderRelatedLessons();
+    configureRelatedScroller();
   }
 
   initialize().catch((error) => {

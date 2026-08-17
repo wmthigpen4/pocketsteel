@@ -314,6 +314,7 @@ def test_related_video_cards_are_short_source_grounded_and_real() -> None:
     assert [lesson["id"] for lesson in featured] == [
         "hammer-ons-and-pull-offs",
         "pedals-really-doing",
+        "intervals-make-chords",
         "pockets-positions-1",
     ]
     assert all(8 <= len(lesson["companionReason"].split()) <= 35 for lesson in featured)
@@ -567,6 +568,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "needs-attention" in script
     assert "function stepMove(" in script
     assert "function renderRelatedLessons()" in script
+    assert "function configureRelatedScroller()" in script
     assert 'link.target = "_blank"' in script
     assert 'return `${note.fret}h${pedal}`' in script
     assert 'return `${note.fret}h${destination}`' in script
@@ -595,6 +597,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         "data-key-label",
         "data-study-controls",
         "data-related-lessons",
+        "data-related-scroll",
     ):
         assert selector in markup
     assert '"phrase-practice": `Taught solo · ${formatTime(mediaScopes().taughtSolo.durationMs)}`' in script
@@ -631,8 +634,9 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert '[data-active-layer="play-along"] .song-chart-card { display: block; }' in styles
     assert '.song-sections { display: flex;' in styles
     assert '[data-active-layer="phrase-practice"].companion-shell .lesson-search-card { display: block; }' in styles
-    assert '.related-video-grid { display: grid;' in styles
-    assert '.related-video-grid.is-single' in styles
+    assert '.related-video-grid { display: flex;' in styles
+    assert 'scroll-snap-type: x mandatory' in styles
+    assert '.related-scroll-controls' in styles
     assert '.tab-system + .tab-system' in styles
     assert 'if (positionDetails && presentation === "full") positionDetails.open = true;' in (
         SITE / "companion.js"

@@ -52,7 +52,7 @@ not upload audio or make a network request. A later authenticated instructor
 service can submit the same field contract to the offline authoring pipeline.
 
 Related lesson cards are lesson-level recommendations rather than playback
-state. One to three source-grounded cards are marked `featuredForCompanion`,
+state. One to six source-grounded cards are marked `featuredForCompanion`,
 carry a concise `companionReason`, render once, and remain unchanged as phrases,
 chords, and fretboard states advance. Full-song chord boxes can switch between
 chord-symbol-first and Nashville-number-first labels without changing the

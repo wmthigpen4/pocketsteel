@@ -223,8 +223,8 @@ def validate_related_lessons(payload: Mapping[str, Any]) -> list[dict[str, Any]]
             }:
                 raise CompanionReleaseError(f"Related video {lesson_id} has an unsupported match relationship.")
             matched_phrases.add(phrase_id)
-    if not 1 <= featured_count <= 3:
-        raise CompanionReleaseError("Howdy requires one to three static featured related videos.")
+    if not 1 <= featured_count <= 6:
+        raise CompanionReleaseError("Howdy requires one to six static featured related videos.")
     return [copy.deepcopy(dict(item)) for item in lessons]
 
 
