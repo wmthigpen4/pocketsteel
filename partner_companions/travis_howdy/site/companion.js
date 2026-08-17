@@ -226,7 +226,7 @@
       ? `Preview · ${state.data.revision} · ${sha}`
       : `${state.data.release.previewLabel} · ${state.data.revision} · ${sha}`;
     const title = q("[data-companion-title]");
-    if (title) title.textContent = "Practice the “Howdy” solo";
+    if (title) title.textContent = "Practice “Howdy”";
   }
 
   function renderLayerTabs() {

@@ -628,6 +628,9 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert 'Help with this lesson' in markup
     assert 'Use these when a technique or concept in Howdy needs more explanation.' in markup
     assert 'Go deeper after this lesson' not in markup
+    assert 'Practice “Howdy”' in markup
+    assert 'Practice the “Howdy” solo' not in markup
+    assert 'title.textContent = "Practice “Howdy”";' in script
     assert "Roots are aligned from two public charts" in script
     assert 'function configureSongDisplayToggle()' in script
 
