@@ -484,7 +484,7 @@ def generate_tablature_pdf(
 
     try:
         from reportlab.lib import colors
-        from reportlab.lib.pagesizes import landscape, letter
+        from reportlab.lib.pagesizes import letter
         from reportlab.lib.utils import ImageReader
         from reportlab.pdfbase.pdfmetrics import stringWidth
         from reportlab.pdfgen import canvas
@@ -494,7 +494,7 @@ def generate_tablature_pdf(
     validate_companion(data, release=False)
     output_path = Path(output_path).resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    width, height = landscape(letter)
+    width, height = letter
     page = canvas.Canvas(str(output_path), pagesize=(width, height), pageCompression=1, invariant=1)
     page.setTitle(_ascii(data.get("print", {}).get("title")))
     page.setAuthor("Travis Toy Tutorials / Steel Guitar RAG")
@@ -637,8 +637,8 @@ def generate_tablature_pdf(
         page.setFillColor(teal)
         page.setFont("Helvetica-Bold", 8)
         page.drawString(left, top, _ascii(f"Bars {system['barStart']}-{system['barEnd']}"))
-        # Two bars per system uses the landscape sheet as conventional wide
-        # tablature rather than stacking six compressed phrase fragments.
+        # Two bars per system keeps the portrait handout close to familiar
+        # blank ten-string tab paper while fitting the complete solo on one page.
         column_width = min(46.0, (inner_width - 42) / max(1, len(events)))
         previous_bar = None
         previous_chord_id = None
@@ -701,7 +701,7 @@ def generate_tablature_pdf(
             draw_centred_text_fit(
                 event["movement"].replace("-", " "),
                 x,
-                tab_top - 59,
+                tab_top - 59 - (index % 2) * 5,
                 column_width * .82,
                 size=4.8,
                 minimum=3.6,
@@ -711,7 +711,7 @@ def generate_tablature_pdf(
     if any(chord.get("symbol") for chord in data["chordTimeline"]):
         draw_chord_chart(height - 96)
     for system_index, system in enumerate(tab_systems):
-        draw_tab_system(system, height - 137 - system_index * 96)
+        draw_tab_system(system, height - 137 - system_index * 136)
     page.setStrokeColor(light)
     page.line(36, 34, width - 36, 34)
     page.setFillColor(teal)

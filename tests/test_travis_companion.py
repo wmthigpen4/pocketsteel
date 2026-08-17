@@ -846,8 +846,8 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
     output = generate_tablature_pdf(data, tmp_path / "howdy.pdf")
     reader = pypdf.PdfReader(str(output))
     assert len(reader.pages) == 1
-    assert float(reader.pages[0].mediabox.width) == pytest.approx(792)
-    assert float(reader.pages[0].mediabox.height) == pytest.approx(612)
+    assert float(reader.pages[0].mediabox.width) == pytest.approx(612)
+    assert float(reader.pages[0].mediabox.height) == pytest.approx(792)
     extracted = "\n".join(page.extract_text() or "" for page in reader.pages)
     assert "Howdy - Taught Solo" in extracted
     assert "Originally played by Eddy Dunlap" in extracted
