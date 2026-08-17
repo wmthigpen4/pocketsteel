@@ -835,6 +835,7 @@ def test_owner_only_release_config_rejects_a_second_identity() -> None:
 
 def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None:
     pypdf = pytest.importorskip("pypdf")
+    pdfplumber = pytest.importorskip("pdfplumber")
     data = load_draft()
     output = generate_tablature_pdf(data, tmp_path / "howdy.pdf")
     reader = pypdf.PdfReader(str(output))
@@ -846,6 +847,11 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
     assert "A=A pedal" in extracted
     assert all(phrase["label"] in extracted for phrase in data["phrases"])
     assert re.search(r"Page 1 of 2", extracted)
+    with pdfplumber.open(output) as document:
+        for page in document.pages:
+            words = page.extract_words()
+            assert all(float(word["x0"]) >= 41.5 for word in words)
+            assert all(float(word["x1"]) <= float(page.width) - 41.5 for word in words)
 
 
 def test_pdf_renders_a_bar_hammer_as_a_fret_change(tmp_path: Path) -> None:

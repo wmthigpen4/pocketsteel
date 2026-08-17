@@ -511,6 +511,20 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
         page.setFont("Helvetica", size)
         page.drawString(x, y, clean)
 
+    def draw_centred_text_fit(
+        text: str,
+        x: float,
+        y: float,
+        maximum: float,
+        size: float = 5.2,
+        minimum: float = 3.8,
+    ) -> None:
+        clean = _ascii(text)
+        while size > minimum and stringWidth(clean, "Helvetica", size) > maximum:
+            size -= 0.2
+        page.setFont("Helvetica", max(size, minimum))
+        page.drawCentredString(x, y, clean)
+
     def draw_page_header(page_number: int) -> None:
         page.setFillColor(teal)
         page.rect(0, height - 78, width, 78, stroke=0, fill=1)
@@ -571,8 +585,10 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
 
     def draw_phrase(phrase: Mapping[str, Any], top: float) -> None:
         events = [event_by_id[item] for item in phrase["eventIds"]]
-        left = 50
-        right = width - 42
+        # Keep notation and tab inside a conservative printable safe area.
+        # This matters most for the twelve-column closing system in bars 7-8.
+        left = 54
+        right = width - 54
         inner_width = right - left
         page.setFillColor(teal)
         page.setFont("Helvetica-Bold", 12)
@@ -670,8 +686,12 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
                 page.setFont("Helvetica-Bold", 6.5)
                 page.drawCentredString(x, y - 2.2, token)
             page.setFillColor(gray)
-            page.setFont("Helvetica", 5.2)
-            draw_text_fit(event["movement"].replace("-", " "), x - column_width * .45, tab_top - 91, column_width * .9, 5.2)
+            draw_centred_text_fit(
+                event["movement"].replace("-", " "),
+                x,
+                tab_top - 91,
+                column_width * .82,
+            )
 
     for page_index in range(page_count):
         draw_page_header(page_index + 1)
