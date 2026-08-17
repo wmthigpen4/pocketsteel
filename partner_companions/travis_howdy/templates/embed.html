@@ -21,37 +21,25 @@
         <div class="video-play" aria-hidden="true">▶</div>
         <p>Lesson video</p>
       </div>
-      <section class="audio-source-setup" data-audio-source-setup aria-labelledby="audio-source-title">
+      <section class="audio-download" data-audio-download aria-labelledby="audio-download-title">
         <div class="audio-source-heading">
           <div>
-            <p>Instructor setup</p>
-            <h2 id="audio-source-title">Play-along audio for this companion</h2>
+            <p>Play along</p>
+            <h2 id="audio-download-title">Download the full-song backing track</h2>
           </div>
-          <span>MP3 only</span>
+          <span>MP3</span>
         </div>
-        <p class="audio-source-intro">Choose the main recording first. Add alternate tempos or mixes only when this lesson needs them.</p>
-        <div class="audio-upload-grid">
-          <label class="audio-upload-box audio-upload-primary">
-            <input type="file" name="primaryTrack" accept="audio/mpeg,.mp3" required data-primary-track>
-            <span class="audio-upload-number">1</span>
-            <strong>Primary play-along MP3</strong>
-            <small data-primary-track-label>Choose the recording the companion should use</small>
-          </label>
-          <label class="audio-upload-box">
-            <input type="file" name="additionalTracks" accept="audio/mpeg,.mp3" multiple data-additional-tracks>
-            <span class="audio-upload-number">+</span>
-            <strong>Additional MP3s</strong>
-            <small data-additional-track-label>Add slow, fast, or alternate mixes</small>
-          </label>
-        </div>
-        <div class="audio-source-selection" data-audio-source-selection hidden>
-          <div>
-            <strong>Build the companion from</strong>
-            <span data-selected-track-summary>Primary track</span>
+        <p class="audio-source-intro">Practice away from the lesson with the same 3:57 recording used by the full-song play along below.</p>
+        <div class="audio-download-card">
+          <div class="audio-download-details">
+            <span class="audio-download-icon" aria-hidden="true">♫</span>
+            <div>
+              <strong>Howdy — full-song play-along</strong>
+              <span>MP3 · 3:57 · Key D</span>
+            </div>
           </div>
-          <div class="audio-track-options" data-audio-track-options role="radiogroup" aria-label="Select the MP3 used to build the companion"></div>
+          <a class="button button-primary audio-download-action" href="{{AUDIO_URL}}" download="Howdy - Full Song Play Along.mp3">Download MP3</a>
         </div>
-        <p class="audio-source-note">Preview only: the selection stays in this page until the instructor upload service is connected.</p>
       </section>
     </section>
     <section id="companion" class="companion-shell compact-shell" data-companion-url="{{COMPANION_URL}}" data-pdf-url="{{PDF_URL}}">

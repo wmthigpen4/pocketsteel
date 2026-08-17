@@ -42,14 +42,10 @@ move study, seeking, chord/solo state highlighting, fretboard and tab drawing,
 print, and feedback-context assembly. There is no generative or retrieval
 client.
 
-The Teachable-style lesson demo also includes an instructor audio-source form
-directly below the video. `primaryTrack` accepts one MP3 and is the default
-analysis source. `additionalTracks` accepts multiple alternate-tempo or mix
-files, while the generated `analysisTrack` radio group records the exact file
-chosen for companion authoring. The static preview keeps those `File` objects
-in the current browser page and emits `ttt:companion-audio-selection`; it does
-not upload audio or make a network request. A later authenticated instructor
-service can submit the same field contract to the offline authoring pipeline.
+The Teachable-style lesson demo shows the learner-facing full-song MP3 directly
+below the video. Its download link points to the same hash-pinned recording used
+by the companion. Tracks that do not exist for a lesson are not shown as empty
+upload or download placeholders.
 
 Related lesson cards are lesson-level recommendations rather than playback
 state. One to six source-grounded cards are marked `featuredForCompanion`,

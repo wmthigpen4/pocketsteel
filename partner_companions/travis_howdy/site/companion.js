@@ -299,70 +299,6 @@
     updateFrame();
   }
 
-  function configureAudioSourceSetup() {
-    const setup = document.querySelector("[data-audio-source-setup]");
-    if (!setup) return;
-    const primaryInput = setup.querySelector("[data-primary-track]");
-    const additionalInput = setup.querySelector("[data-additional-tracks]");
-    const selection = setup.querySelector("[data-audio-source-selection]");
-    const options = setup.querySelector("[data-audio-track-options]");
-    const summary = setup.querySelector("[data-selected-track-summary]");
-    const primaryLabel = setup.querySelector("[data-primary-track-label]");
-    const additionalLabel = setup.querySelector("[data-additional-track-label]");
-    if (!primaryInput || !additionalInput || !selection || !options || !summary) return;
-
-    const mp3Files = (input) => Array.from(input.files || []).filter((file) => (
-      file.type === "audio/mpeg" || file.name.toLowerCase().endsWith(".mp3")
-    ));
-    const renderSelection = () => {
-      const primary = mp3Files(primaryInput)[0] || null;
-      const additional = mp3Files(additionalInput);
-      const tracks = [
-        ...(primary ? [{ file: primary, role: "primary", index: 0 }] : []),
-        ...additional.map((file, index) => ({ file, role: "additional", index })),
-      ];
-      if (primaryLabel) primaryLabel.textContent = primary ? primary.name : "Choose the recording the companion should use";
-      if (additionalLabel) additionalLabel.textContent = additional.length
-        ? `${additional.length} additional ${additional.length === 1 ? "track" : "tracks"}`
-        : "Add slow, fast, or alternate mixes";
-      selection.hidden = !primary;
-      options.replaceChildren();
-      (primary ? tracks : []).forEach((track, optionIndex) => {
-        const id = `analysis-track-${track.role}-${track.index}`;
-        const label = node("label", "audio-track-option");
-        const radio = node("input");
-        radio.type = "radio";
-        radio.name = "analysisTrack";
-        radio.value = `${track.role}:${track.index}`;
-        radio.id = id;
-        radio.checked = optionIndex === 0;
-        const updateSelected = () => {
-          summary.textContent = `${track.file.name} · ${track.role === "primary" ? "primary" : "additional"}`;
-          setup.dataset.selectedTrackRole = track.role;
-          setup.dataset.selectedTrackIndex = String(track.index);
-          setup.dataset.selectedTrackName = track.file.name;
-          setup.dispatchEvent(new CustomEvent("ttt:companion-audio-selection", {
-            bubbles: true,
-            detail: { role: track.role, index: track.index, name: track.file.name },
-          }));
-        };
-        radio.addEventListener("change", () => {
-          if (radio.checked) updateSelected();
-        });
-        label.append(radio, node("span", "", track.file.name), node("small", "", track.role === "primary" ? "Primary" : `Additional ${track.index + 1}`));
-        options.append(label);
-        if (optionIndex === 0) updateSelected();
-      });
-      if (!primary) {
-        delete setup.dataset.selectedTrackRole;
-        delete setup.dataset.selectedTrackIndex;
-        delete setup.dataset.selectedTrackName;
-      }
-    };
-    primaryInput.addEventListener("change", renderSelection);
-    additionalInput.addEventListener("change", renderSelection);
-  }
-
   function renderModes() {
     const container = q("[data-mode-switcher]");
     if (!container) return;
@@ -1355,7 +1291,6 @@
     const searchPanel = q("[data-lesson-search-panel]");
     if (searchPanel && presentation === "embed-demo") searchPanel.open = false;
     configureTransport();
-    configureAudioSourceSetup();
     configureFeedback();
     configureStudyControls();
     configureMediaScopeActions();

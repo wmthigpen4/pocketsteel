@@ -1037,6 +1037,7 @@ def build_companion_bundle(
             "STYLE_URL": f"{asset_root_url}/companion.css",
             "SCRIPT_URL": f"{asset_root_url}/companion.js",
             "COMPANION_URL": f"{asset_root_url}/lesson-companion.json",
+            "AUDIO_URL": str(data["media"]["audioUrl"]),
             "PDF_URL": f"{asset_root_url}/howdy-tablature.pdf",
             "REVISION": _ascii(data["revision"]),
             "BUILD_SHA": build_sha[:12],

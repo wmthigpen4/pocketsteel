@@ -667,20 +667,19 @@ def test_embed_matches_teachable_typeset_and_preserves_discussion_space() -> Non
     assert 'Member discussion stays in Teachable' not in template
     assert 'aria-label="Comment box preview"' in template
     assert 'disabled></textarea>' in template
-    assert 'data-audio-source-setup' in template
-    assert 'name="primaryTrack"' in template
-    assert 'required data-primary-track' in template
-    assert 'name="additionalTracks"' in template
-    assert 'multiple data-additional-tracks' in template
-    assert 'data-audio-track-options' in template
-    assert 'Preview only: the selection stays in this page' in template
-    assert template.index('class="video-simulation"') < template.index('data-audio-source-setup')
-    assert template.index('data-audio-source-setup') < template.index('id="companion"')
+    assert 'data-audio-download' in template
+    assert 'Download the full-song backing track' in template
+    assert 'href="{{AUDIO_URL}}"' in template
+    assert 'download="Howdy - Full Song Play Along.mp3"' in template
+    assert 'Primary play-along MP3' not in template
+    assert 'Additional MP3s' not in template
+    assert 'type="file"' not in template
+    assert template.index('class="video-simulation"') < template.index('data-audio-download')
+    assert template.index('data-audio-download') < template.index('id="companion"')
     assert template.index('id="companion"') < template.index('data-demo-discussion')
     script = (SITE / "companion.js").read_text(encoding="utf-8")
-    assert 'function configureAudioSourceSetup()' in script
-    assert 'radio.name = "analysisTrack"' in script
-    assert 'new CustomEvent("ttt:companion-audio-selection"' in script
+    assert 'function configureAudioSourceSetup()' not in script
+    assert 'ttt:companion-audio-selection' not in script
     assert '[data-active-layer="play-along"] .related-videos { display: none; }' not in styles
     for exact_typeset in (
         "font-size: 22.784px",
