@@ -846,7 +846,8 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
     output = generate_tablature_pdf(data, tmp_path / "howdy.pdf")
     reader = pypdf.PdfReader(str(output))
     assert len(reader.pages) == 1
-    assert float(reader.pages[0].mediabox.width) > float(reader.pages[0].mediabox.height)
+    assert float(reader.pages[0].mediabox.width) == pytest.approx(792)
+    assert float(reader.pages[0].mediabox.height) == pytest.approx(612)
     extracted = "\n".join(page.extract_text() or "" for page in reader.pages)
     assert "Howdy - Taught Solo" in extracted
     assert "Originally played by Eddy Dunlap" in extracted
@@ -855,7 +856,7 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
     assert "REVIEW DRAFT" in extracted
     assert "AI-generated and human reviewed" in extracted
     assert "copedent-specific pedal/lever actions" in extracted
-    assert all(phrase["label"] in extracted for phrase in data["phrases"])
+    assert all(f"Bars {start}-{start + 1}" in extracted for start in (1, 3, 5, 7))
     assert "Page 1 of 1" not in extracted
     assert "Powered by Steel Guitar RAG" not in extracted
     assert "treble" not in extracted.lower()
@@ -871,7 +872,7 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
                 and float(line["x0"]) <= 64.5
                 and float(line["x1"]) >= float(page.width) - 36.5
             ]
-            assert len(full_width_tab_lines) >= len(data["phrases"]) * 10
+            assert len(full_width_tab_lines) >= 4 * 10
 
 
 def test_pdf_renders_a_bar_hammer_as_a_fret_change(tmp_path: Path) -> None:

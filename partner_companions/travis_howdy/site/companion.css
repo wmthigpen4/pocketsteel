@@ -529,7 +529,7 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
 }
 
 @media print {
-  @page { size: letter portrait; margin: 0.5in; }
+  @page { size: letter landscape; margin: 0.5in; }
   .no-print { display: none !important; }
   .print-page-body { background: white; }
   .print-sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }

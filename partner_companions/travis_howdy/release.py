@@ -503,9 +503,20 @@ def generate_tablature_pdf(
     coral = colors.HexColor("#ff3f20")
     gray = colors.HexColor("#667781")
     light = colors.HexColor("#d8e0e4")
-    event_by_id = {event["id"]: event for event in data["events"]}
     chord_by_id = {chord["id"]: chord for chord in data["chordTimeline"]}
-    phrases = list(data["phrases"])
+    bar_count = int(data["display"]["barCount"])
+    tab_systems = [
+        {
+            "barStart": bar_start,
+            "barEnd": min(bar_start + 1, bar_count),
+            "events": [
+                event
+                for event in data["events"]
+                if bar_start <= int(event["bar"]) <= min(bar_start + 1, bar_count)
+            ],
+        }
+        for bar_start in range(1, bar_count + 1, 2)
+    ]
     logo_image = None
     if brand_logo_path is not None:
         logo_path = Path(brand_logo_path).expanduser().resolve()
@@ -618,22 +629,21 @@ def generate_tablature_pdf(
             page.setFont("Helvetica-Bold", 8)
             page.drawCentredString(x + bar_width / 2, box_top - 18, _ascii(" > ".join(labels) or "PENDING"))
 
-    def draw_phrase(phrase: Mapping[str, Any], top: float) -> None:
-        events = [event_by_id[item] for item in phrase["eventIds"]]
+    def draw_tab_system(system: Mapping[str, Any], top: float) -> None:
+        events = list(system["events"])
         left = 36
         right = width - 36
         inner_width = right - left
         page.setFillColor(teal)
         page.setFont("Helvetica-Bold", 8)
-        page.drawString(left, top, _ascii(f"Bars {phrase['barStart']}-{phrase['barEnd']}  |  {phrase['label']}"))
-        # Do not stretch short phrases across the landscape sheet. A compact,
-        # repeatable beat width is easier to scan. The ten string lines still
-        # span the printable width so the handout reads as full tablature.
-        column_width = min(46.0, (inner_width - 42) / len(events))
+        page.drawString(left, top, _ascii(f"Bars {system['barStart']}-{system['barEnd']}"))
+        # Two bars per system uses the landscape sheet as conventional wide
+        # tablature rather than stacking six compressed phrase fragments.
+        column_width = min(46.0, (inner_width - 42) / max(1, len(events)))
         previous_bar = None
         previous_chord_id = None
-        tab_top = top - 17
-        tab_gap = 5.0
+        tab_top = top - 29
+        tab_gap = 6.0
         page.setStrokeColor(colors.HexColor("#77848a"))
         page.setLineWidth(0.45)
         for string_number in range(1, 11):
@@ -646,7 +656,7 @@ def generate_tablature_pdf(
             x = left + 40 + column_width * (index + 0.5)
             if previous_bar is not None and event["bar"] != previous_bar:
                 page.setStrokeColor(light)
-                page.line(x - column_width / 2, tab_top + 5, x - column_width / 2, tab_top - 48)
+                page.line(x - column_width / 2, tab_top + 13, x - column_width / 2, tab_top - 58)
             previous_bar = event["bar"]
             chord_id = event.get("chordEventId")
             if chord_id != previous_chord_id:
@@ -656,7 +666,7 @@ def generate_tablature_pdf(
                     chord_label += "*"
                 page.setFillColor(teal if chord.get("verified") else coral)
                 page.setFont("Helvetica-Bold", 5)
-                page.drawCentredString(x, tab_top + 7, _ascii(chord_label))
+                page.drawCentredString(x, tab_top + 15, _ascii(chord_label))
             previous_chord_id = chord_id
             for note in event["tabNotes"]:
                 y = tab_top - (int(note["string"]) - 1) * tab_gap
@@ -687,11 +697,11 @@ def generate_tablature_pdf(
                 page.drawCentredString(x, y - 1.9, token)
             page.setFillColor(gray)
             page.setFont("Helvetica", 4.5)
-            page.drawCentredString(x, tab_top + 1.5, _ascii(f"{event['bar']}.{event['beat']}"))
+            page.drawCentredString(x, tab_top + 7, _ascii(f"{event['bar']}.{event['beat']}"))
             draw_centred_text_fit(
                 event["movement"].replace("-", " "),
                 x,
-                tab_top - 45,
+                tab_top - 59,
                 column_width * .82,
                 size=4.8,
                 minimum=3.6,
@@ -700,8 +710,8 @@ def generate_tablature_pdf(
     draw_page_header()
     if any(chord.get("symbol") for chord in data["chordTimeline"]):
         draw_chord_chart(height - 96)
-    for phrase_index, phrase in enumerate(phrases):
-        draw_phrase(phrase, height - 137 - phrase_index * 72)
+    for system_index, system in enumerate(tab_systems):
+        draw_tab_system(system, height - 137 - system_index * 96)
     page.setStrokeColor(light)
     page.line(36, 34, width - 36, 34)
     page.setFillColor(teal)
