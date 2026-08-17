@@ -24,7 +24,6 @@ REQUIRED_FILES = (
     "_redirects",
     "howdy/index.html",
     "howdy/embed-demo/index.html",
-    "howdy/print/index.html",
 )
 BLOCKED_ROUTES = (
     "/api/answer",
@@ -48,12 +47,17 @@ def verify(bundle: Path, manifest_path: Path) -> dict[str, object]:
     for relative in REQUIRED_FILES:
         if not (bundle / relative).is_file():
             raise CompanionReleaseError(f"Missing required bundle file: {relative}")
+    pdf_paths = list(bundle.glob("assets/*/howdy-tablature.pdf"))
+    if len(pdf_paths) != 1:
+        raise CompanionReleaseError("Expected exactly one canonical printable PDF.")
+    pdf_route = "/" + pdf_paths[0].relative_to(bundle).as_posix()
     redirects = (bundle / "_redirects").read_text(encoding="utf-8")
     expected_redirects = (
         "/ /howdy 302",
         "/howdy /howdy/index.html 200",
         "/howdy/embed-demo /howdy/embed-demo/index.html 200",
-        "/howdy/print /howdy/print/index.html 200",
+        f"/howdy/print {pdf_route} 302",
+        f"/howdy/print/ {pdf_route} 302",
     )
     local_alias_redirects = (
         "/practice-guide/howdy /practice-guide/howdy/index.html 200",

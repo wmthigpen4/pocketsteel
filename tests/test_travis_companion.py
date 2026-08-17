@@ -538,12 +538,14 @@ def test_bundle_verifier_rejects_access_phase_manifest_drift(tmp_path: Path) -> 
 def test_security_headers_and_route_map_are_fail_closed(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     build_companion_bundle(bundle, source_date_epoch=1)
+    asset_token = next((bundle / "assets").iterdir()).name
     redirects = (bundle / "_redirects").read_text(encoding="utf-8").splitlines()
     assert redirects == [
         "/ /howdy 302",
         "/howdy /howdy/index.html 200",
         "/howdy/embed-demo /howdy/embed-demo/index.html 200",
-        "/howdy/print /howdy/print/index.html 200",
+        f"/howdy/print /assets/{asset_token}/howdy-tablature.pdf 302",
+        f"/howdy/print/ /assets/{asset_token}/howdy-tablature.pdf 302",
     ]
     headers = (bundle / "_headers").read_text(encoding="utf-8")
     assert "default-src 'self'" in headers

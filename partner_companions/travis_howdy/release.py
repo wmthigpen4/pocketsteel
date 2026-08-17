@@ -57,7 +57,6 @@ ALLOWED_STATIC_SOURCES = (
     SITE_ROOT / "companion.js",
     TEMPLATE_ROOT / "full.html",
     TEMPLATE_ROOT / "embed.html",
-    TEMPLATE_ROOT / "print.html",
     TEMPLATE_ROOT / "404.html",
     TEMPLATE_ROOT / "companion.fragment.html",
     DEFAULT_RELATED_LESSONS,
@@ -805,7 +804,6 @@ def _scan_bundle(
         "index.html",
         "howdy/index.html",
         "howdy/embed-demo/index.html",
-        "howdy/print/index.html",
     }
     if practice_guide_alias:
         allowed_files.add("practice-guide/howdy/index.html")
@@ -939,7 +937,6 @@ def build_companion_bundle(
     try:
         assets = stage / "assets" / asset_token
         (stage / "howdy" / "embed-demo").mkdir(parents=True)
-        (stage / "howdy" / "print").mkdir(parents=True)
         assets.mkdir(parents=True)
         css_text = (SITE_ROOT / "companion.css").read_text(encoding="utf-8")
         if release:
@@ -1066,9 +1063,6 @@ def build_companion_bundle(
                 stage / "howdy" / "embed-demo" / "index.html",
                 stage / "practice-guide" / "howdy" / "index.html",
             )
-        (stage / "howdy" / "print" / "index.html").write_text(
-            _render_template(TEMPLATE_ROOT / "print.html", replacements), encoding="utf-8"
-        )
         (stage / "404.html").write_text(
             _render_template(TEMPLATE_ROOT / "404.html", replacements), encoding="utf-8"
         )
@@ -1077,7 +1071,8 @@ def build_companion_bundle(
             "/ /howdy 302\n"
             "/howdy /howdy/index.html 200\n"
             "/howdy/embed-demo /howdy/embed-demo/index.html 200\n"
-            "/howdy/print /howdy/print/index.html 200\n"
+            f"/howdy/print {asset_root_url}/howdy-tablature.pdf 302\n"
+            f"/howdy/print/ {asset_root_url}/howdy-tablature.pdf 302\n"
         )
         if practice_guide_alias:
             redirects += (
