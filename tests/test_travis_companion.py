@@ -245,6 +245,46 @@ def test_reference_chart_aligns_sections_and_exact_lesson_scope_without_publishi
     assert snapped["alignment"]["beatSnap"]["snappedBoundaryCount"] > 0
 
 
+def test_reference_chart_uses_global_harmonic_evidence_to_choose_the_audible_beat() -> None:
+    module = ROOT / "scripts" / "lib" / "song_chart_authoring.js"
+    payload = subprocess.run(
+        [
+            "node",
+            "-e",
+            """
+            const author=require(process.argv[1]);
+            const reference={schemaVersion:'song_chart_reference_v1',tempoBpm:60,meter:'4/4',gridUnit:'quarter_note',gridLength:12,qualityPolicy:'roots_only',corroboratedRoots:['D','G','A'],sources:[{id:'one'}],runs:[
+              {startBeat:0,endBeat:4,symbol:'D'},
+              {startBeat:4,endBeat:8,symbol:'G'},
+              {startBeat:8,endBeat:12,symbol:'A'}
+            ],sections:[{id:'song',label:'Song',startBeat:0,endBeat:12}]};
+            const companion={display:{key:'D'},media:{scopes:{fullSong:{durationMs:12000}}}};
+            const beatTimes=Array.from({length:13},(_item,index)=>index*1000);
+            const chroma=(pitch)=>Array.from({length:12},(_item,index)=>index===pitch?1:0);
+            const neutral=chroma(0);
+            const evidence=beatTimes.map((timeMs)=>({timeMs,beforeChroma:neutral,afterChroma:neutral,beforeEnergy:1,afterEnergy:1}));
+            Object.assign(evidence[5],{beforeChroma:chroma(2),afterChroma:chroma(7)});
+            Object.assign(evidence[8],{beforeChroma:chroma(7),afterChroma:chroma(9)});
+            const nns=(symbol)=>({D:'I',G:'IV',A:'V'}[symbol]);
+            console.log(JSON.stringify(author.alignReferenceChart(reference,companion,nns,beatTimes,evidence)));
+            """,
+            str(module),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    result = json.loads(payload.stdout)
+    assert [item["startMs"] for item in result["timeline"]] == [0, 5_000, 8_000]
+    assert result["alignment"]["method"] == "global_harmonic_transition_constrained_beat_alignment"
+    diagnostics = result["alignment"]["beatSnap"]
+    assert diagnostics["musicallyScoredBoundaryCount"] == 2
+    assert diagnostics["alignedBoundaryCount"] == 1
+    assert diagnostics["neighboringBeatShiftCount"] == 1
+    assert diagnostics["harmonicEvidenceGain"] > 0
+
+
 def test_audio_only_song_form_groups_repeated_eight_measure_sections() -> None:
     module = ROOT / "scripts" / "lib" / "song_chart_authoring.js"
     payload = subprocess.run(

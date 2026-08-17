@@ -6,6 +6,7 @@
 // chart without making network requests.
 
 const ROOT_PATTERN = /^([A-G](?:#|b)?)/;
+const ROOT_VALUES = { C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11 };
 
 function chordRoot(symbol) {
   if (symbol === "N.C." || symbol === "—" || !symbol) return symbol || null;
@@ -156,6 +157,152 @@ function median(values) {
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
+function cosine(left, right) {
+  let dot = 0;
+  let leftSize = 0;
+  let rightSize = 0;
+  for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
+    dot += Number(left[index] || 0) * Number(right[index] || 0);
+    leftSize += Number(left[index] || 0) ** 2;
+    rightSize += Number(right[index] || 0) ** 2;
+  }
+  return dot / Math.sqrt(Math.max(1e-12, leftSize * rightSize));
+}
+
+function rootFit(chroma, symbol) {
+  const root = chordRoot(symbol);
+  if (root === "N.C." || root === "—" || ROOT_VALUES[root] === undefined) return null;
+  const value = ROOT_VALUES[root];
+  return Number(chroma[value] || 0)
+    + Number(chroma[(value + 7) % 12] || 0) * 0.48
+    + Math.max(Number(chroma[(value + 3) % 12] || 0), Number(chroma[(value + 4) % 12] || 0)) * 0.24;
+}
+
+function transitionEvidenceScore(evidence, previousSymbol, nextSymbol) {
+  if (!evidence) return 0;
+  const beforePrevious = rootFit(evidence.beforeChroma || [], previousSymbol);
+  const afterPrevious = rootFit(evidence.afterChroma || [], previousSymbol);
+  const beforeNext = rootFit(evidence.beforeChroma || [], nextSymbol);
+  const afterNext = rootFit(evidence.afterChroma || [], nextSymbol);
+  const novelty = 1 - cosine(evidence.beforeChroma || [], evidence.afterChroma || []);
+  if ([beforePrevious, afterPrevious, beforeNext, afterNext].every(Number.isFinite)) {
+    return (beforePrevious - afterPrevious) + (afterNext - beforeNext) + novelty * 0.18;
+  }
+  if (previousSymbol === "N.C." && Number.isFinite(afterNext)) {
+    return (Number(evidence.afterEnergy || 0) - Number(evidence.beforeEnergy || 0)) * 2 + afterNext * 0.2;
+  }
+  return novelty * 0.08;
+}
+
+function boundarySymbols(reference, beat) {
+  const previous = reference.runs.find((run) => Number(run.endBeat) === Number(beat));
+  const next = reference.runs.find((run) => Number(run.startBeat) === Number(beat));
+  return { previousSymbol: previous?.symbol || null, nextSymbol: next?.symbol || null };
+}
+
+function globallyAlignedBoundaryTimes(reference, anchors, beatTimesInput, beatEvidenceInput) {
+  const detectedBeats = [...new Set((beatTimesInput || []).map(Number).filter(Number.isFinite))]
+    .sort((left, right) => left - right);
+  const evidenceByTime = new Map((beatEvidenceInput || []).map((item) => [Number(item.timeMs), item]));
+  const typicalBeatMs = median(detectedBeats.slice(1).map((time, index) => time - detectedBeats[index]));
+  const boundaryBeats = [...new Set([
+    ...reference.runs.flatMap((run) => [Number(run.startBeat), Number(run.endBeat)]),
+    ...reference.sections.flatMap((section) => [Number(section.startBeat), Number(section.endBeat)]),
+    ...anchors.map((anchor) => Number(anchor.beat)),
+  ])].sort((left, right) => left - right);
+  const anchorsByBeat = new Map(anchors.map((anchor) => [Number(anchor.beat), Number(anchor.ms)]));
+  const candidateRadiusMs = typicalBeatMs ? typicalBeatMs * 1.08 : 0;
+  const points = boundaryBeats.map((beat) => {
+    const coarseMs = timeAtReferenceBeat(beat, anchors);
+    if (anchorsByBeat.has(beat) || !detectedBeats.length) {
+      return { beat, coarseMs, candidates: [{ timeMs: coarseMs, evidenceScore: 0, deviationMs: 0 }] };
+    }
+    const symbols = boundarySymbols(reference, beat);
+    let candidates = detectedBeats.filter((timeMs) => Math.abs(timeMs - coarseMs) <= candidateRadiusMs);
+    if (!candidates.length) {
+      candidates = [detectedBeats.reduce((picked, timeMs) => (
+        Math.abs(timeMs - coarseMs) < Math.abs(picked - coarseMs) ? timeMs : picked
+      ), detectedBeats[0])];
+    }
+    return {
+      beat,
+      coarseMs,
+      candidates: candidates.map((timeMs) => ({
+        timeMs,
+        deviationMs: timeMs - coarseMs,
+        evidenceScore: transitionEvidenceScore(evidenceByTime.get(timeMs), symbols.previousSymbol, symbols.nextSymbol),
+      })),
+    };
+  });
+  const rows = [];
+  points.forEach((point, pointIndex) => {
+    const previousPoint = points[pointIndex - 1];
+    const previousRow = rows[pointIndex - 1];
+    const row = point.candidates.map((candidate) => {
+      const normalizedDeviation = typicalBeatMs ? Math.abs(candidate.deviationMs) / typicalBeatMs : 0;
+      const localCost = normalizedDeviation ** 2 * 0.24 - candidate.evidenceScore * 1.35;
+      if (!previousRow) return { cost: localCost, previousIndex: -1 };
+      let best = { cost: Infinity, previousIndex: -1 };
+      previousRow.forEach((previous, previousIndex) => {
+        const previousCandidate = previousPoint.candidates[previousIndex];
+        if (candidate.timeMs <= previousCandidate.timeMs) return;
+        const expectedInterval = point.coarseMs - previousPoint.coarseMs;
+        const actualInterval = candidate.timeMs - previousCandidate.timeMs;
+        const intervalPenalty = typicalBeatMs
+          ? Math.abs(actualInterval - expectedInterval) / typicalBeatMs * 0.055
+          : 0;
+        const cost = previous.cost + localCost + intervalPenalty;
+        if (cost < best.cost) best = { cost, previousIndex };
+      });
+      return best;
+    });
+    if (!row.some((item) => Number.isFinite(item.cost))) {
+      throw new Error(`No monotonic audio-beat path reaches reference beat ${point.beat}.`);
+    }
+    rows.push(row);
+  });
+  let candidateIndex = rows.at(-1).reduce((bestIndex, item, index, items) => (
+    item.cost < items[bestIndex].cost ? index : bestIndex
+  ), 0);
+  const selected = new Map();
+  for (let pointIndex = points.length - 1; pointIndex >= 0; pointIndex -= 1) {
+    const point = points[pointIndex];
+    const candidate = point.candidates[candidateIndex];
+    selected.set(point.beat, candidate);
+    candidateIndex = rows[pointIndex][candidateIndex].previousIndex;
+  }
+  const selectedValues = [...selected.values()];
+  const adjustments = selectedValues.filter((item) => item.deviationMs !== 0);
+  const comparisons = points
+    .filter((point) => !anchorsByBeat.has(point.beat))
+    .map((point) => {
+      const baseline = point.candidates.reduce((picked, candidate) => (
+        Math.abs(candidate.deviationMs) < Math.abs(picked.deviationMs) ? candidate : picked
+      ), point.candidates[0]);
+      return { baseline, selected: selected.get(point.beat) };
+    });
+  const selectedScore = comparisons.reduce((total, item) => total + item.selected.evidenceScore, 0);
+  const baselineScore = comparisons.reduce((total, item) => total + item.baseline.evidenceScore, 0);
+  return {
+    selected,
+    diagnostics: {
+      method: "global_harmonic_transition_constrained_beat_alignment",
+      detectedBeatCount: detectedBeats.length,
+      typicalBeatMs: Math.round(typicalBeatMs),
+      alignedBoundaryCount: adjustments.length,
+      meanAbsoluteAdjustmentMs: adjustments.length
+        ? Math.round(adjustments.reduce((total, item) => total + Math.abs(item.deviationMs), 0) / adjustments.length)
+        : 0,
+      maxAbsoluteAdjustmentMs: adjustments.length
+        ? Math.round(Math.max(...adjustments.map((item) => Math.abs(item.deviationMs))))
+        : 0,
+      musicallyScoredBoundaryCount: selectedValues.filter((item) => item.evidenceScore !== 0).length,
+      neighboringBeatShiftCount: comparisons.filter((item) => item.selected.timeMs !== item.baseline.timeMs).length,
+      harmonicEvidenceGain: Math.round((selectedScore - baselineScore) * 1000) / 1000,
+    },
+  };
+}
+
 function referenceTimeMapper(anchors, beatTimesInput = []) {
   const detectedBeats = [...new Set((beatTimesInput || []).map(Number).filter(Number.isFinite))]
     .sort((left, right) => left - right);
@@ -218,10 +365,18 @@ function splitReferenceRuns(reference) {
   });
 }
 
-function alignReferenceChart(referenceInput, companion, nnsForSymbol, beatTimesMs = []) {
+function alignReferenceChart(referenceInput, companion, nnsForSymbol, beatTimesMs = [], beatEvidence = []) {
   const reference = validateReference(referenceInput);
   const anchors = alignmentAnchors(reference, companion);
-  const timeMapper = referenceTimeMapper(anchors, beatTimesMs);
+  const globalAlignment = beatEvidence.length
+    ? globallyAlignedBoundaryTimes(reference, anchors, beatTimesMs, beatEvidence)
+    : null;
+  const timeMapper = globalAlignment
+    ? {
+      timeAtBeat: (beat) => globalAlignment.selected.get(Number(beat))?.timeMs ?? timeAtReferenceBeat(beat, anchors),
+      diagnostics: () => globalAlignment.diagnostics,
+    }
+    : referenceTimeMapper(anchors, beatTimesMs);
   const corroboratedRoots = new Set(reference.corroboratedRoots || []);
   const useRootsOnly = reference.qualityPolicy === "roots_only";
   const timeline = splitReferenceRuns(reference).map((run) => {
@@ -282,7 +437,9 @@ function alignReferenceChart(referenceInput, companion, nnsForSymbol, beatTimesM
     timeline,
     sections,
     alignment: {
-      method: beatTimesMs.length
+      method: globalAlignment
+        ? "global_harmonic_transition_constrained_beat_alignment"
+        : beatTimesMs.length
         ? "audio_beat_snapped_reference_grid_with_lesson_scope_anchors"
         : "piecewise_reference_grid_with_lesson_scope_anchors",
       anchors,

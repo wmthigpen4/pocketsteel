@@ -182,9 +182,25 @@ function analyzeSong(audioPath, companion, reference = null) {
     keyMode: "major",
   });
   const barCount = initial.analysisState.bars.length;
-  return analyzer.redecodeAnalysis(initial, key, "major", [
+  const analysis = analyzer.redecodeAnalysis(initial, key, "major", [
     { startBar: 1, endBar: barCount, key, keyMode: "major", confidence: 1 },
   ]);
+  const boundaryEvidence = analysis.beatTimesMs.map((timeMs) => {
+    const before = analyzer.spectralFrame(decoded.samples, 11025, Math.max(0, timeMs - 260) / 1000);
+    const after = analyzer.spectralFrame(decoded.samples, 11025, Math.min(decoded.durationMs, timeMs + 260) / 1000);
+    return {
+      timeMs: Number(timeMs),
+      beforeChroma: before.chroma,
+      afterChroma: after.chroma,
+      beforeEnergy: before.energy,
+      afterEnergy: after.energy,
+    };
+  });
+  Object.defineProperty(analysis, "authoringBeatEvidence", {
+    value: boundaryEvidence,
+    enumerable: false,
+  });
+  return analysis;
 }
 
 function main() {
@@ -201,7 +217,13 @@ function main() {
   const practiceGridTempoBpm = Number(companion.display.tempoBpm);
   const analysis = analyzeSong(args.audio, companion, reference);
   const authored = reference
-    ? songAuthoring.alignReferenceChart(reference, companion, nnsForSymbol, analysis.beatTimesMs)
+    ? songAuthoring.alignReferenceChart(
+      reference,
+      companion,
+      nnsForSymbol,
+      analysis.beatTimesMs,
+      analysis.authoringBeatEvidence,
+    )
     : { timeline: null, sections: songAuthoring.inferRepeatedSections(analysis), alignment: null };
   const timeline = buildSongChordTimeline(analysis, companion, authored.timeline, authored.sections);
   companion.songChordTimeline = timeline;
@@ -229,7 +251,7 @@ function main() {
     contextRootConflictCount: analysis.chords.filter((event) => event.rootAdjusted).length,
     withheldAudioClaimCount: analysis.chords.filter((event) => !event.publicationSymbol).length,
     publicationMethod: reference
-      ? "reviewed_reference_roots_snapped_to_detected_audio_beats_and_exact_lesson_scope"
+      ? "reviewed_reference_roots_globally_aligned_to_audio_harmonic_transitions_and_exact_lesson_scope"
       : "learner_safe_audio_claims_grouped_into_repeated_forms",
     alignment: authored.alignment,
     sources: reference?.sources || [],

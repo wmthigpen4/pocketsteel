@@ -148,9 +148,12 @@ disagrees; unresolved audio claims stay withheld.
 An optional private `song_chart_reference_v1` file can provide a reviewed
 quarter-note chord grid, named song sections, source URLs, corroborated roots,
 and exact lesson-scope anchors. The chart grid supplies chord order and rough
-placement; each non-anchor boundary is then snapped to the nearest beat in the
-actual MP3. Exact lesson-scope anchors remain unchanged, and the release records
-the detected-beat count plus mean and maximum snap adjustments. Chord quality is
+placement. The authoring pass evaluates the neighboring beats against the
+audio immediately before and after each chord change, then chooses one globally
+ordered boundary sequence. This prevents independent snap jitter and lets a
+strong harmonic transition outweigh a merely nearby pulse. Exact lesson-scope
+anchors remain unchanged, and the release records the detected-beat count,
+musically scored boundary count, and mean and maximum adjustments. Chord quality is
 withheld when only roots agree. The taught-solo window is then replaced by the
 companion's exact source-timed solo events. Raw
 reference pages and private review material are never packaged. The resulting
