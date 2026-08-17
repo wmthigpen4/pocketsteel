@@ -840,6 +840,7 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
     output = generate_tablature_pdf(data, tmp_path / "howdy.pdf")
     reader = pypdf.PdfReader(str(output))
     assert len(reader.pages) == 1
+    assert float(reader.pages[0].mediabox.width) > float(reader.pages[0].mediabox.height)
     extracted = "\n".join(page.extract_text() or "" for page in reader.pages)
     assert "Howdy - Taught Solo" in extracted
     assert "Originally played by Eddy Dunlap" in extracted
@@ -857,6 +858,14 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
             words = page.extract_words()
             assert all(float(word["x0"]) >= 35.5 for word in words)
             assert all(float(word["x1"]) <= float(page.width) - 35.5 for word in words)
+            full_width_tab_lines = [
+                line
+                for line in page.lines
+                if abs(float(line["y1"]) - float(line["y0"])) < 0.1
+                and float(line["x0"]) <= 64.5
+                and float(line["x1"]) >= float(page.width) - 36.5
+            ]
+            assert len(full_width_tab_lines) >= len(data["phrases"]) * 10
 
 
 def test_pdf_renders_a_bar_hammer_as_a_fret_change(tmp_path: Path) -> None:

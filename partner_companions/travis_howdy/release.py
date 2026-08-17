@@ -628,9 +628,9 @@ def generate_tablature_pdf(
         page.setFont("Helvetica-Bold", 8)
         page.drawString(left, top, _ascii(f"Bars {phrase['barStart']}-{phrase['barEnd']}  |  {phrase['label']}"))
         # Do not stretch short phrases across the landscape sheet. A compact,
-        # repeatable beat width is easier to scan and leaves useful white space.
+        # repeatable beat width is easier to scan. The ten string lines still
+        # span the printable width so the handout reads as full tablature.
         column_width = min(46.0, (inner_width - 42) / len(events))
-        system_right = left + 40 + column_width * len(events)
         previous_bar = None
         previous_chord_id = None
         tab_top = top - 17
@@ -642,7 +642,7 @@ def generate_tablature_pdf(
             page.setFont("Helvetica", 4.7)
             page.setFillColor(gray)
             page.drawRightString(left + 20, y - 1.5, str(string_number))
-            page.line(left + 28, y, system_right, y)
+            page.line(left + 28, y, right, y)
         for index, event in enumerate(events):
             x = left + 40 + column_width * (index + 0.5)
             if previous_bar is not None and event["bar"] != previous_bar:
