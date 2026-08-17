@@ -842,11 +842,15 @@ def test_pdf_contains_notation_tab_controls_and_revision(tmp_path: Path) -> None
     assert len(reader.pages) == 1
     extracted = "\n".join(page.extract_text() or "" for page in reader.pages)
     assert "Howdy - Taught Solo" in extracted
+    assert "Originally played by Eddy Dunlap" in extracted
     assert "travistoytutorials.com" in extracted
     assert data["revision"] in extracted
-    assert "DRAFT LAYOUT PROOF" in extracted
+    assert "REVIEW DRAFT" in extracted
+    assert "AI-generated and human reviewed" in extracted
+    assert "copedent-specific pedal/lever actions" in extracted
     assert all(phrase["label"] in extracted for phrase in data["phrases"])
-    assert re.search(r"Page 1 of 1", extracted)
+    assert "Page 1 of 1" not in extracted
+    assert "Powered by Steel Guitar RAG" not in extracted
     assert "treble" not in extracted.lower()
     with pdfplumber.open(output) as document:
         for page in document.pages:

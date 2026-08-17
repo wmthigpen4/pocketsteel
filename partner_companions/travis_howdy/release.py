@@ -507,7 +507,6 @@ def generate_tablature_pdf(
     event_by_id = {event["id"]: event for event in data["events"]}
     chord_by_id = {chord["id"]: chord for chord in data["chordTimeline"]}
     phrases = list(data["phrases"])
-    page_count = 1
     logo_image = None
     if brand_logo_path is not None:
         logo_path = Path(brand_logo_path).expanduser().resolve()
@@ -536,38 +535,56 @@ def generate_tablature_pdf(
         page.setFont("Helvetica", max(size, minimum))
         page.drawCentredString(x, y, clean)
 
-    def draw_page_header(page_number: int) -> None:
-        page.setFillColor(teal)
-        page.rect(0, height - 68, width, 68, stroke=0, fill=1)
+    def draw_page_header() -> None:
         page.setFillColor(colors.white)
+        page.rect(0, height - 68, width, 68, stroke=0, fill=1)
         if logo_image is not None:
-            page.drawImage(logo_image, 36, height - 49, width=150, height=36, preserveAspectRatio=True, mask="auto")
+            page.drawImage(logo_image, 36, height - 47, width=137.5, height=33, preserveAspectRatio=True, mask="auto")
         else:
+            page.setFillColor(teal)
             page.setFont("Helvetica-Bold", 10)
             page.drawString(36, height - 30, "TRAVIS TOY TUTORIALS")
+        page.setFillColor(teal)
         page.setFont("Helvetica-Bold", 18)
-        page.drawString(204, height - 29, "Howdy - Taught Solo")
+        page.drawString(190, height - 24, "Howdy - Taught Solo")
+        page.setFillColor(coral)
+        page.setFont("Helvetica-Bold", 8.5)
+        page.drawString(190, height - 39, "Originally played by Eddy Dunlap")
         tempo = data["display"].get("tempoBpm")
         musical_context = f"10-string E9 tablature | Key {data['display']['key']} | {data['display']['meter']}"
         if tempo:
             musical_context += f" | {round(float(tempo))} BPM"
+        page.setFillColor(gray)
         page.setFont("Helvetica", 8)
-        page.drawString(204, height - 45, _ascii(musical_context))
+        page.drawString(190, height - 54, _ascii(musical_context))
+        page.setFillColor(teal)
         page.setFont("Helvetica-Bold", 9)
         page.drawRightString(width - 36, height - 19, "travistoytutorials.com")
+        page.setFillColor(gray)
         page.setFont("Helvetica", 7)
         page.drawRightString(width - 36, height - 34, _ascii(data["revision"]))
-        page.drawRightString(width - 36, height - 47, f"Page {page_number} of {page_count}")
-        page.setFont("Helvetica", 6)
-        page.drawRightString(width - 36, height - 59, "Powered by Steel Guitar RAG")
+        page.setStrokeColor(teal)
+        page.setLineWidth(1.2)
+        page.line(36, height - 65, width - 36, height - 65)
+        page.setStrokeColor(coral)
+        page.setLineWidth(2.4)
+        page.line(36, height - 65, 174, height - 65)
+
+        page.setFillColor(colors.HexColor("#f2f5f6"))
+        page.rect(36, height - 84, width - 72, 13, stroke=0, fill=1)
+        note_x = 43
         if not data.get("approvals", {}).get("printLayout"):
-            page.saveState()
-            page.setFillColor(colors.HexColor("#fff0ed"))
-            page.rect(36, height - 85, width - 72, 12, stroke=0, fill=1)
-            page.setFillColor(colors.HexColor("#7a210f"))
+            page.setFillColor(coral)
             page.setFont("Helvetica-Bold", 6)
-            page.drawCentredString(width / 2, height - 81, "DRAFT LAYOUT PROOF - NOT MUSICAL OR PRINT APPROVED")
-            page.restoreState()
+            page.drawString(note_x, height - 80, "REVIEW DRAFT")
+            note_x += 57
+        page.setFillColor(gray)
+        page.setFont("Helvetica", 6.2)
+        page.drawString(
+            note_x,
+            height - 80,
+            "AI-generated and human reviewed. May omit slides, squeezes, or copedent-specific pedal/lever actions; use the lesson video and your copedent as the final reference.",
+        )
 
     def draw_chord_chart(top: float) -> None:
         left = 36
@@ -610,7 +627,10 @@ def generate_tablature_pdf(
         page.setFillColor(teal)
         page.setFont("Helvetica-Bold", 8)
         page.drawString(left, top, _ascii(f"Bars {phrase['barStart']}-{phrase['barEnd']}  |  {phrase['label']}"))
-        column_width = (inner_width - 42) / len(events)
+        # Do not stretch short phrases across the landscape sheet. A compact,
+        # repeatable beat width is easier to scan and leaves useful white space.
+        column_width = min(46.0, (inner_width - 42) / len(events))
+        system_right = left + 40 + column_width * len(events)
         previous_bar = None
         previous_chord_id = None
         tab_top = top - 17
@@ -622,7 +642,7 @@ def generate_tablature_pdf(
             page.setFont("Helvetica", 4.7)
             page.setFillColor(gray)
             page.drawRightString(left + 20, y - 1.5, str(string_number))
-            page.line(left + 28, y, right, y)
+            page.line(left + 28, y, system_right, y)
         for index, event in enumerate(events):
             x = left + 40 + column_width * (index + 0.5)
             if previous_bar is not None and event["bar"] != previous_bar:
@@ -672,17 +692,17 @@ def generate_tablature_pdf(
             draw_centred_text_fit(
                 event["movement"].replace("-", " "),
                 x,
-                tab_top - 49,
+                tab_top - 45,
                 column_width * .82,
                 size=4.8,
                 minimum=3.6,
             )
 
-    draw_page_header(1)
+    draw_page_header()
     if any(chord.get("symbol") for chord in data["chordTimeline"]):
         draw_chord_chart(height - 96)
     for phrase_index, phrase in enumerate(phrases):
-        draw_phrase(phrase, height - 137 - phrase_index * 70)
+        draw_phrase(phrase, height - 137 - phrase_index * 72)
     page.setStrokeColor(light)
     page.line(36, 34, width - 36, 34)
     page.setFillColor(teal)
