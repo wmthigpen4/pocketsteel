@@ -161,6 +161,7 @@ def validate_related_lessons(payload: Mapping[str, Any]) -> list[dict[str, Any]]
     if not isinstance(lessons, list) or not 1 <= len(lessons) <= 6:
         raise CompanionReleaseError("Howdy requires one to six phrase-matched related videos.")
     ids: set[str] = set()
+    featured_count = 0
     for lesson in lessons:
         lesson_id = str(lesson.get("id") or "")
         if not lesson_id or lesson_id in ids:
@@ -182,6 +183,14 @@ def validate_related_lessons(payload: Mapping[str, Any]) -> list[dict[str, Any]]
         thumbnail_file = str(lesson.get("thumbnailFile") or "")
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]*\.jpg", thumbnail_file):
             raise CompanionReleaseError(f"Related video {lesson_id} has an unsafe thumbnail filename.")
+        featured = lesson.get("featuredForCompanion") is True
+        if featured:
+            featured_count += 1
+            companion_reason = str(lesson.get("companionReason") or "").strip()
+            if not 8 <= len(companion_reason.split()) <= 35:
+                raise CompanionReleaseError(
+                    f"Featured related video {lesson_id} requires a concise lesson-level recommendation reason."
+                )
         matches = lesson.get("matches")
         if not isinstance(matches, list) or not matches:
             raise CompanionReleaseError(f"Related video {lesson_id} requires at least one phrase match.")
@@ -214,6 +223,8 @@ def validate_related_lessons(payload: Mapping[str, Any]) -> list[dict[str, Any]]
             }:
                 raise CompanionReleaseError(f"Related video {lesson_id} has an unsupported match relationship.")
             matched_phrases.add(phrase_id)
+    if not 1 <= featured_count <= 3:
+        raise CompanionReleaseError("Howdy requires one to three static featured related videos.")
     return [copy.deepcopy(dict(item)) for item in lessons]
 
 

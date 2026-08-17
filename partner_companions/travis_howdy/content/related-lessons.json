@@ -12,6 +12,8 @@
       "evidenceExcerpt": "bar control comes into play here very very much",
       "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16831118",
       "thumbnailFile": "hammer-ons.jpg",
+      "featuredForCompanion": true,
+      "companionReason": "Howdy opens with a bar hammer from the open position to fret 1. This lesson isolates the control needed for that exact kind of move.",
       "matches": [
         {
           "phraseId": "phrase-01",
@@ -31,6 +33,8 @@
       "evidenceExcerpt": "my A pedal takes my 5ths to 6ths, my B pedal takes my 3rds to 4ths",
       "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16819719",
       "thumbnailFile": "pedals-really-doing.jpg",
+      "featuredForCompanion": true,
+      "companionReason": "The solo repeatedly engages and releases A and B while the bar moves. This lesson explains the scale-tone changes behind those pedal choices.",
       "matches": [
         {
           "phraseId": "phrase-02",
@@ -64,6 +68,7 @@
       "evidenceExcerpt": "Our major chord is going to be a 1, a 3, and a 5",
       "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16839319",
       "thumbnailFile": "intervals-make-chords.jpg",
+      "featuredForCompanion": false,
       "matches": [
         {
           "phraseId": "phrase-03",
@@ -83,6 +88,8 @@
       "evidenceExcerpt": "notes that work on either side of this position",
       "url": "https://travis-toy-tutorials.teachable.com/courses/travis-toy-tutorials1-1/lectures/16841613",
       "thumbnailFile": "pockets-positions-1.jpg",
+      "featuredForCompanion": true,
+      "companionReason": "Howdy travels between open position, fret 10, fret 13, and the closing descent. This lesson helps connect those stops into one fretboard route.",
       "matches": [
         {
           "phraseId": "phrase-04",

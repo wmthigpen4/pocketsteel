@@ -189,6 +189,10 @@ button { color: inherit; }
 .phrase-chip small { margin-top: 8px; color: rgba(255,255,255,.72); }
 .chord-chart-card { margin-top: 22px; padding-top: 21px; border-top: 1px solid rgba(255,255,255,.2); }
 .chord-chart-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }.chord-chart-heading h3 { margin: 0; font-size: 18px; }.chord-chart-heading > p { margin: 0; color: #ffd1c9; font-size: 10px; font-weight: 750; }
+.song-chart-tools { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }.song-chart-tools > p { margin: 0; color: #ffd1c9; font-size: 10px; font-weight: 750; }
+.song-display-toggle { display: inline-flex; padding: 2px; border: 1px solid rgba(255,255,255,.28); border-radius: var(--radius); background: rgba(255,255,255,.07); }
+.song-display-toggle button { min-height: 30px; padding: 5px 10px; border: 0; border-radius: 4px; color: rgba(255,255,255,.72); background: transparent; font-size: 9px; font-weight: 750; cursor: pointer; }
+.song-display-toggle button.is-active { color: var(--teal-950); background: var(--white); }
 .chord-chart { display: grid; grid-template-columns: repeat(8, minmax(86px,1fr)); gap: 6px; margin-top: 14px; overflow-x: auto; }
 .chord-bar { min-width: 86px; min-height: 73px; padding: 9px; border: 1px solid rgba(255,255,255,.26); border-radius: var(--radius); color: var(--white); background: rgba(255,255,255,.08); text-align: left; cursor: pointer; }.chord-bar > span { display: block; color: rgba(255,255,255,.66); font-size: 8px; text-transform: uppercase; }.chord-bar > strong { display: block; margin-top: 8px; font-size: 16px; }.chord-bar.is-current { border-color: #ffb9aa; box-shadow: inset 0 -4px 0 var(--coral); background: rgba(255,63,32,.17); }
 .chord-symbols { display: flex !important; align-items: center; gap: 4px; }.chord-symbols > span { display: grid; }.chord-symbols b { font-size: 16px; }.chord-symbols small { color: #ffd1c9; font-size: 7px; }.chord-symbols i { color: rgba(255,255,255,.52); font-size: 9px; font-style: normal; }
@@ -223,7 +227,6 @@ button { color: inherit; }
 [data-active-layer="play-along"] .chord-chart-card { display: none; }
 [data-active-layer="play-along"] .song-chart-card { display: block; }
 [data-active-layer="play-along"] .tab-card { display: none; }
-[data-active-layer="play-along"] .related-videos { display: none; }
 [data-active-layer="play-along"] .move-card,
 [data-active-layer="play-along"] .fretboard-card,
 [data-active-layer="play-along"] .practice-aside { display: none; }
@@ -318,6 +321,15 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
 .video-simulation { min-height: 310px; display: grid; place-content: center; justify-items: center; border-radius: var(--radius); color: var(--white); background: radial-gradient(circle at 50% 40%, #2e4c5a, #0d2029 70%); text-align: center; }
 .video-play { width: 60px; height: 60px; display: grid; place-items: center; padding-left: 4px; border: 2px solid rgba(255,255,255,.78); border-radius: 50%; }
 .video-simulation p { margin: 16px 0 5px; font-weight: 600; }.video-simulation span { color: rgba(255,255,255,.62); font-size: 11px; }
+.audio-source-setup { margin-top: 20px; padding-top: 20px; border-top: 1px solid #dedee3; }
+.audio-source-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }.audio-source-heading p { margin: 0 0 4px; color: var(--coral-dark); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }.audio-source-heading h2 { margin: 0; color: #212338; font-size: 18px; font-weight: 600; line-height: 1.25; }.audio-source-heading > span { padding: 5px 7px; border-radius: 4px; color: var(--teal-900); background: #eaf0f3; font-size: 9px; font-weight: 700; }
+.audio-source-intro { max-width: 650px; margin: 7px 0 0; color: #666674; font-size: 12px; line-height: 1.5; }
+.audio-upload-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 14px; }
+.audio-upload-box { position: relative; min-height: 92px; display: grid; grid-template-columns: 34px 1fr; align-content: center; gap: 2px 10px; padding: 13px; border: 1px dashed #aab8bf; border-radius: var(--radius); color: var(--teal-900); background: #f7f9fa; cursor: pointer; }.audio-upload-box:hover, .audio-upload-box:focus-within { border-color: var(--coral); background: #fff7f5; }.audio-upload-primary { border-style: solid; border-color: #93a9b5; }
+.audio-upload-box input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }.audio-upload-number { grid-row: 1 / span 2; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: var(--white); background: var(--teal-900); font-size: 12px; font-weight: 700; }.audio-upload-box strong { align-self: end; font-size: 12px; }.audio-upload-box small { align-self: start; overflow: hidden; color: #667781; font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.audio-source-selection { display: grid; grid-template-columns: minmax(160px,.55fr) minmax(0,1.45fr); align-items: start; gap: 14px; margin-top: 12px; padding: 12px; border-radius: var(--radius); background: #edf3f5; }.audio-source-selection[hidden] { display: none; }.audio-source-selection > div:first-child strong, .audio-source-selection > div:first-child span { display: block; }.audio-source-selection > div:first-child strong { color: var(--teal-900); font-size: 10px; }.audio-source-selection > div:first-child span { margin-top: 4px; color: #667781; font-size: 9px; line-height: 1.35; overflow-wrap: anywhere; }
+.audio-track-options { display: grid; gap: 5px; }.audio-track-option { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid #d1dce1; border-radius: 4px; background: var(--white); cursor: pointer; }.audio-track-option input { accent-color: var(--coral); }.audio-track-option span { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.audio-track-option small { color: #667781; font-size: 8px; text-transform: uppercase; }
+.audio-source-note { margin: 9px 0 0; color: #777784; font-size: 9px; line-height: 1.4; }
 .compact-shell { width: 100%; margin: 18px 0 0; }
 .compact-shell .preview-ribbon { padding: 6px 12px; font-size: 9px; letter-spacing: .02em; text-transform: none; }
 .compact-shell .companion-heading { padding: 17px 20px; }.compact-shell .companion-heading .eyebrow, .compact-shell .companion-intro { display: none; }.compact-shell .full-only { display: none; }
@@ -502,6 +514,8 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
   .related-video-copy { min-height: 0; }
   .move-card { grid-template-columns: 1fr; }
   .move-next { border-left: 0; border-top: 1px solid var(--line); }
+  .audio-upload-grid, .audio-source-selection { grid-template-columns: 1fr; }
+  .chord-chart-heading { align-items: flex-start; flex-direction: column; }.song-chart-tools { width: 100%; justify-content: space-between; }
 }
 
 @media (max-width: 480px) {

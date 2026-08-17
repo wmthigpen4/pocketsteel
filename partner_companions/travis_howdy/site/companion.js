@@ -24,6 +24,7 @@
     sourceObjectUrls: {},
     sourceLoadPromises: {},
     songTimelineSegments: [],
+    songDisplayMode: "chords",
   };
 
   const q = (selector) => root.querySelector(selector);
@@ -175,6 +176,10 @@
       throw new Error("The related video cards are incomplete.");
     }
     const relatedCoverage = new Map(data.phrases.map((phrase) => [phrase.id, 0]));
+    const featuredLessons = data.relatedLessons.filter((lesson) => lesson.featuredForCompanion);
+    if (data.relatedLessons.length && (featuredLessons.length < 1 || featuredLessons.length > 3)) {
+      throw new Error("The companion needs one to three static related-video recommendations.");
+    }
     data.relatedLessons.forEach((lesson) => {
       if (!/^https:\/\/travis-toy-tutorials\.teachable\.com\/courses\/[^\s]+\/lectures\/\d+$/.test(lesson.url)) {
         throw new Error(`Invalid related lesson URL for ${lesson.id}.`);
@@ -184,6 +189,9 @@
       }
       if (!Array.isArray(lesson.matches) || !lesson.matches.length) {
         throw new Error(`Related lesson ${lesson.id} has no phrase match.`);
+      }
+      if (lesson.featuredForCompanion && !String(lesson.companionReason || "").trim()) {
+        throw new Error(`Featured related lesson ${lesson.id} has no lesson-level reason.`);
       }
       lesson.matches.forEach((match) => {
         if (
@@ -288,8 +296,71 @@
     renderPhraseMap();
     renderChordChart();
     renderSongTimeline();
-    renderRelatedLessons();
     updateFrame();
+  }
+
+  function configureAudioSourceSetup() {
+    const setup = document.querySelector("[data-audio-source-setup]");
+    if (!setup) return;
+    const primaryInput = setup.querySelector("[data-primary-track]");
+    const additionalInput = setup.querySelector("[data-additional-tracks]");
+    const selection = setup.querySelector("[data-audio-source-selection]");
+    const options = setup.querySelector("[data-audio-track-options]");
+    const summary = setup.querySelector("[data-selected-track-summary]");
+    const primaryLabel = setup.querySelector("[data-primary-track-label]");
+    const additionalLabel = setup.querySelector("[data-additional-track-label]");
+    if (!primaryInput || !additionalInput || !selection || !options || !summary) return;
+
+    const mp3Files = (input) => Array.from(input.files || []).filter((file) => (
+      file.type === "audio/mpeg" || file.name.toLowerCase().endsWith(".mp3")
+    ));
+    const renderSelection = () => {
+      const primary = mp3Files(primaryInput)[0] || null;
+      const additional = mp3Files(additionalInput);
+      const tracks = [
+        ...(primary ? [{ file: primary, role: "primary", index: 0 }] : []),
+        ...additional.map((file, index) => ({ file, role: "additional", index })),
+      ];
+      if (primaryLabel) primaryLabel.textContent = primary ? primary.name : "Choose the recording the companion should use";
+      if (additionalLabel) additionalLabel.textContent = additional.length
+        ? `${additional.length} additional ${additional.length === 1 ? "track" : "tracks"}`
+        : "Add slow, fast, or alternate mixes";
+      selection.hidden = !primary;
+      options.replaceChildren();
+      (primary ? tracks : []).forEach((track, optionIndex) => {
+        const id = `analysis-track-${track.role}-${track.index}`;
+        const label = node("label", "audio-track-option");
+        const radio = node("input");
+        radio.type = "radio";
+        radio.name = "analysisTrack";
+        radio.value = `${track.role}:${track.index}`;
+        radio.id = id;
+        radio.checked = optionIndex === 0;
+        const updateSelected = () => {
+          summary.textContent = `${track.file.name} · ${track.role === "primary" ? "primary" : "additional"}`;
+          setup.dataset.selectedTrackRole = track.role;
+          setup.dataset.selectedTrackIndex = String(track.index);
+          setup.dataset.selectedTrackName = track.file.name;
+          setup.dispatchEvent(new CustomEvent("ttt:companion-audio-selection", {
+            bubbles: true,
+            detail: { role: track.role, index: track.index, name: track.file.name },
+          }));
+        };
+        radio.addEventListener("change", () => {
+          if (radio.checked) updateSelected();
+        });
+        label.append(radio, node("span", "", track.file.name), node("small", "", track.role === "primary" ? "Primary" : `Additional ${track.index + 1}`));
+        options.append(label);
+        if (optionIndex === 0) updateSelected();
+      });
+      if (!primary) {
+        delete setup.dataset.selectedTrackRole;
+        delete setup.dataset.selectedTrackIndex;
+        delete setup.dataset.selectedTrackName;
+      }
+    };
+    primaryInput.addEventListener("change", renderSelection);
+    additionalInput.addEventListener("change", renderSelection);
   }
 
   function renderModes() {
@@ -631,6 +702,28 @@
     });
   }
 
+  function updateSongDisplayToggle() {
+    qa("[data-song-display]").forEach((button) => {
+      const active = button.dataset.songDisplay === state.songDisplayMode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function configureSongDisplayToggle() {
+    qa("[data-song-display]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const mode = button.dataset.songDisplay;
+        if (!['chords', 'nns'].includes(mode) || mode === state.songDisplayMode) return;
+        state.songDisplayMode = mode;
+        updateSongDisplayToggle();
+        renderSongTimeline();
+        updateFrame();
+      });
+    });
+    updateSongDisplayToggle();
+  }
+
   function renderSongTimeline() {
     const container = q("[data-song-timeline]");
     if (!container) return;
@@ -662,10 +755,12 @@
       const taughtSoloSource = segment.timelineKind === "taught-solo"
         || segment.sourceKind === "taught_solo_chord_timeline";
       const sourceLabel = segment.sectionLabel || (taughtSoloSource ? "Taught solo" : "Song form");
+      const primaryLabel = state.songDisplayMode === "nns" ? segment.nns : segment.symbol;
+      const secondaryLabel = state.songDisplayMode === "nns" ? segment.symbol : segment.nns;
       button.append(
         node("span", "", `${formatTime(segment.startMs)} · ${formatTime(segment.endMs)}`),
-        node("strong", "", pending ? "—" : segment.symbol),
-        node("small", "", pending ? "Uncharted" : `${segment.nns} · ${sourceLabel}`),
+        node("strong", "", pending ? "—" : primaryLabel),
+        node("small", "", pending ? "Uncharted" : `${secondaryLabel} · ${sourceLabel}`),
       );
       if (segment.needsAttention) button.title = "Owner review required";
       button.addEventListener("click", () => {
@@ -692,8 +787,12 @@
     const nns = q("[data-song-now-nns]");
     const note = q("[data-song-now-note]");
     if (time) time.textContent = formatTime(absoluteTime);
-    if (chord) chord.textContent = pending ? "—" : segment.symbol;
-    if (nns) nns.textContent = pending ? "—" : segment.nns;
+    if (chord) chord.textContent = pending
+      ? "—"
+      : state.songDisplayMode === "nns" ? segment.nns : segment.symbol;
+    if (nns) nns.textContent = pending
+      ? "—"
+      : state.songDisplayMode === "nns" ? segment.symbol : segment.nns;
     if (note) note.textContent = pending
       ? "Uncharted"
       : segment.timelineKind === "taught-solo" || segment.sourceKind === "taught_solo_chord_timeline"
@@ -735,17 +834,12 @@
     if (!container) return;
     container.replaceChildren();
     const section = container.closest(".related-videos");
-    const phrase = currentPhrase();
-    const suggestions = state.data.relatedLessons.flatMap((lesson) => (
-      lesson.matches
-        .filter((match) => match.phraseId === phrase.id)
-        .map((match) => ({ lesson, match }))
-    ));
-    if (section) section.hidden = state.selectedLayer !== "phrase-practice" || !suggestions.length;
+    const suggestions = state.data.relatedLessons.filter((lesson) => lesson.featuredForCompanion);
+    if (section) section.hidden = !suggestions.length;
     const heading = q("[data-related-heading]");
-    if (heading) heading.textContent = `Related to “${phrase.label}”`;
+    if (heading) heading.textContent = "Related Travis lessons";
     container.classList.toggle("is-single", suggestions.length === 1);
-    suggestions.forEach(({ lesson, match }) => {
+    suggestions.forEach((lesson) => {
       const link = node("a", "related-video-card");
       link.href = lesson.url;
       link.target = "_blank";
@@ -768,7 +862,7 @@
         node("span", "related-label", lesson.label),
         node("strong", "", lesson.title),
         node("span", "related-why", "Why this lesson"),
-        node("span", "related-reason", match.reason),
+        node("span", "related-reason", lesson.companionReason),
         node("span", "related-open", "Open video ↗"),
       );
       link.append(visual, copy);
@@ -810,7 +904,6 @@
         if (state.selectedLayer !== "phrase-practice") setLayer("phrase-practice", { preserveTime: true });
         renderPhraseMap();
         renderTab();
-        renderRelatedLessons();
         updateFrame();
       });
       container.append(button);
@@ -965,7 +1058,6 @@
       state.selectedPhraseId = phrase.id;
       renderPhraseMap();
       if (presentation === "embed-demo") renderTab();
-      renderRelatedLessons();
     }
     const seek = q("[data-seek]");
     if (seek) seek.value = String(Math.round(state.timeMs));
@@ -1248,9 +1340,11 @@
     const searchPanel = q("[data-lesson-search-panel]");
     if (searchPanel && presentation === "embed-demo") searchPanel.open = false;
     configureTransport();
+    configureAudioSourceSetup();
     configureFeedback();
     configureStudyControls();
     configureMediaScopeActions();
+    configureSongDisplayToggle();
     configureLessonSearch();
     renderLessonFacts();
     renderAlternates();
@@ -1260,6 +1354,7 @@
     const attribution = q("[data-source-attribution]");
     if (attribution) attribution.textContent = data.lesson.sourceAttribution;
     setLayer("phrase-practice", { preserveTime: true });
+    renderRelatedLessons();
   }
 
   initialize().catch((error) => {

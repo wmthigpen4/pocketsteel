@@ -44,7 +44,13 @@
   <section class="song-chart-card" aria-labelledby="song-chart-title">
     <div class="chord-chart-heading">
       <div><p class="section-kicker">Chord play-along</p><h3 id="song-chart-title">Full song · <span data-song-tempo-label>—</span> · Key <span data-song-chart-key>—</span></h3></div>
-      <p data-song-chart-status>Loading chart…</p>
+      <div class="song-chart-tools">
+        <p data-song-chart-status>Loading chart…</p>
+        <div class="song-display-toggle" role="group" aria-label="Choose scrolling chart labels">
+          <button type="button" data-song-display="chords" aria-pressed="true">Chords</button>
+          <button type="button" data-song-display="nns" aria-pressed="false">NNS</button>
+        </div>
+      </div>
     </div>
     <nav class="song-sections" data-song-sections aria-label="Song sections"></nav>
     <div class="song-now" aria-live="polite">
@@ -137,8 +143,8 @@
 
 <section class="related-videos" aria-labelledby="related-videos-title">
   <div class="related-heading">
-    <div><p class="section-kicker">Need help with this move?</p><h3 id="related-videos-title" data-related-heading>Related to this phrase</h3></div>
-    <span>Chosen for the selected phrase—not a general lesson list.</span>
+    <div><p class="section-kicker">Go deeper after this lesson</p><h3 id="related-videos-title" data-related-heading>Related Travis lessons</h3></div>
+    <span>These recommendations stay with the lesson while you practice.</span>
   </div>
   <div class="related-video-grid" data-related-lessons></div>
 </section>

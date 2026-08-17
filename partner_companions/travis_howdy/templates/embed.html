@@ -21,6 +21,38 @@
         <div class="video-play" aria-hidden="true">▶</div>
         <p>Lesson video</p>
       </div>
+      <section class="audio-source-setup" data-audio-source-setup aria-labelledby="audio-source-title">
+        <div class="audio-source-heading">
+          <div>
+            <p>Instructor setup</p>
+            <h2 id="audio-source-title">Play-along audio for this companion</h2>
+          </div>
+          <span>MP3 only</span>
+        </div>
+        <p class="audio-source-intro">Choose the main recording first. Add alternate tempos or mixes only when this lesson needs them.</p>
+        <div class="audio-upload-grid">
+          <label class="audio-upload-box audio-upload-primary">
+            <input type="file" name="primaryTrack" accept="audio/mpeg,.mp3" required data-primary-track>
+            <span class="audio-upload-number">1</span>
+            <strong>Primary play-along MP3</strong>
+            <small data-primary-track-label>Choose the recording the companion should use</small>
+          </label>
+          <label class="audio-upload-box">
+            <input type="file" name="additionalTracks" accept="audio/mpeg,.mp3" multiple data-additional-tracks>
+            <span class="audio-upload-number">+</span>
+            <strong>Additional MP3s</strong>
+            <small data-additional-track-label>Add slow, fast, or alternate mixes</small>
+          </label>
+        </div>
+        <div class="audio-source-selection" data-audio-source-selection hidden>
+          <div>
+            <strong>Build the companion from</strong>
+            <span data-selected-track-summary>Primary track</span>
+          </div>
+          <div class="audio-track-options" data-audio-track-options role="radiogroup" aria-label="Select the MP3 used to build the companion"></div>
+        </div>
+        <p class="audio-source-note">Preview only: the selection stays in this page until the instructor upload service is connected.</p>
+      </section>
     </section>
     <section id="companion" class="companion-shell compact-shell" data-companion-url="{{COMPANION_URL}}" data-pdf-url="{{PDF_URL}}">
       {{COMPANION_MARKUP}}

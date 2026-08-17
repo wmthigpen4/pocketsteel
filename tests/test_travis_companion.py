@@ -310,6 +310,13 @@ def test_related_video_cards_are_short_source_grounded_and_real() -> None:
     assert all(lesson["url"].startswith("https://travis-toy-tutorials.teachable.com/") for lesson in lessons)
     assert all(lesson["startMs"] >= 0 and lesson["endMs"] > lesson["startMs"] for lesson in lessons)
     assert all(len(lesson["evidenceExcerpt"].split()) <= 22 for lesson in lessons)
+    featured = [lesson for lesson in lessons if lesson.get("featuredForCompanion")]
+    assert [lesson["id"] for lesson in featured] == [
+        "hammer-ons-and-pull-offs",
+        "pedals-really-doing",
+        "pockets-positions-1",
+    ]
+    assert all(8 <= len(lesson["companionReason"].split()) <= 35 for lesson in featured)
     matches = [match for lesson in lessons for match in lesson["matches"]]
     assert {match["phraseId"] for match in matches} == {f"phrase-{number:02}" for number in range(1, 7)}
     assert all(match["sourceEventIds"] and match["conceptId"] and match["relation"] for match in matches)
@@ -555,7 +562,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function renderSongTimeline()" in script
     assert "function renderSongSections()" in script
     assert "function updateSongTimeline(" in script
-    assert 'pending ? "—" : segment.symbol' in script
+    assert 'state.songDisplayMode === "nns" ? segment.nns : segment.symbol' in script
     assert "scroll.scrollLeft = target" in script
     assert "needs-attention" in script
     assert "function stepMove(" in script
@@ -564,6 +571,9 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert 'return `${note.fret}h${pedal}`' in script
     assert 'return `${note.fret}h${destination}`' in script
     assert 'node("span", "related-why", "Why this lesson")' in script
+    assert 'node("span", "related-reason", lesson.companionReason)' in script
+    assert 'state.data.relatedLessons.filter((lesson) => lesson.featuredForCompanion)' in script
+    assert script.count("renderRelatedLessons();") == 1
     assert "match.sourceEventIds" in script
     assert "match.conceptId" in script
     assert "match.relation" in script
@@ -578,6 +588,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         "data-song-scroll",
         "data-song-sections",
         "data-song-tempo-label",
+        "data-song-display",
         "data-song-chart-status",
         "data-song-chart-guardrail",
         "data-song-now-chord",
@@ -595,6 +606,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert 'aria-label="Scrolling full-song chords and Nashville numbers"' in markup
     assert "Solo grid" in script
     assert "Roots are aligned from two public charts" in script
+    assert 'function configureSongDisplayToggle()' in script
 
 
 def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
@@ -651,7 +663,21 @@ def test_embed_matches_teachable_typeset_and_preserves_discussion_space() -> Non
     assert 'Member discussion stays in Teachable' not in template
     assert 'aria-label="Comment box preview"' in template
     assert 'disabled></textarea>' in template
+    assert 'data-audio-source-setup' in template
+    assert 'name="primaryTrack"' in template
+    assert 'required data-primary-track' in template
+    assert 'name="additionalTracks"' in template
+    assert 'multiple data-additional-tracks' in template
+    assert 'data-audio-track-options' in template
+    assert 'Preview only: the selection stays in this page' in template
+    assert template.index('class="video-simulation"') < template.index('data-audio-source-setup')
+    assert template.index('data-audio-source-setup') < template.index('id="companion"')
     assert template.index('id="companion"') < template.index('data-demo-discussion')
+    script = (SITE / "companion.js").read_text(encoding="utf-8")
+    assert 'function configureAudioSourceSetup()' in script
+    assert 'radio.name = "analysisTrack"' in script
+    assert 'new CustomEvent("ttt:companion-audio-selection"' in script
+    assert '[data-active-layer="play-along"] .related-videos { display: none; }' not in styles
     for exact_typeset in (
         "font-size: 22.784px",
         "font-weight: 600; line-height: 34.176px",
