@@ -19,7 +19,7 @@
   },
   "release": {
     "intendedProject": "steel-guitar-rag-travis-preview",
-    "intendedHostname": "travis-preview.steelguitarrag.com",
+    "intendedHostname": "howdy.steelguitarrag.com",
     "feedbackEmail": "",
     "previewLabel": "DRAFT - MUSICAL REVIEW REQUIRED",
     "approvalReferences": [],

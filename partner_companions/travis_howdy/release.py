@@ -22,7 +22,7 @@ TEMPLATE_ROOT = PACKAGE_ROOT / "templates"
 DEFAULT_COMPANION = PACKAGE_ROOT / "content" / "howdy.draft.json"
 DEFAULT_RELATED_LESSONS = PACKAGE_ROOT / "content" / "related-lessons.json"
 PROJECT_NAME = "steel-guitar-rag-travis-preview"
-HOSTNAME = "travis-preview.steelguitarrag.com"
+HOSTNAME = "howdy.steelguitarrag.com"
 REVIEW_PHASE_TESTER_COUNTS = {
     "owner_only": 1,
     "partner_review": 2,
