@@ -214,7 +214,9 @@ def test_reference_chart_aligns_sections_and_exact_lesson_scope_without_publishi
             const companion={display:{key:'D'},media:{scopes:{fullSong:{durationMs:16000},taughtSolo:{startMs:9000,endMs:12000}}}};
             const nns=(symbol)=>({D:'I',G:'IV',A:'V','N.C.':'N.C.'}[symbol]||'?');
             const result=author.alignReferenceChart(reference,companion,nns);
-            console.log(JSON.stringify(result));
+            const beatTimes=[0,1100,2200,3300,4400,5500,6600,7700,9000,10000,11000,12000,13000,14000,15000,16000];
+            const snapped=author.alignReferenceChart(reference,companion,nns,beatTimes);
+            console.log(JSON.stringify({result,snapped}));
             """,
             str(module),
         ],
@@ -223,7 +225,9 @@ def test_reference_chart_aligns_sections_and_exact_lesson_scope_without_publishi
         capture_output=True,
         text=True,
     )
-    result = json.loads(payload.stdout)
+    output = json.loads(payload.stdout)
+    result = output["result"]
+    snapped = output["snapped"]
     assert [item["label"] for item in result["sections"]] == ["Verse", "Break"]
     assert result["sections"][1]["startMs"] == 9_000
     assert result["timeline"][2]["startMs"] == 9_000
@@ -234,6 +238,11 @@ def test_reference_chart_aligns_sections_and_exact_lesson_scope_without_publishi
     assert result["timeline"][0]["referenceEndBeat"] == 4
     assert result["timeline"][2]["qualityStatus"] == "withheld"
     assert result["alignment"]["method"] == "piecewise_reference_grid_with_lesson_scope_anchors"
+    assert snapped["timeline"][0]["endMs"] == 4_400
+    assert snapped["timeline"][2]["startMs"] == 9_000
+    assert snapped["alignment"]["method"] == "audio_beat_snapped_reference_grid_with_lesson_scope_anchors"
+    assert snapped["alignment"]["beatSnap"]["detectedBeatCount"] == 16
+    assert snapped["alignment"]["beatSnap"]["snappedBoundaryCount"] > 0
 
 
 def test_audio_only_song_form_groups_repeated_eight_measure_sections() -> None:

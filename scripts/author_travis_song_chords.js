@@ -198,14 +198,16 @@ function main() {
     songAuthoring.validateReference(reference);
     songAuthoring.applyScopeChordCorrections(companion, reference, nnsForSymbol);
   }
+  const practiceGridTempoBpm = Number(companion.display.tempoBpm);
   const analysis = analyzeSong(args.audio, companion, reference);
   const authored = reference
-    ? songAuthoring.alignReferenceChart(reference, companion, nnsForSymbol)
+    ? songAuthoring.alignReferenceChart(reference, companion, nnsForSymbol, analysis.beatTimesMs)
     : { timeline: null, sections: songAuthoring.inferRepeatedSections(analysis), alignment: null };
   const timeline = buildSongChordTimeline(analysis, companion, authored.timeline, authored.sections);
   companion.songChordTimeline = timeline;
   companion.songForm = authored.sections;
-  companion.display.fullSongTempoBpm = Number(reference?.tempoBpm || analysis.tempo);
+  companion.display.tempoBpm = Number(analysis.tempo);
+  companion.display.fullSongTempoBpm = Number(analysis.tempo);
   companion.revision = args.revision;
   companion.contentStatus = "draft_review_required";
   companion.approvals.musical = false;
@@ -215,7 +217,8 @@ function main() {
     analysisVersion: Number(analysis.analysisVersion),
     keyConstraint: `${companion.display.key} major`,
     meterHint: companion.display.meter,
-    teachingTempoBpm: Number(companion.display.tempoBpm),
+    teachingTempoBpm: Number(analysis.tempo),
+    practiceGridTempoBpm,
     referenceTempoBpm: reference ? Number(reference.tempoBpm) : null,
     detectedTempoBpm: Number(analysis.tempo),
     rhythmAlternatives: analysis.analysisState?.rhythmAlternatives || [],
@@ -226,7 +229,7 @@ function main() {
     contextRootConflictCount: analysis.chords.filter((event) => event.rootAdjusted).length,
     withheldAudioClaimCount: analysis.chords.filter((event) => !event.publicationSymbol).length,
     publicationMethod: reference
-      ? "reviewed_reference_roots_aligned_to_recording_and_exact_lesson_scope"
+      ? "reviewed_reference_roots_snapped_to_detected_audio_beats_and_exact_lesson_scope"
       : "learner_safe_audio_claims_grouped_into_repeated_forms",
     alignment: authored.alignment,
     sources: reference?.sources || [],

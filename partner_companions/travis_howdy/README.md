@@ -138,17 +138,21 @@ node scripts/author_travis_song_chords.js \
   --revision howdy-transcribed-review-YYYY-MM-DD.N
 ```
 
-The lesson tempo is a teaching grid, not a hard full-song tempo. The authoring
-command now evaluates half-, normal-, and double-time pulse candidates, keeps
-the known key and meter as hints, and records the competing rhythm hypotheses.
-It never promotes a context-selected root when the strongest audio candidate
+The authoring command evaluates half-, normal-, and double-time pulse
+candidates, keeps the known key and meter as hints, and records the competing
+rhythm hypotheses. The selected audio pulse becomes the canonical whole-song
+tempo; an older practice-grid tempo is retained only as authoring evidence. It
+never promotes a context-selected root when the strongest audio candidate
 disagrees; unresolved audio claims stay withheld.
 
 An optional private `song_chart_reference_v1` file can provide a reviewed
 quarter-note chord grid, named song sections, source URLs, corroborated roots,
-and exact lesson-scope anchors. That grid is aligned to the local recording at
-build time, with chord quality withheld when only roots agree. The taught-solo
-window is then replaced by the companion's exact source-timed solo events. Raw
+and exact lesson-scope anchors. The chart grid supplies chord order and rough
+placement; each non-anchor boundary is then snapped to the nearest beat in the
+actual MP3. Exact lesson-scope anchors remain unchanged, and the release records
+the detected-beat count plus mean and maximum snap adjustments. Chord quality is
+withheld when only roots agree. The taught-solo window is then replaced by the
+companion's exact source-timed solo events. Raw
 reference pages and private review material are never packaged. The resulting
 `songChordTimeline`, song form, and any multi-source corrections remain
 unapproved until the owner and Travis review them.

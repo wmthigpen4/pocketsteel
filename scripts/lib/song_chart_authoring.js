@@ -149,6 +149,61 @@ function timeAtReferenceBeat(beat, anchors) {
   return Math.round(left.ms + (right.ms - left.ms) * progress);
 }
 
+function median(values) {
+  const sorted = values.filter(Number.isFinite).sort((left, right) => left - right);
+  if (!sorted.length) return 0;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function referenceTimeMapper(anchors, beatTimesInput = []) {
+  const detectedBeats = [...new Set((beatTimesInput || []).map(Number).filter(Number.isFinite))]
+    .sort((left, right) => left - right);
+  const exactAnchorBeats = new Set(anchors.map((anchor) => Number(anchor.beat)));
+  const typicalBeatMs = median(detectedBeats.slice(1).map((time, index) => time - detectedBeats[index]));
+  const maxSnapDistanceMs = typicalBeatMs ? typicalBeatMs * 0.55 : 0;
+  const adjustments = new Map();
+
+  const nearestDetectedBeat = (timeMs) => {
+    let low = 0;
+    let high = detectedBeats.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (detectedBeats[middle] < timeMs) low = middle + 1;
+      else high = middle;
+    }
+    const candidates = [detectedBeats[low - 1], detectedBeats[low]].filter(Number.isFinite);
+    return candidates.sort((left, right) => Math.abs(left - timeMs) - Math.abs(right - timeMs))[0];
+  };
+
+  const timeAtBeat = (beat) => {
+    const coarseMs = timeAtReferenceBeat(beat, anchors);
+    if (!detectedBeats.length || exactAnchorBeats.has(Number(beat))) return coarseMs;
+    const snappedMs = nearestDetectedBeat(coarseMs);
+    const adjustmentMs = Number(snappedMs) - coarseMs;
+    const accepted = Number.isFinite(snappedMs) && Math.abs(adjustmentMs) <= maxSnapDistanceMs;
+    adjustments.set(Number(beat), { coarseMs, snappedMs, adjustmentMs, accepted });
+    return accepted ? Math.round(snappedMs) : coarseMs;
+  };
+
+  const diagnostics = () => {
+    const values = [...adjustments.values()];
+    const accepted = values.filter((item) => item.accepted);
+    const absolute = accepted.map((item) => Math.abs(item.adjustmentMs));
+    return {
+      detectedBeatCount: detectedBeats.length,
+      typicalBeatMs: Math.round(typicalBeatMs),
+      snappedBoundaryCount: accepted.length,
+      unsnappedBoundaryCount: values.length - accepted.length,
+      meanAbsoluteAdjustmentMs: absolute.length
+        ? Math.round(absolute.reduce((total, value) => total + value, 0) / absolute.length)
+        : 0,
+      maxAbsoluteAdjustmentMs: absolute.length ? Math.round(Math.max(...absolute)) : 0,
+    };
+  };
+  return { diagnostics, timeAtBeat };
+}
+
 function sectionAtBeat(reference, beat) {
   return reference.sections.find((section) => beat >= section.startBeat && beat < section.endBeat)
     || reference.sections.at(-1);
@@ -163,9 +218,10 @@ function splitReferenceRuns(reference) {
   });
 }
 
-function alignReferenceChart(referenceInput, companion, nnsForSymbol) {
+function alignReferenceChart(referenceInput, companion, nnsForSymbol, beatTimesMs = []) {
   const reference = validateReference(referenceInput);
   const anchors = alignmentAnchors(reference, companion);
+  const timeMapper = referenceTimeMapper(anchors, beatTimesMs);
   const corroboratedRoots = new Set(reference.corroboratedRoots || []);
   const useRootsOnly = reference.qualityPolicy === "roots_only";
   const timeline = splitReferenceRuns(reference).map((run) => {
@@ -174,8 +230,8 @@ function alignReferenceChart(referenceInput, companion, nnsForSymbol) {
     const symbol = useRootsOnly ? rootOnlySymbol(observedSymbol) : observedSymbol;
     const corroborated = symbol === "N.C." || corroboratedRoots.has(chordRoot(symbol));
     return {
-      startMs: timeAtReferenceBeat(run.startBeat, anchors),
-      endMs: timeAtReferenceBeat(run.endBeat, anchors),
+      startMs: timeMapper.timeAtBeat(run.startBeat),
+      endMs: timeMapper.timeAtBeat(run.endBeat),
       referenceStartBeat: Number(run.startBeat),
       referenceEndBeat: Number(run.endBeat),
       sectionId: section.id,
@@ -216,8 +272,8 @@ function alignReferenceChart(referenceInput, companion, nnsForSymbol) {
   const sections = reference.sections.map((section) => ({
     id: section.id,
     label: section.label,
-    startMs: timeAtReferenceBeat(section.startBeat, anchors),
-    endMs: timeAtReferenceBeat(section.endBeat, anchors),
+    startMs: timeMapper.timeAtBeat(section.startBeat),
+    endMs: timeMapper.timeAtBeat(section.endBeat),
     referenceStartBeat: section.startBeat,
     referenceEndBeat: section.endBeat,
     sourceKind: "reviewed_public_song_form",
@@ -226,8 +282,11 @@ function alignReferenceChart(referenceInput, companion, nnsForSymbol) {
     timeline,
     sections,
     alignment: {
-      method: "piecewise_reference_grid_with_lesson_scope_anchors",
+      method: beatTimesMs.length
+        ? "audio_beat_snapped_reference_grid_with_lesson_scope_anchors"
+        : "piecewise_reference_grid_with_lesson_scope_anchors",
       anchors,
+      beatSnap: timeMapper.diagnostics(),
       gridUnit: reference.gridUnit,
       gridLength: reference.gridLength,
       tempoBpm: Number(reference.tempoBpm),
