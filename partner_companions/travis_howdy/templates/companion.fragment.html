@@ -58,8 +58,7 @@
       <b data-song-now-nns>—</b>
       <small data-song-now-note></small>
     </div>
-    <div class="song-scroll-window" data-song-scroll tabindex="0" role="region" aria-label="Scrolling full-song chords and Nashville numbers">
-      <span class="song-playhead" aria-hidden="true"></span>
+    <div class="song-scroll-window" data-song-scroll tabindex="0" role="region" aria-label="Full-song chords and Nashville numbers; manually scrollable">
       <div class="song-timeline" data-song-timeline></div>
     </div>
     <p class="song-chart-guardrail" data-song-chart-guardrail></p>
@@ -89,7 +88,10 @@
     </section>
 
     <div class="study-controls" data-study-controls>
-      <strong>Step through the tab</strong>
+      <div class="study-copy">
+        <strong data-study-title>Step through the tab</strong>
+        <span data-study-progress>Move 1</span>
+      </div>
       <div class="study-actions">
         <button type="button" data-action="previous-move">← Previous</button>
         <button type="button" data-action="next-move">Next →</button>

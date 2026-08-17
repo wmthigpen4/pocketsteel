@@ -25,6 +25,7 @@
     sourceLoadPromises: {},
     songTimelineSegments: [],
     songDisplayMode: "chords",
+    selectedGuideEventId: null,
   };
 
   const q = (selector) => root.querySelector(selector);
@@ -63,6 +64,7 @@
   )];
   const eventIndex = (event) => state.data.events.findIndex((item) => item.id === event.id);
   const nextEvent = (event) => state.data.events[Math.min(state.data.events.length - 1, eventIndex(event) + 1)];
+  const guideEvent = () => state.data.events.find((item) => item.id === state.selectedGuideEventId) || state.data.events[0];
   const hasChordChart = () => state.data.chordTimeline.every((item) => item.symbol && item.tabNotes?.length);
   const hasFullSongChordChart = () => (
     Array.isArray(state.data.songChordTimeline) && state.data.songChordTimeline.length > 0
@@ -271,7 +273,7 @@
       : 0;
     const studyControls = q("[data-study-controls]");
     const explorePanel = q("[data-explore-panel]");
-    if (studyControls) studyControls.hidden = layer.id !== "phrase-practice";
+    if (studyControls) studyControls.hidden = !["phrase-practice", "play-along"].includes(layer.id);
     if (explorePanel) explorePanel.hidden = layer.id !== "explore";
     if (layer.id === "phrase-practice") {
       state.selectedMode = "follow-solo";
@@ -284,7 +286,7 @@
     }
     const layerCopy = {
       "phrase-practice": ["Taught solo", "Start from any phrase", "Choose a phrase, slow it down, and let the solo continue naturally.", "100% · continuous playback"],
-      "play-along": ["Full song", "Follow the song form", "Choose a section or let the chord and Nashville-number lane follow the complete track.", `${formatTime(mediaScopes().fullSong.durationMs)} · ${formatBpm(state.data.display.fullSongTempoBpm)} BPM`],
+      "play-along": ["Full song", "Follow the song form", "The current chord updates above while the chart stays still. Use the manual Travis guide below for the taught solo.", `${formatTime(mediaScopes().fullSong.durationMs)} · ${formatBpm(state.data.display.fullSongTempoBpm)} BPM`],
     }[layer.id] || ["", "", "", ""];
     const kicker = q("[data-layer-kicker]");
     const title = q("[data-layer-title]");
@@ -683,7 +685,7 @@
       : "Full-song chart unavailable";
     const guardrail = q("[data-song-chart-guardrail]");
     if (guardrail) guardrail.textContent = complete
-      ? "Roots are aligned from two public charts; the taught break uses the lesson-timed chord route."
+      ? "The current chord updates above. This chart stays still during playback; scroll it only when you want."
       : "Only source-timed chords are shown.";
     renderSongSections();
     state.songTimelineSegments = buildSongTimelineSegments();
@@ -744,13 +746,6 @@
       : segment.timelineKind === "taught-solo" || segment.sourceKind === "taught_solo_chord_timeline"
         ? `${segment.sectionLabel || "Steel break"} · taught bar ${segment.soloBarStart || "—"}`
         : `${segment.sectionLabel || "Song form"}`;
-    const scroll = q("[data-song-scroll]");
-    if (state.selectedLayer !== "play-along" || !scroll || !currentElement) return;
-    const duration = Math.max(1, Number(segment.endMs) - Number(segment.startMs));
-    const progress = clamp((absoluteTime - Number(segment.startMs)) / duration, 0, 1);
-    const playheadX = currentElement.offsetLeft + currentElement.offsetWidth * progress;
-    const target = clamp(playheadX - scroll.clientWidth * 0.35, 0, scroll.scrollWidth - scroll.clientWidth);
-    if (Math.abs(scroll.scrollLeft - target) > 2) scroll.scrollLeft = target;
   }
 
   function renderAlternates() {
@@ -832,12 +827,21 @@
   }
 
   function stepMove(direction) {
-    pausePlayback();
+    const manualGuide = state.selectedLayer === "play-along";
+    if (!manualGuide) pausePlayback();
     const phrase = currentPhrase();
-    const events = phrase.eventIds.map((id) => state.data.events.find((item) => item.id === id)).filter(Boolean);
-    const current = eventAt(state.timeMs);
+    const events = manualGuide
+      ? state.data.events
+      : phrase.eventIds.map((id) => state.data.events.find((item) => item.id === id)).filter(Boolean);
+    const current = manualGuide ? guideEvent() : eventAt(state.timeMs);
     const index = Math.max(0, events.findIndex((item) => item.id === current.id));
-    seekTo(events[clamp(index + direction, 0, events.length - 1)].startMs);
+    const selected = events[clamp(index + direction, 0, events.length - 1)];
+    state.selectedGuideEventId = selected.id;
+    if (manualGuide) {
+      updateFrame();
+      return;
+    }
+    seekTo(selected.startMs);
   }
 
   function configureStudyControls() {
@@ -1006,16 +1010,21 @@
     const absoluteTime = absoluteMediaTime(scope, state.timeMs);
     const soloTime = taughtSoloTimeAt(absoluteTime);
     const taughtSoloActive = soloTime !== null;
+    const manualGuide = state.selectedLayer === "play-along";
     updateSongTimeline(absoluteTime);
-    const current = eventAt(soloTime ?? 0);
+    const playbackEvent = eventAt(soloTime ?? 0);
+    if (!manualGuide) state.selectedGuideEventId = playbackEvent.id;
+    const current = manualGuide ? guideEvent() : playbackEvent;
     const upcoming = nextEvent(current);
-    const chord = chordAt(soloTime ?? 0);
+    const guideTime = manualGuide ? Number(current.startMs) : (soloTime ?? 0);
+    const guideActive = manualGuide || taughtSoloActive;
+    const chord = chordAt(guideTime);
     const upcomingChord = nextChord(chord);
-    const chordFocus = taughtSoloActive && hasChordChart() && (state.selectedMode === "chord-foundation" || state.selectedLayer === "play-along");
+    const chordFocus = guideActive && !manualGuide && hasChordChart() && state.selectedMode === "chord-foundation";
     const visualCurrent = chordFocus ? chord : current;
     const visualUpcoming = chordFocus ? upcomingChord : upcoming;
     const phrase = state.data.phrases.find((item) => item.id === current.phraseId) || currentPhrase();
-    if (taughtSoloActive && state.selectedPhraseId !== phrase.id) {
+    if (guideActive && state.selectedPhraseId !== phrase.id) {
       state.selectedPhraseId = phrase.id;
       renderPhraseMap();
       if (presentation === "embed-demo") renderTab();
@@ -1025,12 +1034,12 @@
     const time = q("[data-current-time]");
     if (time) time.textContent = formatTime(state.timeMs);
     const bar = q("[data-current-bar]");
-    if (bar) bar.textContent = taughtSoloActive
-      ? `Bar ${current.bar} · beat ${current.beat}`
+    if (bar) bar.textContent = guideActive
+      ? `${manualGuide ? "Taught solo · " : ""}Bar ${current.bar} · beat ${current.beat}`
       : `Full song · ${formatTime(state.timeMs)}`;
     const chordLabel = q("[data-current-chord]");
     if (chordLabel) {
-      chordLabel.textContent = !taughtSoloActive
+      chordLabel.textContent = !guideActive
         ? `Solo begins at ${formatTime(mediaScopes().taughtSolo.startMs)}`
         : chord?.symbol
         ? `${chord.symbol}${chord.nns ? ` · ${chord.nns}` : ""}`
@@ -1041,15 +1050,15 @@
     const technique = q("[data-current-technique]");
     const nextInstruction = q("[data-next-instruction]");
     const chordModeBlocked = state.selectedMode === "chord-foundation" && !hasChordChart();
-    if (currentInstruction) currentInstruction.textContent = !taughtSoloActive
+    if (currentInstruction) currentInstruction.textContent = !guideActive
       ? "Play the complete backing track."
       : chordModeBlocked
       ? "Chord chart not attached yet."
       : chordFocus ? chord.instruction : current.instruction;
     if (sourceMoment) {
-      const source = taughtSoloActive && !chordFocus && current.coachingCue ? current.sourceMoment : null;
+      const source = guideActive && !chordFocus && current.coachingCue ? current.sourceMoment : null;
       sourceMoment.hidden = !source;
-      sourceMoment.textContent = !taughtSoloActive
+      sourceMoment.textContent = !guideActive
         ? ""
         : chordFocus
         ? ""
@@ -1057,14 +1066,14 @@
           ? `Travis at ${formatLessonMoment(source.lessonTimeMs)}: “${current.coachingCue}”`
           : "";
     }
-    if (technique) technique.textContent = !taughtSoloActive
+    if (technique) technique.textContent = !guideActive
       ? ""
       : chordModeBlocked
       ? ""
       : chordFocus
         ? `${chord.gripLabel || controlsLabel(chord.tabNotes)}`
         : `${current.notationPitch} · ${controlsLabel(current.tabNotes)}`;
-    if (nextInstruction) nextInstruction.textContent = !taughtSoloActive
+    if (nextInstruction) nextInstruction.textContent = !guideActive
       ? `Solo at ${formatTime(mediaScopes().taughtSolo.startMs)}`
       : chordModeBlocked
       ? "—"
@@ -1098,9 +1107,23 @@
     if (status) status.textContent = state.data.approvals.musical
       ? "Travis approved"
       : "Preview transcription";
+    const studyTitle = q("[data-study-title]");
+    const studyProgress = q("[data-study-progress]");
+    const studyEvents = manualGuide
+      ? state.data.events
+      : currentPhrase().eventIds.map((id) => state.data.events.find((item) => item.id === id)).filter(Boolean);
+    const studyIndex = Math.max(0, studyEvents.findIndex((item) => item.id === current.id));
+    if (studyTitle) studyTitle.textContent = manualGuide ? "Taught solo guide" : "Step through the tab";
+    if (studyProgress) studyProgress.textContent = manualGuide
+      ? `Move ${studyIndex + 1} of ${studyEvents.length} · manual — song playback will not move this guide`
+      : `Move ${studyIndex + 1} of ${studyEvents.length}`;
+    const previousMove = q('[data-action="previous-move"]');
+    const nextMove = q('[data-action="next-move"]');
+    if (previousMove) previousMove.disabled = studyIndex === 0;
+    if (nextMove) nextMove.disabled = studyIndex === studyEvents.length - 1;
     renderFretboard(visualCurrent, visualUpcoming);
     updateTabHighlight(current, upcoming);
-    updateChordChartHighlight(chord, current.bar, taughtSoloActive);
+    updateChordChartHighlight(chord, current.bar, guideActive);
   }
 
   function seekTo(milliseconds) {
@@ -1210,7 +1233,7 @@
     const button = q('[data-action="feedback"]');
     if (!button) return;
     button.addEventListener("click", async () => {
-      const event = eventAt(state.timeMs);
+      const event = state.selectedLayer === "play-along" ? guideEvent() : eventAt(state.timeMs);
       const phrase = state.data.phrases.find((item) => item.id === event.phraseId);
       const details = [
         `Howdy companion ${state.data.revision}`,
@@ -1291,6 +1314,7 @@
     validateCompanion(data);
     state.data = data;
     state.selectedPhraseId = data.phrases[0].id;
+    state.selectedGuideEventId = data.events[0].id;
     state.selectedMode = data.display.defaultMode;
     state.selectedLayer = data.display.defaultLayer;
     if (presentation === "print") {

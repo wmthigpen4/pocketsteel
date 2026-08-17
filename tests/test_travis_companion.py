@@ -613,7 +613,10 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function renderSongSections()" in script
     assert "function updateSongTimeline(" in script
     assert 'state.songDisplayMode === "nns" ? segment.nns : segment.symbol' in script
-    assert "scroll.scrollLeft = target" in script
+    assert "scroll.scrollLeft = target" not in script
+    assert 'state.selectedLayer === "play-along" ? guideEvent()' in script
+    assert 'song playback will not move this guide' in script
+    assert '!["phrase-practice", "play-along"].includes(layer.id)' in script
     assert "needs-attention" in script
     assert "function stepMove(" in script
     assert "function renderRelatedLessons()" in script
@@ -645,6 +648,8 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         "data-song-now-chord",
         "data-key-label",
         "data-study-controls",
+        "data-study-title",
+        "data-study-progress",
         "data-related-lessons",
         "data-related-scroll",
     ):
@@ -655,7 +660,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function configureMediaScopeActions()" in script
     assert "taughtSoloTimeAt" in script
     assert 'if (!terms.length && presentation === "embed-demo") return;' in script
-    assert 'aria-label="Scrolling full-song chords and Nashville numbers"' in markup
+    assert 'aria-label="Full-song chords and Nashville numbers; manually scrollable"' in markup
     assert 'const tempoScope = fullSongActive ? "Full song" : "Taught solo";' in script
     assert 'state.data.display.fullSongTempoBpm' in script
     assert 'String(Math.round(bpm))' in script
@@ -671,7 +676,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert 'Practice “Howdy”' in markup
     assert 'Practice the “Howdy” solo' not in markup
     assert 'title.textContent = "Practice “Howdy”";' in script
-    assert "Roots are aligned from two public charts" in script
+    assert "This chart stays still during playback" in script
     assert 'function configureSongDisplayToggle()' in script
 
 
@@ -695,6 +700,9 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert '[data-active-layer="phrase-practice"] .lesson-map { display: block; }' in styles
     assert '[data-active-layer="play-along"] .chord-chart-card { display: none; }' in styles
     assert '[data-active-layer="play-along"] .song-chart-card { display: block; }' in styles
+    assert '[data-active-layer="play-along"] .tab-card { display: none; }' not in styles
+    assert '[data-active-layer="play-along"] .move-card,' not in styles
+    assert '[data-active-layer="play-along"] .position-details,' in styles
     assert '.song-sections { display: flex;' in styles
     assert '[data-active-layer="phrase-practice"].companion-shell .lesson-search-card { display: block; }' in styles
     assert '.related-video-grid { display: flex;' in styles

@@ -206,8 +206,6 @@ button { color: inherit; }
 .song-now > span { color: #ffd1c9; font-size: 11px; font-variant-numeric: tabular-nums; }.song-now strong { font-size: 18px; }.song-now b { display: inline-flex; justify-content: center; min-width: 44px; padding: 4px 7px; border-radius: 3px; color: var(--teal-900); background: #ffd1c9; font-size: 10px; }.song-now small { color: rgba(255,255,255,.72); font-size: 9px; line-height: 1.35; text-align: right; }
 .song-scroll-window { position: relative; margin-top: 10px; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-color: #ff9c8a rgba(255,255,255,.12); scrollbar-width: thin; }
 .song-scroll-window:focus-visible { outline: 3px solid rgba(255,63,32,.45); outline-offset: 3px; }
-.song-playhead { position: sticky; left: 35%; z-index: 3; display: block; width: 2px; height: 92px; margin-bottom: -92px; pointer-events: none; background: var(--coral); box-shadow: 0 0 0 2px rgba(255,255,255,.65); }
-.song-playhead::before { content: ""; position: absolute; top: -1px; left: -5px; width: 0; height: 0; border-top: 7px solid var(--coral); border-right: 6px solid transparent; border-left: 6px solid transparent; }
 .song-timeline { display: flex; align-items: stretch; gap: 4px; width: max-content; min-width: 100%; padding: 8px 0 12px; }
 .song-segment { flex: 0 0 var(--song-segment-width,120px); min-height: 84px; padding: 9px 10px; border: 1px solid rgba(255,255,255,.28); border-radius: var(--radius); color: var(--white); background: rgba(255,255,255,.09); text-align: left; cursor: pointer; }
 .song-segment > * { display: block; }.song-segment span { color: rgba(255,255,255,.62); font-size: 8px; font-variant-numeric: tabular-nums; }.song-segment strong { margin-top: 8px; font-size: 17px; }.song-segment small { margin-top: 3px; color: #ffd1c9; font-size: 8px; font-weight: 750; }
@@ -226,9 +224,8 @@ button { color: inherit; }
 [data-active-layer="play-along"] .phrase-map { display: none; }
 [data-active-layer="play-along"] .chord-chart-card { display: none; }
 [data-active-layer="play-along"] .song-chart-card { display: block; }
-[data-active-layer="play-along"] .tab-card { display: none; }
-[data-active-layer="play-along"] .move-card,
 [data-active-layer="play-along"] .fretboard-card,
+[data-active-layer="play-along"] .position-details,
 [data-active-layer="play-along"] .practice-aside { display: none; }
 [data-active-layer="play-along"] .practice-grid { grid-template-columns: 1fr; }
 [data-active-layer="explore"] .lesson-map,
@@ -245,6 +242,7 @@ button { color: inherit; }
 .mode-button strong { display: block; font-size: 12px; }.mode-button span { display: block; margin-top: 3px; font-size: 9px; }
 .mode-button.is-active { background: var(--white); color: var(--teal-900); box-shadow: 0 4px 14px rgba(9,40,58,.1); }
 .study-controls { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 12px; padding: 13px 15px; border: 1px solid #9fc5d6; border-radius: var(--radius); background: #eef8fc; }.study-controls[hidden] { display: none; }.study-controls strong, .study-controls span { display: block; }.study-controls strong { font-size: 12px; }.study-controls span { margin-top: 3px; color: var(--muted); font-size: 9px; }.study-actions { display: flex; gap: 6px; }.study-actions button { min-height: 34px; padding: 7px 10px; border: 1px solid var(--teal-900); border-radius: var(--radius); color: var(--teal-900); background: var(--white); font-size: 10px; font-weight: 800; cursor: pointer; }
+.study-actions button:disabled { border-color: #bac9d0; color: #87969d; background: #f4f7f8; cursor: default; }
 
 .transport-card, .move-card, .visual-card, .phrase-notes-card, .source-card {
   margin-top: 14px;
