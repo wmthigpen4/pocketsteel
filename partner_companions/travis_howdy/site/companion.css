@@ -428,7 +428,6 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
 .companion-heading { position: relative; padding: 22px 24px; }
 .companion-heading h2 { margin-bottom: 5px; }
 .companion-intro { max-width: 560px; font-size: 13px; }
-.review-chip { color: #7a210f !important; background: #fff0ed !important; }
 .preview-ribbon { padding: 5px 10px; border-color: var(--line); color: var(--muted); background: #f8fafb; font-size: 9px; font-weight: 650; text-align: right; text-transform: none; }
 .layer-tabs { grid-template-columns: repeat(2, 1fr); }
 .layer-tab { min-height: 52px; padding: 14px; border-bottom: 0; }

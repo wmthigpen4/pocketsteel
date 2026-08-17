@@ -607,7 +607,13 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "taughtSoloTimeAt" in script
     assert 'if (!terms.length && presentation === "embed-demo") return;' in script
     assert 'aria-label="Scrolling full-song chords and Nashville numbers"' in markup
-    assert "Solo grid" in script
+    assert 'const tempoScope = fullSongActive ? "Full song" : "Taught solo";' in script
+    assert 'state.data.display.fullSongTempoBpm' in script
+    assert 'renderLessonFacts();' in script
+    assert 'Solo grid' not in script
+    assert 'Owner review' not in script
+    assert 'owner review' not in script
+    assert 'review-chip' not in markup
     assert "Roots are aligned from two public charts" in script
     assert 'function configureSongDisplayToggle()' in script
 

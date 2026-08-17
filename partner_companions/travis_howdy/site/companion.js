@@ -219,7 +219,7 @@
     if (!marker) return;
     const sha = String(state.data.buildSha || "local").slice(0, 12);
     marker.textContent = presentation === "embed-demo"
-      ? `Owner preview · ${state.data.revision} · ${sha}`
+      ? `Preview · ${state.data.revision} · ${sha}`
       : `${state.data.release.previewLabel} · ${state.data.revision} · ${sha}`;
     const title = q("[data-companion-title]");
     if (title) title.textContent = "Practice the “Howdy” solo";
@@ -293,6 +293,7 @@
     renderLayerTabs();
     renderModes();
     renderMediaScope();
+    renderLessonFacts();
     renderPhraseMap();
     renderChordChart();
     renderSongTimeline();
@@ -332,7 +333,12 @@
     const songTempo = q("[data-song-tempo-label]");
     if (key) key.textContent = `Key ${state.data.display.key}`;
     if (meter) meter.textContent = state.data.display.meter;
-    if (tempo) tempo.textContent = state.data.display.tempoBpm ? `Solo grid ${state.data.display.tempoBpm} BPM` : "Solo tempo pending";
+    const fullSongActive = state.selectedLayer === "play-along";
+    const tempoValue = fullSongActive
+      ? state.data.display.fullSongTempoBpm
+      : state.data.display.tempoBpm;
+    const tempoScope = fullSongActive ? "Full song" : "Taught solo";
+    if (tempo) tempo.textContent = tempoValue ? `${tempoScope} · ${tempoValue} BPM` : `${tempoScope} tempo pending`;
     if (chartKey) chartKey.textContent = state.data.display.key;
     if (songTempo) songTempo.textContent = state.data.display.fullSongTempoBpm ? `${state.data.display.fullSongTempoBpm} BPM` : "tempo pending";
   }
@@ -669,7 +675,7 @@
     const status = q("[data-song-chart-status]");
     const sectionCount = Array.isArray(state.data.songForm) ? state.data.songForm.length : 0;
     if (status) status.textContent = complete
-      ? state.data.approvals.chords ? "Travis approved" : `${sectionCount || "Draft"} sections · owner review`
+      ? state.data.approvals.chords ? "Travis approved" : `${sectionCount || "Draft"} sections`
       : "Full-song chart unavailable";
     const guardrail = q("[data-song-chart-guardrail]");
     if (guardrail) guardrail.textContent = complete
@@ -698,7 +704,7 @@
         node("strong", "", pending ? "—" : primaryLabel),
         node("small", "", pending ? "Uncharted" : `${secondaryLabel} · ${sourceLabel}`),
       );
-      if (segment.needsAttention) button.title = "Owner review required";
+      if (segment.needsAttention) button.title = "Draft chord timing";
       button.addEventListener("click", () => {
         if (state.selectedLayer !== "play-along") setLayer("play-along");
         seekTo(segment.startMs);
@@ -733,7 +739,7 @@
       ? "Uncharted"
       : segment.timelineKind === "taught-solo" || segment.sourceKind === "taught_solo_chord_timeline"
         ? `${segment.sectionLabel || "Steel break"} · taught bar ${segment.soloBarStart || "—"}`
-        : `${segment.sectionLabel || "Song form"}${segment.needsAttention ? " · owner review" : ""}`;
+        : `${segment.sectionLabel || "Song form"}`;
     const scroll = q("[data-song-scroll]");
     if (state.selectedLayer !== "play-along" || !scroll || !currentElement) return;
     const duration = Math.max(1, Number(segment.endMs) - Number(segment.startMs));
@@ -863,7 +869,7 @@
     if (status) {
       status.textContent = state.data.approvals.musical
         ? `${state.data.phrases.length} phrases`
-        : `${state.data.phrases.length} phrases · owner review`;
+        : `${state.data.phrases.length} phrases`;
     }
   }
 
@@ -1087,7 +1093,7 @@
     if (phraseMove) phraseMove.textContent = chordFocus ? chord.movement.replaceAll("-", " ") : current.movement.replaceAll("-", " ");
     if (status) status.textContent = state.data.approvals.musical
       ? "Travis approved"
-      : "Owner review";
+      : "Preview transcription";
     renderFretboard(visualCurrent, visualUpcoming);
     updateTabHighlight(current, upcoming);
     updateChordChartHighlight(chord, current.bar, taughtSoloActive);
