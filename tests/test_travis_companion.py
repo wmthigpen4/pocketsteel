@@ -619,6 +619,13 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert '!["phrase-practice", "play-along"].includes(layer.id)' in script
     assert "needs-attention" in script
     assert "function stepMove(" in script
+    assert "function selectTabEvent(" in script
+    assert "function bindTabControl(" in script
+    assert 'node("button", "tab-cell-button"' in script
+    assert "function scrollTabToEvent(" in script
+    assert 'const events = state.data.events;' in script
+    assert 'scrollTabToEvent(current.id, manualGuide ? "smooth" : "auto")' in script
+    assert 'if (state.selectedLayer === "play-along") {' in script
     assert "function renderRelatedLessons()" in script
     assert "function configureRelatedScroller()" in script
     assert 'link.target = "_blank"' in script
@@ -689,6 +696,8 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert 'data-layer-tabs' in markup
     assert 'data-action="play"' in markup
     assert 'data-tab' in markup
+    assert 'aria-label="Scrollable taught-solo tablature"' in markup
+    assert "Scroll the solo or select any column for Travis’s guidance." in markup
     assert 'data-related-lessons' in markup
     assert 'Complete printable tab' in markup
     assert 'six practice sections' in markup
@@ -709,6 +718,8 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert 'scroll-snap-type: x mandatory' in styles
     assert '.related-scroll-controls' in styles
     assert '.tab-system + .tab-system' in styles
+    assert markup.index('class="visual-card tab-card"') < markup.index('class="move-card"')
+    assert ".tab-table td:hover, .tab-table td:focus-visible" in styles
     assert 'if (positionDetails && presentation === "full") positionDetails.open = true;' in (
         SITE / "companion.js"
     ).read_text(encoding="utf-8")

@@ -26,6 +26,7 @@
     songTimelineSegments: [],
     songDisplayMode: "chords",
     selectedGuideEventId: null,
+    lastTabFocusId: null,
   };
 
   const q = (selector) => root.querySelector(selector);
@@ -838,6 +839,7 @@
     const selected = events[clamp(index + direction, 0, events.length - 1)];
     state.selectedGuideEventId = selected.id;
     if (manualGuide) {
+      state.lastTabFocusId = null;
       updateFrame();
       return;
     }
@@ -847,6 +849,23 @@
   function configureStudyControls() {
     q('[data-action="previous-move"]')?.addEventListener("click", () => stepMove(-1));
     q('[data-action="next-move"]')?.addEventListener("click", () => stepMove(1));
+  }
+
+  function selectTabEvent(eventId) {
+    const selected = state.data.events.find((item) => item.id === eventId);
+    if (!selected) return;
+    state.selectedGuideEventId = selected.id;
+    state.lastTabFocusId = null;
+    if (state.selectedLayer === "play-along") {
+      updateFrame();
+      return;
+    }
+    pausePlayback();
+    seekTo(selected.startMs);
+  }
+
+  function bindTabControl(control, event) {
+    control.addEventListener("click", () => selectTabEvent(event.id));
   }
 
   function renderPhraseMap() {
@@ -950,6 +969,7 @@
 
   function buildTabTable(events, className) {
     const table = node("table", className);
+    table.style.width = `${Math.max(720, 43 + events.length * 72)}px`;
     const body = document.createElement("tbody");
     state.data.copedent.stringsHighToLow.forEach((stringDefinition) => {
       const row = document.createElement("tr");
@@ -960,7 +980,16 @@
         const cell = document.createElement("td");
         cell.dataset.eventId = event.id;
         const note = event.tabNotes.find((item) => Number(item.string) === Number(stringDefinition.string));
-        if (note) cell.textContent = tabToken(note);
+        if (presentation === "print") {
+          if (note) cell.textContent = tabToken(note);
+        } else {
+          const control = node("button", "tab-cell-button", note ? tabToken(note) : "");
+          control.type = "button";
+          control.tabIndex = -1;
+          control.setAttribute("aria-label", `Select bar ${event.bar}, beat ${event.beat}: ${event.instruction}`);
+          bindTabControl(control, event);
+          cell.append(control);
+        }
         row.append(cell);
       });
       body.append(row);
@@ -969,7 +998,20 @@
     const foot = document.createElement("tfoot");
     const row = document.createElement("tr");
     row.append(node("th", "", "bar"));
-    events.forEach((event) => row.append(node("td", "", `${event.bar}.${event.beat}`)));
+    events.forEach((event) => {
+      const cell = node("td");
+      cell.dataset.eventId = event.id;
+      if (presentation === "print") {
+        cell.textContent = `${event.bar}.${event.beat}`;
+      } else {
+        const control = node("button", "tab-cell-button tab-beat-button", `${event.bar}.${event.beat}`);
+        control.type = "button";
+        control.setAttribute("aria-label", `Select bar ${event.bar}, beat ${event.beat}: ${event.instruction}`);
+        bindTabControl(control, event);
+        cell.append(control);
+      }
+      row.append(cell);
+    });
     foot.append(row);
     table.append(foot);
     return table;
@@ -981,8 +1023,9 @@
     const phrase = currentPhrase();
     const phraseIds = new Set(phrase.eventIds);
     if (presentation === "embed-demo") {
-      const events = state.data.events.filter((event) => phraseIds.has(event.id));
+      const events = state.data.events;
       container.replaceChildren(buildTabTable(events, "tab-table"));
+      state.lastTabFocusId = null;
       return;
     }
     const systems = state.data.phrases.map((systemPhrase) => {
@@ -1002,6 +1045,20 @@
       cell.classList.toggle("is-current", cell.dataset.eventId === current.id);
       cell.classList.toggle("is-next", cell.dataset.eventId === upcoming.id && upcoming.id !== current.id);
     });
+  }
+
+  function scrollTabToEvent(eventId, behavior = "smooth") {
+    if (state.lastTabFocusId === eventId) return;
+    const cell = q(`[data-tab] td[data-event-id="${eventId}"]`);
+    if (!cell) return;
+    const scroller = cell.closest(".tab-system-scroll") || q("[data-tab]");
+    if (!scroller || scroller.scrollWidth <= scroller.clientWidth) {
+      state.lastTabFocusId = eventId;
+      return;
+    }
+    const target = cell.offsetLeft - (scroller.clientWidth - cell.offsetWidth) / 2;
+    scroller.scrollTo({ left: Math.max(0, target), behavior });
+    state.lastTabFocusId = eventId;
   }
 
   function updateFrame() {
@@ -1123,6 +1180,7 @@
     if (nextMove) nextMove.disabled = studyIndex === studyEvents.length - 1;
     renderFretboard(visualCurrent, visualUpcoming);
     updateTabHighlight(current, upcoming);
+    scrollTabToEvent(current.id, manualGuide ? "smooth" : "auto");
     updateChordChartHighlight(chord, current.bar, guideActive);
   }
 

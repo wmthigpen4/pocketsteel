@@ -275,6 +275,7 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
 
 .visual-card { padding: 20px; }
 .visual-card .section-heading-row > p { margin: 0; color: var(--teal-900); font-size: 12px; font-weight: 750; }
+.tab-instruction { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
 .fretboard-scroll, .tab-scroll { margin-top: 18px; overflow-x: auto; overscroll-behavior-inline: contain; }
 .fretboard { position: relative; min-width: 760px; padding: 22px 12px 10px 46px; border-radius: 4px; color: var(--white); background: linear-gradient(180deg,#172329,#0a0f12); }
 .fret-numbers { display: grid; grid-template-columns: repeat(13, 1fr); margin: 0 0 7px; color: #9eadb4; font-size: 9px; text-align: center; }
@@ -290,10 +291,15 @@ input[type="range"] { width: 100%; accent-color: var(--coral); }
 
 .tab-table { min-width: 720px; border-collapse: collapse; table-layout: fixed; width: 100%; font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; }
 .tab-table th { width: 43px; padding-right: 8px; color: var(--muted); text-align: right; font-weight: 500; }
-.tab-table td { position: relative; height: 27px; border-top: 1px solid #aeb8bd; border-right: 1px solid transparent; text-align: center; }
+.tab-table td { position: relative; height: 27px; border-top: 1px solid #aeb8bd; border-right: 1px solid transparent; text-align: center; cursor: pointer; }
+.tab-table td:hover, .tab-table td:focus-visible { background: #eef8fc; outline: 2px solid var(--teal-900); outline-offset: -2px; }
+.tab-cell-button { width: 100%; height: 100%; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; font-weight: inherit; cursor: pointer; }
+.tab-cell-button:focus-visible { outline: 2px solid var(--teal-900); outline-offset: -2px; }
 .tab-table tr:last-child td { border-bottom: 1px solid #aeb8bd; }
 .tab-table td.is-current { color: var(--white); background: var(--coral); font-weight: 800; }
 .tab-table td.is-next { color: var(--teal-900); background: #d9f1fb; font-weight: 800; }
+.tab-table td.is-current:focus-visible { outline-color: var(--white); }
+.tab-table td.is-current .tab-cell-button:focus-visible { outline-color: var(--white); }
 .tab-event-labels { display: grid; grid-template-columns: 43px repeat(var(--event-count), minmax(48px,1fr)); min-width: 720px; margin-top: 5px; color: var(--muted); font-size: 8px; text-align: center; }
 
 .phrase-notes-card, .source-card { margin-top: 0; padding: 21px; }
