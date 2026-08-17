@@ -525,7 +525,7 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
         tempo = data["display"].get("tempoBpm")
         musical_context = f"Key {data['display']['key']} | {data['display']['meter']}"
         if tempo:
-            musical_context += f" | {tempo} BPM"
+            musical_context += f" | {round(float(tempo))} BPM"
         page.drawRightString(width - 42, height - 52, _ascii(musical_context))
         if not data.get("approvals", {}).get("printLayout"):
             page.saveState()

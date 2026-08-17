@@ -44,6 +44,10 @@
     const totalSeconds = Math.max(0, Math.floor(Number(milliseconds || 0) / 1000));
     return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
   };
+  const formatBpm = (value) => {
+    const bpm = Number(value);
+    return Number.isFinite(bpm) && bpm > 0 ? String(Math.round(bpm)) : "—";
+  };
   const currentPhrase = () => state.data.phrases.find((item) => item.id === state.selectedPhraseId) || state.data.phrases[0];
   const eventAt = (milliseconds) => {
     const events = state.data.events;
@@ -280,7 +284,7 @@
     }
     const layerCopy = {
       "phrase-practice": ["Taught solo", "Start from any phrase", "Choose a phrase, slow it down, and let the solo continue naturally.", "50% · continuous playback"],
-      "play-along": ["Full song", "Follow the song form", "Choose a section or let the chord and Nashville-number lane follow the complete track.", `${formatTime(mediaScopes().fullSong.durationMs)} · ${state.data.display.fullSongTempoBpm || "—"} BPM`],
+      "play-along": ["Full song", "Follow the song form", "Choose a section or let the chord and Nashville-number lane follow the complete track.", `${formatTime(mediaScopes().fullSong.durationMs)} · ${formatBpm(state.data.display.fullSongTempoBpm)} BPM`],
     }[layer.id] || ["", "", "", ""];
     const kicker = q("[data-layer-kicker]");
     const title = q("[data-layer-title]");
@@ -338,9 +342,9 @@
       ? state.data.display.fullSongTempoBpm
       : state.data.display.tempoBpm;
     const tempoScope = fullSongActive ? "Full song" : "Taught solo";
-    if (tempo) tempo.textContent = tempoValue ? `${tempoScope} · ${tempoValue} BPM` : `${tempoScope} tempo pending`;
+    if (tempo) tempo.textContent = tempoValue ? `${tempoScope} · ${formatBpm(tempoValue)} BPM` : `${tempoScope} tempo pending`;
     if (chartKey) chartKey.textContent = state.data.display.key;
-    if (songTempo) songTempo.textContent = state.data.display.fullSongTempoBpm ? `${state.data.display.fullSongTempoBpm} BPM` : "tempo pending";
+    if (songTempo) songTempo.textContent = state.data.display.fullSongTempoBpm ? `${formatBpm(state.data.display.fullSongTempoBpm)} BPM` : "tempo pending";
   }
 
   function selectScopeAudio(scope) {

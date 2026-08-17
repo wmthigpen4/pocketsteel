@@ -609,6 +609,8 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert 'aria-label="Scrolling full-song chords and Nashville numbers"' in markup
     assert 'const tempoScope = fullSongActive ? "Full song" : "Taught solo";' in script
     assert 'state.data.display.fullSongTempoBpm' in script
+    assert 'String(Math.round(bpm))' in script
+    assert '`${tempoScope} · ${formatBpm(tempoValue)} BPM`' in script
     assert 'renderLessonFacts();' in script
     assert 'Solo grid' not in script
     assert 'Owner review' not in script
