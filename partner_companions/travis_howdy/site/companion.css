@@ -145,6 +145,7 @@ button { color: inherit; }
 .button-primary:hover, .button-primary:focus-visible { background: var(--coral-dark); }
 .button-secondary { border-color: var(--line); background: var(--white); color: var(--teal-900); }
 .button-secondary:hover, .button-secondary:focus-visible { border-color: var(--teal-900); }
+.button-disabled { border-color: var(--line); background: #f1f4f5; color: var(--muted); cursor: not-allowed; opacity: .72; pointer-events: none; }
 
 .layer-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-top: 0; background: var(--white); }
 .layer-tab { padding: 15px 12px; border: 0; border-right: 1px solid var(--line); background: var(--white); color: var(--muted); cursor: pointer; }

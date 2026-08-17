@@ -559,6 +559,17 @@ def test_security_headers_and_route_map_are_fail_closed(tmp_path: Path) -> None:
     assert "Access-Control-Allow-Origin" not in headers
 
 
+def test_embed_disables_the_larger_practice_view_link(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    build_companion_bundle(bundle, source_date_epoch=1)
+    embed = (bundle / "howdy" / "embed-demo" / "index.html").read_text(encoding="utf-8")
+    assert "Larger practice view" in embed
+    assert "Not included in this review" in embed
+    assert 'aria-disabled="true"' in embed
+    assert 'class="button button-secondary compact-only workspace-link button-disabled"' in embed
+    assert 'href="/howdy"' not in embed
+
+
 def test_local_practice_guide_alias_reuses_the_music_first_embed(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     manifest_path = tmp_path / "manifest.json"
@@ -706,8 +717,10 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert 'Complete printable tab' in markup
     assert 'six practice sections' in markup
     assert 'data-action="loop"' not in markup
-    assert 'Open larger practice view' in markup
-    assert 'All six tab systems + expanded fretboard' in markup
+    assert 'Larger practice view' in markup
+    assert 'Not included in this review' in markup
+    assert 'aria-disabled="true"' in markup
+    assert 'All six tab systems + expanded fretboard' not in markup
     assert '<summary class="search-summary">' in markup
     assert '[data-active-layer]:not([data-active-layer="lesson-map"]) .lesson-search-card { display: none; }' in styles
     assert '[data-active-layer="phrase-practice"] .lesson-map { display: block; }' in styles
