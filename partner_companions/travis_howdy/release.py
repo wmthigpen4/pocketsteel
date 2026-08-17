@@ -475,12 +475,18 @@ def _pitch_staff_step(pitch: str) -> int:
     return value - (4 * 7 + order["E"])
 
 
-def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
-    """Render deterministic notation-plus-ten-string-tab from companion events."""
+def generate_tablature_pdf(
+    data: Mapping[str, Any],
+    output_path: Path,
+    *,
+    brand_logo_path: Path | None = None,
+) -> Path:
+    """Render a deterministic, single-page branded ten-string tab handout."""
 
     try:
         from reportlab.lib import colors
-        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.pagesizes import landscape, letter
+        from reportlab.lib.utils import ImageReader
         from reportlab.pdfbase.pdfmetrics import stringWidth
         from reportlab.pdfgen import canvas
     except ImportError as error:
@@ -489,11 +495,11 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
     validate_companion(data, release=False)
     output_path = Path(output_path).resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    width, height = letter
-    page = canvas.Canvas(str(output_path), pagesize=letter, pageCompression=1, invariant=1)
+    width, height = landscape(letter)
+    page = canvas.Canvas(str(output_path), pagesize=(width, height), pageCompression=1, invariant=1)
     page.setTitle(_ascii(data.get("print", {}).get("title")))
     page.setAuthor("Travis Toy Tutorials / Steel Guitar RAG")
-    page.setSubject("Deterministic lesson companion notation and E9 tablature")
+    page.setSubject("Deterministic Travis Toy Tutorials E9 tablature")
     teal = colors.HexColor("#134361")
     coral = colors.HexColor("#ff3f20")
     gray = colors.HexColor("#667781")
@@ -501,8 +507,13 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
     event_by_id = {event["id"]: event for event in data["events"]}
     chord_by_id = {chord["id"]: chord for chord in data["chordTimeline"]}
     phrases = list(data["phrases"])
-    phrases_per_page = 2
-    page_count = (len(phrases) + phrases_per_page - 1) // phrases_per_page
+    page_count = 1
+    logo_image = None
+    if brand_logo_path is not None:
+        logo_path = Path(brand_logo_path).expanduser().resolve()
+        if not logo_path.is_file() or logo_path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+            raise CompanionReleaseError("The TTT print logo must be an existing PNG, JPG, or WebP image.")
+        logo_image = ImageReader(str(logo_path))
 
     def draw_text_fit(text: str, x: float, y: float, maximum: float, size: float = 8) -> None:
         clean = _ascii(text)
@@ -527,50 +538,58 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
 
     def draw_page_header(page_number: int) -> None:
         page.setFillColor(teal)
-        page.rect(0, height - 78, width, 78, stroke=0, fill=1)
+        page.rect(0, height - 68, width, 68, stroke=0, fill=1)
         page.setFillColor(colors.white)
-        page.setFont("Helvetica-Bold", 9)
-        page.drawString(42, height - 28, "TRAVIS TOY TUTORIALS - LESSON COMPANION")
-        page.setFont("Helvetica-Bold", 20)
-        page.drawString(42, height - 53, _ascii(data["print"]["title"]))
-        page.setFont("Helvetica", 7)
-        page.drawRightString(width - 42, height - 28, _ascii(data["revision"]))
-        page.drawRightString(width - 42, height - 40, f"Page {page_number} of {page_count}")
+        if logo_image is not None:
+            page.drawImage(logo_image, 36, height - 49, width=150, height=36, preserveAspectRatio=True, mask="auto")
+        else:
+            page.setFont("Helvetica-Bold", 10)
+            page.drawString(36, height - 30, "TRAVIS TOY TUTORIALS")
+        page.setFont("Helvetica-Bold", 18)
+        page.drawString(204, height - 29, "Howdy - Taught Solo")
         tempo = data["display"].get("tempoBpm")
-        musical_context = f"Key {data['display']['key']} | {data['display']['meter']}"
+        musical_context = f"10-string E9 tablature | Key {data['display']['key']} | {data['display']['meter']}"
         if tempo:
             musical_context += f" | {round(float(tempo))} BPM"
-        page.drawRightString(width - 42, height - 52, _ascii(musical_context))
+        page.setFont("Helvetica", 8)
+        page.drawString(204, height - 45, _ascii(musical_context))
+        page.setFont("Helvetica-Bold", 9)
+        page.drawRightString(width - 36, height - 19, "travistoytutorials.com")
+        page.setFont("Helvetica", 7)
+        page.drawRightString(width - 36, height - 34, _ascii(data["revision"]))
+        page.drawRightString(width - 36, height - 47, f"Page {page_number} of {page_count}")
+        page.setFont("Helvetica", 6)
+        page.drawRightString(width - 36, height - 59, "Powered by Steel Guitar RAG")
         if not data.get("approvals", {}).get("printLayout"):
             page.saveState()
             page.setFillColor(colors.HexColor("#fff0ed"))
-            page.rect(42, height - 99, width - 84, 15, stroke=0, fill=1)
+            page.rect(36, height - 85, width - 72, 12, stroke=0, fill=1)
             page.setFillColor(colors.HexColor("#7a210f"))
-            page.setFont("Helvetica-Bold", 7)
-            page.drawCentredString(width / 2, height - 94, "DRAFT LAYOUT PROOF - NOT MUSICAL OR PRINT APPROVED")
+            page.setFont("Helvetica-Bold", 6)
+            page.drawCentredString(width / 2, height - 81, "DRAFT LAYOUT PROOF - NOT MUSICAL OR PRINT APPROVED")
             page.restoreState()
 
     def draw_chord_chart(top: float) -> None:
-        left = 42
-        right = width - 42
+        left = 36
+        right = width - 36
         bar_width = (right - left) / int(data["display"]["barCount"])
         page.setFillColor(teal)
-        page.setFont("Helvetica-Bold", 8)
+        page.setFont("Helvetica-Bold", 7)
         page.drawString(left, top, _ascii(f"CHORD CHART - KEY {data['display']['key']}"))
         page.setFillColor(coral if not data.get("approvals", {}).get("chords") else teal)
         page.setFont("Helvetica-Bold", 5.5)
         chart_status = "AUDIO-DERIVED - TRAVIS REVIEW REQUIRED" if not data.get("approvals", {}).get("chords") else "TRAVIS APPROVED"
         page.drawRightString(right, top, chart_status)
-        box_top = top - 8
-        box_height = 34
+        box_top = top - 6
+        box_height = 23
         for bar in range(1, int(data["display"]["barCount"]) + 1):
             x = left + (bar - 1) * bar_width
             page.setStrokeColor(colors.HexColor("#77848a"))
             page.setFillColor(colors.white)
             page.rect(x, box_top - box_height, bar_width, box_height, stroke=1, fill=1)
             page.setFillColor(gray)
-            page.setFont("Helvetica", 5)
-            page.drawString(x + 4, box_top - 8, f"Bar {bar}")
+            page.setFont("Helvetica", 4.7)
+            page.drawString(x + 4, box_top - 7, f"Bar {bar}")
             chords = [
                 chord for chord in data["chordTimeline"]
                 if chord.get("symbol") and int(chord["barStart"]) <= bar <= int(chord["barEnd"])
@@ -580,39 +599,35 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
                 if index == 0 or chord["symbol"] != chords[index - 1]["symbol"]
             ]
             page.setFillColor(teal)
-            page.setFont("Helvetica-Bold", 9)
-            page.drawCentredString(x + bar_width / 2, box_top - 25, _ascii(" > ".join(labels) or "PENDING"))
+            page.setFont("Helvetica-Bold", 8)
+            page.drawCentredString(x + bar_width / 2, box_top - 18, _ascii(" > ".join(labels) or "PENDING"))
 
     def draw_phrase(phrase: Mapping[str, Any], top: float) -> None:
         events = [event_by_id[item] for item in phrase["eventIds"]]
-        # Keep notation and tab inside a conservative printable safe area.
-        # This matters most for the twelve-column closing system in bars 7-8.
-        left = 54
-        right = width - 54
+        left = 36
+        right = width - 36
         inner_width = right - left
         page.setFillColor(teal)
-        page.setFont("Helvetica-Bold", 12)
+        page.setFont("Helvetica-Bold", 8)
         page.drawString(left, top, _ascii(f"Bars {phrase['barStart']}-{phrase['barEnd']}  |  {phrase['label']}"))
-        page.setFillColor(gray)
-        draw_text_fit(phrase["lessonNote"], left, top - 14, inner_width, 7.5)
-        staff_top = top - 41
-        staff_gap = 6
-        page.setStrokeColor(colors.black)
-        page.setLineWidth(0.55)
-        for line in range(5):
-            y = staff_top - line * staff_gap
-            page.line(left + 28, y, right, y)
-        page.setFont("Helvetica-Bold", 16)
-        page.setFillColor(colors.black)
-        page.drawString(left + 3, staff_top - 18, "G")
         column_width = (inner_width - 42) / len(events)
         previous_bar = None
         previous_chord_id = None
+        tab_top = top - 17
+        tab_gap = 5.0
+        page.setStrokeColor(colors.HexColor("#77848a"))
+        page.setLineWidth(0.45)
+        for string_number in range(1, 11):
+            y = tab_top - (string_number - 1) * tab_gap
+            page.setFont("Helvetica", 4.7)
+            page.setFillColor(gray)
+            page.drawRightString(left + 20, y - 1.5, str(string_number))
+            page.line(left + 28, y, right, y)
         for index, event in enumerate(events):
             x = left + 40 + column_width * (index + 0.5)
             if previous_bar is not None and event["bar"] != previous_bar:
                 page.setStrokeColor(light)
-                page.line(x - column_width / 2, staff_top + 7, x - column_width / 2, staff_top - 31)
+                page.line(x - column_width / 2, tab_top + 5, x - column_width / 2, tab_top - 48)
             previous_bar = event["bar"]
             chord_id = event.get("chordEventId")
             if chord_id != previous_chord_id:
@@ -621,43 +636,9 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
                 if chord.get("symbol") and not chord.get("verified"):
                     chord_label += "*"
                 page.setFillColor(teal if chord.get("verified") else coral)
-                page.setFont("Helvetica-Bold", 5.5)
-                page.drawCentredString(x, staff_top + 22, _ascii(chord_label))
+                page.setFont("Helvetica-Bold", 5)
+                page.drawCentredString(x, tab_top + 7, _ascii(chord_label))
             previous_chord_id = chord_id
-            if event.get("isRest") is True:
-                y = staff_top - 12
-                page.setFillColor(colors.black)
-                page.rect(x - 3, y - 2, 6, 4, stroke=0, fill=1)
-                page.line(x + 2, y - 2, x - 2, y - 10)
-                pitch_label = "rest"
-            else:
-                step = _pitch_staff_step(str(event.get("notationPitch")))
-                y = staff_top - 4 * staff_gap + step * (staff_gap / 2)
-                y = max(staff_top - 34, min(staff_top + 12, y))
-                page.setFillColor(colors.white if event.get("rhythm") in {"half", "whole"} else colors.black)
-                page.setStrokeColor(colors.black)
-                page.ellipse(x - 3.8, y - 2.4, x + 3.8, y + 2.4, stroke=1, fill=1)
-                if event.get("rhythm") != "whole":
-                    page.line(x + 3.5, y, x + 3.5, y + 18)
-                if event.get("tieToNext") is True and index + 1 < len(events):
-                    next_x = left + 40 + column_width * (index + 1.5)
-                    page.bezier(x + 4, y - 5, x + 12, y - 11, next_x - 12, y - 11, next_x - 4, y - 5)
-                pitch_label = event.get("notationPitch")
-            page.setFillColor(colors.black)
-            page.setFont("Helvetica", 5.5)
-            page.drawCentredString(x, staff_top + 11, _ascii(pitch_label))
-            page.drawCentredString(x, staff_top - 32, _ascii(f"{event['bar']}.{event['beat']}"))
-        tab_top = staff_top - 57
-        tab_gap = 8.3
-        page.setStrokeColor(colors.HexColor("#77848a"))
-        for string_number in range(1, 11):
-            y = tab_top - (string_number - 1) * tab_gap
-            page.setFont("Helvetica", 5.5)
-            page.setFillColor(gray)
-            page.drawRightString(left + 20, y - 1.8, str(string_number))
-            page.line(left + 28, y, right, y)
-        for index, event in enumerate(events):
-            x = left + 40 + column_width * (index + 0.5)
             for note in event["tabNotes"]:
                 y = tab_top - (int(note["string"]) - 1) * tab_gap
                 if note.get("technique") == "bar-hammer":
@@ -680,49 +661,38 @@ def generate_tablature_pdf(data: Mapping[str, Any], output_path: Path) -> Path:
                     destination = (">" + ">".join(path_tail) + destination_controls) if path_tail else ""
                     token = f"{note['fret']}{controls}{destination}"
                 page.setFillColor(colors.white)
-                token_width = max(11, stringWidth(token, "Helvetica-Bold", 6.5) + 4)
-                page.rect(x - token_width / 2, y - 4, token_width, 8, stroke=0, fill=1)
+                token_width = max(10, stringWidth(token, "Helvetica-Bold", 5.7) + 3)
+                page.rect(x - token_width / 2, y - 3.1, token_width, 6.2, stroke=0, fill=1)
                 page.setFillColor(colors.black)
-                page.setFont("Helvetica-Bold", 6.5)
-                page.drawCentredString(x, y - 2.2, token)
+                page.setFont("Helvetica-Bold", 5.7)
+                page.drawCentredString(x, y - 1.9, token)
             page.setFillColor(gray)
+            page.setFont("Helvetica", 4.5)
+            page.drawCentredString(x, tab_top + 1.5, _ascii(f"{event['bar']}.{event['beat']}"))
             draw_centred_text_fit(
                 event["movement"].replace("-", " "),
                 x,
-                tab_top - 91,
+                tab_top - 49,
                 column_width * .82,
+                size=4.8,
+                minimum=3.6,
             )
 
-    for page_index in range(page_count):
-        draw_page_header(page_index + 1)
-        if page_index == 0 and any(chord.get("symbol") for chord in data["chordTimeline"]):
-            draw_chord_chart(height - 113)
-        page_phrases = phrases[page_index * phrases_per_page : (page_index + 1) * phrases_per_page]
-        for phrase_index, phrase in enumerate(page_phrases):
-            first_page_chart_offset = 58 if page_index == 0 and any(chord.get("symbol") for chord in data["chordTimeline"]) else 0
-            draw_phrase(phrase, height - 126 - first_page_chart_offset - phrase_index * 300)
-        page.setStrokeColor(light)
-        page.line(42, 39, width - 42, 39)
-        page.setFillColor(gray)
-        page.setFont("Helvetica", 5.8)
-        controls = ", ".join(
-            f"{item['code']}={_ascii(item['label'])} (strings {','.join(map(str, item['strings']))})"
-            for item in data["copedent"]["controls"]
-        )
-        page.drawString(42, 27, _ascii(controls)[:112])
-        has_bar_hammer = any(
-            note.get("technique") == "bar-hammer"
-            for event in data["events"]
-            for note in event["tabNotes"]
-        )
-        hammer_legend = (
-            "0h1=bar hammer from open to fret 1 without repicking."
-            if has_bar_hammer
-            else "0hA=pedal hammer; bar stays at open fret."
-        )
-        page.drawString(42, 17, f"{hammer_legend} Source E9 copedent: review pending.")
-        page.drawRightString(width - 42, 17, "Member-use review draft - Travis Toy Tutorials")
-        page.showPage()
+    draw_page_header(1)
+    if any(chord.get("symbol") for chord in data["chordTimeline"]):
+        draw_chord_chart(height - 96)
+    for phrase_index, phrase in enumerate(phrases):
+        draw_phrase(phrase, height - 137 - phrase_index * 70)
+    page.setStrokeColor(light)
+    page.line(36, 34, width - 36, 34)
+    page.setFillColor(teal)
+    page.setFont("Helvetica-Bold", 7)
+    page.drawString(36, 21, "travistoytutorials.com")
+    page.setFillColor(gray)
+    page.setFont("Helvetica", 5.5)
+    page.drawCentredString(width / 2, 21, "0h1 = bar hammer from open to fret 1 without repicking")
+    page.drawRightString(width - 36, 21, "Member-use lesson companion")
+    page.showPage()
     page.save()
     return output_path
 
