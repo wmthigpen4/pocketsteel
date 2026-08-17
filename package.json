@@ -8,16 +8,19 @@
     "check:locks": "python3 scripts/check_dependency_locks.py",
     "check:js": "node --check workers/interest-digest.js && node --check functions/api/interest.js && node --check ui/answer-client.js && node --check ui/copedent-grid-model.js && node --check ui/backstage-copedent-manager.js && node --check ui/pedal-steel-fretboard-styles.js && node --check ui/pedal-steel-fretboard.js && node --check ui/e9-fretboard-explorer-config.js && node --check ui/e9-fretboard-explorer.js && node --check ui/song-projects.js && node --check ui/songs.js && node --check ui/setup-song.js && node --check ui/play-song.js && node --check ui/practice-tools.js && node --check ui/practice-transport.js && node --check ui/practice-analysis-worker.js && node --check ui/practice-reference-validation.js && node --check ui/melody-workbench.js && node --check ui/melody-score.js && node --check ui/lesson-workbench.js && node --check partner_companions/travis_practice_guide/site/practice-guide.js",
     "lint:js": "eslint workers/interest-digest.js functions/api/interest.js",
+    "check:travis-companion": "tsc --noEmit -p workers/travis-companion/tsconfig.json",
+    "test:travis-companion": "vitest run --config workers/travis-companion/vitest.config.ts",
     "test:worker": "vitest run --config vitest.config.mjs",
     "build:travis-preview:draft": ".venv/bin/python scripts/package_travis_companion.py --output tmp/travis-preview-draft --manifest tmp/travis-preview-draft.release-manifest.json --source-date-epoch 1786683600",
     "verify:travis-preview": ".venv/bin/python scripts/verify_travis_companion.py --bundle tmp/travis-preview-draft --manifest tmp/travis-preview-draft.release-manifest.json"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.18.8",
-    "@cloudflare/workers-types": "5.20260724.1",
+    "@cloudflare/vitest-pool-workers": "0.21.3",
+    "@types/node": "24.5.2",
     "eslint": "10.7.0",
+    "typescript": "5.9.3",
     "vitest": "4.1.10",
-    "wrangler": "4.114.0"
+    "wrangler": "4.123.0"
   },
   "engines": {
     "node": ">=24.0.0"

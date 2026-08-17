@@ -40,9 +40,17 @@ companion = [
   "pypdf>=6,<7",
   "reportlab>=4.4,<5",
 ]
+travis-companion-analysis = [
+  "basic-pitch==0.4.0",
+]
 
 [tool.setuptools]
-packages = ["steel_guitar_rag"]
+packages = [
+  "steel_guitar_rag",
+  "steel_guitar_rag.travis_companion_analysis",
+  "partner_companions",
+  "partner_companions.travis_tutorials",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

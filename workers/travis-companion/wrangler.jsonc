@@ -1,0 +1,82 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "steel-guitar-rag-travis-companion",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ENVIRONMENT": "development",
+    "PUBLIC_ORIGIN": "http://127.0.0.1:8791",
+    "FRAME_ANCESTORS": "http://127.0.0.1:8791",
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+    "TEACHABLE_SCHOOL_ID": "",
+    "TEACHABLE_CLIENT_ID": "",
+    "TEACHABLE_AUTHORIZE_URL": "https://sso.teachable.com/secure/{school_id}/identity/oauth_provider/authorize",
+    "TEACHABLE_TOKEN_URL": "https://developers.teachable.com/v1/current_user/oauth2/token",
+    "TEACHABLE_COURSE_URL": "https://developers.teachable.com/v1/current_user/courses/{course_id}"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "steel-guitar-rag-travis-companion-local",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "steel-guitar-rag-travis-companion-local"
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "ANALYSIS_WORKFLOW",
+      "name": "travis-companion-analysis-local",
+      "class_name": "CompanionAnalysisWorkflow"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 }
+  },
+  "env": {
+    "staging": {
+      "name": "steel-guitar-rag-travis-companion-staging",
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "PUBLIC_ORIGIN": "https://staging.example.invalid",
+        "FRAME_ANCESTORS": "https://school.example.invalid",
+        "ACCESS_TEAM_DOMAIN": "example.cloudflareaccess.com",
+        "ACCESS_AUD": "CONFIGURE_WITH_ACCESS_AUDIENCE",
+        "TEACHABLE_SCHOOL_ID": "CONFIGURE_WITH_SCHOOL_ID",
+        "TEACHABLE_CLIENT_ID": "CONFIGURE_WITH_CLIENT_ID",
+        "TEACHABLE_AUTHORIZE_URL": "https://sso.teachable.com/secure/{school_id}/identity/oauth_provider/authorize",
+        "TEACHABLE_TOKEN_URL": "https://developers.teachable.com/v1/current_user/oauth2/token",
+        "TEACHABLE_COURSE_URL": "https://developers.teachable.com/v1/current_user/courses/{course_id}"
+      },
+      "d1_databases": [{ "binding": "DB", "database_name": "steel-guitar-rag-travis-companion-staging", "migrations_dir": "migrations" }],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "steel-guitar-rag-travis-companion-staging" }],
+      "workflows": [{ "binding": "ANALYSIS_WORKFLOW", "name": "travis-companion-analysis-staging", "class_name": "CompanionAnalysisWorkflow" }]
+    },
+    "production": {
+      "name": "steel-guitar-rag-travis-companion-production",
+      "vars": {
+        "ENVIRONMENT": "production",
+        "PUBLIC_ORIGIN": "https://companion.example.invalid",
+        "FRAME_ANCESTORS": "https://school.example.invalid",
+        "ACCESS_TEAM_DOMAIN": "example.cloudflareaccess.com",
+        "ACCESS_AUD": "CONFIGURE_WITH_ACCESS_AUDIENCE",
+        "TEACHABLE_SCHOOL_ID": "CONFIGURE_WITH_SCHOOL_ID",
+        "TEACHABLE_CLIENT_ID": "CONFIGURE_WITH_CLIENT_ID",
+        "TEACHABLE_AUTHORIZE_URL": "https://sso.teachable.com/secure/{school_id}/identity/oauth_provider/authorize",
+        "TEACHABLE_TOKEN_URL": "https://developers.teachable.com/v1/current_user/oauth2/token",
+        "TEACHABLE_COURSE_URL": "https://developers.teachable.com/v1/current_user/courses/{course_id}"
+      },
+      "d1_databases": [{ "binding": "DB", "database_name": "steel-guitar-rag-travis-companion-production", "migrations_dir": "migrations" }],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "steel-guitar-rag-travis-companion-production" }],
+      "workflows": [{ "binding": "ANALYSIS_WORKFLOW", "name": "travis-companion-analysis-production", "class_name": "CompanionAnalysisWorkflow" }]
+    }
+  }
+}

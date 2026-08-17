@@ -1,0 +1,4 @@
+TEACHABLE_CLIENT_SECRET=replace-in-local-dev-only
+LESSON_TOKEN_SECRET=replace-with-at-least-32-random-bytes
+RUNNER_TOKEN=replace-with-at-least-32-random-bytes
+TRAVIS_COPEDENT_JSON={"id":"approved-travis-e9","label":"Approved Travis E9","stringsHighToLow":[],"controls":[]}
