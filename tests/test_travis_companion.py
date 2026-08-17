@@ -712,7 +712,8 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
 def test_taught_solo_uses_phrase_starts_without_forced_looping() -> None:
     script = (SITE / "companion.js").read_text(encoding="utf-8")
     assert '"Start from any phrase"' in script
-    assert '"50% · continuous playback"' in script
+    assert '"100% · continuous playback"' in script
+    assert "setSpeed(0.5);" not in script
     assert "seekTo(phrase.startMs);" in script
     assert "state.loop" not in script
     assert 'data-action="loop"' not in script

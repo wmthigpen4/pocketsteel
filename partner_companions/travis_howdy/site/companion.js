@@ -275,7 +275,7 @@
     if (explorePanel) explorePanel.hidden = layer.id !== "explore";
     if (layer.id === "phrase-practice") {
       state.selectedMode = "follow-solo";
-      setSpeed(0.5);
+      setSpeed(1);
       if (!options.preserveTime) seekTo(currentPhrase().startMs);
     } else if (layer.id === "play-along") {
       state.selectedMode = hasChordChart() ? "chord-foundation" : "follow-solo";
@@ -283,7 +283,7 @@
       if (!options.preserveTime) seekTo(0);
     }
     const layerCopy = {
-      "phrase-practice": ["Taught solo", "Start from any phrase", "Choose a phrase, slow it down, and let the solo continue naturally.", "50% · continuous playback"],
+      "phrase-practice": ["Taught solo", "Start from any phrase", "Choose a phrase, slow it down, and let the solo continue naturally.", "100% · continuous playback"],
       "play-along": ["Full song", "Follow the song form", "Choose a section or let the chord and Nashville-number lane follow the complete track.", `${formatTime(mediaScopes().fullSong.durationMs)} · ${formatBpm(state.data.display.fullSongTempoBpm)} BPM`],
     }[layer.id] || ["", "", "", ""];
     const kicker = q("[data-layer-kicker]");
