@@ -131,3 +131,6 @@ source-inbox/**/*.md
 
 # Private normalized/generated corpus outputs
 corpus-private/
+
+# Local Worker secrets and development-only configuration
+**/.dev.vars
