@@ -614,6 +614,9 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert 'Owner review' not in script
     assert 'owner review' not in script
     assert 'review-chip' not in markup
+    assert 'Help with this lesson' in markup
+    assert 'Use these when a technique or concept in Howdy needs more explanation.' in markup
+    assert 'Go deeper after this lesson' not in markup
     assert "Roots are aligned from two public charts" in script
     assert 'function configureSongDisplayToggle()' in script
 

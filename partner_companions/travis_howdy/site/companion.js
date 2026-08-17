@@ -779,7 +779,7 @@
     const suggestions = state.data.relatedLessons.filter((lesson) => lesson.featuredForCompanion);
     if (section) section.hidden = !suggestions.length;
     const heading = q("[data-related-heading]");
-    if (heading) heading.textContent = "Related Travis lessons";
+    if (heading) heading.textContent = "Related Travis videos";
     container.classList.toggle("is-single", suggestions.length === 1);
     suggestions.forEach((lesson) => {
       const link = node("a", "related-video-card");
