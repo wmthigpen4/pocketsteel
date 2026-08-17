@@ -828,22 +828,14 @@
   }
 
   function stepMove(direction) {
-    const manualGuide = state.selectedLayer === "play-along";
-    if (!manualGuide) pausePlayback();
-    const phrase = currentPhrase();
-    const events = manualGuide
-      ? state.data.events
-      : phrase.eventIds.map((id) => state.data.events.find((item) => item.id === id)).filter(Boolean);
-    const current = manualGuide ? guideEvent() : eventAt(state.timeMs);
+    const events = state.data.events;
+    const current = guideEvent();
     const index = Math.max(0, events.findIndex((item) => item.id === current.id));
     const selected = events[clamp(index + direction, 0, events.length - 1)];
     state.selectedGuideEventId = selected.id;
-    if (manualGuide) {
-      state.lastTabFocusId = null;
-      updateFrame();
-      return;
-    }
-    seekTo(selected.startMs);
+    state.lastTabFocusId = null;
+    updateFrame();
+    scrollTabToEvent(selected.id);
   }
 
   function configureStudyControls() {
@@ -856,12 +848,7 @@
     if (!selected) return;
     state.selectedGuideEventId = selected.id;
     state.lastTabFocusId = null;
-    if (state.selectedLayer === "play-along") {
-      updateFrame();
-      return;
-    }
-    pausePlayback();
-    seekTo(selected.startMs);
+    updateFrame();
   }
 
   function bindTabControl(control, event) {
@@ -884,11 +871,14 @@
       );
       button.addEventListener("click", () => {
         state.selectedPhraseId = phrase.id;
+        state.selectedGuideEventId = phrase.eventIds[0];
         seekTo(phrase.startMs);
         if (state.selectedLayer !== "phrase-practice") setLayer("phrase-practice", { preserveTime: true });
         renderPhraseMap();
         renderTab();
         updateFrame();
+        state.lastTabFocusId = null;
+        scrollTabToEvent(state.selectedGuideEventId);
       });
       container.append(button);
     });
@@ -1067,7 +1057,7 @@
     const absoluteTime = absoluteMediaTime(scope, state.timeMs);
     const soloTime = taughtSoloTimeAt(absoluteTime);
     const taughtSoloActive = soloTime !== null;
-    const manualGuide = state.selectedLayer === "play-along";
+    const manualGuide = ["phrase-practice", "play-along"].includes(state.selectedLayer);
     updateSongTimeline(absoluteTime);
     const playbackEvent = eventAt(soloTime ?? 0);
     if (!manualGuide) state.selectedGuideEventId = playbackEvent.id;
@@ -1084,7 +1074,6 @@
     if (guideActive && state.selectedPhraseId !== phrase.id) {
       state.selectedPhraseId = phrase.id;
       renderPhraseMap();
-      if (presentation === "embed-demo") renderTab();
     }
     const seek = q("[data-seek]");
     if (seek) seek.value = String(Math.round(state.timeMs));
@@ -1172,7 +1161,7 @@
     const studyIndex = Math.max(0, studyEvents.findIndex((item) => item.id === current.id));
     if (studyTitle) studyTitle.textContent = manualGuide ? "Taught solo guide" : "Step through the tab";
     if (studyProgress) studyProgress.textContent = manualGuide
-      ? `Move ${studyIndex + 1} of ${studyEvents.length} · manual — song playback will not move this guide`
+      ? `Move ${studyIndex + 1} of ${studyEvents.length} · manual — playback will not move this guide`
       : `Move ${studyIndex + 1} of ${studyEvents.length}`;
     const previousMove = q('[data-action="previous-move"]');
     const nextMove = q('[data-action="next-move"]');
@@ -1180,7 +1169,6 @@
     if (nextMove) nextMove.disabled = studyIndex === studyEvents.length - 1;
     renderFretboard(visualCurrent, visualUpcoming);
     updateTabHighlight(current, upcoming);
-    scrollTabToEvent(current.id, manualGuide ? "smooth" : "auto");
     updateChordChartHighlight(chord, current.bar, guideActive);
   }
 

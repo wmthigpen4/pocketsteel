@@ -615,7 +615,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert 'state.songDisplayMode === "nns" ? segment.nns : segment.symbol' in script
     assert "scroll.scrollLeft = target" not in script
     assert 'state.selectedLayer === "play-along" ? guideEvent()' in script
-    assert 'song playback will not move this guide' in script
+    assert 'playback will not move this guide' in script
     assert '!["phrase-practice", "play-along"].includes(layer.id)' in script
     assert "needs-attention" in script
     assert "function stepMove(" in script
@@ -624,8 +624,10 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert 'node("button", "tab-cell-button"' in script
     assert "function scrollTabToEvent(" in script
     assert 'const events = state.data.events;' in script
-    assert 'scrollTabToEvent(current.id, manualGuide ? "smooth" : "auto")' in script
-    assert 'if (state.selectedLayer === "play-along") {' in script
+    assert 'scrollTabToEvent(current.id, manualGuide ? "smooth" : "auto")' not in script
+    assert '["phrase-practice", "play-along"].includes(state.selectedLayer)' in script
+    assert "scrollTabToEvent(selected.id);" in script
+    assert "pausePlayback();\n    seekTo(selected.startMs);" not in script
     assert "function renderRelatedLessons()" in script
     assert "function configureRelatedScroller()" in script
     assert 'link.target = "_blank"' in script
