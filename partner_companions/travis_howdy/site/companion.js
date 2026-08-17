@@ -156,6 +156,21 @@
         throw new Error("The full-song chord timeline must cover the complete song scope.");
       }
     }
+    if (Array.isArray(data.songForm) && data.songForm.length) {
+      let previousSectionEnd = 0;
+      data.songForm.forEach((section) => {
+        if (
+          Number(section.startMs) !== previousSectionEnd
+          || Number(section.endMs) <= Number(section.startMs)
+          || !String(section.id || "").trim()
+          || !String(section.label || "").trim()
+        ) throw new Error("The full-song section map must be contiguous and labeled.");
+        previousSectionEnd = Number(section.endMs);
+      });
+      if (previousSectionEnd !== Number(scopes.fullSong.durationMs)) {
+        throw new Error("The full-song section map must cover the complete song scope.");
+      }
+    }
     if (!Array.isArray(data.relatedLessons) || data.relatedLessons.length > 6) {
       throw new Error("The related video cards are incomplete.");
     }
@@ -257,7 +272,7 @@
     }
     const layerCopy = {
       "phrase-practice": ["Taught solo", "Start from any phrase", "Choose a phrase, slow it down, and let the solo continue naturally.", "50% · continuous playback"],
-      "play-along": ["Full song", "Follow the chords", "Play the complete backing track while the chord and Nashville number lane scrolls.", "3:57 · complete track"],
+      "play-along": ["Full song", "Follow the song form", "Choose a section or let the chord and Nashville-number lane follow the complete track.", `${formatTime(mediaScopes().fullSong.durationMs)} · ${state.data.display.fullSongTempoBpm || "—"} BPM`],
     }[layer.id] || ["", "", "", ""];
     const kicker = q("[data-layer-kicker]");
     const title = q("[data-layer-title]");
@@ -307,10 +322,12 @@
     const meter = q("[data-meter-label]");
     const tempo = q("[data-tempo-label]");
     const chartKey = q("[data-chart-key]");
+    const songTempo = q("[data-song-tempo-label]");
     if (key) key.textContent = `Key ${state.data.display.key}`;
     if (meter) meter.textContent = state.data.display.meter;
-    if (tempo) tempo.textContent = state.data.display.tempoBpm ? `${state.data.display.tempoBpm} BPM` : "Tempo pending";
+    if (tempo) tempo.textContent = state.data.display.tempoBpm ? `Solo grid ${state.data.display.tempoBpm} BPM` : "Solo tempo pending";
     if (chartKey) chartKey.textContent = state.data.display.key;
+    if (songTempo) songTempo.textContent = state.data.display.fullSongTempoBpm ? `${state.data.display.fullSongTempoBpm} BPM` : "tempo pending";
   }
 
   function selectScopeAudio(scope) {
@@ -595,6 +612,25 @@
     return segments;
   }
 
+  function renderSongSections() {
+    const container = q("[data-song-sections]");
+    if (!container) return;
+    container.replaceChildren();
+    const sections = Array.isArray(state.data.songForm) ? state.data.songForm : [];
+    container.hidden = !sections.length;
+    sections.forEach((section) => {
+      const button = node("button", "song-section");
+      button.type = "button";
+      button.dataset.songSectionId = section.id;
+      button.append(
+        node("strong", "", section.label),
+        node("span", "", `${formatTime(section.startMs)}–${formatTime(section.endMs)}`),
+      );
+      button.addEventListener("click", () => seekTo(section.startMs));
+      container.append(button);
+    });
+  }
+
   function renderSongTimeline() {
     const container = q("[data-song-timeline]");
     if (!container) return;
@@ -602,13 +638,15 @@
     if (chartKey) chartKey.textContent = state.data.display.key;
     const complete = hasFullSongChordChart();
     const status = q("[data-song-chart-status]");
+    const sectionCount = Array.isArray(state.data.songForm) ? state.data.songForm.length : 0;
     if (status) status.textContent = complete
-      ? state.data.approvals.chords ? "Travis approved" : "Draft chart · check marked bars"
+      ? state.data.approvals.chords ? "Travis approved" : `${sectionCount || "Draft"} sections · owner review`
       : "Full-song chart unavailable";
     const guardrail = q("[data-song-chart-guardrail]");
     if (guardrail) guardrail.textContent = complete
-      ? "Coral dots mark chords that still need an ear check."
+      ? "Roots are aligned from two public charts; the taught break uses the lesson-timed chord route."
       : "Only source-timed chords are shown.";
+    renderSongSections();
     state.songTimelineSegments = buildSongTimelineSegments();
     container.replaceChildren();
     state.songTimelineSegments.forEach((segment) => {
@@ -623,15 +661,13 @@
       button.style.setProperty("--song-segment-width", `${width}px`);
       const taughtSoloSource = segment.timelineKind === "taught-solo"
         || segment.sourceKind === "taught_solo_chord_timeline";
-      const sourceLabel = segment.sectionLabel || (taughtSoloSource
-        ? `Solo · bar ${segment.barStart}`
-        : `Bar ${segment.barStart || "—"}`);
+      const sourceLabel = segment.sectionLabel || (taughtSoloSource ? "Taught solo" : "Song form");
       button.append(
         node("span", "", `${formatTime(segment.startMs)} · ${formatTime(segment.endMs)}`),
         node("strong", "", pending ? "—" : segment.symbol),
         node("small", "", pending ? "Uncharted" : `${segment.nns} · ${sourceLabel}`),
       );
-      if (segment.needsAttention) button.title = "Draft chord - check by ear";
+      if (segment.needsAttention) button.title = "Owner review required";
       button.addEventListener("click", () => {
         if (state.selectedLayer !== "play-along") setLayer("play-along");
         seekTo(segment.startMs);
@@ -650,6 +686,7 @@
     const pending = segment.timelineKind === "pending";
     const currentElement = qa("[data-song-segment-id]").find((item) => item.dataset.songSegmentId === segment.id);
     qa("[data-song-segment-id]").forEach((item) => item.classList.toggle("is-current", item === currentElement));
+    qa("[data-song-section-id]").forEach((item) => item.classList.toggle("is-current", item.dataset.songSectionId === segment.sectionId));
     const time = q("[data-song-now-time]");
     const chord = q("[data-song-now-chord]");
     const nns = q("[data-song-now-nns]");
@@ -660,8 +697,8 @@
     if (note) note.textContent = pending
       ? "Uncharted"
       : segment.timelineKind === "taught-solo" || segment.sourceKind === "taught_solo_chord_timeline"
-        ? `Taught solo · bar ${segment.soloBarStart || segment.barStart}`
-        : `Bar ${segment.barStart || "—"}${segment.needsAttention ? " · check by ear" : ""}`;
+        ? `${segment.sectionLabel || "Steel break"} · taught bar ${segment.soloBarStart || "—"}`
+        : `${segment.sectionLabel || "Song form"}${segment.needsAttention ? " · owner review" : ""}`;
     const scroll = q("[data-song-scroll]");
     if (state.selectedLayer !== "play-along" || !scroll || !currentElement) return;
     const duration = Math.max(1, Number(segment.endMs) - Number(segment.startMs));

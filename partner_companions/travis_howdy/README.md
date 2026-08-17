@@ -121,15 +121,25 @@ existing deterministic Play Along reader:
 node scripts/author_travis_song_chords.js \
   --audio /private/howdy-full-song.mp3 \
   --companion /private/howdy-review.json \
+  --reference /private/howdy-song-chart-reference.json \
   --output /private/howdy-review-next.json \
   --revision howdy-transcribed-review-YYYY-MM-DD.N
 ```
 
-The authoring command pins the companion's known key, meter, and tempo, forces
-one D-major song context, preserves the reader's confidence and attention
-metadata, and replaces the taught-solo window with the companion's exact
-source-timed solo chord events. The generated `songChordTimeline` remains
-unapproved until Travis reviews it.
+The lesson tempo is a teaching grid, not a hard full-song tempo. The authoring
+command now evaluates half-, normal-, and double-time pulse candidates, keeps
+the known key and meter as hints, and records the competing rhythm hypotheses.
+It never promotes a context-selected root when the strongest audio candidate
+disagrees; unresolved audio claims stay withheld.
+
+An optional private `song_chart_reference_v1` file can provide a reviewed
+quarter-note chord grid, named song sections, source URLs, corroborated roots,
+and exact lesson-scope anchors. That grid is aligned to the local recording at
+build time, with chord quality withheld when only roots agree. The taught-solo
+window is then replaced by the companion's exact source-timed solo events. Raw
+reference pages and private review material are never packaged. The resulting
+`songChordTimeline`, song form, and any multi-source corrections remain
+unapproved until the owner and Travis review them.
 
 ## Approved private inputs
 

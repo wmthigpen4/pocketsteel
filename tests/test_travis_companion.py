@@ -145,6 +145,19 @@ def test_optional_full_song_chord_timeline_must_cover_complete_song() -> None:
         validate_companion(data, release=False)
 
 
+def test_optional_song_form_must_be_contiguous_and_cover_the_recording() -> None:
+    data = load_draft()
+    duration = data["media"]["durationMs"]
+    data["songForm"] = [
+        {"id": "first", "label": "First", "startMs": 0, "endMs": duration // 2},
+        {"id": "second", "label": "Second", "startMs": duration // 2, "endMs": duration},
+    ]
+    validate_companion(data, release=False)
+    data["songForm"][1]["startMs"] += 1
+    with pytest.raises(CompanionReleaseError, match="section map must be contiguous"):
+        validate_companion(data, release=False)
+
+
 def test_full_song_authoring_overlays_exact_solo_and_derives_nns() -> None:
     script = ROOT / "scripts" / "author_travis_song_chords.js"
     payload = subprocess.run(
@@ -176,8 +189,76 @@ def test_full_song_authoring_overlays_exact_solo_and_derives_nns() -> None:
     assert [(item["startMs"], item["endMs"]) for item in result["timeline"]] == [
         (0, 4000), (4000, 6000), (6000, 8000), (8000, 12000)
     ]
-    assert [item["symbol"] for item in result["timeline"]] == ["D", "G", "A", "G7"]
+    assert [item["symbol"] for item in result["timeline"]] == ["D", "G", "A", "G"]
     assert result["timeline"][1]["sourceKind"] == "taught_solo_chord_timeline"
+
+
+def test_reference_chart_aligns_sections_and_exact_lesson_scope_without_publishing_quality() -> None:
+    module = ROOT / "scripts" / "lib" / "song_chart_authoring.js"
+    payload = subprocess.run(
+        [
+            "node",
+            "-e",
+            """
+            const author=require(process.argv[1]);
+            const reference={schemaVersion:'song_chart_reference_v1',tempoBpm:160,meter:'4/4',gridUnit:'quarter_note',gridLength:16,qualityPolicy:'roots_only',corroboratedRoots:['D','G','A'],sources:[{id:'one'},{id:'two'}],runs:[
+              {startBeat:0,endBeat:2,symbol:'Dmaj7'},
+              {startBeat:2,endBeat:4,symbol:'D5'},
+              {startBeat:4,endBeat:8,symbol:'G'},
+              {startBeat:8,endBeat:12,symbol:'A7'},
+              {startBeat:12,endBeat:16,symbol:'D'}
+            ],sections:[
+              {id:'verse',label:'Verse',startBeat:0,endBeat:8},
+              {id:'break',label:'Break',startBeat:8,endBeat:16}
+            ],scopeMappings:{taughtSolo:{startBeat:8,endBeat:12}}};
+            const companion={display:{key:'D'},media:{scopes:{fullSong:{durationMs:16000},taughtSolo:{startMs:9000,endMs:12000}}}};
+            const nns=(symbol)=>({D:'I',G:'IV',A:'V','N.C.':'N.C.'}[symbol]||'?');
+            const result=author.alignReferenceChart(reference,companion,nns);
+            console.log(JSON.stringify(result));
+            """,
+            str(module),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    result = json.loads(payload.stdout)
+    assert [item["label"] for item in result["sections"]] == ["Verse", "Break"]
+    assert result["sections"][1]["startMs"] == 9_000
+    assert result["timeline"][2]["startMs"] == 9_000
+    assert result["timeline"][2]["endMs"] == 12_000
+    assert [item["symbol"] for item in result["timeline"]] == ["D", "G", "A", "D"]
+    assert result["timeline"][0]["observedSymbol"] == "Dmaj7"
+    assert result["timeline"][0]["observedSymbols"] == ["Dmaj7", "D5"]
+    assert result["timeline"][0]["referenceEndBeat"] == 4
+    assert result["timeline"][2]["qualityStatus"] == "withheld"
+    assert result["alignment"]["method"] == "piecewise_reference_grid_with_lesson_scope_anchors"
+
+
+def test_audio_only_song_form_groups_repeated_eight_measure_sections() -> None:
+    module = ROOT / "scripts" / "lib" / "song_chart_authoring.js"
+    payload = subprocess.run(
+        [
+            "node",
+            "-e",
+            """
+            const author=require(process.argv[1]);
+            const symbols=['D','G','A','D','D','G','A','D','D','G','A','D','D','G','A','D'];
+            const bars=symbols.map((symbol,index)=>({bar:index+1,startMs:index*1000,endMs:(index+1)*1000}));
+            const chords=symbols.map((symbol,index)=>({bar:index+1,symbol,rawCandidate:symbol,confidence:.9,reviewed:true,needsAttention:false,publicationSymbol:symbol}));
+            console.log(JSON.stringify(author.inferRepeatedSections({analysisState:{bars},chords})));
+            """,
+            str(module),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    result = json.loads(payload.stdout)
+    assert [item["label"] for item in result] == ["Form A", "Form A · repeat"]
+    assert result[-1]["endMs"] == 16_000
 
 
 def test_chord_boundaries_are_exact_and_never_inferred() -> None:
@@ -472,6 +553,7 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "function setLayer(" in script
     assert "function renderChordChart()" in script
     assert "function renderSongTimeline()" in script
+    assert "function renderSongSections()" in script
     assert "function updateSongTimeline(" in script
     assert 'pending ? "—" : segment.symbol' in script
     assert "scroll.scrollLeft = target" in script
@@ -494,6 +576,8 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
         "data-chord-chart",
         "data-song-timeline",
         "data-song-scroll",
+        "data-song-sections",
+        "data-song-tempo-label",
         "data-song-chart-status",
         "data-song-chart-guardrail",
         "data-song-now-chord",
@@ -509,6 +593,8 @@ def test_companion_has_deterministic_search_layers_chords_and_step_study() -> No
     assert "taughtSoloTimeAt" in script
     assert 'if (!terms.length && presentation === "embed-demo") return;' in script
     assert 'aria-label="Scrolling full-song chords and Nashville numbers"' in markup
+    assert "Solo grid" in script
+    assert "Roots are aligned from two public charts" in script
 
 
 def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
@@ -531,6 +617,7 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert '[data-active-layer="phrase-practice"] .lesson-map { display: block; }' in styles
     assert '[data-active-layer="play-along"] .chord-chart-card { display: none; }' in styles
     assert '[data-active-layer="play-along"] .song-chart-card { display: block; }' in styles
+    assert '.song-sections { display: flex;' in styles
     assert '[data-active-layer="phrase-practice"].companion-shell .lesson-search-card { display: block; }' in styles
     assert '.related-video-grid { display: grid;' in styles
     assert '.related-video-grid.is-single' in styles

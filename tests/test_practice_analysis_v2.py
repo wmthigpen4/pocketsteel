@@ -353,6 +353,33 @@ def test_repeated_section_matching_and_context_confidence_metadata() -> None:
     assert payload["matched"] is True
 
 
+def test_context_cannot_publish_a_different_root_as_high_confidence_audio() -> None:
+    payload = run_node(
+        r"""
+        const a=require('./ui/practice-analysis-worker.js');
+        function evidence(top, scores){
+          const candidates=Object.entries(scores).map(([symbol,score])=>({symbol,score})).sort((x,y)=>y.score-x.score);
+          return {top:candidates.find(item=>item.symbol===top),candidates,confidence:.72};
+        }
+        const c=evidence('C',{C:.9,F:.2,'N.C.':.01});
+        const weakConflict=evidence('B7',{B7:.61,C:.59,'N.C.':.01});
+        function bar(scored,index){return {bar:index+1,startMs:index*1000,endMs:(index+1)*1000,full:{chroma:Array(12).fill(.01),scored},first:{chroma:Array(12).fill(.01),scored},second:{chroma:Array(12).fill(.01),scored}};}
+        const bars=[bar(c,0),bar(c,1),bar(weakConflict,2),bar(c,3),bar(c,4)];
+        const decoded=a.decodeRegion(bars,{key:'C',keyMode:'major',root:0},[0,1000,2000],3000);
+        const middle=decoded.chords.find(chord=>chord.bar===3);
+        console.log(JSON.stringify({symbol:middle.symbol,raw:middle.rawCandidate,rootAdjusted:middle.rootAdjusted,confidence:middle.confidence,reviewed:middle.reviewed,needsAttention:middle.needsAttention,publicationSymbol:middle.publicationSymbol,reason:middle.reviewReasons[0]}));
+        """
+    )
+    assert payload["symbol"] == "C"
+    assert payload["raw"] == "B7"
+    assert payload["rootAdjusted"] is True
+    assert payload["confidence"] <= 0.64
+    assert payload["reviewed"] is False
+    assert payload["needsAttention"] is True
+    assert payload["publicationSymbol"] is None
+    assert "different root" in payload["reason"]
+
+
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is required to decode the licensed MP3 fixture")
 def test_licensed_amazing_grace_fixture_detects_reviewed_key_and_meter() -> None:
     source = REPO_ROOT / "ui/assets/song-practice/amazing-grace-2011-guide.mp3"

@@ -683,6 +683,10 @@
         const evidence = split ? [bar.first.scored, bar.second.scored][chordIndex] : bar.full.scored;
         const rawCandidate = evidence.top.symbol;
         const contextualAdjusted = rawCandidate !== symbol;
+        const rawParsed = parseSymbol(rawCandidate);
+        const selectedParsed = parseSymbol(symbol);
+        const rootAdjusted = contextualAdjusted && rawParsed.root !== selectedParsed.root;
+        const qualityAdjusted = contextualAdjusted && !rootAdjusted && rawParsed.quality !== selectedParsed.quality;
         const selectedCandidate = evidence.candidates.find((candidate) => candidate.symbol === symbol);
         let confidence = confidenceFor(evidence, symbol, contextualAdjusted);
         const contextConfidence = split ? halfSequenceConfidence[barIndex * 2 + chordIndex] : fullSequenceConfidence[barIndex];
@@ -694,24 +698,47 @@
         const stableInKey = firstSymbol === secondSymbol && inKey;
         if (!contextualAdjusted && stableInKey) confidence = Math.max(confidence, 0.8);
         if (contextualAdjusted && stableInKey) confidence = Math.max(confidence, repeatGroups[barIndex] ? 0.78 : 0.72);
+        // Song context is useful for choosing between close candidates, but it
+        // is not independent evidence for a different chord root.  Older
+        // analysis could turn a weak, key-friendly substitution into a
+        // high-confidence learner-facing chord.  Preserve that hypothesis for
+        // review while making the publishability of the claim explicit.
+        if (rootAdjusted) confidence = Math.min(confidence, 0.64);
+        if (qualityAdjusted) confidence = Math.min(confidence, 0.74);
         confidence = round(clamp(confidence, 0.05, 0.98));
         const reasons = [];
-        if (contextualAdjusted) reasons.push(repeatGroups[barIndex] ? "Adjusted using the key and repeated section." : "Adjusted using the key and surrounding chords.");
+        if (rootAdjusted) reasons.push("The song context prefers a different root than the strongest audio candidate; leave this chord unresolved until another source agrees.");
+        else if (qualityAdjusted) reasons.push("The root is supported, but the chord quality was changed by song context and still needs confirmation.");
+        else if (contextualAdjusted) reasons.push(repeatGroups[barIndex] ? "Adjusted using the key and repeated section." : "Adjusted using the key and surrounding chords.");
         if (split) reasons.push("A supported chord change was found at the half-bar.");
         if (confidence < 0.68) reasons.push("Audio evidence is close between multiple chords.");
         if (!reasons.length) reasons.push("Strong audio and song-context agreement.");
         const startMs = Math.round(bar.startMs + (bar.endMs - bar.startMs) * startFraction);
         const endMs = Math.round(bar.startMs + (bar.endMs - bar.startMs) * endFraction);
-        const reviewed = symbol === "N.C."
+        const reviewedByEvidence = symbol === "N.C."
           ? confidence >= 0.82 && !contextualAdjusted
           : inKey
             ? confidence >= 0.78 || (stableInKey && confidence >= 0.72)
             : (!contextualAdjusted && confidence >= 0.84) || (contextConfidence >= 0.88 && confidence >= 0.82);
+        const reviewed = reviewedByEvidence && !rootAdjusted && !qualityAdjusted;
+        const publicationSymbol = reviewed
+          ? symbol
+          : !rootAdjusted && selectedParsed.root != null && confidence >= 0.7
+            ? symbolFor(selectedParsed.root, selectedParsed.quality === "minor" || selectedParsed.quality === "m7" ? "minor" : "major")
+            : symbol === "N.C." && confidence >= 0.82 && !contextualAdjusted
+              ? "N.C."
+              : null;
         chords.push({
           id: `detected-chord-${bar.bar}-${chordIndex + 1}`, bar: bar.bar, startFraction, startMs, endMs,
           symbol, rawCandidate, finalSymbol: symbol,
           alternatives: evidence.candidates.filter((candidate) => candidate.symbol !== symbol).slice(0, 3).map((candidate) => ({ symbol: candidate.symbol, score: candidate.score })),
-          confidence, contextualAdjusted, sequenceConfidence: contextConfidence, reviewReasons: reasons, repeatedSectionGroup: repeatGroups[barIndex] || null,
+          confidence, contextualAdjusted, rootAdjusted, qualityAdjusted,
+          rootStatus: rootAdjusted ? "context_only" : selectedParsed.root == null ? "no_chord" : "audio_supported",
+          qualityStatus: qualityAdjusted ? "context_only" : selectedParsed.quality === "7" || selectedParsed.quality === "m7"
+            ? selectedCandidate?.extensionSupported ? "audio_supported" : "unresolved"
+            : "audio_supported",
+          publicationSymbol,
+          sequenceConfidence: contextConfidence, reviewReasons: reasons, repeatedSectionGroup: repeatGroups[barIndex] || null,
           extensionSupported: selectedCandidate?.extensionSupported,
           extensionGain: selectedCandidate?.extensionGain,
           seventhCoreRatio: selectedCandidate?.seventhCoreRatio,

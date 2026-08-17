@@ -7,6 +7,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const analyzer = require(path.resolve(__dirname, "../ui/practice-analysis-worker.js"));
+const songAuthoring = require(path.resolve(__dirname, "lib/song_chart_authoring.js"));
 const NOTE_VALUES = { C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11 };
 const MAJOR_DEGREES = ["I", "bII", "II", "bIII", "III", "IV", "#IV", "V", "bVI", "VI", "bVII", "VII"];
 
@@ -33,7 +34,7 @@ function lowerRoman(value) {
 }
 
 function nnsForSymbol(symbol, key) {
-  if (symbol === "N.C.") return "N.C.";
+  if (symbol === "N.C." || symbol === "—") return symbol;
   const match = String(symbol).match(/^([A-G](?:#|b)?)(.*)$/);
   if (!match || NOTE_VALUES[match[1]] === undefined || NOTE_VALUES[key] === undefined) {
     throw new Error(`Cannot derive NNS for ${symbol} in ${key}.`);
@@ -56,38 +57,56 @@ function barAt(barStartsMs, timeMs) {
   return bar;
 }
 
-function detectedSegments(analysis, companion) {
-  const durationMs = Number(companion.media.scopes.fullSong.durationMs);
-  const key = companion.display.key;
-  return analysis.chords.map((chord, index, chords) => ({
-    id: `detected-${chord.id}`,
-    analysisEventId: chord.id,
-    startMs: index === 0 ? 0 : Number(chord.startMs),
-    endMs: index + 1 < chords.length ? Number(chords[index + 1].startMs) : durationMs,
-    barStart: Number(chord.bar),
-    barEnd: Number(chord.bar),
-    sectionLabel: `Bar ${chord.bar} · audio-detected`,
-    symbol: chord.symbol,
-    nns: nnsForSymbol(chord.symbol, key),
-    verified: false,
-    needsAttention: Boolean(chord.needsAttention),
-    confidence: Number(chord.confidence),
-    rawCandidate: chord.rawCandidate,
-    alternatives: chord.alternatives || [],
-    reviewReasons: chord.reviewReasons || [],
-    sourceKind: "local_play_along_audio_reader",
-    analysisVersion: Number(analysis.analysisVersion),
-    status: "deterministic_backing_audio_analysis_travis_review_required",
-  }));
+function sectionForTime(sections, timeMs) {
+  return sections.find((section) => timeMs >= Number(section.startMs) && timeMs < Number(section.endMs))
+    || sections.at(-1)
+    || null;
 }
 
-function taughtSoloSegments(companion, analysis) {
+function detectedSegments(analysis, companion, sections = []) {
+  const durationMs = Number(companion.media.scopes.fullSong.durationMs);
+  const key = companion.display.key;
+  return analysis.chords.map((chord, index, chords) => {
+    const startMs = index === 0 ? 0 : Number(chord.startMs);
+    const section = sectionForTime(sections, startMs);
+    const claim = songAuthoring.learnerClaimForAnalysisChord(chord);
+    const symbol = claim.symbol || "—";
+    return {
+      id: `detected-${chord.id}`,
+      analysisEventId: chord.id,
+      startMs,
+      endMs: index + 1 < chords.length ? Number(chords[index + 1].startMs) : durationMs,
+      barStart: Number(chord.bar),
+      barEnd: Number(chord.bar),
+      sectionId: section?.id || null,
+      sectionLabel: section?.label || `Measure group ${Math.ceil(Number(chord.bar) / 8)}`,
+      symbol,
+      nns: nnsForSymbol(symbol, key),
+      verified: false,
+      needsAttention: claim.needsAttention,
+      confidence: Number(claim.confidence),
+      rawCandidate: chord.rawCandidate,
+      alternatives: chord.alternatives || [],
+      rootStatus: claim.rootStatus,
+      qualityStatus: claim.qualityStatus,
+      reviewReasons: claim.reviewReasons,
+      sourceKind: "local_play_along_audio_reader",
+      analysisVersion: Number(analysis.analysisVersion),
+      status: claim.symbol
+        ? "deterministic_audio_claim_review_required"
+        : "deterministic_audio_claim_withheld_pending_review",
+    };
+  });
+}
+
+function taughtSoloSegments(companion, analysis, sections = []) {
   const soloScope = companion.media.scopes.taughtSolo;
   const key = companion.display.key;
   return companion.chordTimeline.map((chord) => {
     const startMs = Number(soloScope.startMs) + Number(chord.startMs);
     const endMs = Number(soloScope.startMs) + Number(chord.endMs);
     const songBar = barAt(analysis.barStartsMs, startMs);
+    const section = sectionForTime(sections, startMs);
     return {
       id: `solo-${chord.id}`,
       analysisEventId: null,
@@ -97,7 +116,8 @@ function taughtSoloSegments(companion, analysis) {
       barEnd: barAt(analysis.barStartsMs, Math.max(startMs, endMs - 1)),
       soloBarStart: Number(chord.barStart),
       soloBarEnd: Number(chord.barEnd),
-      sectionLabel: `Bar ${songBar} · taught solo bar ${chord.barStart}`,
+      sectionId: section?.id || null,
+      sectionLabel: section?.label || "Taught solo",
       symbol: chord.symbol,
       nns: chord.nns || nnsForSymbol(chord.symbol, key),
       verified: false,
@@ -113,17 +133,17 @@ function taughtSoloSegments(companion, analysis) {
   });
 }
 
-function buildSongChordTimeline(analysis, companion) {
+function buildSongChordTimeline(analysis, companion, authoredSegments = null, sections = []) {
   const durationMs = Number(companion.media.scopes.fullSong.durationMs);
   const solo = companion.media.scopes.taughtSolo;
-  const detected = detectedSegments(analysis, companion).flatMap((segment) => {
+  const detected = (authoredSegments || detectedSegments(analysis, companion, sections)).flatMap((segment) => {
     if (segment.endMs <= solo.startMs || segment.startMs >= solo.endMs) return [segment];
     const pieces = [];
     if (segment.startMs < solo.startMs) pieces.push({ ...segment, endMs: Number(solo.startMs) });
     if (segment.endMs > solo.endMs) pieces.push({ ...segment, startMs: Number(solo.endMs) });
     return pieces;
   });
-  const timeline = detected.concat(taughtSoloSegments(companion, analysis))
+  const timeline = detected.concat(taughtSoloSegments(companion, analysis, sections))
     .sort((left, right) => left.startMs - right.startMs || left.endMs - right.endMs);
   timeline.forEach((segment, index) => {
     segment.id = `song-chord-${String(index + 1).padStart(3, "0")}`;
@@ -148,15 +168,15 @@ function decodeAudio(audioPath, expectedDurationMs) {
   return { samples, durationMs };
 }
 
-function analyzeSong(audioPath, companion) {
+function analyzeSong(audioPath, companion, reference = null) {
   const expectedDurationMs = Number(companion.media.scopes.fullSong.durationMs);
   const decoded = decodeAudio(audioPath, expectedDurationMs);
-  const tempo = Number(companion.display.tempoBpm);
-  const meter = companion.display.meter;
+  const teachingTempo = Number(companion.display.tempoBpm);
+  const tempoHint = Number(reference?.tempoBpm || companion.songAnalysis?.tempoHintBpm || teachingTempo);
+  const meter = reference?.meter || companion.songAnalysis?.meterHint || companion.display.meter;
   const key = companion.display.key;
   const initial = analyzer.analyzePcm(decoded.samples, 11025, decoded.durationMs, {
-    tempo,
-    tempoHint: tempo,
+    tempoHint,
     meter,
     key,
     keyMode: "major",
@@ -170,26 +190,46 @@ function analyzeSong(audioPath, companion) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const companion = JSON.parse(fs.readFileSync(args.companion, "utf8"));
+  const reference = args.reference ? JSON.parse(fs.readFileSync(args.reference, "utf8")) : null;
   const actualAudioHash = sha256(args.audio);
   if (actualAudioHash !== companion.media.audioSha256) throw new Error("Backing-track hash does not match the companion artifact.");
   if (!companion.media?.scopes?.fullSong || !companion.media?.scopes?.taughtSolo) throw new Error("The companion must define fullSong and taughtSolo media scopes.");
-  const analysis = analyzeSong(args.audio, companion);
-  const timeline = buildSongChordTimeline(analysis, companion);
+  if (reference) {
+    songAuthoring.validateReference(reference);
+    songAuthoring.applyScopeChordCorrections(companion, reference, nnsForSymbol);
+  }
+  const analysis = analyzeSong(args.audio, companion, reference);
+  const authored = reference
+    ? songAuthoring.alignReferenceChart(reference, companion, nnsForSymbol)
+    : { timeline: null, sections: songAuthoring.inferRepeatedSections(analysis), alignment: null };
+  const timeline = buildSongChordTimeline(analysis, companion, authored.timeline, authored.sections);
   companion.songChordTimeline = timeline;
+  companion.songForm = authored.sections;
+  companion.display.fullSongTempoBpm = Number(reference?.tempoBpm || analysis.tempo);
   companion.revision = args.revision;
   companion.contentStatus = "draft_review_required";
   companion.approvals.musical = false;
   companion.approvals.chords = false;
   companion.sourceEvidence.fullSongChordChart = {
-    sourceKind: "local_play_along_audio_reader",
+    sourceKind: reference ? "aligned_multi_source_chart_reference" : "local_play_along_audio_reader",
     analysisVersion: Number(analysis.analysisVersion),
     keyConstraint: `${companion.display.key} major`,
-    meterConstraint: companion.display.meter,
-    tempoConstraintBpm: Number(companion.display.tempoBpm),
+    meterHint: companion.display.meter,
+    teachingTempoBpm: Number(companion.display.tempoBpm),
+    referenceTempoBpm: reference ? Number(reference.tempoBpm) : null,
     detectedTempoBpm: Number(analysis.tempo),
-    detectedBars: analysis.barStartsMs.length,
+    rhythmAlternatives: analysis.analysisState?.rhythmAlternatives || [],
+    detectedMeasureGrid: analysis.barStartsMs.length,
+    learnerSectionCount: authored.sections.length,
     eventCount: timeline.length,
     attentionCount: timeline.filter((event) => event.needsAttention).length,
+    contextRootConflictCount: analysis.chords.filter((event) => event.rootAdjusted).length,
+    withheldAudioClaimCount: analysis.chords.filter((event) => !event.publicationSymbol).length,
+    publicationMethod: reference
+      ? "reviewed_reference_roots_aligned_to_recording_and_exact_lesson_scope"
+      : "learner_safe_audio_claims_grouped_into_repeated_forms",
+    alignment: authored.alignment,
+    sources: reference?.sources || [],
     taughtSoloOverrideStartMs: Number(companion.media.scopes.taughtSolo.startMs),
     taughtSoloOverrideEndMs: Number(companion.media.scopes.taughtSolo.endMs),
     approvalState: "travis_review_required",
@@ -205,8 +245,10 @@ function main() {
     events: timeline.length,
     attention: timeline.filter((event) => event.needsAttention).length,
     tempo: analysis.tempo,
+    referenceTempo: reference?.tempoBpm || null,
     meter: analysis.meter,
     key: analysis.key,
+    sections: authored.sections.length,
   }, null, 2)}\n`);
 }
 
@@ -219,4 +261,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { buildSongChordTimeline, nnsForSymbol };
+module.exports = { analyzeSong, buildSongChordTimeline, detectedSegments, nnsForSymbol };

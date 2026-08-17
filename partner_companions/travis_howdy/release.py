@@ -338,6 +338,28 @@ def validate_companion(data: Mapping[str, Any], *, release: bool) -> None:
             previous_song_chord_end = end
         if song_chords and previous_song_chord_end != duration:
             raise CompanionReleaseError("The full-song chord timeline must cover the complete song scope.")
+    song_form = data.get("songForm")
+    if song_form is not None:
+        if not isinstance(song_form, list) or not song_form:
+            raise CompanionReleaseError("The full-song section map must be a non-empty list when present.")
+        previous_section_end = 0
+        section_ids: set[str] = set()
+        for section in song_form:
+            section_id = str(section.get("id") or "").strip()
+            start = int(section.get("startMs", -1))
+            end = int(section.get("endMs", -1))
+            if (
+                not section_id
+                or section_id in section_ids
+                or not str(section.get("label") or "").strip()
+                or start != previous_section_end
+                or end <= start
+            ):
+                raise CompanionReleaseError("The full-song section map must be contiguous and uniquely labeled.")
+            section_ids.add(section_id)
+            previous_section_end = end
+        if previous_section_end != duration:
+            raise CompanionReleaseError("The full-song section map must cover the complete song scope.")
     if previous_end != authored_duration:
         message = (
             "The final event must end at the taught-solo authored duration."
