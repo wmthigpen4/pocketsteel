@@ -723,6 +723,10 @@ def test_compact_embed_has_one_focused_workspace_per_layer() -> None:
     assert '.related-scroll-controls' in styles
     assert '.tab-system + .tab-system' in styles
     assert markup.index('class="visual-card tab-card"') < markup.index('class="move-card"')
+    assert markup.index('data-phrase-title') < markup.index('data-tab tabindex')
+    assert "Selected phrase" not in markup
+    assert 'class="phrase-notes-card"' not in markup
+    assert '.practice-grid { grid-template-columns: minmax(0, 1fr); margin-top: 14px; }' in styles
     assert ".tab-table td:hover, .tab-table td:focus-visible" in styles
     assert 'if (positionDetails && presentation === "full") positionDetails.open = true;' in (
         SITE / "companion.js"
