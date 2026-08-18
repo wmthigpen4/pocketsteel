@@ -563,6 +563,7 @@ def test_d_major_across_fretboard_position_prompts_are_supported() -> None:
 def test_smoke_ready_chord_position_prompt_variants_are_supported() -> None:
     cases = [
         ("How do I play a G chord on the E9?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
+        ("Where can I play a G major chord on standard E9?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
         ("Where do I play a G chord on the E9?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
         ("Where the the G chords?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
         ("How do I play an E chord on the E9 neck?", "E", {"e-open-0", "e-af-3", "e-ab-7"}),
