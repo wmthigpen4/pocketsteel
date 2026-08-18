@@ -34,6 +34,23 @@ class EchoExpectedAnswerer:
         )
 
 
+class OverclaimingTeacherAnswerer(EchoExpectedAnswerer):
+    def answer(self, prompt: str, **kwargs: Any) -> SemanticAnswerResult:
+        result = super().answer(prompt, **kwargs)
+        if result.route != "semantic_teacher":
+            return result
+        return SemanticAnswerResult(
+            **{
+                **result.as_dict(),
+                "answer": (
+                    "Start at fret 3 on strings 3, 4, and 5, then resolve the melody there. "
+                    "Practice slowly and block every unused voice so the harmony remains clear."
+                ),
+                "missing_context": (),
+            }
+        )
+
+
 def test_semantic_authority_bank_has_balanced_routes_and_unique_ids() -> None:
     cases = load_cases(BANK)
     ids = [case["id"] for case in cases]
@@ -56,3 +73,13 @@ def test_semantic_authority_evaluator_scores_routes_and_tool_restatenents() -> N
     assert report["case_count"] == len(cases)
     assert report["failed"] == 0
     assert report["pass_rate"] == 1.0
+    assert report["route_summary"]["semantic_teacher"] == {"passed": 8, "total": 8}
+
+
+def test_semantic_authority_evaluator_fails_teacher_overreach() -> None:
+    cases = load_cases(BANK)
+    report = evaluate_cases(OverclaimingTeacherAnswerer(cases), cases)
+    teacher_rows = [row for row in report["rows"] if row["expected_route"] == "semantic_teacher"]
+    assert teacher_rows
+    assert all(not row["passed"] for row in teacher_rows)
+    assert all("exact fret coordinate" in row["authority_violations"] for row in teacher_rows)

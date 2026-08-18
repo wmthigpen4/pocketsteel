@@ -98,6 +98,7 @@ from steel_guitar_rag.semantic_answer_orchestrator import (
     SemanticAnswerResult,
     SemanticAnswerUnavailable,
     configured_semantic_answer_enabled,
+    validate_semantic_answer_result,
 )
 from steel_guitar_rag.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
@@ -1885,28 +1886,26 @@ class RetrievalApi:
                     route_trace.classification = "contextual_steel_followup:source_backed"
 
             semantic_answer_result: SemanticAnswerResult | None = None
-            deterministic_authority_already_known = bool(
-                not answer_request.conversation_context
-                and answer_intent_decision.get("domain") == "steel_guitar"
-                and answer_intent_decision.get("needs_fretboard")
-                and not answer_intent_decision.get("needs_sources")
-            )
             if (
                 self.semantic_answer_enabled
                 and answer_intent_decision.get("domain") != "unsafe_or_impossible"
-                and not deterministic_authority_already_known
             ):
                 try:
                     semantic_answerer = self.semantic_answerer
                     if semantic_answerer is None:
                         raise SemanticAnswerUnavailable("semantic answerer is not configured")
-                    semantic_answer_result = self._answer_dependencies.run(
+                    semantic_answer_candidate = self._answer_dependencies.run(
                         lambda: semantic_answerer.answer(
                             answer_request.question,
                             mode=answer_request.mode,
                             conversation_context=list(answer_request.conversation_context),
                         ),
                         timeout_seconds=self._answer_wall_timeout,
+                    )
+                    semantic_answer_result = validate_semantic_answer_result(
+                        semantic_answer_candidate.as_dict()
+                        if isinstance(semantic_answer_candidate, SemanticAnswerResult)
+                        else semantic_answer_candidate
                     )
                 except (SemanticAnswerUnavailable, RuntimeError) as exc:
                     LOGGER.warning(
@@ -1935,18 +1934,16 @@ class RetrievalApi:
 
             corpus_probe_response: SearchResponse | None = None
             corpus_promoted = False
-            contextual_probe_question = contextual_entity_probe_question(
-                answer_request.question,
-                answer_request.conversation_context,
-            )
-            entity_probe_question = (
-                contextual_probe_question
-                or (
+            entity_probe_question = None
+            if semantic_answer_result is None:
+                entity_probe_question = (
                     answer_request.question
                     if is_corpus_entity_candidate(answer_request.question, answer_intent_decision)
-                    else None
+                    else contextual_entity_probe_question(
+                        answer_request.question,
+                        answer_request.conversation_context,
+                    )
                 )
-            )
             if entity_probe_question is not None:
                 route_trace.corpus_probe = "checking_public_sgf"
                 try:
@@ -1981,20 +1978,23 @@ class RetrievalApi:
                 route_trace.classification = (
                     f"hybrid_requested:{answer_intent_decision.get('intent', 'unknown')}"
                 )
-            deterministic_resolution_allowed = (
-                semantic_answer_result is not None
-                and semantic_answer_result.route in {"deterministic", "hybrid"}
-            ) or (
-                deterministic_question != answer_request.question
-                or (
-                    not corpus_promoted
-                    and not (
-                        self.canonical_frontier_enabled
-                        and answer_intent_decision.get("needs_sources")
-                        and answer_intent_decision.get("retrieval_allowed")
+            if semantic_answer_result is not None:
+                deterministic_resolution_allowed = semantic_answer_result.route in {
+                    "deterministic",
+                    "hybrid",
+                }
+            else:
+                deterministic_resolution_allowed = (
+                    deterministic_question != answer_request.question
+                    or (
+                        not corpus_promoted
+                        and not (
+                            self.canonical_frontier_enabled
+                            and answer_intent_decision.get("needs_sources")
+                            and answer_intent_decision.get("retrieval_allowed")
+                        )
                     )
                 )
-            )
             if deterministic_resolution_allowed:
                 deterministic_chord_answer = visual_fretboard_curated_answer(
                     deterministic_question
@@ -2047,7 +2047,11 @@ class RetrievalApi:
                         melody_request["targetCopedent"] = snapshot
                 if not melody_request.get("targetCopedentId") and not melody_request.get("target_copedent_id"):
                     melody_request["targetCopedentId"] = target_profile.id
-            if self.melody_exercise_enabled:
+            semantic_allows_standalone_deterministic = bool(
+                semantic_answer_result is None
+                or semantic_answer_result.route == "deterministic"
+            )
+            if self.melody_exercise_enabled and semantic_allows_standalone_deterministic:
                 try:
                     melody_result = melody_exercise_response(
                         answer_request.question,
@@ -2122,7 +2126,11 @@ class RetrievalApi:
                     start_response, payload, access, request_payload=request_payload
                 )
 
-            progression_guide_answer = progression_guide_for_question(answer_request.question)
+            progression_guide_answer = (
+                progression_guide_for_question(answer_request.question)
+                if semantic_allows_standalone_deterministic
+                else None
+            )
             if (
                 progression_guide_answer is not None
                 and answer_intent_decision.get("domain") != "unsafe_or_impossible"
@@ -2400,13 +2408,23 @@ class RetrievalApi:
                 route_trace.route = answer_route
                 route_trace.fallback = "deterministic_miss_to_source_backed"
 
-            if self.canonical_frontier_enabled and answer_route in {
+            semantic_requires_verified_frontier = bool(
+                semantic_answer_result is not None
+                and semantic_answer_result.route in {"source_backed_rag", "hybrid"}
+            )
+            if (
+                self.canonical_frontier_enabled or semantic_requires_verified_frontier
+            ) and answer_route in {
                 "source_backed_rag",
                 "hybrid",
             }:
                 frontier_error: Exception | None = None
                 try:
-                    frontier_client = self.canonical_frontier_client
+                    frontier_client = (
+                        self.canonical_frontier_client
+                        if self.canonical_frontier_enabled
+                        else None
+                    )
                     if frontier_client is None:
                         raise CanonicalFrontierUnavailable(
                             "canonical frontier client is not configured"
