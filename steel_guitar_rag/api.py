@@ -92,6 +92,12 @@ from steel_guitar_rag.canonical_frontier_client import (
     CanonicalFrontierUnavailable,
     configured_canonical_frontier_enabled,
 )
+from steel_guitar_rag.semantic_answer_orchestrator import (
+    OpenAIResponsesSemanticAnswerer,
+    SemanticAnswerResult,
+    SemanticAnswerUnavailable,
+    configured_semantic_answer_enabled,
+)
 from steel_guitar_rag.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
@@ -398,6 +404,8 @@ class RetrievalApi:
         amazing_tablature_policy: RuntimeRankerPolicy | None = None,
         canonical_frontier_enabled: bool | None = None,
         canonical_frontier_client: Any | None = None,
+        semantic_answer_enabled: bool | None = None,
+        semantic_answerer: Any | None = None,
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
@@ -413,6 +421,18 @@ class RetrievalApi:
             if canonical_frontier_client is not None
             else CanonicalFrontierClient.from_env()
             if self.canonical_frontier_enabled
+            else None
+        )
+        self.semantic_answer_enabled = (
+            configured_semantic_answer_enabled()
+            if semantic_answer_enabled is None
+            else bool(semantic_answer_enabled)
+        )
+        self.semantic_answerer = (
+            semantic_answerer
+            if semantic_answerer is not None
+            else OpenAIResponsesSemanticAnswerer.from_env()
+            if self.semantic_answer_enabled
             else None
         )
         self.answer_auth_mode = normalize_answer_auth_mode(answer_auth_mode or configured_answer_auth_mode())
@@ -1431,6 +1451,54 @@ class RetrievalApi:
                     f"{answer_intent_decision.get('intent', 'unknown')}"
                 )
             )
+            semantic_answer_result: SemanticAnswerResult | None = None
+            deterministic_authority_already_known = bool(
+                not answer_request.conversation_context
+                and answer_intent_decision.get("domain") == "steel_guitar"
+                and answer_intent_decision.get("needs_fretboard")
+                and not answer_intent_decision.get("needs_sources")
+            )
+            if (
+                self.semantic_answer_enabled
+                and answer_intent_decision.get("domain") != "unsafe_or_impossible"
+                and not deterministic_authority_already_known
+            ):
+                try:
+                    semantic_answerer = self.semantic_answerer
+                    if semantic_answerer is None:
+                        raise SemanticAnswerUnavailable("semantic answerer is not configured")
+                    semantic_answer_result = self._answer_dependencies.run(
+                        lambda: semantic_answerer.answer(
+                            answer_request.question,
+                            mode=answer_request.mode,
+                            conversation_context=list(answer_request.conversation_context),
+                        ),
+                        timeout_seconds=self._answer_wall_timeout,
+                    )
+                except (SemanticAnswerUnavailable, RuntimeError) as exc:
+                    LOGGER.warning(
+                        "semantic_answer_unavailable legacy_fallback=true error_type=%s trace_id=%s",
+                        type(exc).__name__,
+                        route_trace.trace_id,
+                    )
+                    route_trace.fallback = "semantic_planner_to_legacy"
+                    if answer_intent_decision.get("domain") == "off_domain":
+                        answer_intent_decision = {
+                            "domain": "off_domain",
+                            "intent": "small_talk",
+                            "needs_sources": False,
+                            "needs_fretboard": False,
+                            "needs_copedent": False,
+                            "retrieval_allowed": False,
+                            "allowed_answer_shape": "guardrail_refusal",
+                        }
+                        route_trace.classification = "semantic_unavailable:off_domain_fail_closed"
+                else:
+                    answer_intent_decision = semantic_answer_result.as_intent_decision()
+                    route_trace.classification = (
+                        f"semantic:{semantic_answer_result.route}:"
+                        f"{semantic_answer_result.intent}"
+                    )
             corpus_probe_response: SearchResponse | None = None
             corpus_promoted = False
             entity_probe_question = (
@@ -1464,15 +1532,21 @@ class RetrievalApi:
                         )
 
             deterministic_question = (
-                deterministic_subquestion_for_hybrid(answer_request.question)
+                semantic_answer_result.tool_query
+                if semantic_answer_result is not None
+                and semantic_answer_result.route in {"deterministic", "hybrid"}
+                else deterministic_subquestion_for_hybrid(answer_request.question)
                 or answer_request.question
             )
-            if deterministic_question != answer_request.question:
+            if deterministic_question != answer_request.question and semantic_answer_result is None:
                 answer_intent_decision = hybrid_promoted_decision(answer_intent_decision)
                 route_trace.classification = (
                     f"hybrid_requested:{answer_intent_decision.get('intent', 'unknown')}"
                 )
             deterministic_resolution_allowed = (
+                semantic_answer_result is not None
+                and semantic_answer_result.route in {"deterministic", "hybrid"}
+            ) or (
                 deterministic_question != answer_request.question
                 or (
                     not corpus_promoted
@@ -1497,13 +1571,23 @@ class RetrievalApi:
             else:
                 deterministic_chord_answer = None
                 deterministic_fretboard_payload = None
-            answer_route = select_answer_route(
-                answer_intent_decision,
-                deterministic_available=(
-                    deterministic_chord_answer is not None
-                    and deterministic_fretboard_payload is not None
-                ),
-            )
+            if semantic_answer_result is not None:
+                if semantic_answer_result.route in {"deterministic", "semantic_teacher"}:
+                    answer_route = "deterministic"
+                elif semantic_answer_result.route == "source_backed_rag":
+                    answer_route = "source_backed_rag"
+                elif semantic_answer_result.route == "hybrid":
+                    answer_route = "hybrid"
+                else:
+                    answer_route = "guardrail"
+            else:
+                answer_route = select_answer_route(
+                    answer_intent_decision,
+                    deterministic_available=(
+                        deterministic_chord_answer is not None
+                        and deterministic_fretboard_payload is not None
+                    ),
+                )
             route_trace.route = answer_route
             vtt_guidance_status: str | None = None
             vtt_guidance_count: int | None = None
@@ -1690,9 +1774,91 @@ class RetrievalApi:
                     start_response, payload, access, request_payload=request_payload
                 )
 
+            if semantic_answer_result is not None and semantic_answer_result.route in {
+                "semantic_teacher",
+                "clarify",
+            }:
+                final_answer = final_answer_quality_gate(
+                    semantic_answer_result.answer,
+                    answer_request.question,
+                )
+                contract_intent = (
+                    "missing_context_clarifier"
+                    if semantic_answer_result.route == "clarify"
+                    else "general_forum_wisdom"
+                )
+                contract_validation = enforce_answer_contract(final_answer, contract_intent)
+                final_answer = normalize_answer_list_markers(contract_validation.answer)
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                }
+                if profile_personalization_requested:
+                    _personalize_answer_payload(payload, target_profile, target_revision)
+                route_trace.route = "guardrail" if semantic_answer_result.route == "clarify" else "deterministic"
+                route_trace.retrieval = "not_needed"
+                route_trace.evidence = "semantic_source_free_authority"
+                route_trace.synthesis = semantic_answer_result.route
+                route_trace.verification = "structured_plan_and_answer_contract"
+                route_trace.displayed_answer = semantic_answer_result.route
+                self._log_route_trace(route_trace)
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._answer_success_response(
+                    start_response,
+                    payload,
+                    access,
+                    request_payload=request_payload,
+                    ai_assisted=True,
+                )
+
+            if (
+                semantic_answer_result is not None
+                and semantic_answer_result.route == "deterministic"
+                and deterministic_chord_answer is None
+            ):
+                final_answer = (
+                    "I recognized this as an exact fretboard or copedent question, so I won’t "
+                    "substitute forum text for a calculation. Which tuning or copedent, key or "
+                    "chord, and string or change should I map?"
+                )
+                payload = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                }
+                if profile_personalization_requested:
+                    _personalize_answer_payload(payload, target_profile, target_revision)
+                route_trace.route = "guardrail"
+                route_trace.retrieval = "not_allowed"
+                route_trace.evidence = "deterministic_tool_miss"
+                route_trace.synthesis = "missing_context_clarifier"
+                route_trace.verification = "no_retrieval_on_exact_tool_miss"
+                route_trace.displayed_answer = "clarify"
+                self._log_route_trace(route_trace)
+                return self._answer_success_response(
+                    start_response, payload, access, request_payload=request_payload
+                )
+
             if (
                 _should_gate_answer_intent(answer_intent_decision)
-                and not answer_request.conversation_context
+                and (
+                    answer_intent_decision.get("domain") == "unsafe_or_impossible"
+                    or semantic_answer_result is not None
+                    or not answer_request.conversation_context
+                )
             ):
                 final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
                 final_answer = normalize_answer_list_markers(final_answer)
@@ -2613,6 +2779,8 @@ def create_app(
     amazing_tablature_policy: RuntimeRankerPolicy | None = None,
     canonical_frontier_enabled: bool | None = None,
     canonical_frontier_client: Any | None = None,
+    semantic_answer_enabled: bool | None = None,
+    semantic_answerer: Any | None = None,
 ) -> RetrievalApi:
     retrieval_config = retrieval_config or configured_retrieval_mode_config()
     private_requested = retrieval_config.requested_mode in {
@@ -2645,6 +2813,8 @@ def create_app(
         amazing_tablature_policy=amazing_tablature_policy,
         canonical_frontier_enabled=canonical_frontier_enabled,
         canonical_frontier_client=canonical_frontier_client,
+        semantic_answer_enabled=semantic_answer_enabled,
+        semantic_answerer=semantic_answerer,
     )
 
 
