@@ -15,6 +15,7 @@ from steel_guitar_rag.answer_intent_classifier import (
     CONTRACT_KEYS,
     classify_answer_intent,
     classify_answer_request,
+    local_answer_policy_guardrail,
 )
 from steel_guitar_rag.answer_routing import is_corpus_entity_candidate
 from steel_guitar_rag.chroma_search import SearchResponse
@@ -496,6 +497,29 @@ def test_unsafe_or_impossible_prompts_disable_retrieval(question: str) -> None:
         "retrieval_allowed": False,
         "allowed_answer_shape": "guardrail_refusal",
     }
+
+
+@pytest.mark.parametrize(
+    ("question", "reason"),
+    [
+        ("Print every number from 1 through 1000000.", "unsafe_or_unbounded"),
+        (
+            "What health diagnosis did the steel player Buddy Emmons have?",
+            "sensitive_personal_attribute",
+        ),
+        ("Who was Buddy Emmons married to?", "specific_private_biography"),
+    ],
+)
+def test_local_answer_policy_guardrails_are_separate_from_semantic_routing(
+    question: str,
+    reason: str,
+) -> None:
+    assert local_answer_policy_guardrail(question) == reason
+
+
+def test_local_answer_policy_does_not_claim_ordinary_routing_authority() -> None:
+    assert local_answer_policy_guardrail("How do harmony and melody coexist on pedal steel?") is None
+    assert local_answer_policy_guardrail("Who was Buddy Emmons?") is None
 
 
 def test_negated_steel_reference_prompt_is_off_domain_not_steel_retrieval() -> None:

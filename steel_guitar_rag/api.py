@@ -68,7 +68,10 @@ from steel_guitar_rag.answer_tab_examples import (
 )
 from steel_guitar_rag.api_contract import AnswerResponse
 from steel_guitar_rag.answer_contracts import enforce_answer_contract, infer_contract_intent
-from steel_guitar_rag.answer_intent_classifier import classify_answer_request
+from steel_guitar_rag.answer_intent_classifier import (
+    classify_answer_request,
+    local_answer_policy_guardrail,
+)
 from steel_guitar_rag.answer_routing import (
     AnswerRouteTrace,
     contextual_entity_probe_question,
@@ -1457,10 +1460,14 @@ class RetrievalApi:
                     f"{answer_intent_decision.get('intent', 'unknown')}"
                 )
             )
+            local_policy_guardrail = local_answer_policy_guardrail(answer_request.question)
+            if local_policy_guardrail is not None:
+                route_trace.classification = f"local_policy:{local_policy_guardrail}"
             semantic_answer_result: SemanticAnswerResult | None = None
             if (
                 self.semantic_answer_enabled
                 and answer_intent_decision.get("domain") != "unsafe_or_impossible"
+                and local_policy_guardrail is None
             ):
                 try:
                     semantic_answerer = self.semantic_answerer
@@ -1530,7 +1537,7 @@ class RetrievalApi:
             corpus_probe_response: SearchResponse | None = None
             corpus_promoted = False
             entity_probe_question = None
-            if semantic_answer_result is None:
+            if semantic_answer_result is None and local_policy_guardrail is None:
                 entity_probe_question = (
                     answer_request.question
                     if is_corpus_entity_candidate(answer_request.question, answer_intent_decision)
@@ -1894,14 +1901,30 @@ class RetrievalApi:
                 )
 
             if (
-                _should_gate_answer_intent(answer_intent_decision)
+                (
+                    local_policy_guardrail is not None
+                    or _should_gate_answer_intent(answer_intent_decision)
+                )
                 and (
                     answer_intent_decision.get("domain") == "unsafe_or_impossible"
+                    or local_policy_guardrail is not None
                     or semantic_answer_result is not None
                     or not answer_request.conversation_context
                 )
             ):
-                final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
+                local_policy_answer = (
+                    intent_mode_curated_answer(answer_request.question)
+                    if local_policy_guardrail in {
+                        "sensitive_personal_attribute",
+                        "specific_private_biography",
+                    }
+                    else None
+                )
+                final_answer = (
+                    local_policy_answer.answer
+                    if local_policy_answer is not None
+                    else _answer_intent_guardrail_answer(answer_intent_decision["domain"])
+                )
                 final_answer = normalize_answer_list_markers(final_answer)
                 payload: AnswerResponse = {
                     "answer": final_answer,
@@ -1915,7 +1938,11 @@ class RetrievalApi:
                 route_trace.route = "guardrail"
                 route_trace.retrieval = "not_allowed"
                 route_trace.evidence = "not_applicable"
-                route_trace.synthesis = "guardrail_copy"
+                route_trace.synthesis = (
+                    "local_policy_copy"
+                    if local_policy_answer is not None
+                    else "guardrail_copy"
+                )
                 route_trace.verification = "guardrail_contract"
                 route_trace.displayed_answer = "guardrail"
                 self._log_route_trace(route_trace)
