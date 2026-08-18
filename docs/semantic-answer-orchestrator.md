@@ -79,3 +79,15 @@ Promotion gates:
 4. Source-backed and hybrid prompts pass the canonical frontier citation and entailment gates.
 5. Latency, API cost, outage fallback, and conversation-follow-up behavior pass protected-preview evaluation.
 6. The flag is enabled only in protected preview first. Public activation remains a separate explicit deployment decision.
+
+After both flags are activated in a separately authorized protected release, run the eight-request acceptance matrix. The runner reads the Access JWT from an environment variable, refuses non-HTTPS origins except loopback HTTP, requires an exact request-count authorization, and stops before answer calls if `/api/session` does not prove both features active:
+
+```bash
+STEEL_RAG_PREVIEW_ACCESS_JWT=<protected-session-jwt> \
+  .venv/bin/python scripts/run_semantic_answer_preview_smoke.py \
+  --base-url https://app.steelguitarrag.com \
+  --authorize-answer-requests 8 \
+  --output output/semantic-answer-preview-smoke.json
+```
+
+The matrix covers deterministic, source-free teaching, source-backed, hybrid, clarification, and guardrail authorities plus contextual source and off-domain follow-ups. The output path is optional and should remain an uncommitted QA artifact.
