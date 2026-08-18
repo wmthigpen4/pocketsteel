@@ -2,14 +2,14 @@
 
 Audit date: 2026-08-18
 
-This audit measures the implementation against the requested end state rather than against the existence of commits. The requested search experience is **not yet complete** because live-model and protected enabled-path evidence is still missing.
+This audit measures the implementation against the requested end state rather than against the existence of commits. The live-model authority gate now passes. The requested search experience is **not yet complete** because the exact protected enabled-path release and smoke evidence are still missing.
 
 ## Requirement evidence
 
 | Requirement | Authoritative evidence | Status |
 | --- | --- | --- |
 | Semantic meaning owns enabled-path answer routing | `OpenAIResponsesSemanticAnswerer`, strict six-route schema, API-boundary revalidation, and semantic routing integration tests | Locally proven |
-| Source-free conceptual steel teaching is composed directly | Real Responses-adapter-to-`/api/answer` integration test proves one structured request, no retrieval, no sources, and no fretboard | Locally proven with simulated provider response; real-model quality pending |
+| Source-free conceptual steel teaching is composed directly | Real Responses-adapter-to-`/api/answer` integration test plus eight live held-out teaching cases | Proven locally and with the live model |
 | Exact strings/frets/notes/pedals/levers remain deterministic | Semantic exact plans must contain no answer and a bounded `tool_query`; deterministic and tool-miss tests prohibit forum fallback | Locally proven |
 | Retrieval occurs only when evidence is required | Valid semantic plans disable legacy corpus promotion/contextual probes; teaching, exact, clarify, guardrail, and policy tests assert zero search calls | Locally proven |
 | Sourced claims use only the verified canonical frontier | Source/hybrid plans cannot contain prose, cannot enter legacy synthesis, and fail honestly when the frontier is unavailable | Locally proven; protected integration pending |
@@ -17,8 +17,8 @@ This audit measures the implementation against the requested end state rather th
 | Local policy cannot be weakened by the model or conversation context | Unsafe/unbounded, sensitive-personal-attribute, and specific-private-biography checks run before semantic authority and before corpus probing; regressions assert zero model/search calls | Locally proven |
 | Existing `/api/answer` and frontend contract remain stable | No frontend files changed; full repository suite and WSGI response-shape tests pass | Locally proven |
 | Rollback remains available | Feature defaults off; planner outage falls back for valid in-domain requests and fails closed for legacy off-domain requests | Locally proven |
-| OpenAI calls are deliberate, bounded, and measurable | Server-only key, `store:false`, low reasoning, bounded context/output/timeout, structured schema, token/latency telemetry, full-bank metrics | Locally proven; real values pending |
-| All six authorities pass representative real-model evaluation | 32-case bank and resilient evaluator exist | **Missing: approved key-bearing run** |
+| OpenAI calls are deliberate, bounded, and measurable | Server-only key, `store:false`, low reasoning, bounded context/output/timeout, structured schema, token/latency telemetry, full-bank metrics | Proven; full rerun measured 29,145 tokens, 1.748-second median, and 7.799-second p95 wall latency |
+| All six authorities pass representative real-model evaluation | Full rerun passed 31/32 under one stale notation assertion; the correctly routed row passed after the evaluator assertion was corrected and rerun alone | **Passed: live evidence for all 32 cases** |
 | Enabled search behavior passes protected acceptance | Ten-case, exact-authorization, fail-before-answer smoke runner exists | **Missing: exact release, both flags active, authorized run** |
 | Public activation | Separate deployment decision by design | **Not authorized** |
 
@@ -30,17 +30,17 @@ Authenticated profile-control requests remain local deterministic operations and
 
 - Semantic authority bank: 32 held-out prompts across all six routes.
 - Protected acceptance bank: 10 requests across all six routes, contextual source/off-domain follow-ups, and two personal-policy boundaries.
-- Full repository regression after local-policy hardening: 1,785 passed in 87.41 seconds.
+- Authorized live model bank: passing evidence for all 32 held-out cases across all six authorities. The full rerun was 31/32 only because the evaluator demanded `A+F` while the source prompt used `A-plus-F`; the corrected row passed a one-case live rerun.
+- Full live rerun metrics: 29,145 tokens, 92.972 seconds total wall latency, 1.748-second median, and 7.799-second p95.
+- Full repository regression after contract hardening: 1,788 passed in 86.47 seconds.
 - Canonical frontier loopback readiness: live/ready on `127.0.0.1:8771` during the runtime audit.
 - Deployed site adapter: older commit during the runtime audit; no claim that protected preview contains this architecture.
 
 ## Remaining completion sequence
 
-1. Explicitly authorize use of an approved server-side key for the 32 planner requests.
-2. Run `scripts/run_semantic_answer_eval.py`; require every route and authority check to pass, then review token/latency/cost measurements and teaching prose.
-3. Build and inspect an exact protected release containing the semantic commits.
-4. Explicitly authorize protected flag activation/restart with semantic and canonical frontier enabled together.
-5. Run `scripts/run_semantic_answer_preview_smoke.py` with exact authorization for 10 answer requests.
-6. Review every trace and response; require all activation and case checks to pass before considering public rollout.
+1. Build and inspect an exact protected release containing the semantic commits.
+2. Explicitly authorize protected flag activation/restart with semantic and canonical frontier enabled together.
+3. Run `scripts/run_semantic_answer_preview_smoke.py` with exact authorization for 10 answer requests.
+4. Review every trace and response; require all activation and case checks to pass before considering public rollout.
 
 OpenAI's official guidance recommends representative evaluation and comparing task success, completeness, tokens, latency, and cost rather than assuming a configuration is better. The implemented banks and telemetry are designed around that gate: [model guidance](https://developers.openai.com/api/docs/guides/latest-model), [evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices).

@@ -15,9 +15,9 @@ When the feature is enabled, one structured OpenAI Responses API call selects on
 | `clarify` | One structured missing-context question | Forbidden |
 | `guardrail` | Existing local scope/safety copy | Forbidden |
 
-The planner supplies a canonical `tool_query` for deterministic work. It never supplies the exact music result itself. Existing deterministic music tools remain the only authority for exact strings, frets, notes, pedals, levers, chord positions, tablature, and copedent facts.
+The planner supplies a canonical `tool_query` for deterministic work. The adapter preserves the original exact request with that query so notation and requested operations cannot be lost during semantic restatement. It never supplies the exact music result itself. Existing deterministic music tools remain the only authority for exact strings, frets, notes, pedals, levers, chord positions, tablature, and copedent facts.
 
-The application revalidates every result at the API boundary, including results from injected or alternate planner implementations. A source-backed plan containing answer prose is rejected. A teaching plan requesting sources, a fretboard, or a copedent is rejected, as is teaching prose that contains exact numbered fret/string instructions, exact string-to-pitch changes, citations, or unsupported claims about player/forum consensus. Exact and hybrid plans without a bounded deterministic tool query are rejected. These checks are an output safety boundary; they do not classify the user's request. Local policy guardrails run before the planner and cannot be weakened by it or by conversation context. They are isolated from ordinary semantic routing and cannot start corpus probing or retrieval.
+The application revalidates every result at the API boundary, including results from injected or alternate planner implementations. The selected route is the authority decision; redundant `needs_*` flags are canonicalized from that route so a contradictory model flag cannot accidentally grant retrieval or fretboard authority. A source-backed plan containing answer prose is rejected, as is teaching prose that contains exact numbered fret/string instructions, exact string-to-pitch changes, citations, or unsupported claims about player/forum consensus. Exact and hybrid plans without a bounded deterministic tool query are rejected. These checks are an output safety boundary; they do not classify the user's request. Local policy guardrails run before the planner and cannot be weakened by it or by conversation context. They are isolated from ordinary semantic routing and cannot start corpus probing or retrieval.
 
 Once a semantic result is valid, legacy corpus promotion and contextual corpus probes are disabled for that request. Source-backed and hybrid routes can enter only the verified canonical frontier. If that frontier is unavailable, source-backed requests return an honest `503`; hybrid requests return only the verified deterministic portion with an explicit warning. Neither route falls through to legacy fragment synthesis.
 
@@ -69,7 +69,11 @@ The held-out bank is `evals/semantic_answer_authority_v1.jsonl`. Run it only in 
 .venv/bin/python scripts/run_semantic_answer_eval.py
 ```
 
+Use `--case-id ID` to rerun one named case without paying for the entire bank again. Repeat the option to select more than one case.
+
 The report includes per-route correctness, every individual failure, request completion count, model identity, token totals, and total/median/p95 wall latency. Expected provider or contract failures are recorded and the remaining cases continue, so one failure cannot hide the rest of the bank. Cost is intentionally not hard-coded: calculate it from the captured usage and the approved environment's current model pricing.
+
+The authorized 2026-08-18 live run passed every authority after correcting one evaluator-only notation mismatch. The full rerun produced 31/32 under the stale `A+F` assertion; that row selected the correct `hybrid` route. The corrected `A-plus-F` row then passed a bounded one-case live rerun, giving passing live evidence for all 32 cases. The full rerun used 29,145 tokens and had 1.748-second median and 7.799-second p95 wall latency.
 
 Promotion gates:
 
