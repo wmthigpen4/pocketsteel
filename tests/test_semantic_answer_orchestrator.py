@@ -301,6 +301,79 @@ def test_validation_accepts_conceptual_teaching_without_exact_or_source_claims()
     assert validate_semantic_answer_result(value).answer == teaching_answer
 
 
+def test_validation_derives_authority_flags_from_route() -> None:
+    source_plan = result(
+        "source_backed_rag",
+        intent="current_or_vendor_fact",
+        reason_code="claim_requires_evidence",
+    ).as_dict()
+    source_plan["needs_fretboard"] = True
+    source_plan["needs_copedent"] = True
+    parsed_source = validate_semantic_answer_result(source_plan)
+    assert parsed_source.needs_sources is True
+    assert parsed_source.needs_fretboard is False
+    assert parsed_source.needs_copedent is False
+
+    clarify_plan = result(
+        "clarify",
+        intent="missing_context",
+        answer="Please paste the tab you want me to fix.",
+        missing_context=("tab",),
+        reason_code="missing_user_context",
+    ).as_dict()
+    clarify_plan["needs_sources"] = True
+    clarify_plan["needs_fretboard"] = True
+    parsed_clarify = validate_semantic_answer_result(clarify_plan)
+    assert parsed_clarify.needs_sources is False
+    assert parsed_clarify.needs_fretboard is False
+
+
+def test_openai_answerer_preserves_original_exact_request_in_tool_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = result(
+        "hybrid",
+        intent="forum_wisdom",
+        tool_query="Show the D chord with the A and F changes.",
+        needs_sources=True,
+        needs_fretboard=True,
+        reason_code="exact_and_sourced_parts_required",
+    ).as_dict()
+    response_body = json.dumps({
+        "status": "completed",
+        "model": "gpt-test",
+        "usage": {},
+        "output": [{
+            "type": "message",
+            "content": [{"type": "output_text", "text": json.dumps(plan)}],
+        }],
+    }).encode("utf-8")
+
+    class Response:
+        def __enter__(self) -> "Response":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self, _limit: int) -> bytes:
+            return response_body
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
+    question = (
+        "Show the exact A+F D chord and tell me whether forum players consider it "
+        "a good default voicing."
+    )
+    parsed = OpenAIResponsesSemanticAnswerer(api_key="server-secret", model="gpt-test").answer(
+        question,
+        mode="ask",
+    )
+
+    assert parsed.route == "hybrid"
+    assert "A+F" in parsed.tool_query
+    assert parsed.tool_query.startswith("Show the D chord")
+
+
 def test_disabled_semantic_path_does_not_call_answerer() -> None:
     semantic = FakeSemanticAnswerer(fail=True)
     app = create_app(

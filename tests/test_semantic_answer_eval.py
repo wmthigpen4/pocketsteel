@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from scripts.run_semantic_answer_eval import evaluate_cases, load_cases
+import pytest
+
+from scripts.run_semantic_answer_eval import evaluate_cases, load_cases, main
 from dataclasses import replace
 
 from steel_guitar_rag.semantic_answer_orchestrator import (
@@ -144,3 +146,8 @@ def test_semantic_authority_evaluator_records_expected_provider_failure_and_cont
     assert report["runtime_metrics"]["completed_count"] == len(cases) - 1
     assert report["rows"][0]["actual_route"] is None
     assert report["rows"][0]["error"] == "test provider outage"
+
+
+def test_semantic_authority_cli_rejects_unknown_case_id() -> None:
+    with pytest.raises(SystemExit, match="2"):
+        main(["--case-id", "missing-case"])

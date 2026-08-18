@@ -38,7 +38,11 @@ def evaluate_cases(answerer: Any, cases: Iterable[dict[str, Any]]) -> dict[str, 
     for case in cases:
         started = time.monotonic()
         try:
-            result = answerer.answer(str(case["prompt"]), mode="ask", conversation_context=[])
+            result = answerer.answer(
+                str(case["prompt"]),
+                mode="ask",
+                conversation_context=[str(item) for item in case.get("conversation_context") or ()],
+            )
         except SemanticAnswerUnavailable as exc:
             rows.append({
                 "id": case["id"],
@@ -135,9 +139,22 @@ def evaluate_cases(answerer: Any, cases: Iterable[dict[str, Any]]) -> dict[str, 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bank", type=Path, default=DEFAULT_BANK)
+    parser.add_argument(
+        "--case-id",
+        action="append",
+        default=[],
+        help="Run only the named case; repeat to select more than one.",
+    )
     parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
-    report = evaluate_cases(OpenAIResponsesSemanticAnswerer.from_env(), load_cases(args.bank))
+    cases = load_cases(args.bank)
+    if args.case_id:
+        selected_ids = set(args.case_id)
+        cases = [case for case in cases if case["id"] in selected_ids]
+        missing_ids = selected_ids - {str(case["id"]) for case in cases}
+        if missing_ids:
+            parser.error(f"unknown case id(s): {', '.join(sorted(missing_ids))}")
+    report = evaluate_cases(OpenAIResponsesSemanticAnswerer.from_env(), cases)
     rendered = json.dumps(report, indent=2, ensure_ascii=False)
     if args.output is not None:
         args.output.write_text(rendered + "\n", encoding="utf-8")
