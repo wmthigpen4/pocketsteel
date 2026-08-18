@@ -30,7 +30,7 @@ def passing_payload(case: dict[str, object]) -> dict[str, object]:
 
 def test_preview_bank_covers_all_authorities_and_required_followups() -> None:
     cases = load_cases(DEFAULT_BANK)
-    assert len(cases) == 8
+    assert len(cases) == 10
     assert {case["authority"] for case in cases} == {
         "deterministic",
         "semantic_teacher",
@@ -72,7 +72,7 @@ def test_preview_runner_validates_bank_without_network(capsys: pytest.CaptureFix
 
 
 def test_preview_runner_requires_exact_request_authorization() -> None:
-    with pytest.raises(ValueError, match="exact authorization for 8 answer requests"):
+    with pytest.raises(ValueError, match="exact authorization for 10 answer requests"):
         main(["--base-url", "http://127.0.0.1:8770", "--auth-mode", "dev"])
 
 

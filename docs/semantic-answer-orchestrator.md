@@ -4,7 +4,7 @@ The semantic answer path is a default-off replacement authority layer for `/api/
 
 ## Authority model
 
-When the feature is enabled, one structured OpenAI Responses API call selects one of six routes for every request except those rejected by the local unsafe/unbounded guardrail:
+When the feature is enabled, one structured OpenAI Responses API call selects one of six routes for every answer request except local deterministic profile-control requests and requests rejected by non-negotiable local unsafe, unbounded-output, sensitive-personal-attribute, or specific-private-biography guardrails:
 
 | Route | Owner of the displayed answer | Retrieval |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ When the feature is enabled, one structured OpenAI Responses API call selects on
 
 The planner supplies a canonical `tool_query` for deterministic work. It never supplies the exact music result itself. Existing deterministic music tools remain the only authority for exact strings, frets, notes, pedals, levers, chord positions, tablature, and copedent facts.
 
-The application revalidates every result at the API boundary, including results from injected or alternate planner implementations. A source-backed plan containing answer prose is rejected. A teaching plan requesting sources, a fretboard, or a copedent is rejected, as is teaching prose that contains exact numbered fret/string instructions, exact string-to-pitch changes, citations, or unsupported claims about player/forum consensus. Exact and hybrid plans without a bounded deterministic tool query are rejected. These checks are an output safety boundary; they do not classify the user's request. Local unsafe classification runs before the planner and cannot be weakened by it.
+The application revalidates every result at the API boundary, including results from injected or alternate planner implementations. A source-backed plan containing answer prose is rejected. A teaching plan requesting sources, a fretboard, or a copedent is rejected, as is teaching prose that contains exact numbered fret/string instructions, exact string-to-pitch changes, citations, or unsupported claims about player/forum consensus. Exact and hybrid plans without a bounded deterministic tool query are rejected. These checks are an output safety boundary; they do not classify the user's request. Local policy guardrails run before the planner and cannot be weakened by it or by conversation context. They are isolated from ordinary semantic routing and cannot start corpus probing or retrieval.
 
 Once a semantic result is valid, legacy corpus promotion and contextual corpus probes are disabled for that request. Source-backed and hybrid routes can enter only the verified canonical frontier. If that frontier is unavailable, source-backed requests return an honest `503`; hybrid requests return only the verified deterministic portion with an explicit warning. Neither route falls through to legacy fragment synthesis.
 
@@ -48,7 +48,7 @@ If the semantic planner fails, valid in-domain requests fall back to the current
 
 | Request type | Semantic planner calls | Other model calls |
 | --- | ---: | ---: |
-| Locally rejected unsafe/unbounded request | 0 | 0 |
+| Local profile-control or policy-guardrail request | 0 | 0 |
 | Exact deterministic request | 1 | 0 after the deterministic resolver succeeds |
 | Conceptual teaching | 1 | 0 |
 | Clarification or guardrail requiring semantic interpretation | 1 | 0 |
@@ -80,14 +80,14 @@ Promotion gates:
 5. Latency, API cost, outage fallback, and conversation-follow-up behavior pass protected-preview evaluation.
 6. The flag is enabled only in protected preview first. Public activation remains a separate explicit deployment decision.
 
-After both flags are activated in a separately authorized protected release, run the eight-request acceptance matrix. The runner reads the Access JWT from an environment variable, refuses non-HTTPS origins except loopback HTTP, requires an exact request-count authorization, and stops before answer calls if `/api/session` does not prove both features active:
+After both flags are activated in a separately authorized protected release, run the ten-request acceptance matrix. The runner reads the Access JWT from an environment variable, refuses non-HTTPS origins except loopback HTTP, requires an exact request-count authorization, and stops before answer calls if `/api/session` does not prove both features active:
 
 ```bash
 STEEL_RAG_PREVIEW_ACCESS_JWT=<protected-session-jwt> \
   .venv/bin/python scripts/run_semantic_answer_preview_smoke.py \
   --base-url https://app.steelguitarrag.com \
-  --authorize-answer-requests 8 \
+  --authorize-answer-requests 10 \
   --output output/semantic-answer-preview-smoke.json
 ```
 
-The matrix covers deterministic, source-free teaching, source-backed, hybrid, clarification, and guardrail authorities plus contextual source and off-domain follow-ups. The output path is optional and should remain an uncommitted QA artifact.
+The matrix covers deterministic, source-free teaching, source-backed, hybrid, clarification, and guardrail authorities plus contextual source/off-domain follow-ups and the two local personal-policy boundaries. The output path is optional and should remain an uncommitted QA artifact.

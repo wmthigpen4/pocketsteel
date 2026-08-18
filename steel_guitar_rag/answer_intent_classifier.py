@@ -545,6 +545,19 @@ def _guardrail_decision(question: str) -> AnswerIntentPayload | None:
     return None
 
 
+def local_answer_policy_guardrail(question: str) -> str | None:
+    """Return a non-negotiable local policy reason, independent of answer routing."""
+
+    normalized = _normalize(question)
+    if not normalized or MASS_OUTPUT_RE.search(normalized) or UNSAFE_RE.search(normalized):
+        return "unsafe_or_unbounded"
+    if _mentions_sensitive_personal_attribute(normalized):
+        return "sensitive_personal_attribute"
+    if _mentions_specific_biography_fact(normalized):
+        return "specific_private_biography"
+    return None
+
+
 def _decision_from_mode(question: str, mode: str) -> AnswerIntentPayload | None:
     if not _mentions_steel(question):
         return None

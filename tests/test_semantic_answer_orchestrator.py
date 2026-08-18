@@ -736,6 +736,48 @@ def test_local_unsafe_guardrail_cannot_be_weakened_by_semantic_answerer() -> Non
     assert "outside Steel Guitar RAG’s scope" in payload["answer"]
 
 
+@pytest.mark.parametrize(
+    ("question", "expected_phrase"),
+    [
+        (
+            "Who was Buddy Emmons married to?",
+            "reliable source for that specific biographical detail",
+        ),
+        (
+            "What health diagnosis did the steel player Buddy Emmons have?",
+            "should not infer or identify private attributes",
+        ),
+    ],
+)
+def test_local_personal_policy_guardrail_cannot_be_weakened_by_semantic_answerer(
+    question: str,
+    expected_phrase: str,
+) -> None:
+    semantic = FakeSemanticAnswerer(result(
+        "source_backed_rag",
+        intent="forum_wisdom",
+        needs_sources=True,
+        reason_code="claim_requires_evidence",
+    ))
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+    )
+    status, payload = call_answer(
+        app,
+        question,
+        conversation_context=["user: Tell me about classic E9 players."],
+    )
+    assert status == "200 OK"
+    assert semantic.calls == []
+    assert search.calls == []
+    assert payload["sources"] == []
+    assert expected_phrase in payload["answer"]
+
+
 def test_semantic_guardrail_remains_authoritative_with_conversation_context() -> None:
     semantic = FakeSemanticAnswerer(result(
         "guardrail",
