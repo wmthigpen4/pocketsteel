@@ -743,7 +743,7 @@ def test_content_concurrency_limit_fails_fast(monkeypatch: Any) -> None:
     assert headers["Retry-After"] == "2"
 
 
-def test_retrieval_timeout_returns_deterministic_answer_instead_of_gateway_timeout() -> None:
+def test_retrieval_timeout_keeps_direct_chord_answer_deterministic() -> None:
     search_index = UnavailableSearchIndex()
     search_status, _, search_payload = call_app(
         "/api/search",
@@ -763,7 +763,7 @@ def test_retrieval_timeout_returns_deterministic_answer_instead_of_gateway_timeo
     assert status == "200 OK"
     assert payload["answer"]
     assert payload["sources"] == []
-    assert search_index.calls >= 2
+    assert search_index.calls == 1
 
 
 def test_retrieval_wall_clock_timeout_returns_before_dependency_finishes(
