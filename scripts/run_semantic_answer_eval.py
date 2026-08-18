@@ -8,7 +8,10 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
-from steel_guitar_rag.semantic_answer_orchestrator import OpenAIResponsesSemanticAnswerer
+from steel_guitar_rag.semantic_answer_orchestrator import (
+    OpenAIResponsesSemanticAnswerer,
+    semantic_teacher_authority_violations,
+)
 
 
 DEFAULT_BANK = Path("evals/semantic_answer_authority_v1.jsonl")
@@ -35,22 +38,39 @@ def evaluate_cases(answerer: Any, cases: Iterable[dict[str, Any]]) -> dict[str, 
             for term in case.get("tool_query_contains") or ()
             if str(term).casefold() not in result.tool_query.casefold()
         ]
-        passed = result.route == case["expected_route"] and not missing_tool_terms
+        authority_violations = (
+            list(semantic_teacher_authority_violations(result.answer))
+            if result.route == "semantic_teacher"
+            else []
+        )
+        passed = (
+            result.route == case["expected_route"]
+            and not missing_tool_terms
+            and not authority_violations
+        )
         rows.append({
             "id": case["id"],
             "expected_route": case["expected_route"],
             "actual_route": result.route,
             "reason_code": result.reason_code,
             "missing_tool_terms": missing_tool_terms,
+            "authority_violations": authority_violations,
             "passed": passed,
         })
     passed_count = sum(1 for row in rows if row["passed"])
+    route_summary: dict[str, dict[str, int]] = {}
+    for row in rows:
+        route = str(row["expected_route"])
+        summary = route_summary.setdefault(route, {"passed": 0, "total": 0})
+        summary["total"] += 1
+        summary["passed"] += int(bool(row["passed"]))
     return {
         "schema_version": 1,
         "case_count": len(rows),
         "passed": passed_count,
         "failed": len(rows) - passed_count,
         "pass_rate": passed_count / len(rows) if rows else 0.0,
+        "route_summary": route_summary,
         "rows": rows,
     }
 

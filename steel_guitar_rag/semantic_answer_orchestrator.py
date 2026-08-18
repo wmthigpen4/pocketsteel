@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -61,6 +62,42 @@ _REASON_CODES = {
     "outside_product_scope",
     "unsafe_or_unbounded",
 }
+
+_SEMANTIC_TEACHER_FORBIDDEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "exact fret coordinate",
+        re.compile(
+            r"\b(?:at|on)\s+(?:the\s+)?(?:fret\s+\d{1,2}|\d{1,2}(?:st|nd|rd|th)?\s+fret)\b"
+            r"|\bfret\s+\d{1,2}\b",
+            re.I,
+        ),
+    ),
+    (
+        "exact numbered string grip",
+        re.compile(
+            r"\bstrings?\s+\d{1,2}(?:\s*(?:[-,/&]|\band\b)\s*\d{1,2})+\b",
+            re.I,
+        ),
+    ),
+    (
+        "exact string pitch change",
+        re.compile(
+            r"\b(?:raise|raises|raised|lower|lowers|lowered)\s+string\s+\d{1,2}\s+"
+            r"(?:from\s+)?[A-G](?:#|b)?\s+to\s+[A-G](?:#|b)?\b",
+            re.I,
+        ),
+    ),
+    (
+        "unsourced player consensus",
+        re.compile(
+            r"\b(?:players?|forum\s+members?|contributors?)\s+"
+            r"(?:say|said|report|reported|agree|recommend|prefer|disagree|found|describe|described)\b"
+            r"|\baccording\s+to\s+(?:players?|the\s+forum|forum\s+members?|sources?)\b",
+            re.I,
+        ),
+    ),
+    ("citation marker", re.compile(r"\[\d+\]")),
+)
 
 
 class SemanticAnswerUnavailable(RuntimeError):
@@ -124,7 +161,7 @@ Classify the user's actual request by meaning, not keywords, and return only the
 
 Authority rules:
 - deterministic: exact strings, frets, notes, intervals, pedals, levers, chord positions, tablature, or copedent facts. Never put the exact answer in `answer`; application tools own it. Put a concise canonical restatement for the deterministic resolver in `tool_query`, preserving the user's chord, key, tuning, and requested operation.
-- semantic_teacher: source-free conceptual teaching, practice, technique, harmony, rhythm, or general music theory applied to pedal steel. Write a direct, useful steel-guitar teaching answer in `answer`. Do not invent exact fret/string/pedal claims or cite sources.
+- semantic_teacher: source-free conceptual teaching, practice, technique, harmony, rhythm, or general music theory applied to pedal steel. Write a direct, useful steel-guitar teaching answer in `answer`. Do not give numbered fret coordinates, numbered string grips, exact string-to-pitch changes, citations, or claims about what players/forum members say.
 - source_backed_rag: player/history claims, forum consensus, anecdotes, product claims, current/vendor facts, or anything whose truth depends on evidence. Leave `answer` empty; retrieval and verification own it.
 - hybrid: both an exact deterministic result and source-dependent context are explicitly requested. Leave `answer` empty and put only the exact subquestion in `tool_query`.
 - clarify: essential musical context or a referenced object is missing. Ask one concise question in `answer` and list the missing fields.
@@ -147,6 +184,22 @@ class SemanticAnswerResult:
     tool_query: str
     missing_context: tuple[str, ...]
     reason_code: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "route": self.route,
+            "domain": self.domain,
+            "intent": self.intent,
+            "needs_sources": self.needs_sources,
+            "needs_fretboard": self.needs_fretboard,
+            "needs_copedent": self.needs_copedent,
+            "confidence": self.confidence,
+            "answer": self.answer,
+            "tool_query": self.tool_query,
+            "missing_context": list(self.missing_context),
+            "reason_code": self.reason_code,
+        }
 
     def as_intent_decision(self) -> dict[str, Any]:
         if self.route == "guardrail":
@@ -184,6 +237,16 @@ class SemanticAnswerResult:
                 else "deterministic"
             ),
         }
+
+
+def semantic_teacher_authority_violations(answer: str) -> tuple[str, ...]:
+    """Return semantic claims that require deterministic or source authority."""
+
+    return tuple(
+        reason
+        for reason, pattern in _SEMANTIC_TEACHER_FORBIDDEN_PATTERNS
+        if pattern.search(answer or "") is not None
+    )
 
 
 def validate_semantic_answer_result(value: Any) -> SemanticAnswerResult:
@@ -226,6 +289,7 @@ def validate_semantic_answer_result(value: Any) -> SemanticAnswerResult:
     elif needs_sources:
         raise SemanticAnswerUnavailable("Source-free semantic plan requested retrieval.")
     if route == "semantic_teacher":
+        authority_violations = semantic_teacher_authority_violations(answer)
         if (
             domain != "steel_guitar"
             or len(answer) < 80
@@ -233,6 +297,7 @@ def validate_semantic_answer_result(value: Any) -> SemanticAnswerResult:
             or needs_copedent
             or "http://" in answer
             or "https://" in answer
+            or authority_violations
         ):
             raise SemanticAnswerUnavailable("Semantic teaching answer is incomplete or overclaims tool authority.")
     elif route == "clarify":
@@ -374,5 +439,6 @@ __all__ = [
     "SemanticAnswerResult",
     "SemanticAnswerUnavailable",
     "configured_semantic_answer_enabled",
+    "semantic_teacher_authority_violations",
     "validate_semantic_answer_result",
 ]

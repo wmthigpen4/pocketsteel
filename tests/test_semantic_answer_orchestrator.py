@@ -53,10 +53,11 @@ class FakeSemanticAnswerer:
 class FakeFrontier:
     def __init__(self) -> None:
         self.questions: list[str] = []
+        self.contexts: list[list[str]] = []
 
     def answer(self, question: str, *, conversation_context: list[str]) -> dict[str, Any]:
-        del conversation_context
         self.questions.append(question)
+        self.contexts.append(conversation_context)
         claim = "Players reported that the wound sixth string changes pedal feel and tone."
         return {
             "schema_version": 1,
@@ -229,6 +230,37 @@ def test_validation_rejects_source_backed_answer_without_evidence() -> None:
         validate_semantic_answer_result(value)
 
 
+@pytest.mark.parametrize(
+    "teaching_answer",
+    [
+        (
+            "Start at fret 3 on strings 3, 4, and 5 with A+B down, then let the top note carry the melody. "
+            "Practice the move slowly and block every unused string so the harmony stays clean."
+        ),
+        (
+            "Players report that this approach is the best way to mix harmony and melody on pedal steel. "
+            "Use a small grip, leave space, and practice resolving every short phrase to a stable chord tone."
+        ),
+    ],
+)
+def test_validation_rejects_teaching_answer_that_crosses_authority_boundary(
+    teaching_answer: str,
+) -> None:
+    value = result("semantic_teacher", answer=teaching_answer).as_dict()
+    with pytest.raises(SemanticAnswerUnavailable, match="overclaims tool authority"):
+        validate_semantic_answer_result(value)
+
+
+def test_validation_accepts_conceptual_teaching_without_exact_or_source_claims() -> None:
+    teaching_answer = (
+        "Treat the chord as a harmonic boundary rather than something you must replay under every melody note. "
+        "Use chord tones as resting places, nearby scale tones as motion, and deliberate blocking to keep only "
+        "the voices you want. Practice short phrases over one sustained harmony and listen for a settled ending."
+    )
+    value = result("semantic_teacher", answer=teaching_answer).as_dict()
+    assert validate_semantic_answer_result(value).answer == teaching_answer
+
+
 def test_disabled_semantic_path_does_not_call_answerer() -> None:
     semantic = FakeSemanticAnswerer(fail=True)
     app = create_app(
@@ -270,6 +302,52 @@ def test_semantic_teacher_answers_unseen_paraphrase_without_retrieval() -> None:
     assert "fretboard" not in payload
 
 
+def test_semantic_teacher_authority_is_not_preempted_by_a_chord_name() -> None:
+    teaching_answer = (
+        "Treat the G chord as the stable harmony under the phrase and let the melody create motion around it. "
+        "Rest on chord tones, use nearby scale tones between them, and pick only the voices the phrase needs. "
+        "Practice short answers over one sustained chord and listen for each phrase to settle clearly."
+    )
+    semantic = FakeSemanticAnswerer(result("semantic_teacher", answer=teaching_answer))
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+    )
+    status, payload = call_answer(app, "How should I think conceptually about melody over a G chord?")
+    assert status == "200 OK"
+    assert search.calls == []
+    assert payload["answer"] == teaching_answer
+    assert payload["sources"] == []
+    assert "fretboard" not in payload
+
+
+def test_api_revalidates_injected_semantic_provider_before_display() -> None:
+    overclaim = (
+        "Start at fret 3 on strings 3, 4, and 5 with A+B down, then let the melody sit on top. "
+        "Practice the move slowly and block the unused strings so the harmony remains clean."
+    )
+    semantic = FakeSemanticAnswerer(result("semantic_teacher", answer=overclaim))
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+    )
+    status, payload = call_answer(
+        app,
+        "My picking hand cannot be two piano hands—how can a steel line carry the harmony underneath it?",
+    )
+    assert status == "200 OK"
+    assert search.calls == []
+    assert payload["sources"] == []
+    assert overclaim not in payload["answer"]
+    assert "outside Steel Guitar RAG’s scope" in payload["answer"]
+
+
 def test_semantic_source_plan_delegates_to_verified_frontier() -> None:
     semantic = FakeSemanticAnswerer(result(
         "source_backed_rag",
@@ -293,6 +371,112 @@ def test_semantic_source_plan_delegates_to_verified_frontier() -> None:
     assert frontier.questions == [question]
     assert search.calls == []
     assert payload["sources"][0]["title"] == "Wound sixth strings"
+
+
+def test_semantic_source_authority_is_not_preempted_by_a_chord_name() -> None:
+    semantic = FakeSemanticAnswerer(result(
+        "source_backed_rag",
+        intent="forum_wisdom",
+        needs_sources=True,
+        reason_code="claim_requires_evidence",
+    ))
+    frontier = FakeFrontier()
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    question = "What do players say about choosing among G chord positions?"
+    status, payload = call_answer(app, question)
+    assert status == "200 OK"
+    assert frontier.questions == [question]
+    assert search.calls == []
+    assert payload["sources"]
+    assert "fretboard" not in payload
+
+
+def test_semantic_source_follow_up_bypasses_legacy_contextual_corpus_probe() -> None:
+    semantic = FakeSemanticAnswerer(result(
+        "source_backed_rag",
+        intent="forum_wisdom",
+        needs_sources=True,
+        reason_code="claim_requires_evidence",
+    ))
+    frontier = FakeFrontier()
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    question = "What did he say about the wound sixth?"
+    context = [
+        "user: What did Buddy Emmons say about string gauges?",
+        "assistant: I can look for supported forum evidence.",
+    ]
+    status, payload = call_answer(app, question, conversation_context=context)
+    assert status == "200 OK"
+    assert search.calls == []
+    assert frontier.questions == [question]
+    assert frontier.contexts == [context]
+    assert payload["sources"]
+
+
+def test_semantic_source_plan_never_falls_into_legacy_retrieval_without_frontier() -> None:
+    semantic = FakeSemanticAnswerer(result(
+        "source_backed_rag",
+        intent="forum_wisdom",
+        needs_sources=True,
+        reason_code="claim_requires_evidence",
+    ))
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+        canonical_frontier_enabled=False,
+    )
+    status, payload = call_answer(app, "What have players reported about wound sixth strings?")
+    assert status == "503 Service Unavailable"
+    assert search.calls == []
+    assert "No generic answer was substituted" in payload["error"]
+
+
+def test_semantic_hybrid_without_frontier_returns_only_verified_deterministic_partial() -> None:
+    semantic = FakeSemanticAnswerer(result(
+        "hybrid",
+        intent="forum_wisdom",
+        tool_query="Where can I play a G major chord?",
+        needs_sources=True,
+        needs_fretboard=True,
+        reason_code="exact_and_sourced_parts_required",
+    ))
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+        canonical_frontier_enabled=False,
+    )
+    status, payload = call_answer(
+        app,
+        "Show the exact G-major positions and summarize what players say about choosing among them.",
+    )
+    assert status == "200 OK"
+    assert search.calls == []
+    assert payload["sources"] == []
+    assert payload["fretboard"]["positions"]
+    assert payload["warnings"] == ["source-backed forum context is temporarily unavailable"]
+    assert "source-backed forum context could not be completed" in payload["answer"]
 
 
 def test_semantic_exact_plan_keeps_deterministic_fretboard_authority() -> None:
@@ -319,8 +503,14 @@ def test_semantic_exact_plan_keeps_deterministic_fretboard_authority() -> None:
     assert payload["fretboard"]["positions"]
 
 
-def test_known_deterministic_fretboard_route_uses_zero_openai_calls() -> None:
-    semantic = FakeSemanticAnswerer(fail=True)
+def test_known_deterministic_fretboard_route_uses_semantic_authority_then_tool() -> None:
+    semantic = FakeSemanticAnswerer(result(
+        "deterministic",
+        intent="exact_music",
+        tool_query="Where can I play a G major chord?",
+        needs_fretboard=True,
+        reason_code="exact_answer_requires_tool",
+    ))
     search = EmptySearchIndex()
     app = create_app(
         search,
@@ -330,7 +520,7 @@ def test_known_deterministic_fretboard_route_uses_zero_openai_calls() -> None:
     )
     status, payload = call_answer(app, "Where can I play a G chord?")
     assert status == "200 OK"
-    assert semantic.calls == []
+    assert len(semantic.calls) == 1
     assert search.calls == []
     assert payload["sources"] == []
     assert payload["fretboard"]["positions"]
