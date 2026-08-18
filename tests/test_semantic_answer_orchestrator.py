@@ -724,6 +724,61 @@ def test_semantic_exact_plan_keeps_deterministic_fretboard_authority() -> None:
     assert payload["fretboard"]["positions"]
 
 
+def test_semantic_exact_planner_language_reaches_deterministic_fretboard() -> None:
+    semantic = FakeSemanticAnswerer(result(
+        "deterministic",
+        intent="exact_music",
+        tool_query=(
+            "Identify playable G major chord positions on standard E9 tuning, "
+            "including the required pedal and lever combinations."
+        ),
+        needs_fretboard=True,
+        reason_code="exact_answer_requires_tool",
+    ))
+    app = create_app(
+        EmptySearchIndex(),
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+    )
+
+    status, payload = call_answer(app, "Where can I play a G major chord on standard E9?")
+
+    assert status == "200 OK"
+    assert payload["sources"] == []
+    assert payload["fretboard"]["positions"]
+    assert "G major" in payload["answer"]
+
+
+def test_semantic_hybrid_planner_language_keeps_both_authorities() -> None:
+    semantic = FakeSemanticAnswerer(result(
+        "hybrid",
+        intent="forum_wisdom",
+        tool_query="Show the exact G-major positions on the active pedal-steel tuning and copedent.",
+        needs_sources=True,
+        needs_fretboard=True,
+        reason_code="exact_and_sourced_parts_required",
+    ))
+    app = create_app(
+        EmptySearchIndex(),
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=FakeFrontier(),
+    )
+
+    status, payload = call_answer(
+        app,
+        "Show the exact G-major positions and summarize what players say about choosing among them.",
+    )
+
+    assert status == "200 OK"
+    assert payload["fretboard"]["positions"]
+    assert payload["sources"]
+    assert "G major" in payload["answer"]
+
+
 def test_known_deterministic_fretboard_route_uses_semantic_authority_then_tool() -> None:
     semantic = FakeSemanticAnswerer(result(
         "deterministic",

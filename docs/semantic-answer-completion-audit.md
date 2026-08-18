@@ -19,7 +19,7 @@ This audit measures the implementation against the requested end state rather th
 | Rollback remains available | Feature defaults off; planner outage falls back for valid in-domain requests and fails closed for legacy off-domain requests | Locally proven |
 | OpenAI calls are deliberate, bounded, and measurable | Server-only key, `store:false`, low reasoning, bounded context/output/timeout, structured schema, token/latency telemetry, full-bank metrics | Proven; full rerun measured 29,145 tokens, 1.748-second median, and 7.799-second p95 wall latency |
 | All six authorities pass representative real-model evaluation | Full rerun passed 31/32 under one stale notation assertion; the correctly routed row passed after the evaluator assertion was corrected and rerun alone | **Passed: live evidence for all 32 cases** |
-| Enabled search behavior passes protected acceptance | Ten-case, exact-authorization, fail-before-answer smoke runner exists | **Missing: exact release, both flags active, authorized run** |
+| Enabled search behavior passes acceptance | Isolated commit-`6eefc072` loopback activation proved both features and ran all ten cases; eight passed initially and the two deterministic-boundary failures passed after repair | Locally proven; **protected exact-release run still missing** |
 | Public activation | Separate deployment decision by design | **Not authorized** |
 
 ## Deliberate local exceptions
@@ -32,7 +32,9 @@ Authenticated profile-control requests remain local deterministic operations and
 - Protected acceptance bank: 10 requests across all six routes, contextual source/off-domain follow-ups, and two personal-policy boundaries.
 - Authorized live model bank: passing evidence for all 32 held-out cases across all six authorities. The full rerun was 31/32 only because the evaluator demanded `A+F` while the source prompt used `A-plus-F`; the corrected row passed a one-case live rerun.
 - Full live rerun metrics: 29,145 tokens, 92.972 seconds total wall latency, 1.748-second median, and 7.799-second p95.
+- Enabled-path loopback acceptance: 8/10 initially; both failures were deterministic-adapter misses. After one structural adapter repair, the bounded exact and hybrid rerun passed 2/2. Combined evidence covers all ten cases and all six authorities.
 - Full repository regression after contract hardening: 1,788 passed in 86.47 seconds.
+- Full repository regression after deterministic-adapter repair: 1,792 passed in 87.22 seconds.
 - Canonical frontier loopback readiness: live/ready on `127.0.0.1:8771` during the runtime audit.
 - Deployed site adapter: older commit during the runtime audit; no claim that protected preview contains this architecture.
 
