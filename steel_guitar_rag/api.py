@@ -1821,7 +1821,11 @@ class RetrievalApi:
                     request_payload=request_payload,
                 )
 
-            early_local_answer = lookup_curated_answer(answer_request.question, [])
+            early_local_answer = (
+                None
+                if self.semantic_answer_enabled
+                else lookup_curated_answer(answer_request.question, [])
+            )
             if (
                 early_local_answer is not None
                 and early_local_answer.intent == "missing_context_clarifier"
@@ -1972,12 +1976,19 @@ class RetrievalApi:
             corpus_promoted = False
             entity_probe_question = None
             if semantic_answer_result is None and local_policy_guardrail is None:
+                contextual_probe_question = contextual_entity_probe_question(
+                    answer_request.question,
+                    answer_request.conversation_context,
+                )
                 entity_probe_question = (
-                    answer_request.question
-                    if is_corpus_entity_candidate(answer_request.question, answer_intent_decision)
-                    else contextual_entity_probe_question(
-                        answer_request.question,
-                        answer_request.conversation_context,
+                    contextual_probe_question
+                    or (
+                        answer_request.question
+                        if is_corpus_entity_candidate(
+                            answer_request.question,
+                            answer_intent_decision,
+                        )
+                        else None
                     )
                 )
             if entity_probe_question is not None:
@@ -2014,6 +2025,10 @@ class RetrievalApi:
                 route_trace.classification = (
                     f"hybrid_requested:{answer_intent_decision.get('intent', 'unknown')}"
                 )
+            local_visual_answer = visual_fretboard_curated_answer(deterministic_question)
+            deterministic_guardrail_answer = unsupported_chord_position_curated_answer(
+                deterministic_question
+            )
             if semantic_answer_result is not None:
                 deterministic_resolution_allowed = semantic_answer_result.route in {
                     "deterministic",
@@ -2021,7 +2036,9 @@ class RetrievalApi:
                 }
             else:
                 deterministic_resolution_allowed = (
-                    deterministic_question != answer_request.question
+                    local_visual_answer is not None
+                    or deterministic_guardrail_answer is not None
+                    or deterministic_question != answer_request.question
                     or (
                         not corpus_promoted
                         and not (
@@ -2032,13 +2049,9 @@ class RetrievalApi:
                     )
                 )
             if deterministic_resolution_allowed:
-                deterministic_chord_answer = visual_fretboard_curated_answer(
-                    deterministic_question
-                )
+                deterministic_chord_answer = local_visual_answer
                 if deterministic_chord_answer is None:
-                    deterministic_chord_answer = unsupported_chord_position_curated_answer(
-                        deterministic_question
-                    )
+                    deterministic_chord_answer = deterministic_guardrail_answer
                 deterministic_fretboard_payload = fretboard_payload_for_question(
                     deterministic_question
                 )
@@ -2057,11 +2070,14 @@ class RetrievalApi:
             else:
                 answer_route = select_answer_route(
                     answer_intent_decision,
-                    deterministic_available=(
-                        deterministic_chord_answer is not None
-                        and deterministic_fretboard_payload is not None
-                    ),
+                    deterministic_available=deterministic_chord_answer is not None,
                 )
+                if (
+                    deterministic_chord_answer is not None
+                    and deterministic_question == answer_request.question
+                    and not corpus_promoted
+                ):
+                    answer_route = "deterministic"
             route_trace.route = answer_route
             curated_guidance_status: str | None = None
             curated_guidance_count: int | None = None
@@ -2602,18 +2618,19 @@ class RetrievalApi:
                     route_trace.verification = "not_run"
                     route_trace.fallback = "bounded_local_extractive"
                     degraded_result = None
-                    try:
-                        local_response = self._retrieval_dependencies.run(
-                            lambda: self._search(answer_request.question, limit=10),
-                            timeout_seconds=self._retrieval_wall_timeout,
-                        )
-                    except RuntimeError:
-                        route_trace.fallback = "local_retrieval_unavailable"
-                    else:
-                        degraded_result = compose_extractive_degraded_answer(
-                            answer_request.question,
-                            local_response.results,
-                        )
+                    if semantic_answer_result is None:
+                        try:
+                            local_response = self._retrieval_dependencies.run(
+                                lambda: self._search(answer_request.question, limit=10),
+                                timeout_seconds=self._retrieval_wall_timeout,
+                            )
+                        except RuntimeError:
+                            route_trace.fallback = "local_retrieval_unavailable"
+                        else:
+                            degraded_result = compose_extractive_degraded_answer(
+                                answer_request.question,
+                                local_response.results,
+                            )
                     if degraded_result is not None:
                         degraded_answer = degraded_result.answer
                         if answer_route == "hybrid" and deterministic_chord_answer is not None:
