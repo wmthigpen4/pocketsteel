@@ -71,6 +71,45 @@ def test_preview_runner_validates_bank_without_network(capsys: pytest.CaptureFix
     assert "across all six authorities" in capsys.readouterr().out
 
 
+def test_preview_runner_can_select_bounded_case_subset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def run_smoke(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {
+            "activation": {"status": "pass"},
+            "passed": 2,
+            "case_count": 2,
+            "failed": 0,
+            "results": [],
+        }
+
+    monkeypatch.setattr(preview_smoke, "run_smoke", run_smoke)
+    assert main([
+        "--base-url",
+        "http://127.0.0.1:8770",
+        "--auth-mode",
+        "dev",
+        "--case-id",
+        "exact-deterministic",
+        "--case-id",
+        "exact-plus-source-hybrid",
+        "--authorize-answer-requests",
+        "2",
+    ]) == 0
+    assert [case["id"] for case in captured["cases"]] == [
+        "exact-deterministic",
+        "exact-plus-source-hybrid",
+    ]
+
+
+def test_preview_runner_rejects_unknown_case_id() -> None:
+    with pytest.raises(SystemExit, match="2"):
+        main(["--case-id", "missing-case"])
+
+
 def test_preview_runner_requires_exact_request_authorization() -> None:
     with pytest.raises(ValueError, match="exact authorization for 10 answer requests"):
         main(["--base-url", "http://127.0.0.1:8770", "--auth-mode", "dev"])

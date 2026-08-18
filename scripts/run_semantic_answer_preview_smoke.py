@@ -272,6 +272,12 @@ def run_smoke(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bank", type=Path, default=DEFAULT_BANK)
+    parser.add_argument(
+        "--case-id",
+        action="append",
+        default=[],
+        help="Run only the named case; repeat to select more than one.",
+    )
     parser.add_argument("--base-url", help="Protected or local app origin. Without it, validate only.")
     parser.add_argument("--auth-mode", choices=("access-jwt", "dev"), default="access-jwt")
     parser.add_argument("--access-jwt-env", default=DEFAULT_ACCESS_JWT_ENV)
@@ -280,8 +286,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
 
-    cases = load_cases(args.bank)
-    print(f"Validated {len(cases)} semantic preview cases across all six authorities.")
+    bank_cases = load_cases(args.bank)
+    cases = bank_cases
+    if args.case_id:
+        selected_ids = set(args.case_id)
+        cases = [case for case in bank_cases if case["id"] in selected_ids]
+        missing_ids = selected_ids - {str(case["id"]) for case in cases}
+        if missing_ids:
+            parser.error(f"unknown case id(s): {', '.join(sorted(missing_ids))}")
+    print(
+        f"Validated {len(bank_cases)} semantic preview cases across all six authorities; "
+        f"selected {len(cases)}."
+    )
     if not args.base_url:
         return 0
     if args.authorize_answer_requests != len(cases):

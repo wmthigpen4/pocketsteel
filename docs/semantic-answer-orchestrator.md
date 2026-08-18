@@ -95,3 +95,5 @@ STEEL_RAG_PREVIEW_ACCESS_JWT=<protected-session-jwt> \
 ```
 
 The matrix covers deterministic, source-free teaching, source-backed, hybrid, clarification, and guardrail authorities plus contextual source/off-domain follow-ups and the two local personal-policy boundaries. The output path is optional and should remain an uncommitted QA artifact.
+
+The preview runner also accepts repeatable `--case-id ID` selectors. Exact request authorization is checked against the selected subset, allowing a failed case to be retested without spending on the entire matrix. The full bank is still validated before selection, so a subset run cannot conceal a malformed or incomplete acceptance bank.

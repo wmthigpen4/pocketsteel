@@ -2750,6 +2750,28 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
                 requested_root=requested_root,
                 normalized_key=normalize_key(requested_root),
             )
+
+    # Semantic planners describe the same operation more freely than the
+    # legacy user-facing phrase list (for example, "identify playable G major
+    # chord positions").  This is a deterministic argument parser, not a
+    # routing decision: require both position language and an explicit chord
+    # target, then return the same typed request used by the exact pitch tools.
+    planner_position_language = bool(
+        re.search(r"\b(?:identify|locate|map)\b", q)
+        or re.search(r"\bplayable\b.*\b(?:positions?|locations?)\b", q)
+        or re.search(r"\bexact\b.*\b(?:positions?|locations?)\b", q)
+    )
+    if planner_position_language:
+        target = re.search(
+            r"\b([a-g](?:##|bb|#|b)?)(?:\s+major)?\s+(?:chords?|positions?|locations?)\b",
+            q,
+        )
+        if target is not None:
+            requested_root = normalize_requested_root(target.group(1))
+            return MajorChordLocationRequest(
+                requested_root=requested_root,
+                normalized_key=normalize_key(requested_root),
+            )
     return None
 
 
@@ -2762,6 +2784,12 @@ def normalize_chord_intent_text(text: str) -> str:
     """Normalize casual chord-position phrasing before deterministic parsing."""
     normalized = normalize_chord_words_in_text(text or "")
     normalized = normalized.replace("’", "'").replace("“", '"').replace("”", '"')
+    normalized = re.sub(
+        r"\b([a-g](?:##|bb|#|b)?)[-–—]+(major|minor)\b",
+        r"\1 \2",
+        normalized,
+        flags=re.I,
+    )
     normalized = normalized.lower()
     normalized = re.sub(r"[?!.,;:]+", " ", normalized)
     normalized = re.sub(r"\bcan you\b", " ", normalized)
