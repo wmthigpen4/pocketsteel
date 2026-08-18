@@ -5,7 +5,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from steel_guitar_rag.answer_intent_classifier import mentions_position_strategy
+from steel_guitar_rag.answer_intent_classifier import (
+    mentions_chord_melody_harmony,
+    mentions_position_strategy,
+)
 from steel_guitar_rag.music_text import normalize_spelled_accidentals
 from steel_guitar_rag.basic_chord_answers import (
     basic_chord_theory_answer_for_question,
@@ -1343,6 +1346,8 @@ def intent_mode_for_question(question: str) -> IntentMode:
         return "progression_intro_request"
     if _mentions_chord_family_teaching_request(q):
         return "fretboard_concept"
+    if mentions_chord_melody_harmony(q):
+        return "fretboard_concept"
     if mentions_position_strategy(q):
         return "position_strategy"
     if _mentions_movement_request(q):
@@ -1422,7 +1427,8 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
             ),
         )
     teaching_answer = (
-        teacher_first_bc_pedal_skills_answer(q)
+        teacher_first_chord_melody_harmony_answer(q)
+        or teacher_first_bc_pedal_skills_answer(q)
         or teacher_first_general_lick_answer(q)
         or teacher_first_general_turnaround_answer(q)
         or teacher_first_chord_family_answer(q)
@@ -3372,6 +3378,39 @@ def teacher_first_chord_family_answer(question: str) -> CuratedAnswer | None:
         )
 
     return None
+
+
+def teacher_first_chord_melody_harmony_answer(question: str) -> CuratedAnswer | None:
+    if not mentions_chord_melody_harmony(question):
+        return None
+    return CuratedAnswer(
+        intent="fretboard_concept",
+        confidence="curated_high",
+        answer=(
+            "The key idea: you do not have to put a full piano-style chord under every melody note. "
+            "On pedal steel, treat the melody as the top voice. Play it alone much of the time, then add one or two lower chord tones on arrivals, held notes, and phrase endings. The bass and rhythm instruments are already carrying the rest of the chord.\n\n"
+            "How the jobs are divided:\n"
+            "- Your right hand chooses how many voices sound: one melody string, a two-note harmony, or a three-note grip. It also blocks the strings you do not want.\n"
+            "- The bar chooses the fret and connects positions.\n"
+            "- The pedals and knee levers move inner voices while notes sustain. That is the pedal-steel equivalent of some of the work a pianist's other hand does.\n\n"
+            "Harmony rules that matter:\n"
+            "- On strong beats and long notes, aim for a note in the current chord: root, 3rd, 5th, or 7th when the chord includes it.\n"
+            "- Passing notes do not all have to be chord tones. A 2/9, 4/sus, 6, or chromatic note can work when it is brief or resolves clearly.\n"
+            "- Keep the melody as the highest and clearest note. Add harmony below it; do not let a lower grip voice hide the tune.\n"
+            "- Protect the notes that define chord quality. A major 3rd against a minor chord, or a major 7th against a dominant chord that contains a flat 7th, usually sounds wrong unless you intend that tension.\n"
+            "- Use smooth voice leading. Keep common tones ringing and move the other voices the shortest distance available with pedals, levers, or a nearby bar position.\n"
+            "- You may omit the root or 5th when the band already states them. Two well-chosen voices often sound clearer than a busy full grip.\n\n"
+            "Concrete standard-E9 example:\n"
+            "At the 3rd fret with no pedals, strings 4-5-6 sound G-D-B from high to low: a G chord with G on top. When the band changes to C, keep the bar at fret 3 and press A+B. String 4 stays G while strings 5 and 6 move to E and C, giving G-E-C: a C chord with the same G melody note on top. Your right hand can pick string 4 alone during the line, add string 5 for two-part harmony, and use the full 4-5-6 grip only when you want the chord to bloom.\n\n"
+            "A five-minute drill:\n"
+            "- Loop G to C to G slowly.\n"
+            "- Stay at fret 3 and keep G on string 4 as the melody.\n"
+            "- Play it once as a single note, once with string 5 added, and once as the full 4-5-6 grip.\n"
+            "- Press and release A+B only at the chord changes; block cleanly between repetitions.\n"
+            "- Listen for three things: the top G remains obvious, the lower notes move smoothly, and no unwanted string keeps ringing.\n\n"
+            "The practical rule is melody first, harmony second, full chord only when it helps the phrase. If you name a song, key, and melody note, I can map the exact strings, fret, and pedal or lever move."
+        ),
+    )
 
 
 def teacher_first_turnaround_answer(question: str) -> CuratedAnswer | None:

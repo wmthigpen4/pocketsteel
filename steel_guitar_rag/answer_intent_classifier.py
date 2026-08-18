@@ -703,6 +703,8 @@ def _mentions_default_teaching_request(question: str) -> bool:
         return True
     if _mentions_chord_family_teaching_request(question):
         return True
+    if mentions_chord_melody_harmony(question):
+        return True
     if _mentions_movement_request(question):
         return True
     if _mentions_progression_intro_request(question):
@@ -758,6 +760,24 @@ def _mentions_chord_family_teaching_request(question: str) -> bool:
     return bool(
         re.search(r"\b(?:teach|explain|learn|what(?:'s| is)|about)\b", question)
         and re.search(r"\b(?:major|minor)\s+chords?\b", question)
+    )
+
+
+def mentions_chord_melody_harmony(question: str) -> bool:
+    """Recognize practical questions about voicing a melody over chords.
+
+    These are stable music-mechanics questions. They should be answered from
+    the teacher/rules layer instead of being made contingent on forum search.
+    """
+
+    return bool(
+        re.search(r"\b(?:chords?|chord\s+tones?)\b", question)
+        and re.search(r"\b(?:harmony|harmon(?:y|ize|ized|izing)|melod(?:y|ies|ic))\b", question)
+        and re.search(
+            r"\b(?:pedal\s+steel|steel\s+guitar|right\s+hand|over\s+(?:a|the)\s+chord|"
+            r"mix(?:ing)?|rules?|play(?:ing)?)\b",
+            question,
+        )
     )
 
 
