@@ -31,6 +31,33 @@ set -a
 source "$STEEL_RAG_ENV_FILE"
 set +a
 
+export STEEL_RAG_SEMANTIC_ANSWER_ENABLED="${STEEL_RAG_SEMANTIC_ANSWER_ENABLED:-false}"
+STEEL_RAG_SEMANTIC_ENABLED="$(printf '%s' "$STEEL_RAG_SEMANTIC_ANSWER_ENABLED" | tr '[:upper:]' '[:lower:]')"
+case "$STEEL_RAG_SEMANTIC_ENABLED" in
+  1|true|yes|on)
+    if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+      STEEL_RAG_SECURITY_BIN="${STEEL_RAG_SECURITY_BIN:-/usr/bin/security}"
+      STEEL_RAG_OPENAI_KEYCHAIN_ACCOUNT="${STEEL_RAG_OPENAI_KEYCHAIN_ACCOUNT:-$(/usr/bin/id -un)}"
+      STEEL_RAG_OPENAI_KEYCHAIN_SERVICE="${STEEL_RAG_OPENAI_KEYCHAIN_SERVICE:-pocket-steel-openai-api-key}"
+      [[ -x "$STEEL_RAG_SECURITY_BIN" ]] || fail "macOS Keychain client is not executable"
+      if ! STEEL_RAG_OPENAI_KEY="$("$STEEL_RAG_SECURITY_BIN" find-generic-password \
+        -a "$STEEL_RAG_OPENAI_KEYCHAIN_ACCOUNT" \
+        -s "$STEEL_RAG_OPENAI_KEYCHAIN_SERVICE" \
+        -w 2>/dev/null)"; then
+        fail "semantic answers are enabled but the OpenAI credential could not be loaded from macOS Keychain"
+      fi
+      [[ -n "$STEEL_RAG_OPENAI_KEY" ]] || fail "semantic answers are enabled but the macOS Keychain credential is empty"
+      export OPENAI_API_KEY="$STEEL_RAG_OPENAI_KEY"
+      unset STEEL_RAG_OPENAI_KEY
+    fi
+    ;;
+  0|false|no|off)
+    ;;
+  *)
+    fail "STEEL_RAG_SEMANTIC_ANSWER_ENABLED must be a boolean"
+    ;;
+esac
+
 export PYTHONPATH="${STEEL_RAG_PYTHONPATH:-.}"
 export STEEL_RAG_AUTH_PROVIDER="${STEEL_RAG_AUTH_PROVIDER:-cloudflare_access}"
 export STEEL_RAG_ANSWER_AUTH_MODE="${STEEL_RAG_ANSWER_AUTH_MODE:-production}"

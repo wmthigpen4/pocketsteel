@@ -38,6 +38,16 @@ The repo-managed wrapper is copied to `/usr/local/libexec/steel-guitar-rag/run-p
 
 The service wrapper reads `~/.steel-rag/env/private-preview.env` at runtime. That file must stay outside the repo and must not be pasted into handoffs, issues, prompts, shell history, or screenshots.
 
+When `STEEL_RAG_SEMANTIC_ANSWER_ENABLED=true`, the wrapper loads
+`OPENAI_API_KEY` into the server process from the current macOS user's
+Keychain if the variable is not already present. The default generic-password
+service is `pocket-steel-openai-api-key`; the account defaults to the runtime
+user. The wrapper fails closed when semantic answers are enabled and that
+credential cannot be read, and it never writes the credential to the env file
+or command line. The optional `STEEL_RAG_OPENAI_KEYCHAIN_SERVICE` and
+`STEEL_RAG_OPENAI_KEYCHAIN_ACCOUNT` settings select a reviewed alternate
+Keychain item without containing the credential itself.
+
 The installed private-preview wrapper enables Melody Studio and the tested
 printed-score import path by default with:
 

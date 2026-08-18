@@ -34,6 +34,46 @@ def _write_executable(path: Path, body: str) -> Path:
     return path
 
 
+def _run_wrapper(
+    tmp_path: Path,
+    *,
+    semantic_enabled: str,
+    security_body: str,
+    python_body: str,
+) -> subprocess.CompletedProcess[str]:
+    repo_dir = tmp_path / "release"
+    python_bin = repo_dir / ".venv/bin/python"
+    python_bin.parent.mkdir(parents=True)
+    _write_executable(python_bin, python_body)
+    security_bin = _write_executable(tmp_path / "security", security_body)
+    env_file = tmp_path / "private-preview.env"
+    env_file.write_text(
+        f"STEEL_RAG_SEMANTIC_ANSWER_ENABLED={semantic_enabled}\n"
+        "STEEL_RAG_ENABLE_MELODY_IMPORT=false\n",
+        encoding="utf-8",
+    )
+    log_dir = tmp_path / "logs"
+    env = os.environ.copy()
+    env.pop("OPENAI_API_KEY", None)
+    env.update(
+        {
+            "STEEL_RAG_REPO_DIR": str(repo_dir),
+            "STEEL_RAG_DATA_DIR": str(repo_dir),
+            "STEEL_RAG_ENV_FILE": str(env_file),
+            "STEEL_RAG_LOG_DIR": str(log_dir),
+            "STEEL_RAG_SECURITY_BIN": str(security_bin),
+        }
+    )
+    return subprocess.run(
+        [str(WRAPPER)],
+        cwd=REPO_ROOT,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
 def _start_health_server() -> tuple[ThreadingHTTPServer, threading.Thread]:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802
@@ -81,6 +121,49 @@ def test_private_preview_wrapper_enables_tested_printed_score_import() -> None:
     assert ".local/bin/homr" in wrapper
     assert '! -x "$HOMR_BIN"' in wrapper
     assert ",," not in wrapper
+
+
+def test_private_preview_wrapper_skips_keychain_when_semantic_answers_are_off(
+    tmp_path: Path,
+) -> None:
+    result = _run_wrapper(
+        tmp_path,
+        semantic_enabled="false",
+        security_body="#!/bin/sh\nexit 99\n",
+        python_body='#!/bin/sh\n[ -z "${OPENAI_API_KEY:-}" ]\n',
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_private_preview_wrapper_loads_openai_key_from_keychain_without_printing_it(
+    tmp_path: Path,
+) -> None:
+    test_key = "test-openai-key-that-must-not-print"
+    result = _run_wrapper(
+        tmp_path,
+        semantic_enabled="true",
+        security_body=f"#!/bin/sh\nprintf '%s' '{test_key}'\n",
+        python_body=f'#!/bin/sh\n[ "${{OPENAI_API_KEY:-}}" = "{test_key}" ]\n',
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert test_key not in result.stdout
+    assert test_key not in result.stderr
+
+
+def test_private_preview_wrapper_fails_closed_when_keychain_load_fails(
+    tmp_path: Path,
+) -> None:
+    result = _run_wrapper(
+        tmp_path,
+        semantic_enabled="true",
+        security_body="#!/bin/sh\nexit 44\n",
+        python_body="#!/bin/sh\nexit 0\n",
+    )
+
+    assert result.returncode != 0
+    assert "credential could not be loaded from macOS Keychain" in result.stderr
 
 
 def test_restart_refuses_to_run_without_an_exact_release() -> None:
