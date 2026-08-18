@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import urllib.request
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -13,6 +15,7 @@ from steel_guitar_rag.semantic_answer_orchestrator import (
     ENABLE_SEMANTIC_ANSWER_ENV,
     OPENAI_API_KEY_ENV,
     OpenAIResponsesSemanticAnswerer,
+    SemanticAnswerMetrics,
     SemanticAnswerResult,
     SemanticAnswerUnavailable,
     configured_semantic_answer_enabled,
@@ -172,6 +175,14 @@ def test_openai_answerer_uses_responses_structured_output(monkeypatch: pytest.Mo
     }
     response_body = json.dumps({
         "status": "completed",
+        "model": "gpt-test-2026-08-01",
+        "usage": {
+            "input_tokens": 321,
+            "input_tokens_details": {"cached_tokens": 120},
+            "output_tokens": 87,
+            "output_tokens_details": {"reasoning_tokens": 24},
+            "total_tokens": 408,
+        },
         "output": [{
             "type": "message",
             "content": [{"type": "output_text", "text": json.dumps(plan)}],
@@ -202,6 +213,13 @@ def test_openai_answerer_uses_responses_structured_output(monkeypatch: pytest.Mo
 
     assert parsed.route == "semantic_teacher"
     assert parsed.answer == teaching_answer
+    assert parsed.metrics is not None
+    assert parsed.metrics.model == "gpt-test-2026-08-01"
+    assert parsed.metrics.input_tokens == 321
+    assert parsed.metrics.cached_input_tokens == 120
+    assert parsed.metrics.output_tokens == 87
+    assert parsed.metrics.reasoning_output_tokens == 24
+    assert parsed.metrics.total_tokens == 408
     assert captured["url"] == "https://api.openai.com/v1/responses"
     assert captured["timeout"] == 7
     assert captured["authorization"] == "Bearer server-secret"
@@ -209,6 +227,28 @@ def test_openai_answerer_uses_responses_structured_output(monkeypatch: pytest.Mo
     assert captured["body"]["store"] is False
     assert captured["body"]["text"]["format"]["type"] == "json_schema"
     assert captured["body"]["text"]["format"]["strict"] is True
+
+
+def test_semantic_metrics_serialization_does_not_enter_provider_contract() -> None:
+    metrics = SemanticAnswerMetrics(
+        model="gpt-test",
+        latency_ms=12,
+        input_tokens=100,
+        cached_input_tokens=20,
+        output_tokens=30,
+        reasoning_output_tokens=10,
+        total_tokens=130,
+    )
+    semantic_result = result(
+        "semantic_teacher",
+        answer=(
+            "Treat the chord as the stable floor under the phrase and use chord tones as resting places. "
+            "Let nearby scale tones create motion, block unused voices, and practice resolving short phrases."
+        ),
+    )
+    semantic_result = SemanticAnswerResult(**{**semantic_result.as_dict(), "missing_context": (), "metrics": metrics})
+    assert "metrics" not in semantic_result.as_dict()
+    assert validate_semantic_answer_result(semantic_result.as_dict()).metrics is None
 
 
 def test_validation_rejects_source_backed_answer_without_evidence() -> None:
@@ -300,6 +340,114 @@ def test_semantic_teacher_answers_unseen_paraphrase_without_retrieval() -> None:
     assert payload["sources"] == []
     assert payload["warnings"] == []
     assert "fretboard" not in payload
+
+
+def test_real_responses_adapter_drives_source_free_api_experience(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    teaching_answer = (
+        "Treat the held chord as the harmonic boundary while the melody supplies motion above it. "
+        "Let chord tones be resting places, use nearby scale tones between them, and pick only the voices "
+        "the phrase needs. Practice over one sustained harmony and make each short phrase settle clearly."
+    )
+    plan = result("semantic_teacher", answer=teaching_answer).as_dict()
+    response_body = json.dumps({
+        "status": "completed",
+        "model": "gpt-test",
+        "usage": {
+            "input_tokens": 240,
+            "input_tokens_details": {"cached_tokens": 0},
+            "output_tokens": 72,
+            "output_tokens_details": {"reasoning_tokens": 18},
+            "total_tokens": 312,
+        },
+        "output": [{
+            "type": "message",
+            "content": [{"type": "output_text", "text": json.dumps(plan)}],
+        }],
+    }).encode("utf-8")
+    provider_calls: list[dict[str, Any]] = []
+
+    class Response:
+        def __enter__(self) -> "Response":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self, _limit: int) -> bytes:
+            return response_body
+
+    def urlopen(request: urllib.request.Request, timeout: float) -> Response:
+        provider_calls.append({
+            "url": request.full_url,
+            "timeout": timeout,
+            "body": json.loads(bytes(request.data or b"").decode("utf-8")),
+        })
+        return Response()
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    search = EmptySearchIndex()
+    app = create_app(
+        search,
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=OpenAIResponsesSemanticAnswerer(
+            api_key="server-test-key",
+            model="gpt-test",
+        ),
+    )
+    question = (
+        "I understand chord changes, but how do I mix chords with harmony while a melody moves "
+        "over one chord on pedal steel?"
+    )
+    status, payload = call_answer(app, question)
+    assert status == "200 OK"
+    assert len(provider_calls) == 1
+    assert provider_calls[0]["url"] == "https://api.openai.com/v1/responses"
+    assert provider_calls[0]["body"]["model"] == "gpt-test"
+    assert search.calls == []
+    assert payload["answer"] == teaching_answer
+    assert payload["sources"] == []
+    assert "fretboard" not in payload
+
+
+def test_api_logs_semantic_usage_without_logging_the_question(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    teaching_answer = (
+        "Treat the chord as the stable floor under the phrase and use chord tones as resting places. "
+        "Let nearby scale tones create motion, block unused voices, and practice resolving short phrases."
+    )
+    semantic_result = replace(
+        result("semantic_teacher", answer=teaching_answer),
+        metrics=SemanticAnswerMetrics(
+            model="gpt-test",
+            latency_ms=12,
+            input_tokens=100,
+            cached_input_tokens=20,
+            output_tokens=30,
+            reasoning_output_tokens=5,
+            total_tokens=130,
+        ),
+    )
+    semantic = FakeSemanticAnswerer(semantic_result)
+    app = create_app(
+        EmptySearchIndex(),
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=semantic,
+    )
+    question = "Private phrasing marker: how can harmony support this melody?"
+    caplog.set_level(logging.INFO, logger="steel_guitar_rag.api")
+    status, _payload = call_answer(app, question)
+    assert status == "200 OK"
+    messages = [record.getMessage() for record in caplog.records]
+    metric_message = next(message for message in messages if "semantic_answer_complete" in message)
+    assert "model=gpt-test" in metric_message
+    assert "input_tokens=100" in metric_message
+    assert "total_tokens=130" in metric_message
+    assert question not in metric_message
 
 
 def test_semantic_teacher_authority_is_not_preempted_by_a_chord_name() -> None:

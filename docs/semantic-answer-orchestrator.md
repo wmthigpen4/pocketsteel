@@ -57,6 +57,10 @@ If the semantic planner fails, valid in-domain requests fall back to the current
 
 The current slice does not add embeddings, rebuild indexes, change corpus data, change `/api/answer`, or change frontend rendering. It does intentionally add one planner call to recognized deterministic questions while the feature flag is enabled, so the semantic planner—not the legacy regex classifier—owns routing authority consistently.
 
+Successful planner calls record the resolved model, provider latency, input tokens, cached input tokens, output tokens, reasoning-output tokens, and total tokens in the server route log. The log includes the existing trace ID but not the user's question or the model answer. Provider metrics are application metadata and never enter the model's Structured Outputs schema or the public `/api/answer` response.
+
+The authenticated `/api/session` response exposes `features.semanticAnswer` and `features.canonicalFrontier` only when each path is active. This gives protected smoke a read-only way to prove that both required authorities are enabled without weakening the minimal public `/api/version` and health responses.
+
 ## Evaluation and rollout
 
 The held-out bank is `evals/semantic_answer_authority_v1.jsonl`. Run it only in an approved environment with a server-side OpenAI key:
@@ -64,6 +68,8 @@ The held-out bank is `evals/semantic_answer_authority_v1.jsonl`. Run it only in 
 ```bash
 .venv/bin/python scripts/run_semantic_answer_eval.py
 ```
+
+The report includes per-route correctness, every individual failure, request completion count, model identity, token totals, and total/median/p95 wall latency. Expected provider or contract failures are recorded and the remaining cases continue, so one failure cannot hide the rest of the bank. Cost is intentionally not hard-coded: calculate it from the captured usage and the approved environment's current model pricing.
 
 Promotion gates:
 

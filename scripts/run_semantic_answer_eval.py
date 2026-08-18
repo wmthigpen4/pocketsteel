@@ -5,11 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
+import statistics
+import time
 from typing import Any, Iterable
 
 from steel_guitar_rag.semantic_answer_orchestrator import (
     OpenAIResponsesSemanticAnswerer,
+    SemanticAnswerUnavailable,
     semantic_teacher_authority_violations,
 )
 
@@ -32,7 +36,24 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
 def evaluate_cases(answerer: Any, cases: Iterable[dict[str, Any]]) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     for case in cases:
-        result = answerer.answer(str(case["prompt"]), mode="ask", conversation_context=[])
+        started = time.monotonic()
+        try:
+            result = answerer.answer(str(case["prompt"]), mode="ask", conversation_context=[])
+        except SemanticAnswerUnavailable as exc:
+            rows.append({
+                "id": case["id"],
+                "expected_route": case["expected_route"],
+                "actual_route": None,
+                "reason_code": None,
+                "missing_tool_terms": list(case.get("tool_query_contains") or ()),
+                "authority_violations": [],
+                "latency_ms": round((time.monotonic() - started) * 1000),
+                "provider_metrics": None,
+                "error": str(exc),
+                "passed": False,
+            })
+            continue
+        elapsed_ms = round((time.monotonic() - started) * 1000)
         missing_tool_terms = [
             str(term)
             for term in case.get("tool_query_contains") or ()
@@ -55,6 +76,9 @@ def evaluate_cases(answerer: Any, cases: Iterable[dict[str, Any]]) -> dict[str, 
             "reason_code": result.reason_code,
             "missing_tool_terms": missing_tool_terms,
             "authority_violations": authority_violations,
+            "latency_ms": elapsed_ms,
+            "provider_metrics": result.metrics.as_dict() if result.metrics is not None else None,
+            "error": None,
             "passed": passed,
         })
     passed_count = sum(1 for row in rows if row["passed"])
@@ -64,6 +88,38 @@ def evaluate_cases(answerer: Any, cases: Iterable[dict[str, Any]]) -> dict[str, 
         summary = route_summary.setdefault(route, {"passed": 0, "total": 0})
         summary["total"] += 1
         summary["passed"] += int(bool(row["passed"]))
+    latencies = sorted(int(row["latency_ms"]) for row in rows)
+    provider_metrics = [
+        row["provider_metrics"]
+        for row in rows
+        if isinstance(row.get("provider_metrics"), dict)
+    ]
+
+    def token_total(field: str) -> int | None:
+        values = [metrics.get(field) for metrics in provider_metrics]
+        if not values or any(type(value) is not int for value in values):
+            return None
+        return sum(values)
+
+    runtime_metrics = {
+        "request_count": len(rows),
+        "completed_count": sum(1 for row in rows if row["actual_route"] is not None),
+        "provider_usage_reported_calls": len(provider_metrics),
+        "models": sorted({str(metrics["model"]) for metrics in provider_metrics}),
+        "evaluation_wall_latency_ms_total": sum(latencies),
+        "evaluation_wall_latency_ms_median": (
+            round(statistics.median(latencies)) if latencies else None
+        ),
+        "evaluation_wall_latency_ms_p95": (
+            latencies[max(0, math.ceil(len(latencies) * 0.95) - 1)] if latencies else None
+        ),
+        "provider_latency_ms_total": token_total("latency_ms"),
+        "input_tokens_total": token_total("input_tokens"),
+        "cached_input_tokens_total": token_total("cached_input_tokens"),
+        "output_tokens_total": token_total("output_tokens"),
+        "reasoning_output_tokens_total": token_total("reasoning_output_tokens"),
+        "tokens_total": token_total("total_tokens"),
+    }
     return {
         "schema_version": 1,
         "case_count": len(rows),
@@ -71,6 +127,7 @@ def evaluate_cases(answerer: Any, cases: Iterable[dict[str, Any]]) -> dict[str, 
         "failed": len(rows) - passed_count,
         "pass_rate": passed_count / len(rows) if rows else 0.0,
         "route_summary": route_summary,
+        "runtime_metrics": runtime_metrics,
         "rows": rows,
     }
 

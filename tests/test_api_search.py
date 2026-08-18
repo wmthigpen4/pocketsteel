@@ -679,6 +679,26 @@ def test_api_version_reports_app_start_identity_consistently() -> None:
     assert first_payload["server_started_at"] == second_payload["server_started_at"]
 
 
+def test_api_session_reports_semantic_and_frontier_activation_to_authenticated_user() -> None:
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        semantic_answer_enabled=True,
+        semantic_answerer=object(),
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=object(),
+    )
+    status, _, payload = call_existing_app(
+        app,
+        "/api/session",
+        method="GET",
+    )
+    assert status == "200 OK"
+    assert payload["features"]["semanticAnswer"] is True
+    assert payload["features"]["canonicalFrontier"] is True
+
+
 def test_api_version_rejects_non_get_method() -> None:
     status, _, payload = call_app(
         "/api/version",
