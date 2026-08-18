@@ -4,7 +4,13 @@ from pathlib import Path
 from typing import Any
 
 from scripts.run_semantic_answer_eval import evaluate_cases, load_cases
-from steel_guitar_rag.semantic_answer_orchestrator import SemanticAnswerResult
+from dataclasses import replace
+
+from steel_guitar_rag.semantic_answer_orchestrator import (
+    SemanticAnswerMetrics,
+    SemanticAnswerResult,
+    SemanticAnswerUnavailable,
+)
 
 
 BANK = Path("evals/semantic_answer_authority_v1.jsonl")
@@ -51,6 +57,35 @@ class OverclaimingTeacherAnswerer(EchoExpectedAnswerer):
         )
 
 
+class MeteredAnswerer(EchoExpectedAnswerer):
+    def answer(self, prompt: str, **kwargs: Any) -> SemanticAnswerResult:
+        result = super().answer(prompt, **kwargs)
+        return replace(
+            result,
+            metrics=SemanticAnswerMetrics(
+                model="gpt-test",
+                latency_ms=10,
+                input_tokens=100,
+                cached_input_tokens=20,
+                output_tokens=30,
+                reasoning_output_tokens=5,
+                total_tokens=130,
+            ),
+        )
+
+
+class OneUnavailableAnswerer(EchoExpectedAnswerer):
+    def __init__(self, cases: list[dict[str, Any]]) -> None:
+        super().__init__(cases)
+        self.failed = False
+
+    def answer(self, prompt: str, **kwargs: Any) -> SemanticAnswerResult:
+        if not self.failed:
+            self.failed = True
+            raise SemanticAnswerUnavailable("test provider outage")
+        return super().answer(prompt, **kwargs)
+
+
 def test_semantic_authority_bank_has_balanced_routes_and_unique_ids() -> None:
     cases = load_cases(BANK)
     ids = [case["id"] for case in cases]
@@ -74,6 +109,8 @@ def test_semantic_authority_evaluator_scores_routes_and_tool_restatenents() -> N
     assert report["failed"] == 0
     assert report["pass_rate"] == 1.0
     assert report["route_summary"]["semantic_teacher"] == {"passed": 8, "total": 8}
+    assert report["runtime_metrics"]["request_count"] == len(cases)
+    assert report["runtime_metrics"]["provider_usage_reported_calls"] == 0
 
 
 def test_semantic_authority_evaluator_fails_teacher_overreach() -> None:
@@ -83,3 +120,27 @@ def test_semantic_authority_evaluator_fails_teacher_overreach() -> None:
     assert teacher_rows
     assert all(not row["passed"] for row in teacher_rows)
     assert all("exact fret coordinate" in row["authority_violations"] for row in teacher_rows)
+
+
+def test_semantic_authority_evaluator_aggregates_provider_usage() -> None:
+    cases = load_cases(BANK)
+    report = evaluate_cases(MeteredAnswerer(cases), cases)
+    metrics = report["runtime_metrics"]
+    assert metrics["provider_usage_reported_calls"] == len(cases)
+    assert metrics["models"] == ["gpt-test"]
+    assert metrics["provider_latency_ms_total"] == len(cases) * 10
+    assert metrics["input_tokens_total"] == len(cases) * 100
+    assert metrics["cached_input_tokens_total"] == len(cases) * 20
+    assert metrics["output_tokens_total"] == len(cases) * 30
+    assert metrics["reasoning_output_tokens_total"] == len(cases) * 5
+    assert metrics["tokens_total"] == len(cases) * 130
+
+
+def test_semantic_authority_evaluator_records_expected_provider_failure_and_continues() -> None:
+    cases = load_cases(BANK)
+    report = evaluate_cases(OneUnavailableAnswerer(cases), cases)
+    assert report["case_count"] == len(cases)
+    assert report["failed"] == 1
+    assert report["runtime_metrics"]["completed_count"] == len(cases) - 1
+    assert report["rows"][0]["actual_route"] is None
+    assert report["rows"][0]["error"] == "test provider outage"

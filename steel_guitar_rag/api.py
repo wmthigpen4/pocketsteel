@@ -11,6 +11,7 @@ import subprocess
 import threading
 from collections import deque
 from collections.abc import Iterable
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any, Callable
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -822,6 +823,10 @@ class RetrievalApi:
                 features["accountCopedents"] = True
             if self.account_usage_enabled:
                 features["accountUsage"] = True
+            if self.semantic_answer_enabled:
+                features["semanticAnswer"] = True
+            if self.canonical_frontier_enabled:
+                features["canonicalFrontier"] = True
             if features:
                 payload["features"] = features
             if self.account_copedents_enabled and access.allowed:
@@ -1902,10 +1907,18 @@ class RetrievalApi:
                         ),
                         timeout_seconds=self._answer_wall_timeout,
                     )
-                    semantic_answer_result = validate_semantic_answer_result(
+                    validated_semantic_result = validate_semantic_answer_result(
                         semantic_answer_candidate.as_dict()
                         if isinstance(semantic_answer_candidate, SemanticAnswerResult)
                         else semantic_answer_candidate
+                    )
+                    semantic_answer_result = (
+                        replace(
+                            validated_semantic_result,
+                            metrics=semantic_answer_candidate.metrics,
+                        )
+                        if isinstance(semantic_answer_candidate, SemanticAnswerResult)
+                        else validated_semantic_result
                     )
                 except (SemanticAnswerUnavailable, RuntimeError) as exc:
                     LOGGER.warning(
@@ -1926,6 +1939,22 @@ class RetrievalApi:
                         }
                         route_trace.classification = "semantic_unavailable:off_domain_fail_closed"
                 else:
+                    semantic_metrics = semantic_answer_result.metrics
+                    if semantic_metrics is not None:
+                        LOGGER.info(
+                            "semantic_answer_complete route=%s model=%s latency_ms=%s "
+                            "input_tokens=%s cached_input_tokens=%s output_tokens=%s "
+                            "reasoning_output_tokens=%s total_tokens=%s trace_id=%s",
+                            semantic_answer_result.route,
+                            semantic_metrics.model,
+                            semantic_metrics.latency_ms,
+                            semantic_metrics.input_tokens,
+                            semantic_metrics.cached_input_tokens,
+                            semantic_metrics.output_tokens,
+                            semantic_metrics.reasoning_output_tokens,
+                            semantic_metrics.total_tokens,
+                            route_trace.trace_id,
+                        )
                     answer_intent_decision = semantic_answer_result.as_intent_decision()
                     route_trace.classification = (
                         f"semantic:{semantic_answer_result.route}:"
