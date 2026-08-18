@@ -2802,6 +2802,7 @@ def normalize_chord_intent_text(text: str) -> str:
 def chord_context_pattern() -> str:
     return (
         r"(?:on|across|of|for)\s+(?:the\s+|my\s+)?"
+        r"(?:standard\s+)?"
         r"(?:e9(?:\s+(?:neck|pedal\s+steel|setup))?|pedal\s+steel(?:\s+e9)?|steel(?:\s+e9)?|neck|fretboard|guitar)"
     )
 
