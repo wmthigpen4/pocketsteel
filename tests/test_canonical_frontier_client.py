@@ -340,6 +340,39 @@ def test_position_strategy_content_leads_without_frontier_or_legacy_retrieval() 
     assert provider.calls == 0
 
 
+def test_chord_melody_harmony_content_leads_without_frontier_or_legacy_retrieval() -> None:
+    search = EmptySearchIndex()
+    frontier = FakeFrontierClient()
+    provider = ExistingAnswerProvider()
+    app = create_app(
+        search,
+        answer_provider=provider,
+        answer_auth_mode="local_dev",
+        canonical_frontier_enabled=True,
+        canonical_frontier_client=frontier,
+    )
+    question = (
+        "I understand chord changes, but what I don't understand on pedal steel is mixing chords with harmony. "
+        "On the piano it's easy because you play with both hands. On pedal steel you have to try to do both with "
+        "your right hand. When I am playing over a chord what rules do I have to follow related to harmony?"
+    )
+
+    status, payload = call_answer(app, question)
+
+    assert status == "200 OK"
+    assert payload["answer"].startswith("The key idea: you do not have to put a full piano-style chord")
+    assert "treat the melody as the top voice" in payload["answer"]
+    assert "At the 3rd fret with no pedals, strings 4-5-6 sound G-D-B" in payload["answer"]
+    assert "press A+B" in payload["answer"]
+    assert "melody first, harmony second, full chord only when it helps" in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" not in payload
+    assert frontier.questions == []
+    assert search.calls == 0
+    assert provider.calls == 0
+
+
 @pytest.mark.parametrize(
     ("question", "expected"),
     [

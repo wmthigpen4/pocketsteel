@@ -55,6 +55,27 @@ def test_position_strategy_questions_use_the_deterministic_teacher_route(questio
     }
 
 
+def test_chord_melody_harmony_question_uses_source_free_teacher_route() -> None:
+    question = (
+        "I understand chord changes, but what I don't understand on pedal steel is mixing chords with harmony. "
+        "On the piano it's easy because you play with both hands. On pedal steel you have to try to do both with "
+        "your right hand. When I am playing over a chord what rules do I have to follow related to harmony?"
+    )
+
+    decision = classify_answer_request(question)
+
+    assert_contract_shape(decision)
+    assert decision == {
+        "domain": "steel_guitar",
+        "intent": "practice_plan",
+        "needs_sources": False,
+        "needs_fretboard": False,
+        "needs_copedent": False,
+        "retrieval_allowed": False,
+        "allowed_answer_shape": "practice_plan",
+    }
+
+
 def test_bare_fret_language_does_not_force_a_copedent_position_route() -> None:
     decision = classify_answer_request("What does a fret marker mean on steel guitar?")
 
