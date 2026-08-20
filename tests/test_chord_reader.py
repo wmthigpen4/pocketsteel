@@ -16,6 +16,9 @@ from steel_guitar_rag.chord_reader.btc import load_model_registry, verify_model_
 from steel_guitar_rag.chord_reader.chart_reference import build_chart_reference
 from steel_guitar_rag.chord_reader.hybrid import hybridize_predictions
 from steel_guitar_rag.chord_reader.datasets import (
+    _midi_chord_label,
+    _tick_seconds,
+    _weighted_midi_chord_label,
     parse_aam_beatinfo,
     parse_guitarset_jams,
     parse_idmt_chords,
@@ -35,6 +38,14 @@ from steel_guitar_rag.chord_reader.student import (
     frame_labels,
     frame_label_mask,
     _root_guided_logits,
+    _root_then_quality_student_path,
+    domain_gate_probability,
+    student_audio_profile,
+    _quality_guided_logits,
+    _mode_guided_logits,
+    _extension_guided_logits,
+    _factorized_student_path,
+    _product_logits,
     merge_feature_caches,
     student_index,
     student_label,
@@ -72,6 +83,54 @@ def test_transpose_chord_preserves_quality_and_bass() -> None:
     assert label.detailed_symbol == "C:min7/Eb"
     assert label.product_symbol == "Cm7"
     assert label.bass == "Eb"
+
+
+@pytest.mark.parametrize(
+    ("notes", "expected"),
+    [
+        ([48, 52, 55], "C:maj"),
+        ([45, 48, 52], "A:min"),
+        ([43, 47, 50, 53], "G:7"),
+        ([41, 45, 48, 52], "F:maj7"),
+        ([40, 48, 52, 55], "C:maj/E"),
+        ([60], None),
+    ],
+)
+def test_midi_chord_label(notes: list[int], expected: str | None) -> None:
+    assert _midi_chord_label(notes) == expected
+
+
+def test_weighted_midi_chord_tolerates_melody_and_uses_bass() -> None:
+    assert _weighted_midi_chord_label({0: 3, 4: 2, 7: 3, 2: 1}, 0) == "C:maj"
+    assert _weighted_midi_chord_label({0: 3, 4: 2, 7: 3}, 7) == "C:maj/G"
+
+
+def test_tick_seconds_obeys_tempo_changes() -> None:
+    assert _tick_seconds(192, 96, [(0, 500_000), (96, 1_000_000)]) == pytest.approx(1.5)
+
+
+def test_root_then_quality_decoder_blocks_quality_feedback_into_roots() -> None:
+    root_source = np.full((8, 49), -5.0, dtype=np.float32)
+    root_source[:4, 1] = 5.0
+    root_source[4:, 8] = 5.0
+    quality_a = root_source.copy()
+    quality_b = root_source.copy()
+    quality_b[:, 13:] += 20.0
+    path_a = _root_then_quality_student_path(root_source, quality_a, np)
+    path_b = _root_then_quality_student_path(root_source, quality_b, np)
+    roots_a = [0 if value == 0 else (value - 1) % 12 + 1 for value in path_a]
+    roots_b = [0 if value == 0 else (value - 1) % 12 + 1 for value in path_b]
+    assert roots_a == roots_b
+
+
+def test_domain_gate_profile_and_probability_are_finite() -> None:
+    features = np.full((20, 61), 1 / 12, dtype=np.float32)
+    features[:, -1] = np.linspace(0.1, 0.2, 20)
+    profile = student_audio_profile(features, np)
+    assert profile.shape == (14,)
+    config = json.loads((ROOT / "ui/models/chord-domain-gate-v1.json").read_text())
+    probability = domain_gate_probability(features, config, np)
+    assert 0 <= probability <= 1
 
 
 def test_group_splits_prevent_composition_leakage() -> None:
@@ -564,6 +623,94 @@ def test_root_guidance_preserves_base_conditional_quality_evidence() -> None:
 
     assert guided[0, g_major] - guided[0, g_minor] == pytest.approx(3)
     assert guided[0, g_major] > base[0, g_major]
+
+
+def test_quality_guidance_preserves_base_root_marginals() -> None:
+    base = np.linspace(-3, 3, STUDENT_CLASSES, dtype=np.float32)[None]
+    guide = np.linspace(2, -2, STUDENT_CLASSES, dtype=np.float32)[None]
+
+    guided = _quality_guided_logits(base, guide, 0.4, np)
+
+    for root in range(12):
+        indices = [1 + quality * 12 + root for quality in range(4)]
+        base_marginal = np.logaddexp.reduce(base[0, indices])
+        guided_marginal = np.logaddexp.reduce(guided[0, indices])
+        assert guided_marginal == pytest.approx(base_marginal, abs=1e-6)
+    assert guided[0, 0] == base[0, 0]
+
+
+def test_quality_guidance_validates_weight() -> None:
+    logits = np.zeros((1, STUDENT_CLASSES), dtype=np.float32)
+
+    with pytest.raises(ValueError, match="Quality-guide weight"):
+        _quality_guided_logits(logits, logits, 1.1, np)
+
+
+def test_quality_guidance_accepts_per_root_weights() -> None:
+    base = np.linspace(-3, 3, STUDENT_CLASSES, dtype=np.float32)[None]
+    guide = np.linspace(2, -2, STUDENT_CLASSES, dtype=np.float32)[None]
+    weights = np.zeros((1, 12), dtype=np.float32)
+    weights[:, 4] = 0.5
+
+    guided = _quality_guided_logits(base, guide, weights, np)
+
+    untouched = [1 + quality * 12 + 3 for quality in range(4)]
+    changed = [1 + quality * 12 + 4 for quality in range(4)]
+    assert guided[0, untouched] == pytest.approx(base[0, untouched])
+    assert not np.allclose(guided[0, changed], base[0, changed])
+
+
+def test_mode_guidance_preserves_root_and_extension_evidence() -> None:
+    base = np.linspace(-2, 2, STUDENT_CLASSES, dtype=np.float32)[None]
+    guide = np.linspace(3, -3, STUDENT_CLASSES, dtype=np.float32)[None]
+
+    guided = _mode_guided_logits(base, guide, 0.6, np)
+
+    for root in range(12):
+        indices = [1 + quality * 12 + root for quality in range(4)]
+        assert np.logaddexp.reduce(guided[0, indices]) == pytest.approx(
+            np.logaddexp.reduce(base[0, indices]), abs=1e-6
+        )
+        assert guided[0, indices[0]] - guided[0, indices[2]] == pytest.approx(
+            base[0, indices[0]] - base[0, indices[2]], abs=1e-6
+        )
+        assert guided[0, indices[1]] - guided[0, indices[3]] == pytest.approx(
+            base[0, indices[1]] - base[0, indices[3]], abs=1e-6
+        )
+    assert guided[0, 0] == base[0, 0]
+
+
+def test_extension_guidance_preserves_root_and_mode_evidence() -> None:
+    base = np.linspace(-2, 2, STUDENT_CLASSES, dtype=np.float32)[None]
+    guide = np.linspace(3, -3, STUDENT_CLASSES, dtype=np.float32)[None]
+    weights = np.ones((1, 12, 2), dtype=np.float32) * 0.6
+
+    guided = _extension_guided_logits(base, guide, weights, np)
+
+    for root in range(12):
+        major = [1 + root, 1 + 2 * 12 + root]
+        minor = [1 + 1 * 12 + root, 1 + 3 * 12 + root]
+        assert np.logaddexp.reduce(guided[0, major]) == pytest.approx(
+            np.logaddexp.reduce(base[0, major]), abs=1e-6
+        )
+        assert np.logaddexp.reduce(guided[0, minor]) == pytest.approx(
+            np.logaddexp.reduce(base[0, minor]), abs=1e-6
+        )
+    assert guided[0, 0] == base[0, 0]
+
+
+def test_factorized_product_path_is_invariant_to_extension_guidance() -> None:
+    rng = np.random.default_rng(20260820)
+    base = rng.normal(size=(12, STUDENT_CLASSES)).astype(np.float32)
+    guide = rng.normal(size=(12, STUDENT_CLASSES)).astype(np.float32)
+    weights = np.ones((12, 12, 2), dtype=np.float32) * 0.8
+
+    guided = _extension_guided_logits(base, guide, weights, np)
+
+    assert _product_logits(guided, np) == pytest.approx(_product_logits(base, np), abs=1e-6)
+    assert [
+        (value - 1) % 12 if value else -1 for value in _factorized_student_path(guided, np)
+    ] == [(value - 1) % 12 if value else -1 for value in _factorized_student_path(base, np)]
 
 
 def test_promotion_gate_requires_material_gain_and_runtime() -> None:

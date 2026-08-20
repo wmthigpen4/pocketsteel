@@ -22,7 +22,7 @@
   "bars": [
     {
       "bar": 1,
-      "confidence": 0.49906830670865804,
+      "confidence": 0.4990683055004558,
       "coverage": 1.0,
       "end": 2.345,
       "label": "N",
@@ -31,7 +31,7 @@
     },
     {
       "bar": 2,
-      "confidence": 0.4990683067086581,
+      "confidence": 0.4990683055004558,
       "coverage": 0.5778251599147121,
       "end": 4.69,
       "label": "N",
@@ -40,7 +40,7 @@
     },
     {
       "bar": 3,
-      "confidence": 0.7623032783823354,
+      "confidence": 0.7843790799379349,
       "coverage": 0.9531116794543903,
       "end": 7.036,
       "label": "G:maj",
@@ -49,7 +49,7 @@
     },
     {
       "bar": 4,
-      "confidence": 0.7623032783823354,
+      "confidence": 0.7843790799379349,
       "coverage": 1.0,
       "end": 9.381,
       "label": "G:maj",
@@ -58,16 +58,16 @@
     },
     {
       "bar": 5,
-      "confidence": 0.4553026493106569,
-      "coverage": 0.5696790540540541,
+      "confidence": 0.7843790799379349,
+      "coverage": 0.5147804054054058,
       "end": 11.749,
-      "label": "C:maj",
-      "productLabel": "C",
+      "label": "G:maj",
+      "productLabel": "G",
       "start": 9.381
     },
     {
       "bar": 6,
-      "confidence": 0.8493882635636116,
+      "confidence": 0.877421387985571,
       "coverage": 0.9784719290840016,
       "end": 14.118,
       "label": "G:maj",
@@ -76,7 +76,7 @@
     },
     {
       "bar": 7,
-      "confidence": 0.8493882635636116,
+      "confidence": 0.8774213879855711,
       "coverage": 1.0,
       "end": 16.533,
       "label": "G:maj",
@@ -85,7 +85,7 @@
     },
     {
       "bar": 8,
-      "confidence": 0.8493882635636116,
+      "confidence": 0.8774213879855711,
       "coverage": 0.8148301574150789,
       "end": 18.947,
       "label": "G:maj",
@@ -94,7 +94,7 @@
     },
     {
       "bar": 9,
-      "confidence": 0.7428428332010905,
+      "confidence": 0.7577984993364296,
       "coverage": 1.0,
       "end": 21.386,
       "label": "D:maj",
@@ -103,7 +103,7 @@
     },
     {
       "bar": 10,
-      "confidence": 0.7428428332010905,
+      "confidence": 0.7577984993364296,
       "coverage": 0.9081214109926169,
       "end": 23.824,
       "label": "D:maj",
@@ -112,7 +112,7 @@
     },
     {
       "bar": 11,
-      "confidence": 0.7786827818490565,
+      "confidence": 0.8192236893810332,
       "coverage": 1.0,
       "end": 26.285,
       "label": "G:maj",
@@ -121,7 +121,7 @@
     },
     {
       "bar": 12,
-      "confidence": 0.7786827818490565,
+      "confidence": 0.8192236893810332,
       "coverage": 1.0,
       "end": 28.746,
       "label": "G:maj",
@@ -130,7 +130,7 @@
     },
     {
       "bar": 13,
-      "confidence": 0.7786827818490565,
+      "confidence": 0.8192236893810332,
       "coverage": 1.0,
       "end": 31.184,
       "label": "G:maj",
@@ -139,7 +139,7 @@
     },
     {
       "bar": 14,
-      "confidence": 0.7786827818490565,
+      "confidence": 0.8192236893810332,
       "coverage": 1.0,
       "end": 33.622,
       "label": "G:maj",
@@ -148,7 +148,7 @@
     },
     {
       "bar": 15,
-      "confidence": 0.7786827818490565,
+      "confidence": 0.8192236893810333,
       "coverage": 1.0,
       "end": 36.084,
       "label": "G:maj",
@@ -157,7 +157,7 @@
     },
     {
       "bar": 16,
-      "confidence": 0.615864378564498,
+      "confidence": 0.6569624473066891,
       "coverage": 0.6907761072734676,
       "end": 38.545,
       "label": "D:maj",
@@ -166,7 +166,7 @@
     },
     {
       "bar": 17,
-      "confidence": 0.7117576009156753,
+      "confidence": 0.8412901187429621,
       "coverage": 1.0,
       "end": 40.983,
       "label": "G:maj",
@@ -175,7 +175,7 @@
     },
     {
       "bar": 18,
-      "confidence": 0.7117608904295064,
+      "confidence": 0.8412874272817779,
       "coverage": 1.0,
       "end": 42.94739229024943,
       "label": "G:maj",
@@ -247,7 +247,7 @@
   "schemaVersion": "chord_prediction_v1",
   "segments": [
     {
-      "confidence": 0.49906830670865804,
+      "confidence": 0.4990683055004558,
       "end": 3.7,
       "label": "N",
       "productLabel": "N.C.",
@@ -255,7 +255,7 @@
       "start": 0.0
     },
     {
-      "confidence": 0.7298434512181715,
+      "confidence": 0.679285694252361,
       "end": 4.800000000000001,
       "label": "D:maj",
       "productLabel": "D",
@@ -263,23 +263,23 @@
       "start": 3.7
     },
     {
-      "confidence": 0.7623032783823354,
-      "end": 10.4,
+      "confidence": 0.7843790799379349,
+      "end": 10.600000000000001,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
       "start": 4.800000000000001
     },
     {
-      "confidence": 0.4553026493106569,
+      "confidence": 0.4555742566784223,
       "end": 11.8,
       "label": "C:maj",
       "productLabel": "C",
       "source": "student",
-      "start": 10.4
+      "start": 10.600000000000001
     },
     {
-      "confidence": 0.8493882635636116,
+      "confidence": 0.8774213879855711,
       "end": 18.5,
       "label": "G:maj",
       "productLabel": "G",
@@ -287,7 +287,7 @@
       "start": 11.8
     },
     {
-      "confidence": 0.7428428332010905,
+      "confidence": 0.7577984993364296,
       "end": 23.6,
       "label": "D:maj",
       "productLabel": "D",
@@ -295,7 +295,7 @@
       "start": 18.5
     },
     {
-      "confidence": 0.7786827818490565,
+      "confidence": 0.8192236893810332,
       "end": 36.4,
       "label": "G:maj",
       "productLabel": "G",
@@ -303,7 +303,7 @@
       "start": 23.6
     },
     {
-      "confidence": 0.615864378564498,
+      "confidence": 0.6569624473066891,
       "end": 38.1,
       "label": "D:maj",
       "productLabel": "D",
@@ -311,7 +311,7 @@
       "start": 36.4
     },
     {
-      "confidence": 0.7117576009156753,
+      "confidence": 0.8412901187429622,
       "end": 42.94730158730159,
       "label": "G:maj",
       "productLabel": "G",

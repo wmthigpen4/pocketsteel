@@ -10,7 +10,13 @@ from typing import Any, Iterable, Mapping
 CATALOG_SCHEMA = "chord_dataset_catalog_v1"
 TRACK_MANIFEST_SCHEMA = "chord_track_manifest_v1"
 VALID_SPLITS = {"train", "development", "test", "steel_test"}
-VALID_LABEL_SOURCES = {"ground_truth", "synthetic_ground_truth", "weak_chart_alignment"}
+VALID_LABEL_SOURCES = {
+    "ground_truth",
+    "synthetic_ground_truth",
+    "symbolic_ground_truth",
+    "aligned_symbolic_score",
+    "weak_chart_alignment",
+}
 
 
 @dataclass(frozen=True)

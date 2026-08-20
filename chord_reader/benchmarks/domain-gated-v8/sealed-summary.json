@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "chord_multicorpus_benchmark_v2",
+  "candidate": "domain-gated factorized root-quality-boundary ensemble v8",
+  "aggregate": {
+    "trackCount": 366,
+    "evaluatedDurationSeconds": 13368.893837260195,
+    "rootWeightedRecall": 0.7853404823946565,
+    "majorMinorWeightedRecall": 0.7605185808030072,
+    "detailedWeightedRecall": 0.5408000826378897,
+    "boundaryF1Macro": 0.6561833448244035,
+    "sequenceEditRateMacro": 0.3609627058437306
+  },
+  "confirmation": {
+    "title": "NRG-CP v8 disjoint one-shot confirmation",
+    "trackCount": 500,
+    "evaluatedDurationSeconds": 7904.541666666667,
+    "compositionOverlapWithTrainingOrPriorEvaluation": 0,
+    "rootWeightedRecall": 0.8169098461327612,
+    "majorMinorWeightedRecall": 0.811135212351549,
+    "detailedWeightedRecall": 0.6768220010647887,
+    "boundaryF1Macro": 0.7663600209113213,
+    "sequenceEditRateMacro": 0.2822841185130659,
+    "v4DeltaPoints": {
+      "rootWeightedRecall": 0.38,
+      "majorMinorWeightedRecall": 2.80,
+      "detailedWeightedRecall": 6.40,
+      "boundaryF1Macro": 3.06,
+      "sequenceEditRateMacro": -9.64
+    }
+  },
+  "datasets": [
+    {
+      "id": "guitarset",
+      "title": "GuitarSet",
+      "recordingType": "guitar performances",
+      "sourceUrl": "https://zenodo.org/records/3371780",
+      "trackCount": 36,
+      "evaluatedDurationSeconds": 1291.9673469387756,
+      "rootWeightedRecall": 0.6016227278525421,
+      "majorMinorWeightedRecall": 0.5696127126010583,
+      "detailedWeightedRecall": 0.5262017935212561,
+      "boundaryF1Macro": 0.5312925553152127,
+      "sequenceEditRateMacro": 0.44072420634920634
+    },
+    {
+      "id": "aam",
+      "title": "Tiny AAM",
+      "recordingType": "synthetic full mixes",
+      "sourceUrl": "https://zenodo.org/records/6771120",
+      "trackCount": 5,
+      "evaluatedDurationSeconds": 678.0016972,
+      "rootWeightedRecall": 0.8470493771206443,
+      "majorMinorWeightedRecall": 0.8438123055778093,
+      "detailedWeightedRecall": 0.8438123055778093,
+      "boundaryF1Macro": 0.8787461479845249,
+      "sequenceEditRateMacro": 0.1502813852813853
+    },
+    {
+      "id": "winterreise",
+      "title": "Winterreise",
+      "recordingType": "human classical performances",
+      "sourceUrl": "https://zenodo.org/records/10839767",
+      "trackCount": 4,
+      "evaluatedDurationSeconds": 741.0873469387756,
+      "rootWeightedRecall": 0.7911987019624773,
+      "majorMinorWeightedRecall": 0.7649669762687366,
+      "detailedWeightedRecall": 0.4370704050969779,
+      "boundaryF1Macro": 0.5519443833206424,
+      "sequenceEditRateMacro": 0.491105403348554
+    },
+    {
+      "id": "idmt_guitar",
+      "title": "IDMT Guitar",
+      "recordingType": "multi-guitar short pieces",
+      "sourceUrl": "https://zenodo.org/records/7544110",
+      "trackCount": 79,
+      "evaluatedDurationSeconds": 2280.3187528719864,
+      "rootWeightedRecall": 0.8341750904885454,
+      "majorMinorWeightedRecall": 0.7942937165448978,
+      "detailedWeightedRecall": 0.3965522900633183,
+      "boundaryF1Macro": 0.44945004175549075,
+      "sequenceEditRateMacro": 0.6168174569929237
+    },
+    {
+      "id": "nrgcp",
+      "title": "NRG-CP development-corpus audit",
+      "recordingType": "symbolic progressions rendered with deterministic timbres",
+      "sourceUrl": "https://zenodo.org/records/15304989",
+      "trackCount": 222,
+      "evaluatedDurationSeconds": 3510.09375,
+      "rootWeightedRecall": 0.8276930518831108,
+      "majorMinorWeightedRecall": 0.8159255005653339,
+      "detailedWeightedRecall": 0.6980274149847612,
+      "boundaryF1Macro": 0.7582325388826937,
+      "sequenceEditRateMacro": 0.24745130995130996
+    },
+    {
+      "id": "babyslakh",
+      "title": "BabySlakh",
+      "recordingType": "professional sampled-instrument mixtures with aligned symbolic scores",
+      "sourceUrl": "https://zenodo.org/records/4603844",
+      "trackCount": 20,
+      "evaluatedDurationSeconds": 4867.424943310658,
+      "rootWeightedRecall": 0.7711969032500704,
+      "majorMinorWeightedRecall": 0.7431321090105307,
+      "detailedWeightedRecall": 0.472455676500295,
+      "boundaryF1Macro": 0.5300443505268546,
+      "sequenceEditRateMacro": 0.49338402294005224
+    }
+  ],
+  "models": [
+    "chord-multiband-tcn-v2.onnx",
+    "chord-multiband-transformer-v2.onnx",
+    "chord-multiband-idmt-tcn-v3.onnx",
+    "chord-harmonic-cqt-transformer-v4.onnx",
+    "chord-boundary-transformer-v3.onnx",
+    "chord-boundary-nrgcp-transformer-v5.onnx",
+    "chord-quality-nrgcp-multiband-v5.onnx",
+    "chord-quality-nrgcp-cqt-v5.onnx",
+    "chord-domain-gate-v1.json"
+  ],
+  "selectionRule": "Quality confidence gates, factorized decoding, a 50/50 boundary blend, and a 0.90 sparse-texture fallback gate were frozen on development data before the disjoint 500-composition confirmation run.",
+  "metricSemantics": "Enharmonic roots are compared by pitch class. Major/minor collapses triad and seventh families; detailed recall distinguishes them. Boundary F1 uses a 250 ms tolerance.",
+  "disclosure": "The 98% objective has not been met. The six-corpus 366-track table is an iterative held-out audit, not a pristine one-shot estimate. The separate 500-track NRG-CP confirmation is disjoint and was scored once after v8 froze. NRG-CP is symbolic/rendered; BabySlakh uses score-derived rather than human chord annotations. Travis songs were not used. Production remains v2 pending product review."
+}

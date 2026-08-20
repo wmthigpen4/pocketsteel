@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import importlib
 import json
+import math
 from pathlib import Path
 import re
 import statistics
@@ -182,6 +185,155 @@ def parse_idmt_chords(path: Path, end_seconds: float | None = None) -> tuple[lis
         "tempo": float(tempo_match.group(1)) if tempo_match else None,
         "meter": meter,
     }
+
+
+_MIDI_CHORD_TEMPLATES = {
+    "maj": {0, 4, 7},
+    "min": {0, 3, 7},
+    "7": {0, 4, 7, 10},
+    "min7": {0, 3, 7, 10},
+    "maj7": {0, 4, 7, 11},
+    "dim": {0, 3, 6},
+    "aug": {0, 4, 8},
+    "sus2": {0, 2, 7},
+    "sus4": {0, 5, 7},
+    "5": {0, 7},
+}
+
+
+def _midi_chord_label(notes: Iterable[int]) -> str | None:
+    """Infer a deterministic Harte chord from simultaneous MIDI attacks."""
+
+    pitches = [int(value) for value in notes]
+    if len(set(pitches)) < 2:
+        return None
+    pitch_classes = {value % 12 for value in pitches}
+    bass_candidates = [value for value in pitches if value < 48]
+    bass = min(bass_candidates) % 12 if bass_candidates else None
+    best: tuple[float, int, int, str, set[int]] | None = None
+    for root in range(12):
+        for quality, intervals in _MIDI_CHORD_TEMPLATES.items():
+            template = {(root + interval) % 12 for interval in intervals}
+            intersection = len(template & pitch_classes)
+            score = 2 * intersection / (len(template) + len(pitch_classes))
+            if template <= pitch_classes:
+                score += 0.4
+            score -= 0.03 * len(pitch_classes - template)
+            if bass == root:
+                score += 0.08
+            candidate = (score, len(template), -root, quality, template)
+            if best is None or candidate > best:
+                best = candidate
+    assert best is not None
+    _score, _size, negative_root, quality, template = best
+    root = -negative_root
+    names = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+    symbol = f"{names[root]}:{quality}"
+    if bass is not None and bass != root and bass in template:
+        symbol += f"/{names[bass]}"
+    return normalize_chord(symbol).detailed_symbol
+
+
+def parse_nrgcp_midi(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Derive beat-aligned ground truth from an NRG-CP progression MIDI file."""
+
+    mido = importlib.import_module("mido")
+    midi = mido.MidiFile(path)
+    tempo = 500_000
+    numerator, denominator = 4, 4
+    for track in midi.tracks:
+        for message in track:
+            if message.type == "set_tempo":
+                tempo = int(message.tempo)
+            elif message.type == "time_signature":
+                numerator, denominator = int(message.numerator), int(message.denominator)
+    attacks: dict[int, list[int]] = {}
+    absolute_tick = 0
+    for message in mido.merge_tracks(midi.tracks):
+        absolute_tick += int(message.time)
+        if message.type == "note_on" and int(message.velocity) > 0:
+            beat = absolute_tick // midi.ticks_per_beat
+            attacks.setdefault(beat, []).append(int(message.note))
+    if not attacks:
+        raise ValueError(f"No note attacks in {path}.")
+    last_beat = max(attacks)
+    seconds_per_beat = mido.tick2second(midi.ticks_per_beat, midi.ticks_per_beat, tempo)
+    frames: list[tuple[float, str]] = []
+    active: str | None = None
+    for beat in range(last_beat + 1):
+        inferred = _midi_chord_label(attacks.get(beat, ()))
+        if inferred is not None:
+            active = inferred
+        if active is not None:
+            frames.append((beat * seconds_per_beat, active))
+    end_seconds = float(midi.length)
+    return _merge_frames(frames, end_seconds=end_seconds), {
+        "tempo": float(mido.tempo2bpm(tempo)),
+        "meter": f"{numerator}/{denominator}",
+        "durationSeconds": end_seconds,
+    }
+
+
+def _render_nrgcp_midi(path: Path, output: Path, *, sample_rate: int = 11_025) -> float:
+    """Render a deterministic multi-harmonic training mix without external synthesizer state."""
+
+    mido = importlib.import_module("mido")
+    numpy = importlib.import_module("numpy")
+    midi = mido.MidiFile(path)
+    tempo = 500_000
+    for track in midi.tracks:
+        for message in track:
+            if message.type == "set_tempo":
+                tempo = int(message.tempo)
+    absolute_tick = 0
+    active: dict[tuple[int, int], tuple[int, int]] = {}
+    notes: list[tuple[float, float, int, int]] = []
+    for message in mido.merge_tracks(midi.tracks):
+        absolute_tick += int(message.time)
+        if message.type == "note_on" and int(message.velocity) > 0:
+            active[(int(message.channel), int(message.note))] = (absolute_tick, int(message.velocity))
+        elif message.type in {"note_off", "note_on"}:
+            key = (int(message.channel), int(message.note))
+            started = active.pop(key, None)
+            if started is not None:
+                start_tick, velocity = started
+                start = mido.tick2second(start_tick, midi.ticks_per_beat, tempo)
+                end = mido.tick2second(absolute_tick, midi.ticks_per_beat, tempo)
+                notes.append((start, max(start + 0.04, end), int(message.note), velocity))
+    duration = max(float(midi.length), max((end for _start, end, _note, _velocity in notes), default=0.0))
+    audio = numpy.zeros(max(1, math.ceil((duration + 0.08) * sample_rate)), dtype=numpy.float32)
+    variant = int(hashlib.sha256(path.stem.encode()).hexdigest()[:8], 16) % 3
+    harmonic_sets = ((1.0, 0.45, 0.18), (1.0, 0.28, 0.12), (1.0, 0.55, 0.26))
+    harmonics = harmonic_sets[variant]
+    for start, end, note, velocity in notes:
+        release = 0.06 if variant != 1 else 0.1
+        start_sample = max(0, round(start * sample_rate))
+        end_sample = min(len(audio), round((end + release) * sample_rate))
+        times = numpy.arange(end_sample - start_sample, dtype=numpy.float32) / sample_rate
+        frequency = 440 * 2 ** ((note - 69) / 12)
+        attack = numpy.minimum(1, times / (0.012 if variant == 2 else 0.004))
+        sustain_end = max(0.01, end - start)
+        envelope = attack * numpy.where(
+            times <= sustain_end,
+            numpy.exp(-times * (1.8 if variant == 0 else 0.45)),
+            numpy.exp(-sustain_end * (1.8 if variant == 0 else 0.45))
+            * numpy.maximum(0, 1 - (times - sustain_end) / release),
+        )
+        phase = 2 * numpy.pi * frequency * times
+        tone = sum(amplitude * numpy.sin((index + 1) * phase) for index, amplitude in enumerate(harmonics))
+        bass_gain = 1.25 if note < 48 else 1.0
+        audio[start_sample:end_sample] += tone * envelope * (velocity / 127) * bass_gain
+    peak = float(numpy.max(numpy.abs(audio)))
+    if peak:
+        audio *= 0.9 / peak
+    pcm = numpy.rint(audio * 32767).astype("<i2")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(output), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(sample_rate)
+        handle.writeframes(pcm.tobytes())
+    return len(audio) / sample_rate
 
 
 def _audio_index(audio_root: Path) -> dict[str, Path]:
@@ -382,3 +534,253 @@ def prepare_idmt_guitar(
         if track["split"] == "test":
             track["trainingWeight"] = 0.0
     return {"schemaVersion": "chord_track_manifest_v1", "splitSeed": seed, "tracks": frozen}
+
+
+def prepare_nrgcp(
+    annotations_root: Path,
+    audio_root: Path,
+    output_root: Path,
+    *,
+    seed: str = "chord-reader-v3-split-1",
+    max_tracks: int | None = None,
+    exclude_manifest: Path | None = None,
+    evaluation_only: bool = False,
+) -> dict[str, Any]:
+    """Render and normalize a deterministic subset of CC BY NRG-CP MIDI progressions."""
+
+    excluded_compositions: set[str] = set()
+    if exclude_manifest:
+        excluded_compositions = {
+            str(track.get("compositionId") or "")
+            for track in json.loads(exclude_manifest.read_text(encoding="utf-8")).get("tracks", [])
+        }
+    candidates = [
+        path
+        for path in sorted(
+            annotations_root.glob("*.mid"),
+            key=lambda path: hashlib.sha256(f"{seed}:{path.stem}".encode()).hexdigest(),
+        )
+        if path.stem not in excluded_compositions
+    ]
+    if max_tracks is not None:
+        candidates = candidates[:max_tracks]
+    tracks: list[dict[str, Any]] = []
+    for midi_path in candidates:
+        identifier = f"nrgcp-{midi_path.stem.removesuffix('_nrgcp_dataset')}"
+        audio_path = audio_root / f"{identifier}.wav"
+        segments, metadata = parse_nrgcp_midi(midi_path)
+        duration = (
+            metadata["durationSeconds"]
+            if audio_path.is_file()
+            else _render_nrgcp_midi(midi_path, audio_path)
+        )
+        reference = output_root / "references" / f"{identifier}.json"
+        _write_reference(reference, identifier, segments)
+        tracks.append(
+            {
+                "id": identifier,
+                "datasetId": "nrgcp",
+                "groupId": midi_path.stem,
+                "compositionId": midi_path.stem,
+                "audioPath": str(audio_path.resolve()),
+                "referencePath": str(reference.resolve()),
+                "labelSource": "symbolic_ground_truth",
+                "trainingWeight": 0.35,
+                "durationSeconds": duration,
+                "tempo": metadata["tempo"],
+                "meter": metadata["meter"],
+            }
+        )
+    frozen = assign_group_splits(tracks, seed=seed)
+    for track in frozen:
+        if evaluation_only:
+            track["split"] = "test"
+            track["splitGroup"] = str(track["compositionId"])
+            track["trainingWeight"] = 0.0
+        elif track["split"] == "test":
+            track["trainingWeight"] = 0.0
+    return {"schemaVersion": "chord_track_manifest_v1", "splitSeed": seed, "tracks": frozen}
+
+
+def _tick_seconds(tick: int, ticks_per_beat: int, tempo_events: list[tuple[int, int]]) -> float:
+    """Convert an absolute MIDI tick through a piecewise-constant tempo map."""
+
+    elapsed = 0.0
+    previous_tick = 0
+    tempo = 500_000
+    for event_tick, event_tempo in tempo_events:
+        if event_tick > tick:
+            break
+        elapsed += (event_tick - previous_tick) * tempo / (1_000_000 * ticks_per_beat)
+        previous_tick = event_tick
+        tempo = event_tempo
+    return elapsed + (tick - previous_tick) * tempo / (1_000_000 * ticks_per_beat)
+
+
+def _midi_note_intervals(path: Path) -> tuple[int, list[tuple[int, int, int]], list[tuple[int, int]], str]:
+    """Read note intervals and timing metadata without requiring a synthesizer."""
+
+    mido = importlib.import_module("mido")
+    midi = mido.MidiFile(path)
+    absolute_tick = 0
+    active: dict[tuple[int, int], list[int]] = {}
+    intervals: list[tuple[int, int, int]] = []
+    tempo_events: list[tuple[int, int]] = []
+    meter = "4/4"
+    for message in mido.merge_tracks(midi.tracks):
+        absolute_tick += int(message.time)
+        if message.type == "set_tempo":
+            tempo_events.append((absolute_tick, int(message.tempo)))
+        elif message.type == "time_signature":
+            meter = f"{int(message.numerator)}/{int(message.denominator)}"
+        elif message.type == "note_on" and int(message.velocity) > 0:
+            active.setdefault((int(message.channel), int(message.note)), []).append(absolute_tick)
+        elif message.type in {"note_off", "note_on"}:
+            key = (int(message.channel), int(message.note))
+            starts = active.get(key)
+            if starts:
+                start = starts.pop()
+                intervals.append((start, max(start + 1, absolute_tick), key[1]))
+    for (_channel, note), starts in active.items():
+        intervals.extend((start, max(start + 1, absolute_tick), note) for start in starts)
+    if not tempo_events or tempo_events[0][0] != 0:
+        tempo_events.insert(0, (0, 500_000))
+    deduplicated_tempos = list(dict(tempo_events).items())
+    return midi.ticks_per_beat, intervals, deduplicated_tempos, meter
+
+
+def _weighted_midi_chord_label(pitch_weights: dict[int, float], bass: int | None) -> str | None:
+    """Template-match a score frame while allowing melody and doubled accompaniment notes."""
+
+    weights = {pitch % 12: float(weight) for pitch, weight in pitch_weights.items() if weight > 0}
+    if len(weights) < 2:
+        return None
+    total = sum(weights.values())
+    maximum = max(weights.values())
+    best: tuple[float, int, int, str, set[int]] | None = None
+    for root in range(12):
+        for quality, intervals in _MIDI_CHORD_TEMPLATES.items():
+            template = {(root + interval) % 12 for interval in intervals}
+            matched_weight = sum(weights.get(pitch, 0.0) for pitch in template)
+            precision = matched_weight / total
+            coverage = sum(min(1.0, weights.get(pitch, 0.0) / maximum) for pitch in template) / len(template)
+            score = 0.58 * precision + 0.42 * coverage
+            if bass == root:
+                score += 0.1
+            elif bass in template:
+                score += 0.025
+            if quality in {"7", "min7", "maj7"}:
+                seventh = (root + {"7": 10, "min7": 10, "maj7": 11}[quality]) % 12
+                if weights.get(seventh, 0.0) < 0.35 * maximum:
+                    score -= 0.16
+            candidate = (score, -len(template), -root, quality, template)
+            if best is None or candidate > best:
+                best = candidate
+    assert best is not None
+    score, _negative_size, negative_root, quality, template = best
+    if score < 0.48:
+        return None
+    root = -negative_root
+    names = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+    symbol = f"{names[root]}:{quality}"
+    if bass is not None and bass != root and bass in template:
+        symbol += f"/{names[bass]}"
+    return normalize_chord(symbol).detailed_symbol
+
+
+def parse_babyslakh_score(track_root: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Derive beat-aligned evaluation chords from BabySlakh's aligned stem MIDI scores."""
+
+    yaml = importlib.import_module("yaml")
+    metadata = yaml.safe_load((track_root / "metadata.yaml").read_text(encoding="utf-8"))
+    harmonic_stems: list[list[tuple[int, int, int]]] = []
+    bass_intervals: list[tuple[int, int, int]] = []
+    ticks_per_beat = 0
+    tempo_events: list[tuple[int, int]] = []
+    meter = "4/4"
+    for stem_id, stem in sorted(metadata["stems"].items()):
+        midi_path = track_root / str(metadata.get("midi_dir") or "MIDI") / f"{stem_id}.mid"
+        if not midi_path.is_file() or stem.get("is_drum"):
+            continue
+        instrument_class = str(stem.get("inst_class") or "")
+        if instrument_class == "Sound Effects":
+            continue
+        stem_ticks, intervals, stem_tempos, stem_meter = _midi_note_intervals(midi_path)
+        if ticks_per_beat and stem_ticks != ticks_per_beat:
+            raise ValueError(f"Mismatched MIDI resolution in {track_root}.")
+        ticks_per_beat = stem_ticks
+        if not tempo_events:
+            tempo_events, meter = stem_tempos, stem_meter
+        if instrument_class == "Bass":
+            bass_intervals.extend(intervals)
+        else:
+            harmonic_stems.append(intervals)
+    if not harmonic_stems or not ticks_per_beat:
+        raise ValueError(f"No harmonic MIDI stems in {track_root}.")
+    maximum_tick = max(end for intervals in harmonic_stems for _start, end, _note in intervals)
+    frames: list[tuple[float, str]] = []
+    active_label = "N"
+    for beat_tick in range(0, maximum_tick + 1, ticks_per_beat):
+        midpoint = beat_tick + ticks_per_beat // 2
+        pitch_weights: dict[int, float] = {}
+        for intervals in harmonic_stems:
+            pitches = {note % 12 for start, end, note in intervals if start <= midpoint < end}
+            for pitch in pitches:
+                pitch_weights[pitch] = pitch_weights.get(pitch, 0.0) + 1.0
+        active_bass = [note for start, end, note in bass_intervals if start <= midpoint < end]
+        bass = min(active_bass) % 12 if active_bass else None
+        inferred = _weighted_midi_chord_label(pitch_weights, bass)
+        if inferred is not None:
+            active_label = inferred
+        frames.append((_tick_seconds(beat_tick, ticks_per_beat, tempo_events), active_label))
+    with wave.open(str(track_root / "mix.wav"), "rb") as handle:
+        duration = handle.getnframes() / handle.getframerate()
+    return _merge_frames(frames, end_seconds=duration), {
+        "durationSeconds": duration,
+        "meter": meter,
+        "tempo": 60_000_000 / tempo_events[0][1],
+        "harmonicStemCount": len(harmonic_stems),
+    }
+
+
+def prepare_babyslakh(
+    annotations_root: Path,
+    audio_root: Path,
+    output_root: Path,
+    *,
+    seed: str = "chord-reader-v3-split-1",
+    max_tracks: int | None = None,
+) -> dict[str, Any]:
+    """Build an evaluation-only manifest from BabySlakh mixes and aligned scores."""
+
+    tracks: list[dict[str, Any]] = []
+    track_roots = sorted(annotations_root.glob("Track*"))
+    if max_tracks is not None:
+        track_roots = track_roots[:max_tracks]
+    for annotation_root in track_roots:
+        audio_path = audio_root / annotation_root.name / "mix.wav"
+        if not audio_path.is_file():
+            continue
+        segments, metadata = parse_babyslakh_score(annotation_root)
+        identifier = f"babyslakh-{annotation_root.name.lower()}"
+        reference = output_root / "references" / f"{identifier}.json"
+        _write_reference(reference, identifier, segments)
+        tracks.append(
+            {
+                "id": identifier,
+                "datasetId": "babyslakh",
+                "groupId": annotation_root.name,
+                "compositionId": annotation_root.name,
+                "audioPath": str(audio_path.resolve()),
+                "referencePath": str(reference.resolve()),
+                "labelSource": "aligned_symbolic_score",
+                "trainingWeight": 0.0,
+                "durationSeconds": metadata["durationSeconds"],
+                "tempo": metadata["tempo"],
+                "meter": metadata["meter"],
+                "harmonicStemCount": metadata["harmonicStemCount"],
+                "split": "test",
+                "splitGroup": annotation_root.name,
+            }
+        )
+    return {"schemaVersion": "chord_track_manifest_v1", "splitSeed": seed, "tracks": tracks}

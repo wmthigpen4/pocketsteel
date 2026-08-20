@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "chord_domain_gate_v1",
+  "featureKind": "multiband_chroma_v2",
+  "profileFeatures": [
+    "fullEntropy", "fullMaximum", "fullActivePitchClasses",
+    "bassEntropy", "bassMaximum", "bassActivePitchClasses",
+    "middleEntropy", "middleMaximum", "middleActivePitchClasses",
+    "highEntropy", "highMaximum", "highActivePitchClasses",
+    "meanChromaDelta", "energyCoefficientOfVariation"
+  ],
+  "mean": [
+    2.321871968782228, 0.1505856106659857, 2.442307043597012,
+    2.2554171486554653, 0.18593053772197865, 2.6397122328365703,
+    2.26761825411701, 0.170541608791279, 2.6578699159209136,
+    2.253988793173709, 0.18968715738330652, 2.166718632875493,
+    0.011457800320838684, 0.4467562322747217
+  ],
+  "scale": [
+    0.17296168011845378, 0.03099895513122075, 0.6297861268818998,
+    0.19433570056956592, 0.055621929838164975, 0.5452272067995825,
+    0.16980676536831843, 0.03441521498136509, 0.3884938024196528,
+    0.20327630833427882, 0.08506667976298943, 0.7710648072122721,
+    0.004022597779976575, 0.2912093588686708
+  ],
+  "coefficients": [
+    0.05856429254705162, 0.05288437003263686, -1.4928500267714275,
+    -0.0625463770735862, 0.05492266955007023, -0.5374878850572387,
+    -0.09652868519349983, 0.3654342014878013, -0.5036519599519609,
+    1.087149669223756, -1.6330311665119797, -1.2848472531735804,
+    0.073206591409346, -0.4370198915460906
+  ],
+  "intercept": -1.2849566191057744,
+  "threshold": 0.9,
+  "developmentTracks": 438,
+  "crossValidatedBalancedAccuracy": 0.9648617511520737,
+  "positiveDefinition": "sparse or isolated harmonic texture represented by GuitarSet and IDMT development audio",
+  "negativeDefinition": "expanded mixtures represented by AAM, Winterreise, and NRG-CP development audio",
+  "seed": 20260826
+}

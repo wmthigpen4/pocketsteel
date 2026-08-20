@@ -28,6 +28,7 @@ STUDENT_FEATURE_KINDS = {
 STUDENT_QUALITIES = ("maj", "min", "7", "min7")
 STUDENT_CLASSES = 1 + 12 * len(STUDENT_QUALITIES)
 STUDENT_ARCHITECTURES = ("tcn", "bigru", "transformer", "boundary_transformer")
+STUDENT_OBJECTIVES = ("standard", "quality")
 
 
 def student_index(symbol: str | None) -> int:
@@ -135,6 +136,42 @@ def multiband_harmonic_features(audio: Path) -> tuple[Any, float]:
     delta = numpy.concatenate((numpy.zeros((1, 12)), numpy.diff(full, axis=0)), axis=0)
     features = numpy.concatenate((full, bass, middle, high, delta, energy[:, None]), axis=1)
     return features.astype(numpy.float32), duration
+
+
+def student_audio_profile(features: Any, numpy: Any) -> Any:
+    """Summarize multiband chroma into a stable whole-track texture profile."""
+
+    output: list[float] = []
+    for offset in (0, 12, 24, 36):
+        chroma = numpy.clip(features[:, offset : offset + 12].astype(float), 1e-8, 1)
+        output.extend(
+            (
+                float(numpy.mean(-numpy.sum(chroma * numpy.log(chroma), axis=1))),
+                float(numpy.mean(chroma.max(axis=1))),
+                float(numpy.mean((chroma > 0.1).sum(axis=1))),
+            )
+        )
+    energy = features[:, -1].astype(float)
+    output.extend(
+        (
+            float(numpy.mean(numpy.abs(features[:, 48:60]))),
+            float(numpy.std(energy) / (numpy.mean(energy) + 1e-8)),
+        )
+    )
+    return numpy.asarray(output, dtype=numpy.float64)
+
+
+def domain_gate_probability(features: Any, config: Mapping[str, Any], numpy: Any) -> float:
+    """Return the probability that the conservative sparse-audio branch should run."""
+
+    profile = student_audio_profile(features, numpy)
+    mean = numpy.asarray(config["mean"], dtype=numpy.float64)
+    scale = numpy.asarray(config["scale"], dtype=numpy.float64)
+    coefficients = numpy.asarray(config["coefficients"], dtype=numpy.float64)
+    if not (len(profile) == len(mean) == len(scale) == len(coefficients)):
+        raise ValueError("Chord domain gate dimensions do not match the audio profile.")
+    logit = float(((profile - mean) / scale) @ coefficients + float(config["intercept"]))
+    return 1 / (1 + math.exp(-max(-30.0, min(30.0, logit))))
 
 
 _BASIC_PITCH_MODEL: Any | None = None
@@ -382,6 +419,32 @@ def _hierarchical_logits(logits: Any, torch: Any) -> tuple[Any, Any, Any]:
     return root_logits, major_minor_logits, torch.cat(joint, dim=-1)
 
 
+def _reference_root_quality_logits(logits: Any, targets: Any, torch: Any) -> Any:
+    """Collect the four quality logits at each frame's reference root."""
+
+    roots = torch.where(targets == 0, 0, (targets - 1) % 12)
+    return torch.stack(
+        [torch.gather(logits, -1, (1 + quality * 12 + roots).unsqueeze(-1)).squeeze(-1) for quality in range(4)],
+        dim=-1,
+    )
+
+
+def _quality_class_weights(windows: Iterable[tuple[Any, Any, Any, float]], numpy: Any) -> Any:
+    """Compute bounded inverse-sqrt weights from composition-balanced training frames."""
+
+    counts = numpy.zeros(4, dtype=numpy.float64)
+    for _features, labels, valid, track_weight in windows:
+        mask = (labels > 0) & valid.astype(bool)
+        if not mask.any():
+            continue
+        qualities = (labels[mask] - 1) // 12
+        counts += numpy.bincount(qualities, minlength=4) * track_weight
+    frequencies = counts / max(1e-12, counts.sum())
+    weights = numpy.sqrt(0.25 / numpy.maximum(frequencies, 1e-6))
+    weights = numpy.clip(weights, 0.5, 3.0)
+    return (weights / weights.mean()).astype(numpy.float32)
+
+
 def build_student_model(architecture: str = "tcn", feature_count: int = STUDENT_FEATURES) -> Any:
     torch, nn, _functional = _torch_modules()
 
@@ -517,12 +580,15 @@ def train_student(
     device: str = "cpu",
     seed: int = 20260820,
     architecture: str = "tcn",
+    objective: str = "standard",
 ) -> dict[str, Any]:
     numpy = importlib.import_module("numpy")
     torch, _nn, functional = _torch_modules()
     random.seed(seed)
     numpy.random.seed(seed)
     torch.manual_seed(seed)
+    if objective not in STUDENT_OBJECTIVES:
+        raise ValueError(f"Unknown student training objective {objective!r}.")
     paths = {
         split: [
             (Path(item["path"]), float(item.get("trainingWeightOverride", 1)))
@@ -534,6 +600,7 @@ def train_student(
     if not paths["train"] or not paths["development"]:
         raise ValueError("Training requires non-empty train and development feature caches.")
     windows = {split: _cache_windows(value, 256, numpy) for split, value in paths.items()}
+    quality_class_weights = _quality_class_weights(windows["train"], numpy)
     feature_count = int(cache_manifest.get("featureCount", STUDENT_FEATURES))
     feature_kind = str(cache_manifest.get("featureKind", "worker_chroma_v1"))
     if STUDENT_FEATURE_KINDS.get(feature_kind) != feature_count:
@@ -614,7 +681,32 @@ def train_student(
             joint_loss = functional.cross_entropy(
                 joint_logits.reshape(-1, 25), joint_targets.reshape(-1), reduction="none"
             ).reshape(len(batch), -1)
-            loss_values = 0.15 * full_loss + 0.5 * root_loss + 0.2 * major_minor_loss + 1.2 * joint_loss
+            if objective == "quality":
+                conditional_quality_logits = _reference_root_quality_logits(logits, targets, torch)
+                quality_targets = torch.clamp(quality, min=0)
+                quality_probabilities = torch.softmax(conditional_quality_logits, dim=-1)
+                target_probabilities = torch.gather(
+                    quality_probabilities,
+                    -1,
+                    quality_targets.unsqueeze(-1),
+                ).squeeze(-1)
+                quality_loss = functional.cross_entropy(
+                    conditional_quality_logits.reshape(-1, 4),
+                    quality_targets.reshape(-1),
+                    weight=torch.tensor(quality_class_weights, dtype=torch.float32, device=device),
+                    reduction="none",
+                ).reshape(len(batch), -1)
+                quality_loss *= (1 - target_probabilities).pow(1.5)
+                quality_mask = (targets != 0).to(torch.float32)
+                loss_values = (
+                    0.1 * full_loss
+                    + 0.2 * root_loss
+                    + 0.15 * major_minor_loss
+                    + 0.7 * joint_loss
+                    + 1.5 * quality_loss * quality_mask
+                )
+            else:
+                loss_values = 0.15 * full_loss + 0.5 * root_loss + 0.2 * major_minor_loss + 1.2 * joint_loss
             loss = (loss_values * sample_weights).sum() / sample_weights.sum().clamp_min(1)
             if boundary_logits is not None:
                 boundary_targets = (targets[:, 1:] != targets[:, :-1]).to(torch.float32)
@@ -632,7 +724,7 @@ def train_student(
             losses.append(float(loss.detach().cpu()))
 
         model.eval()
-        correct = root_correct = major_minor_correct = joint_correct = total = 0
+        correct = root_correct = major_minor_correct = joint_correct = quality_correct = quality_total = total = 0
         boundary_true_positive = boundary_predicted = boundary_reference = 0
         with torch.no_grad():
             for features, labels, valid, _weight in windows["development"]:
@@ -653,6 +745,19 @@ def train_student(
                 joint_correct += int(
                     ((predicted_root[mask] == label_root[mask]) & (predicted_major_minor[mask] == label_major_minor[mask])).sum()
                 )
+                chord_mask = mask & (labels != 0)
+                if chord_mask.any():
+                    reference_roots = (labels[chord_mask] - 1) % 12
+                    rows = numpy.arange(int(chord_mask.sum()))
+                    conditional = numpy.stack(
+                        [
+                            logits[0].cpu().numpy()[chord_mask][rows, 1 + quality_index * 12 + reference_roots]
+                            for quality_index in range(4)
+                        ],
+                        axis=-1,
+                    )
+                    quality_correct += int((conditional.argmax(axis=-1) == label_quality[chord_mask]).sum())
+                    quality_total += int(chord_mask.sum())
                 total += int(mask.sum())
                 if boundary_logits is not None:
                     probabilities = torch.sigmoid(boundary_logits[0]).cpu().numpy()
@@ -682,13 +787,18 @@ def train_student(
         root_accuracy = root_correct / max(1, total)
         major_minor_accuracy = major_minor_correct / max(1, total)
         joint_accuracy = joint_correct / max(1, total)
+        conditional_quality_accuracy = quality_correct / max(1, quality_total)
         boundary_precision = boundary_true_positive / max(1, boundary_predicted)
         boundary_recall = boundary_true_positive / max(1, boundary_reference)
         boundary_f1 = 2 * boundary_precision * boundary_recall / max(1e-12, boundary_precision + boundary_recall)
         score = (
             0.2 * root_accuracy + 0.65 * joint_accuracy + 0.15 * boundary_f1
             if architecture == "boundary_transformer"
-            else 0.25 * root_accuracy + 0.75 * joint_accuracy
+            else (
+                0.2 * joint_accuracy + 0.8 * conditional_quality_accuracy
+                if objective == "quality"
+                else 0.25 * root_accuracy + 0.75 * joint_accuracy
+            )
         )
         history.append(
             {
@@ -698,6 +808,7 @@ def train_student(
                 "developmentRootAccuracy": root_accuracy,
                 "developmentMajorMinorAccuracy": major_minor_accuracy,
                 "developmentMajorMinorWcsrProxy": joint_accuracy,
+                "developmentConditionalQualityAccuracy": conditional_quality_accuracy,
                 "developmentBoundaryPrecision": boundary_precision,
                 "developmentBoundaryRecall": boundary_recall,
                 "developmentBoundaryF1": boundary_f1,
@@ -724,6 +835,8 @@ def train_student(
         "classCount": STUDENT_CLASSES,
         "qualities": list(STUDENT_QUALITIES),
         "architecture": architecture,
+        "trainingObjective": objective,
+        "qualityClassWeights": quality_class_weights.tolist(),
         "seed": seed,
         "epochs": epochs,
         "bestDevelopmentRootAccuracy": best_root_accuracy,
@@ -846,6 +959,184 @@ def _viterbi_student(
     for pointers in reversed(backpointers):
         path.append(int(pointers[path[-1]]))
     return list(reversed(path))
+
+
+def _product_logits(logits: Any, numpy: Any) -> Any:
+    """Collapse 49 detailed classes to N plus 12 major- and 12 minor-family roots."""
+
+    output = [logits[:, :1]]
+    for qualities in ((0, 2), (1, 3)):
+        for root in range(12):
+            selected = logits[:, [1 + quality * 12 + root for quality in qualities]]
+            maximum = selected.max(axis=-1, keepdims=True)
+            output.append(maximum + numpy.log(numpy.exp(selected - maximum).sum(axis=-1, keepdims=True)))
+    return numpy.concatenate(output, axis=-1)
+
+
+def _root_logits(logits: Any, numpy: Any) -> Any:
+    """Collapse detailed chord evidence to N plus twelve root classes."""
+
+    output = [logits[:, :1]]
+    for root in range(12):
+        selected = logits[:, [1 + quality * 12 + root for quality in range(4)]]
+        maximum = selected.max(axis=-1, keepdims=True)
+        output.append(maximum + numpy.log(numpy.exp(selected - maximum).sum(axis=-1, keepdims=True)))
+    return numpy.concatenate(output, axis=-1)
+
+
+def _viterbi_compact(
+    logits: Any,
+    numpy: Any,
+    boundary_probabilities: Any | None,
+    *,
+    change_penalty: float,
+    boundary_scale: float,
+    boundary_bias: float,
+) -> list[int]:
+    """Decode a compact categorical sequence with optional change-point evidence."""
+
+    emissions = logits - numpy.log(numpy.exp(logits - logits.max(axis=1, keepdims=True)).sum(axis=1, keepdims=True))
+    emissions -= logits.max(axis=1, keepdims=True)
+    class_count = logits.shape[1]
+    transition = numpy.full((class_count, class_count), change_penalty, dtype=numpy.float32)
+    numpy.fill_diagonal(transition, 0)
+    scores = emissions[0]
+    backpointers: list[Any] = []
+    identity = numpy.eye(class_count, dtype=numpy.float32)
+    for frame in range(1, len(emissions)):
+        frame_transition = transition
+        if boundary_probabilities is not None:
+            probability = float(numpy.clip(boundary_probabilities[frame], 0.02, 0.98))
+            evidence = boundary_scale * (math.log(probability / (1 - probability)) + boundary_bias)
+            frame_transition = transition + evidence * (1 - identity)
+        candidates = scores[:, None] + frame_transition
+        pointers = candidates.argmax(axis=0)
+        scores = candidates[pointers, numpy.arange(class_count)] + emissions[frame]
+        backpointers.append(pointers)
+    path = [int(scores.argmax())]
+    for pointers in reversed(backpointers):
+        path.append(int(pointers[path[-1]]))
+    return list(reversed(path))
+
+
+def _root_then_quality_student_path(
+    root_source_logits: Any,
+    quality_source_logits: Any,
+    numpy: Any,
+    boundary_probabilities: Any | None = None,
+    *,
+    root_boundary_scale: float = 0.6,
+    root_boundary_bias: float = 0.0,
+    quality_boundary_scale: float = 0.6,
+    quality_boundary_bias: float = 0.0,
+) -> list[int]:
+    """Decode roots first, then qualities inside fixed root spans without root feedback."""
+
+    roots = _viterbi_compact(
+        _root_logits(root_source_logits, numpy),
+        numpy,
+        boundary_probabilities,
+        change_penalty=-1.2,
+        boundary_scale=root_boundary_scale,
+        boundary_bias=root_boundary_bias,
+    )
+    output = [0] * len(roots)
+    start = 0
+    for frame in range(1, len(roots) + 1):
+        if frame < len(roots) and roots[frame] == roots[start]:
+            continue
+        root_class = roots[start]
+        if root_class:
+            root = root_class - 1
+            indices = [1 + quality * 12 + root for quality in range(4)]
+            qualities = _viterbi_compact(
+                quality_source_logits[start:frame, indices],
+                numpy,
+                boundary_probabilities[start:frame] if boundary_probabilities is not None else None,
+                change_penalty=-0.75,
+                boundary_scale=quality_boundary_scale,
+                boundary_bias=quality_boundary_bias,
+            )
+            output[start:frame] = [indices[quality] for quality in qualities]
+        start = frame
+    return output
+
+
+def _viterbi_product(
+    logits: Any,
+    numpy: Any,
+    boundary_probabilities: Any | None = None,
+    *,
+    boundary_scale: float = 0.6,
+    boundary_bias: float = 0.0,
+) -> list[int]:
+    emissions = logits - numpy.log(numpy.exp(logits - logits.max(axis=1, keepdims=True)).sum(axis=1, keepdims=True))
+    emissions -= logits.max(axis=1, keepdims=True)
+    class_count = 25
+    transition = numpy.full((class_count, class_count), -1.2, dtype=numpy.float32)
+    numpy.fill_diagonal(transition, 0)
+    transition[0, :] = -0.8
+    transition[:, 0] = -0.8
+    transition[0, 0] = 0
+    for left in range(1, class_count):
+        for right in range(1, class_count):
+            if (left - 1) % 12 == (right - 1) % 12:
+                transition[left, right] = -0.45
+    scores = emissions[0]
+    backpointers: list[Any] = []
+    for frame in range(1, len(emissions)):
+        frame_transition = transition
+        if boundary_probabilities is not None:
+            probability = float(numpy.clip(boundary_probabilities[frame], 0.02, 0.98))
+            change_evidence = boundary_scale * (math.log(probability / (1 - probability)) + boundary_bias)
+            frame_transition = transition + change_evidence * (1 - numpy.eye(class_count, dtype=numpy.float32))
+        candidates = scores[:, None] + frame_transition
+        pointers = candidates.argmax(axis=0)
+        scores = candidates[pointers, numpy.arange(class_count)] + emissions[frame]
+        backpointers.append(pointers)
+    path = [int(scores.argmax())]
+    for pointers in reversed(backpointers):
+        path.append(int(pointers[path[-1]]))
+    return list(reversed(path))
+
+
+def _factorized_student_path(
+    logits: Any,
+    numpy: Any,
+    boundary_probabilities: Any | None = None,
+    *,
+    boundary_scale: float = 0.6,
+    boundary_bias: float = 0.0,
+) -> list[int]:
+    """Decode root/mode boundaries before selecting triad or seventh per segment."""
+
+    products = _viterbi_product(
+        _product_logits(logits, numpy),
+        numpy,
+        boundary_probabilities,
+        boundary_scale=boundary_scale,
+        boundary_bias=boundary_bias,
+    )
+    output = [0] * len(products)
+    start = 0
+    for frame in range(1, len(products) + 1):
+        if frame < len(products) and products[frame] == products[start]:
+            continue
+        product = products[start]
+        if product:
+            root = (product - 1) % 12
+            mode = (product - 1) // 12
+            qualities = (0, 2) if mode == 0 else (1, 3)
+            indices = [1 + quality * 12 + root for quality in qualities]
+            selected = logits[start:frame, indices]
+            maximum = selected.max(axis=-1, keepdims=True)
+            conditional = selected - (
+                maximum + numpy.log(numpy.exp(selected - maximum).sum(axis=-1, keepdims=True))
+            )
+            quality = qualities[int(conditional.mean(axis=0).argmax())]
+            output[start:frame] = [1 + quality * 12 + root] * (frame - start)
+        start = frame
+    return output
 
 
 class StudentRecognizer:
@@ -985,7 +1276,16 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
         chord_weights: Iterable[float],
         boundary_model: Path,
         *,
+        secondary_boundary_model: Path | None = None,
+        secondary_boundary_weight: float = 0.5,
+        domain_gate: Path | None = None,
         root_guide_only: bool = False,
+        quality_models: Iterable[Path] | None = None,
+        quality_mode_threshold: float = 0.6,
+        quality_extension_threshold: float = 0.7,
+        factorized_decoder: bool = False,
+        product_boundary_scale: float = 1.3,
+        product_boundary_bias: float = -2.0,
     ) -> None:
         self.members = [StudentRecognizer(model) for model in chord_models]
         self.weights = [float(value) for value in chord_weights]
@@ -1007,7 +1307,26 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
         self.guide = StudentRecognizer(boundary_model)
         if not self.guide.boundary_aware:
             raise ValueError("The boundary guide model must expose a trained boundary head.")
+        self.secondary_guide = StudentRecognizer(secondary_boundary_model) if secondary_boundary_model else None
+        if self.secondary_guide and not self.secondary_guide.boundary_aware:
+            raise ValueError("The secondary boundary guide model must expose a trained boundary head.")
+        if not 0 <= secondary_boundary_weight <= 1:
+            raise ValueError("The secondary boundary weight must be between zero and one.")
+        self.secondary_boundary_weight = secondary_boundary_weight
+        self.domain_gate = json.loads(domain_gate.read_text(encoding="utf-8")) if domain_gate else None
+        if self.domain_gate and self.domain_gate.get("schemaVersion") != "chord_domain_gate_v1":
+            raise ValueError("Unsupported chord domain gate schema.")
         self.numpy = self.members[0].numpy
+        self.quality_guides = [StudentRecognizer(model) for model in quality_models or []]
+        if self.quality_guides and len(self.quality_guides) != 2:
+            raise ValueError("Quality guidance requires exactly two independently trained models.")
+        if self.quality_guides and not root_guide_only:
+            raise ValueError("Quality guidance requires a root-guided base ensemble.")
+        self.quality_mode_threshold = quality_mode_threshold
+        self.quality_extension_threshold = quality_extension_threshold
+        self.factorized_decoder = factorized_decoder
+        self.product_boundary_scale = product_boundary_scale
+        self.product_boundary_bias = product_boundary_bias
 
     def predict(self, audio: Path, *, prediction_id: str | None = None) -> dict[str, Any]:
         feature_cache: dict[str, tuple[Any, float]] = {}
@@ -1023,12 +1342,31 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
             values, duration = features(member.feature_kind)
             member_logits.append(member._logits(values))
             durations.append(duration)
+        quality_logits: list[Any] = []
+        for member in self.quality_guides:
+            values, duration = features(member.feature_kind)
+            quality_logits.append(member._logits(values))
+            durations.append(duration)
         guide_features, guide_duration = features(self.guide.feature_kind)
         _guide_chords, boundary_logits = _split_student_outputs(self.guide._outputs(guide_features))
         if boundary_logits is None:
             raise ValueError("Boundary guide output is missing its boundary channel.")
         durations.append(guide_duration)
-        frame_count = min([len(value) for value in member_logits] + [len(boundary_logits)])
+        secondary_boundary_logits = None
+        if self.secondary_guide:
+            secondary_features, secondary_duration = features(self.secondary_guide.feature_kind)
+            _secondary_chords, secondary_boundary_logits = _split_student_outputs(
+                self.secondary_guide._outputs(secondary_features)
+            )
+            if secondary_boundary_logits is None:
+                raise ValueError("Secondary boundary guide output is missing its boundary channel.")
+            durations.append(secondary_duration)
+        frame_count = min(
+            [len(value) for value in member_logits]
+            + [len(value) for value in quality_logits]
+            + [len(boundary_logits)]
+            + ([len(secondary_boundary_logits)] if secondary_boundary_logits is not None else [])
+        )
         if self.root_guide_only:
             base_logits = sum(
                 weight * value[:frame_count]
@@ -1045,17 +1383,57 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
                 weight * value[:frame_count]
                 for weight, value in zip(self.weights, member_logits, strict=True)
             )
-        boundary_probabilities = 1 / (1 + self.numpy.exp(-boundary_logits[:frame_count]))
+        fallback_logits = logits.copy()
+        if quality_logits:
+            logits = _consensus_quality_guided_logits(
+                logits,
+                [value[:frame_count] for value in quality_logits],
+                self.numpy,
+                mode_threshold=self.quality_mode_threshold,
+                extension_threshold=self.quality_extension_threshold,
+            )
+        primary_boundary_probabilities = 1 / (1 + self.numpy.exp(-boundary_logits[:frame_count]))
+        boundary_probabilities = primary_boundary_probabilities
+        if secondary_boundary_logits is not None:
+            secondary_probabilities = 1 / (1 + self.numpy.exp(-secondary_boundary_logits[:frame_count]))
+            boundary_probabilities = (
+                (1 - self.secondary_boundary_weight) * boundary_probabilities
+                + self.secondary_boundary_weight * secondary_probabilities
+            )
         duration = min(durations)
+        indices = (
+            _factorized_student_path(
+                logits,
+                self.numpy,
+                boundary_probabilities,
+                boundary_scale=self.product_boundary_scale,
+                boundary_bias=self.product_boundary_bias,
+            )
+            if self.factorized_decoder
+            else _viterbi_student(
+                logits,
+                self.numpy,
+                boundary_probabilities,
+                boundary_scale=self.guide.boundary_scale,
+                boundary_bias=self.guide.boundary_bias,
+            )
+        )
+        route = "expanded-mixture"
+        gate_probability = None
+        if self.domain_gate:
+            gate_probability = domain_gate_probability(guide_features[:frame_count], self.domain_gate, self.numpy)
+            if gate_probability >= float(self.domain_gate["threshold"]):
+                route = "conservative-sparse"
+                logits = fallback_logits
+                indices = _viterbi_student(
+                    fallback_logits,
+                    self.numpy,
+                    primary_boundary_probabilities,
+                    boundary_scale=self.guide.boundary_scale,
+                    boundary_bias=self.guide.boundary_bias,
+                )
         probabilities = self.numpy.exp(logits - logits.max(axis=1, keepdims=True))
         probabilities /= probabilities.sum(axis=1, keepdims=True)
-        indices = _viterbi_student(
-            logits,
-            self.numpy,
-            boundary_probabilities,
-            boundary_scale=self.guide.boundary_scale,
-            boundary_bias=self.guide.boundary_bias,
-        )
         confidences = [float(probabilities[index, value]) for index, value in enumerate(indices)]
         segments: list[dict[str, Any]] = []
         start = 0
@@ -1086,8 +1464,18 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
             "sampleRate": STUDENT_SAMPLE_RATE,
             "frameSeconds": STUDENT_FRAME_SECONDS,
             "boundaryAware": True,
+            "boundaryEnsembleSize": 2 if self.secondary_guide else 1,
+            "secondaryBoundaryWeight": self.secondary_boundary_weight if self.secondary_guide else None,
+            "domainGateProbability": gate_probability,
+            "domainRoute": route,
             "ensembleWeights": self.weights,
             "rootGuideOnly": self.root_guide_only,
+            "qualityGuided": bool(self.quality_guides),
+            "qualityModeThreshold": self.quality_mode_threshold if self.quality_guides else None,
+            "qualityExtensionThreshold": self.quality_extension_threshold if self.quality_guides else None,
+            "factorizedDecoder": self.factorized_decoder,
+            "productBoundaryScale": self.product_boundary_scale if self.factorized_decoder else None,
+            "productBoundaryBias": self.product_boundary_bias if self.factorized_decoder else None,
             "segments": segments,
         }
 
@@ -1112,3 +1500,160 @@ def _root_guided_logits(base: Any, guide: Any, weight: float, numpy: Any) -> Any
     for quality in range(4):
         output[:, 1 + quality * 12 : 1 + (quality + 1) * 12] += delta[:, 1:]
     return output
+
+
+def _quality_guided_logits(base: Any, guide: Any, weight: Any, numpy: Any) -> Any:
+    """Blend quality evidence inside each root while preserving every base root marginal."""
+
+    weights = numpy.asarray(weight, dtype=numpy.float32)
+    if numpy.any(weights < 0) or numpy.any(weights > 1):
+        raise ValueError("Quality-guide weight must be from 0 to 1.")
+
+    def conditional_qualities(values: Any) -> tuple[Any, Any]:
+        selected = numpy.stack(
+            [values[:, 1 + quality * 12 : 1 + (quality + 1) * 12] for quality in range(4)],
+            axis=-1,
+        )
+        maximum = selected.max(axis=-1, keepdims=True)
+        marginals = maximum + numpy.log(numpy.exp(selected - maximum).sum(axis=-1, keepdims=True))
+        return selected - marginals, marginals
+
+    base_conditional, base_marginals = conditional_qualities(base)
+    guide_conditional, _guide_marginals = conditional_qualities(guide)
+    if weights.ndim:
+        weights = weights[..., None]
+    conditional = (1 - weights) * base_conditional + weights * guide_conditional
+    maximum = conditional.max(axis=-1, keepdims=True)
+    conditional -= maximum + numpy.log(numpy.exp(conditional - maximum).sum(axis=-1, keepdims=True))
+    selected = base_marginals + conditional
+    output = base.copy()
+    for quality in range(4):
+        output[:, 1 + quality * 12 : 1 + (quality + 1) * 12] = selected[:, :, quality]
+    return output
+
+
+def _mode_guided_logits(base: Any, guide: Any, weight: Any, numpy: Any) -> Any:
+    """Blend major/minor family evidence while preserving root and within-family extension evidence."""
+
+    weights = numpy.asarray(weight, dtype=numpy.float32)
+    if numpy.any(weights < 0) or numpy.any(weights > 1):
+        raise ValueError("Mode-guide weight must be from 0 to 1.")
+
+    output = base.copy()
+    for root in range(12):
+        indices = (
+            (1 + root, 1 + 2 * 12 + root),
+            (1 + 1 * 12 + root, 1 + 3 * 12 + root),
+        )
+
+        def grouped(values: Any) -> Any:
+            groups = []
+            for family in indices:
+                selected = values[:, family]
+                maximum = selected.max(axis=-1, keepdims=True)
+                groups.append(maximum + numpy.log(numpy.exp(selected - maximum).sum(axis=-1, keepdims=True)))
+            return numpy.concatenate(groups, axis=-1)
+
+        base_groups = grouped(base)
+        guide_groups = grouped(guide)
+        base_maximum = base_groups.max(axis=-1, keepdims=True)
+        guide_maximum = guide_groups.max(axis=-1, keepdims=True)
+        base_conditional = base_groups - (
+            base_maximum + numpy.log(numpy.exp(base_groups - base_maximum).sum(axis=-1, keepdims=True))
+        )
+        guide_conditional = guide_groups - (
+            guide_maximum + numpy.log(numpy.exp(guide_groups - guide_maximum).sum(axis=-1, keepdims=True))
+        )
+        root_weight = weights if not weights.ndim else weights[:, root, None]
+        conditional = (1 - root_weight) * base_conditional + root_weight * guide_conditional
+        maximum = conditional.max(axis=-1, keepdims=True)
+        conditional -= maximum + numpy.log(numpy.exp(conditional - maximum).sum(axis=-1, keepdims=True))
+        delta = conditional - base_conditional
+        for family_index, family in enumerate(indices):
+            output[:, family] += delta[:, family_index, None]
+    return output
+
+
+def _extension_guided_logits(base: Any, guide: Any, weight: Any, numpy: Any) -> Any:
+    """Blend triad/seventh evidence while preserving root and major/minor family marginals."""
+
+    weights = numpy.asarray(weight, dtype=numpy.float32)
+    if numpy.any(weights < 0) or numpy.any(weights > 1):
+        raise ValueError("Extension-guide weight must be from 0 to 1.")
+
+    output = base.copy()
+    for root in range(12):
+        families = (
+            (1 + root, 1 + 2 * 12 + root),
+            (1 + 1 * 12 + root, 1 + 3 * 12 + root),
+        )
+        for family_index, family in enumerate(families):
+            base_values = base[:, family]
+            guide_values = guide[:, family]
+            base_maximum = base_values.max(axis=-1, keepdims=True)
+            guide_maximum = guide_values.max(axis=-1, keepdims=True)
+            base_conditional = base_values - (
+                base_maximum + numpy.log(numpy.exp(base_values - base_maximum).sum(axis=-1, keepdims=True))
+            )
+            guide_conditional = guide_values - (
+                guide_maximum + numpy.log(numpy.exp(guide_values - guide_maximum).sum(axis=-1, keepdims=True))
+            )
+            family_weight = weights if not weights.ndim else weights[:, root, family_index, None]
+            conditional = (1 - family_weight) * base_conditional + family_weight * guide_conditional
+            maximum = conditional.max(axis=-1, keepdims=True)
+            conditional -= maximum + numpy.log(numpy.exp(conditional - maximum).sum(axis=-1, keepdims=True))
+            output[:, family] += conditional - base_conditional
+    return output
+
+
+def _conditional_quality_probabilities(logits: Any, numpy: Any) -> Any:
+    selected = numpy.stack(
+        [logits[:, 1 + quality * 12 : 1 + (quality + 1) * 12] for quality in range(4)],
+        axis=-1,
+    )
+    selected -= selected.max(axis=-1, keepdims=True)
+    probabilities = numpy.exp(selected)
+    return probabilities / probabilities.sum(axis=-1, keepdims=True)
+
+
+def _consensus_quality_guided_logits(
+    base: Any,
+    guides: Iterable[Any],
+    numpy: Any,
+    *,
+    mode_threshold: float = 0.6,
+    extension_threshold: float = 0.7,
+) -> Any:
+    """Apply mode and extension evidence only where two independent experts agree."""
+
+    values = list(guides)
+    if len(values) != 2:
+        raise ValueError("Consensus quality guidance requires exactly two logit arrays.")
+    probabilities = [_conditional_quality_probabilities(value, numpy) for value in values]
+    guide = 0.5 * values[0] + 0.5 * values[1]
+    modes = [
+        numpy.stack(
+            (value[..., (0, 2)].sum(axis=-1), value[..., (1, 3)].sum(axis=-1)),
+            axis=-1,
+        )
+        for value in probabilities
+    ]
+    mode_agreement = modes[0].argmax(axis=-1) == modes[1].argmax(axis=-1)
+    mode_confidence = numpy.minimum(modes[0].max(axis=-1), modes[1].max(axis=-1))
+    mode_weight = mode_agreement * (mode_confidence >= mode_threshold)
+    output = _mode_guided_logits(base, guide, mode_weight, numpy)
+
+    extension_values = []
+    for value in probabilities:
+        families = []
+        for family in ((0, 2), (1, 3)):
+            selected = value[..., family]
+            families.append(selected / numpy.maximum(1e-12, selected.sum(axis=-1, keepdims=True)))
+        extension_values.append(numpy.stack(families, axis=-2))
+    extension_agreement = extension_values[0].argmax(axis=-1) == extension_values[1].argmax(axis=-1)
+    extension_confidence = numpy.minimum(
+        extension_values[0].max(axis=-1),
+        extension_values[1].max(axis=-1),
+    )
+    extension_weight = extension_agreement * (extension_confidence >= extension_threshold)
+    return _extension_guided_logits(output, guide, extension_weight, numpy)

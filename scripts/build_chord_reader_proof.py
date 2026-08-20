@@ -42,7 +42,13 @@ MODELS = (
 )
 MODEL_WEIGHTS = (1.0, 1.0, 1.0, 0.3)
 BOUNDARY_MODEL = REPO_ROOT / "ui/models/chord-boundary-transformer-v3.onnx"
-SEALED_SUMMARY = REPO_ROOT / "chord_reader/benchmarks/root-guided-ensemble-v4/sealed-summary.json"
+SECONDARY_BOUNDARY_MODEL = REPO_ROOT / "ui/models/chord-boundary-nrgcp-transformer-v5.onnx"
+QUALITY_MODELS = (
+    REPO_ROOT / "ui/models/chord-quality-nrgcp-multiband-v5.onnx",
+    REPO_ROOT / "ui/models/chord-quality-nrgcp-cqt-v5.onnx",
+)
+DOMAIN_GATE = REPO_ROOT / "ui/models/chord-domain-gate-v1.json"
+SEALED_SUMMARY = REPO_ROOT / "chord_reader/benchmarks/domain-gated-v8/sealed-summary.json"
 DEFAULT_OUTPUT = REPO_ROOT / "ui/chord-reader-proof/data"
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -239,7 +245,7 @@ def _build_track(
             name: {
                 "label": {
                     "v2": "Current Play Along v2",
-                    "student": "Boundary-guided chord ensemble",
+                    "student": "Domain-gated root-quality-boundary ensemble v8",
                     "hybrid": "Conservative no-chord safety overlay",
                 }[name],
                 "metrics": score_segments(reference["segments"], prediction["segments"]),
@@ -268,6 +274,10 @@ def build(
     boundary_model: Path | None = None,
     model_weights: Sequence[float] | None = None,
     root_guide_only: bool = False,
+    secondary_boundary_model: Path | None = None,
+    secondary_boundary_weight: float = 0.5,
+    quality_models: Sequence[Path] | None = None,
+    domain_gate: Path | None = None,
 ) -> dict[str, Any]:
     output_root.mkdir(parents=True, exist_ok=True)
     selected_models = models or MODELS
@@ -278,9 +288,19 @@ def build(
         if model_weights is None:
             model_weights = MODEL_WEIGHTS
         root_guide_only = True
+        secondary_boundary_model = secondary_boundary_model or SECONDARY_BOUNDARY_MODEL
+        quality_models = quality_models or QUALITY_MODELS
+        domain_gate = domain_gate or DOMAIN_GATE
     boundary_path = (
         boundary_model if boundary_model is None or boundary_model.is_absolute() else (REPO_ROOT / boundary_model).resolve()
     )
+    secondary_boundary_path = (
+        secondary_boundary_model
+        if secondary_boundary_model is None or secondary_boundary_model.is_absolute()
+        else (REPO_ROOT / secondary_boundary_model).resolve()
+    )
+    quality_paths = [path if path.is_absolute() else (REPO_ROOT / path).resolve() for path in quality_models or []]
+    domain_gate_path = domain_gate if domain_gate is None or domain_gate.is_absolute() else (REPO_ROOT / domain_gate).resolve()
     if model_weights:
         if boundary_path is None:
             raise ValueError("Weighted proof ensembles require a boundary model.")
@@ -288,7 +308,16 @@ def build(
             model_paths,
             model_weights,
             boundary_path,
+            secondary_boundary_model=secondary_boundary_path,
+            secondary_boundary_weight=secondary_boundary_weight,
             root_guide_only=root_guide_only,
+            quality_models=quality_paths,
+            quality_mode_threshold=0.55,
+            quality_extension_threshold=0.65,
+            factorized_decoder=True,
+            product_boundary_scale=1.3,
+            product_boundary_bias=-2.0,
+            domain_gate=domain_gate_path,
         )
     elif boundary_path is not None:
         recognizer = StudentBoundaryGuidedEnsembleRecognizer(model_paths, boundary_path)
@@ -302,7 +331,7 @@ def build(
     proof = {
         "schemaVersion": "chord_reader_visual_proof_v2",
         "candidateLabel": (
-            "Harmonic-CQT root-guided chord ensemble"
+            "Domain-gated root, quality, and boundary ensemble"
             if root_guide_only
             else "Boundary-guided multiband TCN + Transformer ensemble"
             if boundary_path is not None
@@ -332,10 +361,24 @@ def build(
                 else ""
             )
             + (f" --boundary-model {_display_path(boundary_path)}" if boundary_path else "")
+            + (
+                f" --secondary-boundary-model {_display_path(secondary_boundary_path)}"
+                f" --secondary-boundary-weight {secondary_boundary_weight}"
+                if secondary_boundary_path
+                else ""
+            )
+            + "".join(f" --quality-model {_display_path(path)}" for path in quality_paths)
+            + (f" --domain-gate {_display_path(domain_gate_path)}" if domain_gate_path else "")
             + (" --root-guide-only" if root_guide_only else ""),
             "modelSha256": " / ".join(
                 hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in [*model_paths, *([boundary_path] if boundary_path else [])]
+                for path in [
+                    *model_paths,
+                    *([boundary_path] if boundary_path else []),
+                    *([secondary_boundary_path] if secondary_boundary_path else []),
+                    *quality_paths,
+                    *([domain_gate_path] if domain_gate_path else []),
+                ]
             ),
             "audioSha256": {track["track"]["id"]: track["track"]["audioSha256"] for track in track_proofs},
         },
@@ -349,6 +392,10 @@ def main() -> int:
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--model", type=Path, action="append", dest="models")
     parser.add_argument("--boundary-model", type=Path)
+    parser.add_argument("--secondary-boundary-model", type=Path)
+    parser.add_argument("--secondary-boundary-weight", type=float, default=0.5)
+    parser.add_argument("--quality-model", type=Path, action="append", dest="quality_models")
+    parser.add_argument("--domain-gate", type=Path)
     parser.add_argument("--model-weight", type=float, action="append", dest="model_weights")
     parser.add_argument("--root-guide-only", action="store_true")
     args = parser.parse_args()
@@ -358,6 +405,10 @@ def main() -> int:
         args.boundary_model,
         args.model_weights,
         args.root_guide_only,
+        args.secondary_boundary_model,
+        args.secondary_boundary_weight,
+        args.quality_models,
+        args.domain_gate,
     )
     print(json.dumps(proof["suite"], indent=2, sort_keys=True))
     return 0

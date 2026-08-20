@@ -7,7 +7,7 @@
   const engineLabels = {
     v2: "Current v2",
     btc: "Pretrained BTC",
-    student: "Boundary-guided ensemble",
+    student: "Domain-gated v8",
     hybrid: "Safety overlay",
   };
   let proof = null;
@@ -193,11 +193,15 @@
     const benchmark = proof.publicBenchmark;
     const trackCount = benchmark.datasets.reduce((total, item) => total + item.trackCount, 0);
     const audioSeconds = benchmark.datasets.reduce((total, item) => total + item.evaluatedDurationSeconds, 0);
-    byId("public-heading").textContent = `${trackCount} held-out recordings across ${benchmark.datasets.length} corpora`;
-    byId("public-disclosure").textContent = `${(audioSeconds / 60).toFixed(1)} evaluated minutes · composition-grouped sealed tests.`;
+    const confirmation = benchmark.confirmation;
+    byId("public-heading").textContent = `${trackCount} audit recordings + ${confirmation.trackCount} disjoint confirmations`;
+    byId("public-disclosure").textContent = `${(audioSeconds / 60).toFixed(1)} audit minutes · ${(confirmation.evaluatedDurationSeconds / 60).toFixed(1)} one-shot confirmation minutes · zero composition overlap.`;
     const body = byId("benchmark-body");
     body.replaceChildren();
-    benchmark.datasets.forEach((dataset) => {
+    [...benchmark.datasets, {
+      ...confirmation,
+      recordingType: "frozen one-shot symbolic/rendered confirmation",
+    }].forEach((dataset) => {
       const row = document.createElement("tr");
       [dataset.title, dataset.recordingType, dataset.trackCount, percent(dataset.majorMinorWeightedRecall), percent(dataset.rootWeightedRecall), percent(dataset.boundaryF1Macro)].forEach((value) => {
         const cell = document.createElement("td");

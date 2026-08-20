@@ -89,8 +89,17 @@ def run_benchmark(
     model: Path | None = None,
     ensemble_models: Iterable[Path] | None = None,
     boundary_model: Path | None = None,
+    secondary_boundary_model: Path | None = None,
+    secondary_boundary_weight: float = 0.5,
+    domain_gate: Path | None = None,
     ensemble_weights: Iterable[float] | None = None,
     root_guide_only: bool = False,
+    quality_models: Iterable[Path] | None = None,
+    quality_mode_threshold: float = 0.6,
+    quality_extension_threshold: float = 0.7,
+    factorized_decoder: bool = False,
+    product_boundary_scale: float = 1.3,
+    product_boundary_bias: float = -2.0,
 ) -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[2]
     tracks = [track for track in manifest["tracks"] if split == "all" or track["split"] == split]
@@ -110,7 +119,16 @@ def run_benchmark(
                 ensemble,
                 weights,
                 boundary_model,
+                secondary_boundary_model=secondary_boundary_model,
+                secondary_boundary_weight=secondary_boundary_weight,
+                domain_gate=domain_gate,
                 root_guide_only=root_guide_only,
+                quality_models=quality_models,
+                quality_mode_threshold=quality_mode_threshold,
+                quality_extension_threshold=quality_extension_threshold,
+                factorized_decoder=factorized_decoder,
+                product_boundary_scale=product_boundary_scale,
+                product_boundary_bias=product_boundary_bias,
             )
         elif boundary_model is not None:
             if len(ensemble) < 2:

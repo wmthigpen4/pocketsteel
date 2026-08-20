@@ -12,7 +12,14 @@ from typing import Any
 from .btc import predict_btc
 from .benchmark import run_benchmark, run_hybrid_benchmark, run_prediction_benchmark
 from .chart_reference import build_chart_reference
-from .datasets import prepare_aam, prepare_guitarset, prepare_idmt_guitar, prepare_winterreise
+from .datasets import (
+    prepare_aam,
+    prepare_babyslakh,
+    prepare_guitarset,
+    prepare_idmt_guitar,
+    prepare_nrgcp,
+    prepare_winterreise,
+)
 from .labels import normalize_chord, transpose_chord
 from .manifests import (
     WeakLabelDiagnostics,
@@ -27,6 +34,7 @@ from .review import build_travis_packet, score_travis_review
 from .student import (
     STUDENT_ARCHITECTURES,
     STUDENT_FEATURE_KINDS,
+    STUDENT_OBJECTIVES,
     StudentRecognizer,
     cache_student_features,
     composition_balance_feature_cache,
@@ -113,6 +121,8 @@ def build_parser() -> argparse.ArgumentParser:
         ("prepare-aam", "Normalize AAM beat annotations and mixes into a split manifest"),
         ("prepare-winterreise", "Normalize Winterreise audio-aligned chord tables"),
         ("prepare-idmt-guitar", "Normalize IDMT dataset-4 guitar chord annotations"),
+        ("prepare-nrgcp", "Render and normalize NRG-CP progression MIDI"),
+        ("prepare-babyslakh", "Normalize BabySlakh mixes and aligned MIDI scores for evaluation"),
     ):
         prepare = commands.add_parser(name, help=help_text)
         prepare.add_argument("--annotations-root", type=Path, required=True)
@@ -121,6 +131,9 @@ def build_parser() -> argparse.ArgumentParser:
         prepare.add_argument("--manifest", type=Path, required=True)
         prepare.add_argument("--seed", default="chord-reader-v3-split-1")
         prepare.add_argument("--max-tracks", type=int)
+        if name == "prepare-nrgcp":
+            prepare.add_argument("--exclude-manifest", type=Path)
+            prepare.add_argument("--evaluation-only", action="store_true")
 
     benchmark_run = commands.add_parser("benchmark", help="Run and freeze one engine on a manifest split")
     benchmark_run.add_argument("manifest", type=Path)
@@ -134,8 +147,17 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run.add_argument("--model", type=Path)
     benchmark_run.add_argument("--ensemble-model", type=Path, action="append", default=[])
     benchmark_run.add_argument("--boundary-model", type=Path)
+    benchmark_run.add_argument("--secondary-boundary-model", type=Path)
+    benchmark_run.add_argument("--secondary-boundary-weight", type=float, default=0.5)
+    benchmark_run.add_argument("--domain-gate", type=Path)
     benchmark_run.add_argument("--ensemble-weight", type=float, action="append", default=[])
     benchmark_run.add_argument("--root-guide-only", action="store_true")
+    benchmark_run.add_argument("--quality-model", type=Path, action="append")
+    benchmark_run.add_argument("--quality-mode-threshold", type=float, default=0.6)
+    benchmark_run.add_argument("--quality-extension-threshold", type=float, default=0.7)
+    benchmark_run.add_argument("--factorized-decoder", action="store_true")
+    benchmark_run.add_argument("--product-boundary-scale", type=float, default=1.3)
+    benchmark_run.add_argument("--product-boundary-bias", type=float, default=-2.0)
 
     rescore = commands.add_parser("benchmark-predictions", help="Rescore an existing frozen prediction directory")
     rescore.add_argument("manifest", type=Path)
@@ -184,6 +206,7 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("--device", default="cpu")
     train.add_argument("--seed", type=int, default=20260820)
     train.add_argument("--architecture", choices=STUDENT_ARCHITECTURES, default="tcn")
+    train.add_argument("--objective", choices=STUDENT_OBJECTIVES, default="standard")
 
     export = commands.add_parser("export-student", help="Export and verify a trained student as ONNX")
     export.add_argument("model_root", type=Path)
@@ -293,20 +316,27 @@ def main(argv: list[str] | None = None) -> int:
         )
         _write_json(reference, args.output)
         _write_json(report, args.report)
-    elif args.command in {"prepare-guitarset", "prepare-aam", "prepare-winterreise", "prepare-idmt-guitar"}:
+    elif args.command in {
+        "prepare-guitarset",
+        "prepare-aam",
+        "prepare-winterreise",
+        "prepare-idmt-guitar",
+        "prepare-nrgcp",
+        "prepare-babyslakh",
+    }:
         prepare = {
             "prepare-guitarset": prepare_guitarset,
             "prepare-aam": prepare_aam,
             "prepare-winterreise": prepare_winterreise,
             "prepare-idmt-guitar": prepare_idmt_guitar,
+            "prepare-nrgcp": prepare_nrgcp,
+            "prepare-babyslakh": prepare_babyslakh,
         }[args.command]
-        result = prepare(
-            args.annotations_root,
-            args.audio_root,
-            args.output_root,
-            seed=args.seed,
-            max_tracks=args.max_tracks,
-        )
+        keywords = {"seed": args.seed, "max_tracks": args.max_tracks}
+        if args.command == "prepare-nrgcp":
+            keywords["exclude_manifest"] = args.exclude_manifest
+            keywords["evaluation_only"] = args.evaluation_only
+        result = prepare(args.annotations_root, args.audio_root, args.output_root, **keywords)
         _write_json(result, args.manifest)
     elif args.command == "benchmark":
         result = run_benchmark(
@@ -320,8 +350,17 @@ def main(argv: list[str] | None = None) -> int:
             model=args.model,
             ensemble_models=args.ensemble_model,
             boundary_model=args.boundary_model,
+            secondary_boundary_model=args.secondary_boundary_model,
+            secondary_boundary_weight=args.secondary_boundary_weight,
+            domain_gate=args.domain_gate,
             ensemble_weights=args.ensemble_weight,
             root_guide_only=args.root_guide_only,
+            quality_models=args.quality_model,
+            quality_mode_threshold=args.quality_mode_threshold,
+            quality_extension_threshold=args.quality_extension_threshold,
+            factorized_decoder=args.factorized_decoder,
+            product_boundary_scale=args.product_boundary_scale,
+            product_boundary_bias=args.product_boundary_bias,
         )
         _write_json(result, args.report)
     elif args.command == "benchmark-predictions":
@@ -360,6 +399,7 @@ def main(argv: list[str] | None = None) -> int:
             device=args.device,
             seed=args.seed,
             architecture=args.architecture,
+            objective=args.objective,
         )
         _write_json(result, None)
     elif args.command == "merge-feature-caches":

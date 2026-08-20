@@ -1,83 +1,130 @@
 {
-  "candidateLabel": "Harmonic-CQT root-guided chord ensemble",
+  "candidateLabel": "Domain-gated root, quality, and boundary ensemble",
   "defaultTrackId": "amazing-grace-kevin-macleod-lesson-v1",
   "publicBenchmark": {
     "aggregate": {
-      "boundaryF1Macro": 0.48843033301328664,
-      "detailedWeightedRecall": 0.4875601239063078,
-      "evaluatedDurationSeconds": 4991.375143949537,
-      "majorMinorWeightedRecall": 0.7344434004051846,
-      "projectedFourMinuteRuntimeSeconds": 3.993,
-      "rootWeightedRecall": 0.7669300179511889,
-      "sequenceEditRateMacro": 0.5747360280474405,
-      "trackCount": 124
+      "boundaryF1Macro": 0.6561833448244035,
+      "detailedWeightedRecall": 0.5408000826378897,
+      "evaluatedDurationSeconds": 13368.893837260195,
+      "majorMinorWeightedRecall": 0.7605185808030072,
+      "rootWeightedRecall": 0.7853404823946565,
+      "sequenceEditRateMacro": 0.3609627058437306,
+      "trackCount": 366
     },
-    "candidate": "harmonic-CQT root-guided boundary ensemble",
+    "candidate": "domain-gated factorized root-quality-boundary ensemble v8",
+    "confirmation": {
+      "boundaryF1Macro": 0.7663600209113213,
+      "compositionOverlapWithTrainingOrPriorEvaluation": 0,
+      "detailedWeightedRecall": 0.6768220010647887,
+      "evaluatedDurationSeconds": 7904.541666666667,
+      "majorMinorWeightedRecall": 0.811135212351549,
+      "rootWeightedRecall": 0.8169098461327612,
+      "sequenceEditRateMacro": 0.2822841185130659,
+      "title": "NRG-CP v8 disjoint one-shot confirmation",
+      "trackCount": 500,
+      "v4DeltaPoints": {
+        "boundaryF1Macro": 3.06,
+        "detailedWeightedRecall": 6.4,
+        "majorMinorWeightedRecall": 2.8,
+        "rootWeightedRecall": 0.38,
+        "sequenceEditRateMacro": -9.64
+      }
+    },
     "datasets": [
       {
-        "boundaryF1Macro": 0.5325289853098126,
-        "detailedWeightedRecall": 0.5227874166431372,
+        "boundaryF1Macro": 0.5312925553152127,
+        "detailedWeightedRecall": 0.5262017935212561,
         "evaluatedDurationSeconds": 1291.9673469387756,
         "id": "guitarset",
-        "majorMinorWeightedRecall": 0.568600019987608,
+        "majorMinorWeightedRecall": 0.5696127126010583,
         "recordingType": "guitar performances",
-        "rootWeightedRecall": 0.600510772455777,
-        "sequenceEditRateMacro": 0.45386904761904767,
+        "rootWeightedRecall": 0.6016227278525421,
+        "sequenceEditRateMacro": 0.44072420634920634,
         "sourceUrl": "https://zenodo.org/records/3371780",
         "title": "GuitarSet",
         "trackCount": 36
       },
       {
-        "boundaryF1Macro": 0.8744880265720123,
-        "detailedWeightedRecall": 0.841868990383406,
+        "boundaryF1Macro": 0.8787461479845249,
+        "detailedWeightedRecall": 0.8438123055778093,
         "evaluatedDurationSeconds": 678.0016972,
         "id": "aam",
-        "majorMinorWeightedRecall": 0.841868990383406,
+        "majorMinorWeightedRecall": 0.8438123055778093,
         "recordingType": "synthetic full mixes",
-        "rootWeightedRecall": 0.8451419910398416,
-        "sequenceEditRateMacro": 0.17614718614718614,
+        "rootWeightedRecall": 0.8470493771206443,
+        "sequenceEditRateMacro": 0.1502813852813853,
         "sourceUrl": "https://zenodo.org/records/6771120",
         "title": "Tiny AAM",
         "trackCount": 5
       },
       {
-        "boundaryF1Macro": 0.505924229182743,
-        "detailedWeightedRecall": 0.4097591845187214,
+        "boundaryF1Macro": 0.5519443833206424,
+        "detailedWeightedRecall": 0.4370704050969779,
         "evaluatedDurationSeconds": 741.0873469387756,
         "id": "winterreise",
-        "majorMinorWeightedRecall": 0.7538481789582211,
+        "majorMinorWeightedRecall": 0.7649669762687366,
         "recordingType": "human classical performances",
-        "rootWeightedRecall": 0.7788654729068814,
-        "sequenceEditRateMacro": 0.5287766362252664,
+        "rootWeightedRecall": 0.7911987019624773,
+        "sequenceEditRateMacro": 0.491105403348554,
         "sourceUrl": "https://zenodo.org/records/10839767",
         "title": "Winterreise",
         "trackCount": 4
       },
       {
-        "boundaryF1Macro": 0.44301494649244616,
-        "detailedWeightedRecall": 0.3875402329616006,
+        "boundaryF1Macro": 0.44945004175549075,
+        "detailedWeightedRecall": 0.3965522900633183,
         "evaluatedDurationSeconds": 2280.3187528719864,
         "id": "idmt_guitar",
-        "majorMinorWeightedRecall": 0.7901587971503506,
+        "majorMinorWeightedRecall": 0.7942937165448978,
         "recordingType": "multi-guitar short pieces",
-        "rootWeightedRecall": 0.834085175863346,
-        "sequenceEditRateMacro": 0.657368851746328,
+        "rootWeightedRecall": 0.8341750904885454,
+        "sequenceEditRateMacro": 0.6168174569929237,
         "sourceUrl": "https://zenodo.org/records/7544110",
         "title": "IDMT Guitar",
         "trackCount": 79
+      },
+      {
+        "boundaryF1Macro": 0.7582325388826937,
+        "detailedWeightedRecall": 0.6980274149847612,
+        "evaluatedDurationSeconds": 3510.09375,
+        "id": "nrgcp",
+        "majorMinorWeightedRecall": 0.8159255005653339,
+        "recordingType": "symbolic progressions rendered with deterministic timbres",
+        "rootWeightedRecall": 0.8276930518831108,
+        "sequenceEditRateMacro": 0.24745130995130996,
+        "sourceUrl": "https://zenodo.org/records/15304989",
+        "title": "NRG-CP development-corpus audit",
+        "trackCount": 222
+      },
+      {
+        "boundaryF1Macro": 0.5300443505268546,
+        "detailedWeightedRecall": 0.472455676500295,
+        "evaluatedDurationSeconds": 4867.424943310658,
+        "id": "babyslakh",
+        "majorMinorWeightedRecall": 0.7431321090105307,
+        "recordingType": "professional sampled-instrument mixtures with aligned symbolic scores",
+        "rootWeightedRecall": 0.7711969032500704,
+        "sequenceEditRateMacro": 0.49338402294005224,
+        "sourceUrl": "https://zenodo.org/records/4603844",
+        "title": "BabySlakh",
+        "trackCount": 20
       }
     ],
-    "disclosure": "All scores are frozen, duration-weighted, composition-held-out, and enharmonically canonicalized. The 98% objective has not been met; every corpus is shown rather than averaged away. Travis songs were not used.",
-    "metricSemantics": "Enharmonic root and bass spellings are compared by pitch class; chord quality remains exact for detailed recall.",
+    "disclosure": "The 98% objective has not been met. The six-corpus 366-track table is an iterative held-out audit, not a pristine one-shot estimate. The separate 500-track NRG-CP confirmation is disjoint and was scored once after v8 froze. NRG-CP is symbolic/rendered; BabySlakh uses score-derived rather than human chord annotations. Travis songs were not used. Production remains v2 pending product review.",
+    "metricSemantics": "Enharmonic roots are compared by pitch class. Major/minor collapses triad and seventh families; detailed recall distinguishes them. Boundary F1 uses a 250 ms tolerance.",
     "models": [
       "chord-multiband-tcn-v2.onnx",
       "chord-multiband-transformer-v2.onnx",
       "chord-multiband-idmt-tcn-v3.onnx",
       "chord-harmonic-cqt-transformer-v4.onnx",
-      "chord-boundary-transformer-v3.onnx"
+      "chord-boundary-transformer-v3.onnx",
+      "chord-boundary-nrgcp-transformer-v5.onnx",
+      "chord-quality-nrgcp-multiband-v5.onnx",
+      "chord-quality-nrgcp-cqt-v5.onnx",
+      "chord-domain-gate-v1.json"
     ],
-    "schemaVersion": "chord_multicorpus_benchmark_v1",
-    "selectionRule": "CQT root-guide weight 0.3 selected on composition-held-out development splits across all four datasets; all sealed test reports generated once after selection"
+    "schemaVersion": "chord_multicorpus_benchmark_v2",
+    "selectionRule": "Quality confidence gates, factorized decoding, a 50/50 boundary blend, and a 0.90 sparse-texture fallback gate were frozen on development data before the disjoint 500-composition confirmation run."
   },
   "reproduce": {
     "audioSha256": {
@@ -85,8 +132,8 @@
       "oh-susanna-preview-v1": "7aedadbc7ceec2f3e50faa19dba3209454daaae5a68ee79c40e6b2ccc96625ac",
       "when-the-saints-preview-v1": "08aeb59219f14541a5526f02a688d1a27594a12626ec8a6d18dcdf3db3cf7cbb"
     },
-    "command": "python scripts/build_chord_reader_proof.py --model ui/models/chord-multiband-tcn-v2.onnx --model ui/models/chord-multiband-transformer-v2.onnx --model ui/models/chord-multiband-idmt-tcn-v3.onnx --model ui/models/chord-harmonic-cqt-transformer-v4.onnx --model-weight 1.0 --model-weight 1.0 --model-weight 1.0 --model-weight 0.3 --boundary-model ui/models/chord-boundary-transformer-v3.onnx --root-guide-only",
-    "modelSha256": "cf7cdc0ea611c4ec2e6ae3e5cfd601ac23de645b1010f6ae63ac1f5dfe805455 / 77abc021df828799efaf2146cd0d39dc4e1be322a39cf7aa9e7c012f3839f155 / 9feebe799d138e8d2750c4d15095c6067cdedf11bd4a0f53548ce40e288e73fd / bf1c518eb9bd9150108ff07e39034158fd459f409fd9d176e1bb8bf28a76c4dd / f807fe2f4b4033842ee615531e03c2650d70b6a8a7291da52ac004b82f5c9b30"
+    "command": "python scripts/build_chord_reader_proof.py --model ui/models/chord-multiband-tcn-v2.onnx --model ui/models/chord-multiband-transformer-v2.onnx --model ui/models/chord-multiband-idmt-tcn-v3.onnx --model ui/models/chord-harmonic-cqt-transformer-v4.onnx --model-weight 1.0 --model-weight 1.0 --model-weight 1.0 --model-weight 0.3 --boundary-model ui/models/chord-boundary-transformer-v3.onnx --secondary-boundary-model ui/models/chord-boundary-nrgcp-transformer-v5.onnx --secondary-boundary-weight 0.5 --quality-model ui/models/chord-quality-nrgcp-multiband-v5.onnx --quality-model ui/models/chord-quality-nrgcp-cqt-v5.onnx --domain-gate ui/models/chord-domain-gate-v1.json --root-guide-only",
+    "modelSha256": "cf7cdc0ea611c4ec2e6ae3e5cfd601ac23de645b1010f6ae63ac1f5dfe805455 / 77abc021df828799efaf2146cd0d39dc4e1be322a39cf7aa9e7c012f3839f155 / 9feebe799d138e8d2750c4d15095c6067cdedf11bd4a0f53548ce40e288e73fd / bf1c518eb9bd9150108ff07e39034158fd459f409fd9d176e1bb8bf28a76c4dd / f807fe2f4b4033842ee615531e03c2650d70b6a8a7291da52ac004b82f5c9b30 / bdd4a82e57785dd1a9906670d90f17dab40b3c90e6ed44c12c48dca153a2ef24 / 2ff5310cc48b43f5081a9c360f4d859105bb91ff46f01134ce040bca2788eaae / 7106a85de91e474a649d420dfd6b1eff7f167169a31f537e99491c9606b60be9 / 7983d2690444b098e94e14722f557262225de867341f75e7c6733601108f2417"
   },
   "schemaVersion": "chord_reader_visual_proof_v2",
   "suite": {
@@ -99,14 +146,14 @@
     "durationSeconds": 112.247,
     "engines": {
       "hybrid": {
-        "detailedWeightedRecall": 0.7442069721239765,
-        "majorMinorWeightedRecall": 0.9058861261325469,
-        "rootWeightedRecall": 0.9058861261325469
+        "detailedWeightedRecall": 0.7406434024962805,
+        "majorMinorWeightedRecall": 0.9076679109463949,
+        "rootWeightedRecall": 0.9076679109463949
       },
       "student": {
-        "detailedWeightedRecall": 0.7442068687751519,
-        "majorMinorWeightedRecall": 0.905886088107436,
-        "rootWeightedRecall": 0.905886088107436
+        "detailedWeightedRecall": 0.740643297707656,
+        "majorMinorWeightedRecall": 0.907667873641184,
+        "rootWeightedRecall": 0.907667873641184
       },
       "v2": {
         "detailedWeightedRecall": 0.6897912639090577,
@@ -155,11 +202,11 @@
           "expected": "C",
           "hybrid": "C",
           "hybridCorrect": true,
-          "hybridScore": 0.5912162162162163,
+          "hybridScore": 0.5067567567567564,
           "start": 9.474,
           "student": "C",
           "studentCorrect": true,
-          "studentScore": 0.5912162162162163,
+          "studentScore": 0.5067567567567564,
           "v2": "Am7",
           "v2Correct": false,
           "v2Score": 0.0
@@ -369,17 +416,17 @@
               "precision": 0.4444444444444444,
               "recall": 0.25
             },
-            "detailedWeightedRecall": 0.6609309148485342,
+            "detailedWeightedRecall": 0.656274012154516,
             "evaluatedDurationSeconds": 42.947,
-            "majorMinorWeightedRecall": 0.8040841036626539,
+            "majorMinorWeightedRecall": 0.7994272009686358,
             "predictedChordCount": 9,
             "referenceChordCount": 11,
-            "rootWeightedRecall": 0.8040841036626539,
+            "rootWeightedRecall": 0.7994272009686358,
             "sequenceEditRate": 0.5454545454545454
           },
           "segments": [
             {
-              "confidence": 0.49906830670865804,
+              "confidence": 0.4990683055004558,
               "end": 3.7,
               "label": "N",
               "productLabel": "N.C.",
@@ -387,7 +434,7 @@
               "start": 0.0
             },
             {
-              "confidence": 0.7298434512181715,
+              "confidence": 0.679285694252361,
               "end": 4.800000000000001,
               "label": "D:maj",
               "productLabel": "D",
@@ -395,23 +442,23 @@
               "start": 3.7
             },
             {
-              "confidence": 0.7623032783823354,
-              "end": 10.4,
+              "confidence": 0.7843790799379349,
+              "end": 10.600000000000001,
               "label": "G:maj",
               "productLabel": "G",
               "source": "student",
               "start": 4.800000000000001
             },
             {
-              "confidence": 0.4553026493106569,
+              "confidence": 0.4555742566784223,
               "end": 11.8,
               "label": "C:maj",
               "productLabel": "C",
               "source": "student",
-              "start": 10.4
+              "start": 10.600000000000001
             },
             {
-              "confidence": 0.8493882635636116,
+              "confidence": 0.8774213879855711,
               "end": 18.5,
               "label": "G:maj",
               "productLabel": "G",
@@ -419,7 +466,7 @@
               "start": 11.8
             },
             {
-              "confidence": 0.7428428332010905,
+              "confidence": 0.7577984993364296,
               "end": 23.6,
               "label": "D:maj",
               "productLabel": "D",
@@ -427,7 +474,7 @@
               "start": 18.5
             },
             {
-              "confidence": 0.7786827818490565,
+              "confidence": 0.8192236893810332,
               "end": 36.4,
               "label": "G:maj",
               "productLabel": "G",
@@ -435,7 +482,7 @@
               "start": 23.6
             },
             {
-              "confidence": 0.615864378564498,
+              "confidence": 0.6569624473066891,
               "end": 38.1,
               "label": "D:maj",
               "productLabel": "D",
@@ -443,7 +490,7 @@
               "start": 36.4
             },
             {
-              "confidence": 0.7117576009156753,
+              "confidence": 0.8412901187429622,
               "end": 42.94730158730159,
               "label": "G:maj",
               "productLabel": "G",
@@ -461,80 +508,80 @@
           ]
         },
         "student": {
-          "label": "Boundary-guided chord ensemble",
+          "label": "Domain-gated root-quality-boundary ensemble v8",
           "metrics": {
             "boundary": {
               "f1": 0.3333333333333333,
               "precision": 0.5,
               "recall": 0.25
             },
-            "detailedWeightedRecall": 0.6609309148485342,
+            "detailedWeightedRecall": 0.656274012154516,
             "evaluatedDurationSeconds": 42.947,
-            "majorMinorWeightedRecall": 0.8040841036626539,
+            "majorMinorWeightedRecall": 0.7994272009686358,
             "predictedChordCount": 9,
             "referenceChordCount": 11,
-            "rootWeightedRecall": 0.8040841036626539,
+            "rootWeightedRecall": 0.7994272009686358,
             "sequenceEditRate": 0.5454545454545454
           },
           "segments": [
             {
-              "confidence": 0.49906830670865804,
+              "confidence": 0.4990683055004558,
               "end": 3.7,
               "label": "N",
               "productLabel": "N.C.",
               "start": 0.0
             },
             {
-              "confidence": 0.7298434512181715,
+              "confidence": 0.679285694252361,
               "end": 4.800000000000001,
               "label": "D:maj",
               "productLabel": "D",
               "start": 3.7
             },
             {
-              "confidence": 0.7623032783823354,
-              "end": 10.4,
+              "confidence": 0.7843790799379349,
+              "end": 10.600000000000001,
               "label": "G:maj",
               "productLabel": "G",
               "start": 4.800000000000001
             },
             {
-              "confidence": 0.45530264931065695,
+              "confidence": 0.4555742566784223,
               "end": 11.8,
               "label": "C:maj",
               "productLabel": "C",
-              "start": 10.4
+              "start": 10.600000000000001
             },
             {
-              "confidence": 0.8493882635636116,
+              "confidence": 0.8774213879855711,
               "end": 18.5,
               "label": "G:maj",
               "productLabel": "G",
               "start": 11.8
             },
             {
-              "confidence": 0.7428428332010905,
+              "confidence": 0.7577984993364296,
               "end": 23.6,
               "label": "D:maj",
               "productLabel": "D",
               "start": 18.5
             },
             {
-              "confidence": 0.7786827818490565,
+              "confidence": 0.8192236893810332,
               "end": 36.4,
               "label": "G:maj",
               "productLabel": "G",
               "start": 23.6
             },
             {
-              "confidence": 0.615864378564498,
+              "confidence": 0.6569624473066891,
               "end": 38.1,
               "label": "D:maj",
               "productLabel": "D",
               "start": 36.4
             },
             {
-              "confidence": 0.7117576009156753,
+              "confidence": 0.8412901187429622,
               "end": 42.94730158730159,
               "label": "G:maj",
               "productLabel": "G",
@@ -935,11 +982,11 @@
           "expected": "D7",
           "hybrid": "D",
           "hybridCorrect": true,
-          "hybridScore": 0.9499999999999993,
+          "hybridScore": 1.0,
           "start": 16.0,
           "student": "D",
           "studentCorrect": true,
-          "studentScore": 0.9499999999999993,
+          "studentScore": 1.0,
           "v2": "D",
           "v2Correct": true,
           "v2Score": 1.0
@@ -1085,11 +1132,11 @@
           "label": "Conservative no-chord safety overlay",
           "metrics": {
             "boundary": {
-              "f1": 0.48,
-              "precision": 0.75,
-              "recall": 0.35294117647058826
+              "f1": 0.4,
+              "precision": 0.625,
+              "recall": 0.29411764705882354
             },
-            "detailedWeightedRecall": 0.8273972602739725,
+            "detailedWeightedRecall": 0.8246575342465753,
             "evaluatedDurationSeconds": 36.5,
             "majorMinorWeightedRecall": 0.9616438356164382,
             "predictedChordCount": 8,
@@ -1099,31 +1146,31 @@
           },
           "segments": [
             {
-              "confidence": 0.19107606675889757,
-              "end": 1.8,
+              "confidence": 0.19612205203841715,
+              "end": 1.7000000000000002,
               "label": "N",
               "productLabel": "N.C.",
               "source": "student",
               "start": 0.0
             },
             {
-              "confidence": 0.8115401558734321,
-              "end": 16.1,
+              "confidence": 0.8857062777856013,
+              "end": 16.0,
               "label": "G:maj",
               "productLabel": "G",
               "source": "student",
-              "start": 1.8
+              "start": 1.7000000000000002
             },
             {
-              "confidence": 0.6003985924598498,
+              "confidence": 0.6734401501715184,
               "end": 20.0,
               "label": "D:maj",
               "productLabel": "D",
               "source": "student",
-              "start": 16.1
+              "start": 16.0
             },
             {
-              "confidence": 0.8161441887297282,
+              "confidence": 0.8725335190935832,
               "end": 24.1,
               "label": "G:maj",
               "productLabel": "G",
@@ -1131,7 +1178,7 @@
               "start": 20.0
             },
             {
-              "confidence": 0.8186990267191178,
+              "confidence": 0.8290032805540622,
               "end": 28.0,
               "label": "C:maj",
               "productLabel": "C",
@@ -1139,7 +1186,7 @@
               "start": 24.1
             },
             {
-              "confidence": 0.7488405346870423,
+              "confidence": 0.8076432933410008,
               "end": 31.0,
               "label": "G:maj",
               "productLabel": "G",
@@ -1147,7 +1194,7 @@
               "start": 28.0
             },
             {
-              "confidence": 0.38304474800825117,
+              "confidence": 0.5248569965362548,
               "end": 32.0,
               "label": "D:maj",
               "productLabel": "D",
@@ -1155,7 +1202,7 @@
               "start": 31.0
             },
             {
-              "confidence": 0.7879823406537374,
+              "confidence": 0.8994631078508165,
               "end": 36.49995464852608,
               "label": "G:maj",
               "productLabel": "G",
@@ -1173,14 +1220,14 @@
           ]
         },
         "student": {
-          "label": "Boundary-guided chord ensemble",
+          "label": "Domain-gated root-quality-boundary ensemble v8",
           "metrics": {
             "boundary": {
-              "f1": 0.5,
-              "precision": 0.8571428571428571,
-              "recall": 0.35294117647058826
+              "f1": 0.4166666666666667,
+              "precision": 0.7142857142857143,
+              "recall": 0.29411764705882354
             },
-            "detailedWeightedRecall": 0.8273970458137431,
+            "detailedWeightedRecall": 0.8246573163822152,
             "evaluatedDurationSeconds": 36.49995464852608,
             "majorMinorWeightedRecall": 0.9616437879586094,
             "predictedChordCount": 8,
@@ -1190,56 +1237,56 @@
           },
           "segments": [
             {
-              "confidence": 0.19107606675889757,
-              "end": 1.8,
+              "confidence": 0.19612205203841715,
+              "end": 1.7000000000000002,
               "label": "N",
               "productLabel": "N.C.",
               "start": 0.0
             },
             {
-              "confidence": 0.811540155873432,
-              "end": 16.1,
+              "confidence": 0.8857062777856013,
+              "end": 16.0,
               "label": "G:maj",
               "productLabel": "G",
-              "start": 1.8
+              "start": 1.7000000000000002
             },
             {
-              "confidence": 0.6003985924598498,
+              "confidence": 0.6734401501715184,
               "end": 20.0,
               "label": "D:maj",
               "productLabel": "D",
-              "start": 16.1
+              "start": 16.0
             },
             {
-              "confidence": 0.8161441887297282,
+              "confidence": 0.8725335190935832,
               "end": 24.1,
               "label": "G:maj",
               "productLabel": "G",
               "start": 20.0
             },
             {
-              "confidence": 0.8186990267191178,
+              "confidence": 0.8290032805540622,
               "end": 28.0,
               "label": "C:maj",
               "productLabel": "C",
               "start": 24.1
             },
             {
-              "confidence": 0.7488405346870423,
+              "confidence": 0.8076432933410008,
               "end": 31.0,
               "label": "G:maj",
               "productLabel": "G",
               "start": 28.0
             },
             {
-              "confidence": 0.38304474800825117,
+              "confidence": 0.5248569965362548,
               "end": 32.0,
               "label": "D:maj",
               "productLabel": "D",
               "start": 31.0
             },
             {
-              "confidence": 0.7879823406537374,
+              "confidence": 0.8994631078508165,
               "end": 36.49995464852608,
               "label": "G:maj",
               "productLabel": "G",
@@ -1600,11 +1647,11 @@
           "expected": "D7",
           "hybrid": "D",
           "hybridCorrect": true,
-          "hybridScore": 0.8947368421052635,
+          "hybridScore": 1.0,
           "start": 9.5,
           "student": "D",
           "studentCorrect": true,
-          "studentScore": 0.8947368421052635,
+          "studentScore": 1.0,
           "v2": "D",
           "v2Correct": true,
           "v2Score": 0.9884210526315789
@@ -1705,11 +1752,11 @@
           "expected": "D7",
           "hybrid": "D",
           "hybridCorrect": true,
-          "hybridScore": 0.8421052631578942,
+          "hybridScore": 1.0,
           "start": 22.8,
           "student": "D",
           "studentCorrect": true,
-          "studentScore": 0.8421052631578942,
+          "studentScore": 1.0,
           "v2": "D",
           "v2Correct": true,
           "v2Score": 1.0
@@ -1780,53 +1827,53 @@
           "label": "Conservative no-chord safety overlay",
           "metrics": {
             "boundary": {
-              "f1": 0.7857142857142858,
-              "precision": 1.0,
-              "recall": 0.6470588235294118
+              "f1": 0.7142857142857143,
+              "precision": 0.9090909090909091,
+              "recall": 0.5882352941176471
             },
-            "detailedWeightedRecall": 0.7606707317073168,
+            "detailedWeightedRecall": 0.7576219512195119,
             "evaluatedDurationSeconds": 32.8,
-            "majorMinorWeightedRecall": 0.9771341463414632,
+            "majorMinorWeightedRecall": 0.9893292682926826,
             "predictedChordCount": 12,
             "referenceChordCount": 12,
-            "rootWeightedRecall": 0.9771341463414632,
+            "rootWeightedRecall": 0.9893292682926826,
             "sequenceEditRate": 0.3333333333333333
           },
           "segments": [
             {
-              "confidence": 0.27057810390696807,
-              "end": 1.7000000000000002,
+              "confidence": 0.2776527814567089,
+              "end": 1.6,
               "label": "N",
               "productLabel": "N.C.",
               "source": "student",
               "start": 0.0
             },
             {
-              "confidence": 0.7755653166618103,
+              "confidence": 0.8038015429732166,
               "end": 9.5,
               "label": "G:maj",
               "productLabel": "G",
               "source": "student",
-              "start": 1.7000000000000002
+              "start": 1.6
             },
             {
-              "confidence": 0.5722117090926451,
-              "end": 11.200000000000001,
+              "confidence": 0.6411754732069216,
+              "end": 11.4,
               "label": "D:maj",
               "productLabel": "D",
               "source": "student",
               "start": 9.5
             },
             {
-              "confidence": 0.7880215309560299,
+              "confidence": 0.8199829341549623,
               "end": 15.200000000000001,
               "label": "G:maj",
               "productLabel": "G",
               "source": "student",
-              "start": 11.200000000000001
+              "start": 11.4
             },
             {
-              "confidence": 0.41687149750558955,
+              "confidence": 0.4423339264957528,
               "end": 17.1,
               "label": "D:maj",
               "productLabel": "D",
@@ -1834,7 +1881,7 @@
               "start": 15.200000000000001
             },
             {
-              "confidence": 0.6205093622207641,
+              "confidence": 0.6579161286354065,
               "end": 18.1,
               "label": "G:maj",
               "productLabel": "G",
@@ -1842,7 +1889,7 @@
               "start": 17.1
             },
             {
-              "confidence": 0.8391719290188382,
+              "confidence": 0.8205850954566685,
               "end": 20.900000000000002,
               "label": "C:maj",
               "productLabel": "C",
@@ -1850,31 +1897,31 @@
               "start": 18.1
             },
             {
-              "confidence": 0.7724920615553856,
-              "end": 22.900000000000002,
+              "confidence": 0.8077415071035686,
+              "end": 22.8,
               "label": "G:maj",
               "productLabel": "G",
               "source": "student",
               "start": 20.900000000000002
             },
             {
-              "confidence": 0.5914852879941463,
-              "end": 24.5,
+              "confidence": 0.6453031552465338,
+              "end": 24.700000000000003,
               "label": "D:maj",
               "productLabel": "D",
               "source": "student",
-              "start": 22.900000000000002
+              "start": 22.8
             },
             {
-              "confidence": 0.7955488473176956,
+              "confidence": 0.8474633913291129,
               "end": 28.5,
               "label": "G:maj",
               "productLabel": "G",
               "source": "student",
-              "start": 24.5
+              "start": 24.700000000000003
             },
             {
-              "confidence": 0.45317786461428594,
+              "confidence": 0.4869877288216039,
               "end": 30.400000000000002,
               "label": "D:maj",
               "productLabel": "D",
@@ -1882,7 +1929,7 @@
               "start": 28.5
             },
             {
-              "confidence": 0.7268735182782015,
+              "confidence": 0.8187188456455866,
               "end": 32.8,
               "label": "G:maj",
               "productLabel": "G",
@@ -1892,101 +1939,101 @@
           ]
         },
         "student": {
-          "label": "Boundary-guided chord ensemble",
+          "label": "Domain-gated root-quality-boundary ensemble v8",
           "metrics": {
             "boundary": {
-              "f1": 0.7857142857142858,
-              "precision": 1.0,
-              "recall": 0.6470588235294118
+              "f1": 0.7142857142857143,
+              "precision": 0.9090909090909091,
+              "recall": 0.5882352941176471
             },
-            "detailedWeightedRecall": 0.7606707317073168,
+            "detailedWeightedRecall": 0.7576219512195119,
             "evaluatedDurationSeconds": 32.8,
-            "majorMinorWeightedRecall": 0.9771341463414632,
+            "majorMinorWeightedRecall": 0.9893292682926826,
             "predictedChordCount": 12,
             "referenceChordCount": 12,
-            "rootWeightedRecall": 0.9771341463414632,
+            "rootWeightedRecall": 0.9893292682926826,
             "sequenceEditRate": 0.3333333333333333
           },
           "segments": [
             {
-              "confidence": 0.27057810390696807,
-              "end": 1.7000000000000002,
+              "confidence": 0.2776527814567089,
+              "end": 1.6,
               "label": "N",
               "productLabel": "N.C.",
               "start": 0.0
             },
             {
-              "confidence": 0.7755653166618103,
+              "confidence": 0.8038015429732166,
               "end": 9.5,
               "label": "G:maj",
               "productLabel": "G",
-              "start": 1.7000000000000002
+              "start": 1.6
             },
             {
-              "confidence": 0.5722117090926451,
-              "end": 11.200000000000001,
+              "confidence": 0.6411754732069216,
+              "end": 11.4,
               "label": "D:maj",
               "productLabel": "D",
               "start": 9.5
             },
             {
-              "confidence": 0.7880215309560299,
+              "confidence": 0.8199829341549623,
               "end": 15.200000000000001,
               "label": "G:maj",
               "productLabel": "G",
-              "start": 11.200000000000001
+              "start": 11.4
             },
             {
-              "confidence": 0.41687149750558955,
+              "confidence": 0.4423339264957528,
               "end": 17.1,
               "label": "D:maj",
               "productLabel": "D",
               "start": 15.200000000000001
             },
             {
-              "confidence": 0.6205093622207641,
+              "confidence": 0.6579161286354065,
               "end": 18.1,
               "label": "G:maj",
               "productLabel": "G",
               "start": 17.1
             },
             {
-              "confidence": 0.8391719290188381,
+              "confidence": 0.8205850954566684,
               "end": 20.900000000000002,
               "label": "C:maj",
               "productLabel": "C",
               "start": 18.1
             },
             {
-              "confidence": 0.7724920615553856,
-              "end": 22.900000000000002,
+              "confidence": 0.8077415071035686,
+              "end": 22.8,
               "label": "G:maj",
               "productLabel": "G",
               "start": 20.900000000000002
             },
             {
-              "confidence": 0.5914852879941463,
-              "end": 24.5,
+              "confidence": 0.6453031552465338,
+              "end": 24.700000000000003,
               "label": "D:maj",
               "productLabel": "D",
-              "start": 22.900000000000002
+              "start": 22.8
             },
             {
-              "confidence": 0.7955488473176956,
+              "confidence": 0.8474633913291129,
               "end": 28.5,
               "label": "G:maj",
               "productLabel": "G",
-              "start": 24.5
+              "start": 24.700000000000003
             },
             {
-              "confidence": 0.45317786461428594,
+              "confidence": 0.48698772882160385,
               "end": 30.400000000000002,
               "label": "D:maj",
               "productLabel": "D",
               "start": 28.5
             },
             {
-              "confidence": 0.7268735182782015,
+              "confidence": 0.8187188456455866,
               "end": 32.8,
               "label": "G:maj",
               "productLabel": "G",

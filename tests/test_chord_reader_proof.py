@@ -21,6 +21,10 @@ def test_visual_proof_uses_three_real_audio_assets_and_tracked_model() -> None:
         ROOT / "ui/models/chord-multiband-idmt-tcn-v3.onnx",
         ROOT / "ui/models/chord-harmonic-cqt-transformer-v4.onnx",
         ROOT / "ui/models/chord-boundary-transformer-v3.onnx",
+        ROOT / "ui/models/chord-boundary-nrgcp-transformer-v5.onnx",
+        ROOT / "ui/models/chord-quality-nrgcp-multiband-v5.onnx",
+        ROOT / "ui/models/chord-quality-nrgcp-cqt-v5.onnx",
+        ROOT / "ui/models/chord-domain-gate-v1.json",
     ]
     assert proof["schemaVersion"] == "chord_reader_visual_proof_v2"
     assert proof["suite"]["trackCount"] == len(proof["tracks"]) == 3
@@ -67,7 +71,9 @@ def test_visual_proof_reports_suite_wins_and_remaining_failures_without_hiding_t
         item = by_id[identifier]
         assert item["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"] > item["engines"]["v2"]["metrics"]["majorMinorWeightedRecall"]
     amazing = by_id["amazing-grace-kevin-macleod-lesson-v1"]
-    assert amazing["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"] > amazing["engines"]["v2"]["metrics"]["majorMinorWeightedRecall"]
+    assert amazing["summary"]["hybridCorrectBars"] > amazing["summary"]["v2CorrectBars"]
+    assert amazing["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"] == 0.7994272009686358
+    assert amazing["engines"]["v2"]["metrics"]["majorMinorWeightedRecall"] == 0.7999394602649776
     assert [row["bar"] for row in amazing["bars"] if not row["hybridCorrect"]] == [11, 13]
     assert by_id["amazing-grace-kevin-macleod-lesson-v1"]["track"]["recordingType"] == "licensed human performance"
     assert by_id["oh-susanna-preview-v1"]["track"]["recordingType"] == "app-owned deterministic performance"
@@ -77,11 +83,15 @@ def test_visual_proof_discloses_all_sealed_corpora_and_weakest_result() -> None:
     benchmark = _proof()["publicBenchmark"]
     assert {item["id"] for item in benchmark["datasets"]} == {
         "aam",
+        "babyslakh",
         "guitarset",
         "idmt_guitar",
+        "nrgcp",
         "winterreise",
     }
-    assert sum(item["trackCount"] for item in benchmark["datasets"]) == 124
+    assert sum(item["trackCount"] for item in benchmark["datasets"]) == 366
+    assert benchmark["confirmation"]["trackCount"] == 500
+    assert benchmark["confirmation"]["compositionOverlapWithTrainingOrPriorEvaluation"] == 0
     assert min(item["majorMinorWeightedRecall"] for item in benchmark["datasets"]) < 0.6
     assert "Enharmonic" in benchmark["metricSemantics"]
     assert "98% objective has not been met" in benchmark["disclosure"]
@@ -95,10 +105,10 @@ def test_visual_proof_page_has_player_selector_hybrid_and_reproduction_evidence(
     assert 'id="track-selector"' in html
     assert all(
         label in html
-        for label in ("Hand-authored", "Current v2", "Boundary-guided ensemble", "Safety overlay")
+        for label in ("Hand-authored", "Current v2", "Domain-gated v8", "Safety overlay")
     )
     assert "including regressions" in html
     assert "Regenerate the evidence locally" in html
     assert 'fetch("./data/proof.json"' in script
     assert "await new Promise" in script and "seekAndPlay(bar.start)" in script
-    assert "benchmark.datasets.forEach" in script
+    assert "[...benchmark.datasets" in script
