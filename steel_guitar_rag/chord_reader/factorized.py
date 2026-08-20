@@ -659,7 +659,29 @@ def _validated_feature_contract(
         policy = cache_manifest.get("augmentationPolicy")
         if policy is not None and str(policy) != augmentation:
             raise ValueError("Requested augmentation does not match the frozen feature-cache policy.")
-        return feature_kind, feature_count, sample_rate, None
+        feature_spec_sha256 = cache_manifest.get("featureSpecSha256")
+        if feature_spec_sha256 is not None and (
+            not isinstance(feature_spec_sha256, str)
+            or len(feature_spec_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in feature_spec_sha256
+            )
+        ):
+            raise ValueError("Factorized browser feature-spec hash is invalid.")
+        if "splitProtocol" in cache_manifest and feature_spec_sha256 is None:
+            raise ValueError(
+                "Strict factorized browser training requires a sealed feature-spec hash."
+            )
+        feature_spec = (
+            {
+                "schemaVersion": "chord_feature_spec_reference_v1",
+                "featureSpecSha256": feature_spec_sha256,
+            }
+            if feature_spec_sha256 is not None
+            else None
+        )
+        return feature_kind, feature_count, sample_rate, feature_spec
     if feature_kind != "dasheng_base_v1":
         raise ValueError(f"Unsupported factorized feature contract {feature_kind!r}.")
 

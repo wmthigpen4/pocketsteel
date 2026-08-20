@@ -37,6 +37,7 @@ from steel_guitar_rag.chord_reader.factorized import (
     _split_protocol_training_provenance,
     _state_root_mode,
     _training_window_weight,
+    _validated_feature_contract,
     build_factorized_model,
     cache_factorized_labels,
     factorized_components,
@@ -178,6 +179,42 @@ def test_factorized_model_exposes_independent_heads() -> None:
     assert heads["product"].shape[-1] == len(FACTORIZED_PRODUCTS)
     assert heads["quality"].shape[-1] == len(FACTORIZED_QUALITIES)
     assert heads["bass"].shape[-1] == 13
+
+
+def test_strict_browser_feature_contract_preserves_sealed_spec_hash() -> None:
+    digest = "a" * 64
+    contract = {
+        "featureKind": "multiband_chroma_v2",
+        "featureCount": 61,
+        "sampleRate": 11_025,
+        "frameSeconds": 0.1,
+        "featureSpecSha256": digest,
+        "splitProtocol": {},
+    }
+
+    _kind, _count, _rate, feature_spec = _validated_feature_contract(
+        contract,
+        augmentation="none",
+    )
+
+    assert feature_spec == {
+        "schemaVersion": "chord_feature_spec_reference_v1",
+        "featureSpecSha256": digest,
+    }
+
+
+def test_strict_browser_feature_contract_rejects_missing_spec_hash() -> None:
+    with pytest.raises(ValueError, match="sealed feature-spec hash"):
+        _validated_feature_contract(
+            {
+                "featureKind": "multiband_chroma_v2",
+                "featureCount": 61,
+                "sampleRate": 11_025,
+                "frameSeconds": 0.1,
+                "splitProtocol": {},
+            },
+            augmentation="none",
+        )
 
 
 def test_factorized_mode_decoder_keeps_root_and_mode_explicit() -> None:
