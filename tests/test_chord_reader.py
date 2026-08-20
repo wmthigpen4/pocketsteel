@@ -7,9 +7,10 @@ import subprocess
 import sys
 import shutil
 
+import numpy as np
 import pytest
 
-from steel_guitar_rag.chord_reader.benchmark import run_hybrid_benchmark
+from steel_guitar_rag.chord_reader.benchmark import run_hybrid_benchmark, run_prediction_benchmark
 from steel_guitar_rag.chord_reader.labels import normalize_chord, transpose_chord
 from steel_guitar_rag.chord_reader.btc import load_model_registry, verify_model_snapshot
 from steel_guitar_rag.chord_reader.chart_reference import build_chart_reference
@@ -30,8 +31,10 @@ from steel_guitar_rag.chord_reader.manifests import (
 from steel_guitar_rag.chord_reader.metrics import score_segments
 from steel_guitar_rag.chord_reader.student import (
     STUDENT_CLASSES,
+    composition_balance_feature_cache,
     frame_labels,
     frame_label_mask,
+    _root_guided_logits,
     merge_feature_caches,
     student_index,
     student_label,
@@ -196,6 +199,35 @@ def test_segment_metrics_measure_roots_qualities_boundaries_and_edits() -> None:
     assert result["sequenceEditRate"] == pytest.approx(0.5)
 
 
+def test_segment_metrics_treat_enharmonic_chord_spellings_as_equivalent() -> None:
+    reference = [
+        {"start": 0, "end": 2, "label": "Eb:maj/Bb"},
+        {"start": 2, "end": 4, "label": "Db:min"},
+    ]
+    prediction = [
+        {"start": 0, "end": 2, "label": "D#:maj/A#"},
+        {"start": 2, "end": 4, "label": "C#:min"},
+    ]
+
+    result = score_segments(reference, prediction)
+
+    assert result["rootWeightedRecall"] == 1
+    assert result["majorMinorWeightedRecall"] == 1
+    assert result["detailedWeightedRecall"] == 1
+    assert result["sequenceEditRate"] == 0
+
+
+def test_segment_metrics_keep_enharmonic_quality_and_bass_errors_visible() -> None:
+    reference = [{"start": 0, "end": 2, "label": "Eb:min/Bb"}]
+    prediction = [{"start": 0, "end": 2, "label": "D#:maj/G#"}]
+
+    result = score_segments(reference, prediction)
+
+    assert result["rootWeightedRecall"] == 1
+    assert result["majorMinorWeightedRecall"] == 0
+    assert result["detailedWeightedRecall"] == 0
+
+
 def test_hybrid_preserves_strong_no_chord_without_forcing_bar_labels() -> None:
     v2 = {
         "id": "song",
@@ -286,6 +318,39 @@ def test_hybrid_benchmark_scores_and_freezes_existing_predictions(tmp_path: Path
     assert report["aggregate"]["majorMinorWeightedRecall"] == 1
     frozen = json.loads((tmp_path / "out/predictions/hybrid/track.json").read_text(encoding="utf-8"))
     assert frozen["segments"][0]["productLabel"] == "C"
+
+
+def test_prediction_benchmark_rescores_frozen_predictions_enharmonically(tmp_path: Path) -> None:
+    reference = tmp_path / "reference.json"
+    reference.write_text(
+        json.dumps({"segments": [{"start": 0, "end": 4, "label": "Eb:maj"}]}),
+        encoding="utf-8",
+    )
+    prediction_root = tmp_path / "predictions"
+    prediction_root.mkdir()
+    (prediction_root / "track.json").write_text(
+        json.dumps({"durationSeconds": 4, "segments": [{"start": 0, "end": 4, "label": "D#:maj"}]}),
+        encoding="utf-8",
+    )
+
+    report = run_prediction_benchmark(
+        {
+            "tracks": [
+                {
+                    "id": "track",
+                    "datasetId": "fixture",
+                    "split": "test",
+                    "referencePath": str(reference),
+                }
+            ]
+        },
+        prediction_root=prediction_root,
+        engine="student-ensemble",
+    )
+
+    assert report["rescoredFromFrozenPredictions"] is True
+    assert report["aggregate"]["majorMinorWeightedRecall"] == 1
+    assert report["aggregate"]["detailedWeightedRecall"] == 1
 
 
 def test_cli_scores_json_segments(tmp_path: Path) -> None:
@@ -461,6 +526,44 @@ def test_feature_caches_reject_different_harmonic_front_ends() -> None:
                 {**base, "featureKind": "multiband_chroma_v2", "featureCount": 61},
             ]
         )
+
+
+def test_feature_cache_composition_balancing_downweights_duplicate_renditions() -> None:
+    cache = {
+        "tracks": [
+            {"id": "a-1", "datasetId": "set", "split": "train", "path": "/a"},
+            {"id": "a-2", "datasetId": "set", "split": "train", "path": "/b"},
+            {"id": "b-1", "datasetId": "set", "split": "train", "path": "/c"},
+        ]
+    }
+    tracks = {
+        "tracks": [
+            {"id": "a-1", "compositionId": "a"},
+            {"id": "a-2", "compositionId": "a"},
+            {"id": "b-1", "compositionId": "b"},
+        ]
+    }
+
+    balanced = composition_balance_feature_cache(cache, [tracks])
+
+    assert balanced["compositionBalanced"] is True
+    assert [item["trainingWeightOverride"] for item in balanced["tracks"]] == [0.5, 0.5, 1]
+
+
+def test_root_guidance_preserves_base_conditional_quality_evidence() -> None:
+    base = np.zeros((1, STUDENT_CLASSES), dtype=np.float32)
+    guide = np.zeros((1, STUDENT_CLASSES), dtype=np.float32)
+    g_major = student_index("G:maj")
+    g_minor = student_index("G:min")
+    base[0, g_major] = 2
+    base[0, g_minor] = -1
+    guide[0, g_major] = -2
+    guide[0, g_minor] = 5
+
+    guided = _root_guided_logits(base, guide, 0.3, np)
+
+    assert guided[0, g_major] - guided[0, g_minor] == pytest.approx(3)
+    assert guided[0, g_major] > base[0, g_major]
 
 
 def test_promotion_gate_requires_material_gain_and_runtime() -> None:

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "chord_multicorpus_benchmark_v1",
+  "candidate": "boundary-guided multiband three-model logit ensemble",
+  "selectionRule": "chord architectures selected on composition-held-out development splits; boundary scale 1.0 and bias -1.5 selected on AAM, GuitarSet, and Winterreise development compositions",
+  "metricSemantics": "Enharmonic root and bass spellings are compared by pitch class; chord quality remains exact for detailed recall.",
+  "models": [
+    "chord-multiband-tcn-v2.onnx",
+    "chord-multiband-transformer-v2.onnx",
+    "chord-multiband-idmt-tcn-v3.onnx",
+    "chord-boundary-transformer-v3.onnx"
+  ],
+  "datasets": [
+    {
+      "id": "guitarset",
+      "title": "GuitarSet",
+      "recordingType": "guitar performances",
+      "sourceUrl": "https://zenodo.org/records/3371780",
+      "trackCount": 36,
+      "evaluatedDurationSeconds": 1291.9673469387756,
+      "majorMinorWeightedRecall": 0.5589314052687219,
+      "rootWeightedRecall": 0.5846801061465464,
+      "detailedWeightedRecall": 0.5135939175933685,
+      "boundaryF1Macro": 0.5125798662510399,
+      "sequenceEditRateMacro": 0.4610615079365079
+    },
+    {
+      "id": "aam",
+      "title": "Tiny AAM",
+      "recordingType": "synthetic full mixes",
+      "sourceUrl": "https://zenodo.org/records/6771120",
+      "trackCount": 5,
+      "evaluatedDurationSeconds": 678.0016972,
+      "majorMinorWeightedRecall": 0.8283006014870486,
+      "rootWeightedRecall": 0.831573602143484,
+      "detailedWeightedRecall": 0.8283006014870486,
+      "boundaryF1Macro": 0.8619905157235117,
+      "sequenceEditRateMacro": 0.19428571428571428
+    },
+    {
+      "id": "winterreise",
+      "title": "Winterreise",
+      "recordingType": "human classical performances",
+      "sourceUrl": "https://zenodo.org/records/10839767",
+      "trackCount": 4,
+      "evaluatedDurationSeconds": 741.0873469387756,
+      "majorMinorWeightedRecall": 0.7348760563628509,
+      "rootWeightedRecall": 0.757977246891495,
+      "detailedWeightedRecall": 0.40970520977449554,
+      "boundaryF1Macro": 0.4900744536618493,
+      "sequenceEditRateMacro": 0.552796803652968
+    },
+    {
+      "id": "idmt_guitar",
+      "title": "IDMT Guitar",
+      "recordingType": "multi-guitar short pieces",
+      "sourceUrl": "https://zenodo.org/records/7544110",
+      "trackCount": 79,
+      "evaluatedDurationSeconds": 2280.3187528719864,
+      "majorMinorWeightedRecall": 0.7718420079427553,
+      "rootWeightedRecall": 0.8182865829573718,
+      "detailedWeightedRecall": 0.37611674944962453,
+      "boundaryF1Macro": 0.41798320614168594,
+      "sequenceEditRateMacro": 0.7070341175558239
+    }
+  ],
+  "disclosure": "All scores are frozen, duration-weighted, composition-held-out, and enharmonically canonicalized. The 98% objective has not been met; every corpus is shown rather than averaged away. Travis songs were not used."
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "chord_model_card_v1",
+  "id": "chord-boundary-guided-ensemble-v3",
+  "status": "development_challenger",
+  "featureKind": "multiband_chroma_v2",
+  "chordMembers": [
+    {
+      "file": "chord-multiband-tcn-v2.onnx",
+      "sha256": "cf7cdc0ea611c4ec2e6ae3e5cfd601ac23de645b1010f6ae63ac1f5dfe805455"
+    },
+    {
+      "file": "chord-multiband-transformer-v2.onnx",
+      "sha256": "77abc021df828799efaf2146cd0d39dc4e1be322a39cf7aa9e7c012f3839f155"
+    },
+    {
+      "file": "chord-multiband-idmt-tcn-v3.onnx",
+      "sha256": "9feebe799d138e8d2750c4d15095c6067cdedf11bd4a0f53548ce40e288e73fd"
+    }
+  ],
+  "boundaryGuide": {
+    "file": "chord-boundary-transformer-v3.onnx",
+    "sha256": "f807fe2f4b4033842ee615531e03c2650d70b6a8a7291da52ac004b82f5c9b30",
+    "decoderScale": 1.0,
+    "decoderBias": -1.5
+  },
+  "training": {
+    "availableRecordings": 934,
+    "datasets": ["AAM", "GuitarSet", "Winterreise", "IDMT Guitar"],
+    "splitUnit": "composition",
+    "memberTraining": {
+      "generalistTcnAndTransformer": "428 AAM, GuitarSet, and Winterreise recordings",
+      "idmtTcn": "934 recordings across all four datasets",
+      "boundaryGuide": "428 AAM, GuitarSet, and Winterreise recordings"
+    },
+    "testPredictionsUsedForSelection": false
+  },
+  "promotion": {
+    "productionEnabled": false,
+    "travisSongsUsed": false,
+    "reason": "Public evidence improved across all corpora, but the 98% objective and steel-domain review gate remain open."
+  }
+}

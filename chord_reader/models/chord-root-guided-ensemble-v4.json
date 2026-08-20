@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "chord_model_card_v1",
+  "id": "chord-root-guided-ensemble-v4",
+  "status": "development_challenger",
+  "baseChordEnsemble": "chord-boundary-guided-ensemble-v3",
+  "rootGuide": {
+    "file": "chord-harmonic-cqt-transformer-v4.onnx",
+    "sha256": "bf1c518eb9bd9150108ff07e39034158fd459f409fd9d176e1bb8bf28a76c4dd",
+    "weight": 0.3,
+    "scope": "root marginal only; conditional chord-quality evidence remains controlled by the multiband ensemble"
+  },
+  "frontEnd": {
+    "kind": "harmonic_cqt_v3",
+    "description": "harmonic/percussive separation followed by a six-octave CQT, temporal delta, and energy",
+    "featureCount": 145
+  },
+  "training": {
+    "recordings": 934,
+    "datasets": ["AAM", "GuitarSet", "Winterreise", "IDMT Guitar"],
+    "renditionWeighting": "each composition has unit total weight within its dataset and split",
+    "splitUnit": "composition",
+    "testPredictionsUsedForSelection": false
+  },
+  "promotion": {
+    "productionEnabled": false,
+    "travisSongsUsed": false,
+    "reason": "The challenger is a sealed Pareto improvement, but the 98% and steel-domain review gates remain open."
+  }
+}

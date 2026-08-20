@@ -19,7 +19,12 @@ if str(REPO_ROOT) not in sys.path:
 from steel_guitar_rag.chord_reader.hybrid import hybridize_predictions
 from steel_guitar_rag.chord_reader.labels import normalize_chord
 from steel_guitar_rag.chord_reader.metrics import score_segments
-from steel_guitar_rag.chord_reader.student import StudentEnsembleRecognizer, StudentRecognizer
+from steel_guitar_rag.chord_reader.student import (
+    StudentBoundaryGuidedEnsembleRecognizer,
+    StudentEnsembleRecognizer,
+    StudentHeterogeneousBoundaryGuidedEnsembleRecognizer,
+    StudentRecognizer,
+)
 
 
 TRACK_MANIFEST = REPO_ROOT / "steel_guitar_rag/resources/song_practice_tracks/manifest.json"
@@ -29,8 +34,15 @@ TRACK_IDS = (
     "oh-susanna-preview-v1",
 )
 DEFAULT_TRACK_ID = TRACK_IDS[0]
-MODEL = REPO_ROOT / "ui/models/chord-student-v1.onnx"
-SEALED_SUMMARY = REPO_ROOT / "chord_reader/benchmarks/multiband-ensemble-v1/sealed-summary.json"
+MODELS = (
+    REPO_ROOT / "ui/models/chord-multiband-tcn-v2.onnx",
+    REPO_ROOT / "ui/models/chord-multiband-transformer-v2.onnx",
+    REPO_ROOT / "ui/models/chord-multiband-idmt-tcn-v3.onnx",
+    REPO_ROOT / "ui/models/chord-harmonic-cqt-transformer-v4.onnx",
+)
+MODEL_WEIGHTS = (1.0, 1.0, 1.0, 0.3)
+BOUNDARY_MODEL = REPO_ROOT / "ui/models/chord-boundary-transformer-v3.onnx"
+SEALED_SUMMARY = REPO_ROOT / "chord_reader/benchmarks/root-guided-ensemble-v4/sealed-summary.json"
 DEFAULT_OUTPUT = REPO_ROOT / "ui/chord-reader-proof/data"
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -39,6 +51,10 @@ def _read_json(path: Path) -> Any:
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _display_path(path: Path) -> Path:
+    return path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path
 
 
 def _tracks() -> list[Mapping[str, Any]]:
@@ -223,8 +239,8 @@ def _build_track(
             name: {
                 "label": {
                     "v2": "Current Play Along v2",
-                    "student": "Raw chord-student-v1",
-                    "hybrid": "Hardened hybrid v1",
+                    "student": "Boundary-guided chord ensemble",
+                    "hybrid": "Conservative no-chord safety overlay",
                 }[name],
                 "metrics": score_segments(reference["segments"], prediction["segments"]),
                 "segments": prediction["segments"],
@@ -246,18 +262,54 @@ def _build_track(
     return proof
 
 
-def build(output_root: Path, models: Sequence[Path] | None = None) -> dict[str, Any]:
+def build(
+    output_root: Path,
+    models: Sequence[Path] | None = None,
+    boundary_model: Path | None = None,
+    model_weights: Sequence[float] | None = None,
+    root_guide_only: bool = False,
+) -> dict[str, Any]:
     output_root.mkdir(parents=True, exist_ok=True)
-    model_paths = [path if path.is_absolute() else (REPO_ROOT / path).resolve() for path in (models or [MODEL])]
-    recognizer = (
-        StudentEnsembleRecognizer(model_paths)
-        if len(model_paths) > 1
-        else StudentRecognizer(model_paths[0])
+    selected_models = models or MODELS
+    model_paths = [path if path.is_absolute() else (REPO_ROOT / path).resolve() for path in selected_models]
+    if models is None:
+        if boundary_model is None:
+            boundary_model = BOUNDARY_MODEL
+        if model_weights is None:
+            model_weights = MODEL_WEIGHTS
+        root_guide_only = True
+    boundary_path = (
+        boundary_model if boundary_model is None or boundary_model.is_absolute() else (REPO_ROOT / boundary_model).resolve()
     )
+    if model_weights:
+        if boundary_path is None:
+            raise ValueError("Weighted proof ensembles require a boundary model.")
+        recognizer = StudentHeterogeneousBoundaryGuidedEnsembleRecognizer(
+            model_paths,
+            model_weights,
+            boundary_path,
+            root_guide_only=root_guide_only,
+        )
+    elif boundary_path is not None:
+        recognizer = StudentBoundaryGuidedEnsembleRecognizer(model_paths, boundary_path)
+    else:
+        recognizer = (
+            StudentEnsembleRecognizer(model_paths)
+            if len(model_paths) > 1
+            else StudentRecognizer(model_paths[0])
+        )
     track_proofs = [_build_track(track, output_root, recognizer) for track in _tracks()]
     proof = {
         "schemaVersion": "chord_reader_visual_proof_v2",
-        "candidateLabel": "Multiband TCN + Transformer ensemble" if len(model_paths) > 1 else "Raw chord model",
+        "candidateLabel": (
+            "Harmonic-CQT root-guided chord ensemble"
+            if root_guide_only
+            else "Boundary-guided multiband TCN + Transformer ensemble"
+            if boundary_path is not None
+            else "Multiband TCN + Transformer ensemble"
+            if len(model_paths) > 1
+            else "Raw chord model"
+        ),
         "defaultTrackId": DEFAULT_TRACK_ID,
         "tracks": track_proofs,
         "suite": {
@@ -273,8 +325,18 @@ def build(output_root: Path, models: Sequence[Path] | None = None) -> dict[str, 
         "publicBenchmark": _read_json(SEALED_SUMMARY),
         "reproduce": {
             "command": "python scripts/build_chord_reader_proof.py "
-            + " ".join(f"--model {path.relative_to(REPO_ROOT)}" for path in model_paths),
-            "modelSha256": " / ".join(hashlib.sha256(path.read_bytes()).hexdigest() for path in model_paths),
+            + " ".join(f"--model {_display_path(path)}" for path in model_paths)
+            + (
+                " " + " ".join(f"--model-weight {weight}" for weight in model_weights)
+                if model_weights
+                else ""
+            )
+            + (f" --boundary-model {_display_path(boundary_path)}" if boundary_path else "")
+            + (" --root-guide-only" if root_guide_only else ""),
+            "modelSha256": " / ".join(
+                hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in [*model_paths, *([boundary_path] if boundary_path else [])]
+            ),
             "audioSha256": {track["track"]["id"]: track["track"]["audioSha256"] for track in track_proofs},
         },
     }
@@ -286,8 +348,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--model", type=Path, action="append", dest="models")
+    parser.add_argument("--boundary-model", type=Path)
+    parser.add_argument("--model-weight", type=float, action="append", dest="model_weights")
+    parser.add_argument("--root-guide-only", action="store_true")
     args = parser.parse_args()
-    proof = build(args.output_root, args.models)
+    proof = build(
+        args.output_root,
+        args.models,
+        args.boundary_model,
+        args.model_weights,
+        args.root_guide_only,
+    )
     print(json.dumps(proof["suite"], indent=2, sort_keys=True))
     return 0
 

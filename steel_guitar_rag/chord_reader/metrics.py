@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping
 
-from .labels import ChordLabel, normalize_chord
+from .labels import PITCH_CLASS, ChordLabel, normalize_chord
 
 
 def _segments(values: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -23,7 +23,21 @@ def _segments(values: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _root_matches(left: ChordLabel, right: ChordLabel) -> bool:
-    return left.root == right.root
+    if left.root is None or right.root is None:
+        return left.root == right.root
+    return PITCH_CLASS[left.root] == PITCH_CLASS[right.root]
+
+
+def _bass_matches(left: ChordLabel, right: ChordLabel) -> bool:
+    if left.bass is None or right.bass is None:
+        return left.bass == right.bass
+    return PITCH_CLASS[left.bass] == PITCH_CLASS[right.bass]
+
+
+def _detailed_matches(left: ChordLabel, right: ChordLabel) -> bool:
+    if left.root is None or right.root is None:
+        return left.detailed_symbol == right.detailed_symbol
+    return _root_matches(left, right) and left.quality == right.quality and _bass_matches(left, right)
 
 
 def _majmin_class(label: ChordLabel) -> str:
@@ -53,7 +67,12 @@ def _levenshtein(left: list[str], right: list[str]) -> int:
 def _collapsed_product_sequence(segments: list[dict[str, Any]]) -> list[str]:
     values: list[str] = []
     for segment in segments:
-        symbol = segment["label"].product_symbol
+        label = segment["label"]
+        if label.root is None:
+            symbol = label.product_symbol
+        else:
+            suffix = label.product_symbol[len(label.root) :]
+            symbol = f"{PITCH_CLASS[label.root]}:{suffix}"
         if not values or values[-1] != symbol:
             values.append(symbol)
     return values
@@ -118,7 +137,7 @@ def score_segments(
             root_correct += duration
             if _majmin_class(ref["label"]) == _majmin_class(pred["label"]):
                 majmin_correct += duration
-        if ref["label"].detailed_symbol == pred["label"].detailed_symbol:
+        if _detailed_matches(ref["label"], pred["label"]):
             detailed_correct += duration
 
     reference_sequence = _collapsed_product_sequence(reference)

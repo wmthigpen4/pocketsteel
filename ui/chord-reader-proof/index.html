@@ -12,7 +12,7 @@
       <div>
         <p class="eyebrow">Chord Reader ML v3 · visual proof</p>
         <h1>Hear every claim.</h1>
-        <p class="lede">Three real public-domain songs, 49 hand-authored bars, and every mistake exposed. Press play to compare the production reader with the new multiband TCN + Transformer ensemble in time with the music.</p>
+        <p class="lede">Three real public-domain songs, 49 hand-authored bars, and every mistake exposed. Press play to compare production with a three-model chord ensemble, a harmonic-CQT root guide, and a separately trained chord-change detector.</p>
       </div>
       <div class="hero-badge"><span id="suite-bars">—</span><small>hybrid bars correct across suite</small></div>
     </header>
@@ -35,8 +35,8 @@
         <div class="bar-marker"><span>BAR</span><strong id="current-bar">Count-in</strong></div>
         <div class="current-chord expected"><span>Hand-authored</span><strong id="current-expected">N.C.</strong></div>
         <div class="current-chord v2"><span>Current v2</span><strong id="current-v2">N.C.</strong></div>
-        <div class="current-chord student"><span>Candidate ensemble</span><strong id="current-student">N.C.</strong></div>
-        <div class="current-chord hybrid"><span>Safe candidate</span><strong id="current-hybrid">N.C.</strong></div>
+        <div class="current-chord student"><span>Boundary-guided ensemble</span><strong id="current-student">N.C.</strong></div>
+        <div class="current-chord hybrid"><span>Safety overlay</span><strong id="current-hybrid">N.C.</strong></div>
       </div>
 
       <div class="legend" aria-label="Result legend">
@@ -60,12 +60,12 @@
           <span>musical bars correct</span>
         </article>
         <article class="score-card challenger">
-          <p>Candidate ensemble</p>
+          <p>Boundary-guided ensemble</p>
           <strong id="student-bar-score">—</strong>
           <span>musical bars correct</span>
         </article>
         <article class="score-card hybrid">
-          <p>Safe candidate</p>
+          <p>Safety overlay</p>
           <strong id="hybrid-bar-score">—</strong>
           <span>musical bars correct</span>
         </article>
@@ -115,7 +115,7 @@
       <div>
         <p class="eyebrow">No hand-picked output</p>
         <h2 id="reproduce-heading">Regenerate the evidence locally</h2>
-        <p>The page reads frozen JSON emitted directly by v2, two tracked ONNX models, and the conservative no-chord overlay. Model and audio hashes are displayed so changed artifacts cannot masquerade as this run.</p>
+        <p>The page reads frozen JSON emitted directly by v2, three chord ONNX models, one harmonic-CQT root-guide model, one boundary model, and the conservative no-chord overlay. Model and audio hashes are displayed so changed artifacts cannot masquerade as this run.</p>
       </div>
       <div class="code-panel">
         <code id="reproduce-command">python scripts/build_chord_reader_proof.py</code>

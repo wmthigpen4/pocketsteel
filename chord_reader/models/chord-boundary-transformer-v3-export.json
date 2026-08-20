@@ -1,0 +1,14 @@
+{
+  "architecture": "boundary_transformer",
+  "boundaryBias": -1.5,
+  "boundaryScale": 1.0,
+  "bytes": 1263278,
+  "featureCount": 61,
+  "featureKind": "multiband_chroma_v2",
+  "maximumAbsoluteError": 3.814697265625e-06,
+  "modelFile": "chord-boundary-transformer-v3.onnx",
+  "opset": 17,
+  "schemaVersion": "chord_onnx_export_v1",
+  "sha256": "f807fe2f4b4033842ee615531e03c2650d70b6a8a7291da52ac004b82f5c9b30",
+  "windowFrames": 256
+}

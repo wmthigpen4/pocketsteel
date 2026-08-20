@@ -2,6 +2,7 @@
   "schemaVersion": "chord_multicorpus_benchmark_v1",
   "candidate": "multiband TCN + Transformer logit ensemble",
   "selectionRule": "architecture and features selected on composition-held-out development splits",
+  "metricSemantics": "Enharmonic root and bass spellings are compared by pitch class; chord quality remains exact for detailed recall.",
   "datasets": [
     {
       "id": "guitarset",
@@ -46,11 +47,11 @@
       "sourceUrl": "https://zenodo.org/records/7544110",
       "trackCount": 79,
       "evaluatedDurationSeconds": 2280.3187528719864,
-      "majorMinorWeightedRecall": 0.46171716634409177,
-      "rootWeightedRecall": 0.511837262833697,
-      "detailedWeightedRecall": 0.22511527382907273,
+      "majorMinorWeightedRecall": 0.7377018849030107,
+      "rootWeightedRecall": 0.7915993504262877,
+      "detailedWeightedRecall": 0.3441031839360559,
       "boundaryF1Macro": 0.3486286429041264
     }
   ],
-  "disclosure": "All scores are frozen, duration-weighted, and composition-held-out. The 98% objective has not been met; the weakest corpus is shown rather than averaged away. Travis songs were not used."
+  "disclosure": "All scores are frozen, duration-weighted, composition-held-out, and enharmonically canonicalized. The 98% objective has not been met; every corpus is shown rather than averaged away. Travis songs were not used."
 }

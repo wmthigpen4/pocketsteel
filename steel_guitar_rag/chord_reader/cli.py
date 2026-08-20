@@ -10,7 +10,7 @@ import subprocess
 from typing import Any
 
 from .btc import predict_btc
-from .benchmark import run_benchmark, run_hybrid_benchmark
+from .benchmark import run_benchmark, run_hybrid_benchmark, run_prediction_benchmark
 from .chart_reference import build_chart_reference
 from .datasets import prepare_aam, prepare_guitarset, prepare_idmt_guitar, prepare_winterreise
 from .labels import normalize_chord, transpose_chord
@@ -29,6 +29,7 @@ from .student import (
     STUDENT_FEATURE_KINDS,
     StudentRecognizer,
     cache_student_features,
+    composition_balance_feature_cache,
     export_student_onnx,
     merge_feature_caches,
     train_student,
@@ -132,6 +133,16 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run.add_argument("--local-files-only", action="store_true")
     benchmark_run.add_argument("--model", type=Path)
     benchmark_run.add_argument("--ensemble-model", type=Path, action="append", default=[])
+    benchmark_run.add_argument("--boundary-model", type=Path)
+    benchmark_run.add_argument("--ensemble-weight", type=float, action="append", default=[])
+    benchmark_run.add_argument("--root-guide-only", action="store_true")
+
+    rescore = commands.add_parser("benchmark-predictions", help="Rescore an existing frozen prediction directory")
+    rescore.add_argument("manifest", type=Path)
+    rescore.add_argument("--predictions", type=Path, required=True)
+    rescore.add_argument("--engine", required=True)
+    rescore.add_argument("--split", default="test")
+    rescore.add_argument("--report", type=Path, required=True)
 
     hybrid_benchmark = commands.add_parser(
         "benchmark-hybrid", help="Freeze the conservative hybrid from existing v2 and student predictions"
@@ -157,6 +168,13 @@ def build_parser() -> argparse.ArgumentParser:
     merge_cache.add_argument("cache_manifest", type=Path, nargs="+")
     merge_cache.add_argument("--output", type=Path, required=True)
 
+    balance_cache = commands.add_parser(
+        "balance-feature-cache", help="Weight cached renditions so each composition has equal total weight"
+    )
+    balance_cache.add_argument("cache_manifest", type=Path)
+    balance_cache.add_argument("--track-manifest", type=Path, action="append", required=True)
+    balance_cache.add_argument("--output", type=Path, required=True)
+
     train = commands.add_parser("train-student", help="Train the browser-sized supervised temporal model")
     train.add_argument("cache_manifest", type=Path)
     train.add_argument("--output-root", type=Path, required=True)
@@ -171,6 +189,8 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("model_root", type=Path)
     export.add_argument("--output", type=Path, required=True)
     export.add_argument("--report", type=Path)
+    export.add_argument("--boundary-scale", type=float, default=0.6)
+    export.add_argument("--boundary-bias", type=float, default=0.0)
 
     promote = commands.add_parser("check-promotion", help="Apply frozen public, steel, runtime, and Travis gates")
     promote.add_argument("baseline", type=Path)
@@ -299,6 +319,17 @@ def main(argv: list[str] | None = None) -> int:
             local_files_only=args.local_files_only,
             model=args.model,
             ensemble_models=args.ensemble_model,
+            boundary_model=args.boundary_model,
+            ensemble_weights=args.ensemble_weight,
+            root_guide_only=args.root_guide_only,
+        )
+        _write_json(result, args.report)
+    elif args.command == "benchmark-predictions":
+        result = run_prediction_benchmark(
+            _read_json(args.manifest),
+            prediction_root=args.predictions,
+            engine=args.engine,
+            split=args.split,
         )
         _write_json(result, args.report)
     elif args.command == "benchmark-hybrid":
@@ -334,8 +365,19 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "merge-feature-caches":
         result = merge_feature_caches(_read_json(path) for path in args.cache_manifest)
         _write_json(result, args.output)
+    elif args.command == "balance-feature-cache":
+        result = composition_balance_feature_cache(
+            _read_json(args.cache_manifest),
+            [_read_json(path) for path in args.track_manifest],
+        )
+        _write_json(result, args.output)
     elif args.command == "export-student":
-        result = export_student_onnx(args.model_root, args.output)
+        result = export_student_onnx(
+            args.model_root,
+            args.output,
+            boundary_scale=args.boundary_scale,
+            boundary_bias=args.boundary_bias,
+        )
         _write_json(result, args.report)
     elif args.command == "check-promotion":
         result = evaluate_promotion(

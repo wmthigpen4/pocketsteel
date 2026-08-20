@@ -18,6 +18,9 @@ def test_visual_proof_uses_three_real_audio_assets_and_tracked_model() -> None:
     models = [
         ROOT / "ui/models/chord-multiband-tcn-v2.onnx",
         ROOT / "ui/models/chord-multiband-transformer-v2.onnx",
+        ROOT / "ui/models/chord-multiband-idmt-tcn-v3.onnx",
+        ROOT / "ui/models/chord-harmonic-cqt-transformer-v4.onnx",
+        ROOT / "ui/models/chord-boundary-transformer-v3.onnx",
     ]
     assert proof["schemaVersion"] == "chord_reader_visual_proof_v2"
     assert proof["suite"]["trackCount"] == len(proof["tracks"]) == 3
@@ -54,17 +57,18 @@ def test_visual_proof_exposes_successes_failures_and_hybrid_bar_by_bar() -> None
     assert rows[13]["v2Correct"] is rows[13]["studentCorrect"] is rows[13]["hybridCorrect"] is False
 
 
-def test_visual_proof_reports_suite_wins_and_regressions_without_hiding_them() -> None:
+def test_visual_proof_reports_suite_wins_and_remaining_failures_without_hiding_them() -> None:
     proof = _proof()
     suite = proof["suite"]
     assert suite["barTotals"] == {"hybrid": 46, "student": 46, "v2": 43}
-    assert suite["engines"]["hybrid"]["majorMinorWeightedRecall"] < suite["engines"]["v2"]["majorMinorWeightedRecall"]
+    assert suite["engines"]["hybrid"]["majorMinorWeightedRecall"] > suite["engines"]["v2"]["majorMinorWeightedRecall"]
     by_id = {item["track"]["id"]: item for item in proof["tracks"]}
     for identifier in ("when-the-saints-preview-v1", "oh-susanna-preview-v1"):
         item = by_id[identifier]
         assert item["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"] > item["engines"]["v2"]["metrics"]["majorMinorWeightedRecall"]
     amazing = by_id["amazing-grace-kevin-macleod-lesson-v1"]
-    assert amazing["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"] < amazing["engines"]["v2"]["metrics"]["majorMinorWeightedRecall"]
+    assert amazing["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"] > amazing["engines"]["v2"]["metrics"]["majorMinorWeightedRecall"]
+    assert [row["bar"] for row in amazing["bars"] if not row["hybridCorrect"]] == [11, 13]
     assert by_id["amazing-grace-kevin-macleod-lesson-v1"]["track"]["recordingType"] == "licensed human performance"
     assert by_id["oh-susanna-preview-v1"]["track"]["recordingType"] == "app-owned deterministic performance"
 
@@ -78,7 +82,8 @@ def test_visual_proof_discloses_all_sealed_corpora_and_weakest_result() -> None:
         "winterreise",
     }
     assert sum(item["trackCount"] for item in benchmark["datasets"]) == 124
-    assert min(item["majorMinorWeightedRecall"] for item in benchmark["datasets"]) < 0.5
+    assert min(item["majorMinorWeightedRecall"] for item in benchmark["datasets"]) < 0.6
+    assert "Enharmonic" in benchmark["metricSemantics"]
     assert "98% objective has not been met" in benchmark["disclosure"]
     assert "Travis songs were not used" in benchmark["disclosure"]
 
@@ -88,7 +93,10 @@ def test_visual_proof_page_has_player_selector_hybrid_and_reproduction_evidence(
     script = (PROOF_ROOT / "proof.js").read_text(encoding="utf-8")
     assert '<audio id="audio" controls' in html
     assert 'id="track-selector"' in html
-    assert all(label in html for label in ("Hand-authored", "Current v2", "Candidate ensemble", "Safe candidate"))
+    assert all(
+        label in html
+        for label in ("Hand-authored", "Current v2", "Boundary-guided ensemble", "Safety overlay")
+    )
     assert "including regressions" in html
     assert "Regenerate the evidence locally" in html
     assert 'fetch("./data/proof.json"' in script

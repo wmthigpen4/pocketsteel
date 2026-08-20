@@ -7,8 +7,8 @@
   const engineLabels = {
     v2: "Current v2",
     btc: "Pretrained BTC",
-    student: "Candidate ensemble",
-    hybrid: "Safe candidate",
+    student: "Boundary-guided ensemble",
+    hybrid: "Safety overlay",
   };
   let proof = null;
   let selected = null;

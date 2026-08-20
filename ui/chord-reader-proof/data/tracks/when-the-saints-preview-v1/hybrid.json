@@ -22,16 +22,16 @@
   "bars": [
     {
       "bar": 1,
-      "confidence": 0.12458371020415249,
-      "coverage": 0.8822003113648157,
+      "confidence": 0.19107606675889757,
+      "coverage": 0.934094447327452,
       "end": 1.927,
-      "label": "D:maj",
-      "productLabel": "D",
+      "label": "N",
+      "productLabel": "N.C.",
       "start": 0.0
     },
     {
       "bar": 2,
-      "confidence": 0.7903694901224616,
+      "confidence": 0.8115401558734321,
       "coverage": 1.0,
       "end": 3.971,
       "label": "G:maj",
@@ -40,7 +40,7 @@
     },
     {
       "bar": 3,
-      "confidence": 0.7903694901224616,
+      "confidence": 0.8115401558734321,
       "coverage": 1.0,
       "end": 6.014,
       "label": "G:maj",
@@ -49,7 +49,7 @@
     },
     {
       "bar": 4,
-      "confidence": 0.7903694901224616,
+      "confidence": 0.8115401558734321,
       "coverage": 1.0,
       "end": 7.988,
       "label": "G:maj",
@@ -58,7 +58,7 @@
     },
     {
       "bar": 5,
-      "confidence": 0.7903694901224616,
+      "confidence": 0.8115401558734321,
       "coverage": 1.0,
       "end": 9.961,
       "label": "G:maj",
@@ -67,7 +67,7 @@
     },
     {
       "bar": 6,
-      "confidence": 0.7903694901224616,
+      "confidence": 0.8115401558734321,
       "coverage": 1.0,
       "end": 11.958,
       "label": "G:maj",
@@ -76,7 +76,7 @@
     },
     {
       "bar": 7,
-      "confidence": 0.7903694901224616,
+      "confidence": 0.8115401558734321,
       "coverage": 1.0,
       "end": 13.955,
       "label": "G:maj",
@@ -85,7 +85,7 @@
     },
     {
       "bar": 8,
-      "confidence": 0.7903694901224616,
+      "confidence": 0.8115401558734321,
       "coverage": 1.0,
       "end": 15.952,
       "label": "G:maj",
@@ -94,7 +94,7 @@
     },
     {
       "bar": 9,
-      "confidence": 0.5338321931851215,
+      "confidence": 0.6003985924598497,
       "coverage": 0.9250253292806476,
       "end": 17.926,
       "label": "D:maj",
@@ -103,7 +103,7 @@
     },
     {
       "bar": 10,
-      "confidence": 0.5338321931851215,
+      "confidence": 0.6003985924598498,
       "coverage": 1.0,
       "end": 19.969,
       "label": "D:maj",
@@ -112,7 +112,7 @@
     },
     {
       "bar": 11,
-      "confidence": 0.7919617811354195,
+      "confidence": 0.8161441887297282,
       "coverage": 0.9846534653465352,
       "end": 21.989,
       "label": "G:maj",
@@ -121,7 +121,7 @@
     },
     {
       "bar": 12,
-      "confidence": 0.7919617811354195,
+      "confidence": 0.8161441887297282,
       "coverage": 1.0,
       "end": 23.963,
       "label": "G:maj",
@@ -130,7 +130,7 @@
     },
     {
       "bar": 13,
-      "confidence": 0.7527289237731543,
+      "confidence": 0.8186990267191178,
       "coverage": 0.931397095643465,
       "end": 25.96,
       "label": "C:maj",
@@ -139,7 +139,7 @@
     },
     {
       "bar": 14,
-      "confidence": 0.7527289237731543,
+      "confidence": 0.8186990267191178,
       "coverage": 1.0,
       "end": 27.957,
       "label": "C:maj",
@@ -148,7 +148,7 @@
     },
     {
       "bar": 15,
-      "confidence": 0.7177246767899085,
+      "confidence": 0.7488405346870423,
       "coverage": 0.9784677015523289,
       "end": 29.954,
       "label": "G:maj",
@@ -157,17 +157,17 @@
     },
     {
       "bar": 16,
-      "confidence": 0.2673026293516159,
-      "coverage": 0.5007511266900351,
+      "confidence": 0.7488405346870423,
+      "coverage": 0.5237856785177764,
       "end": 31.951,
-      "label": "D:maj",
-      "productLabel": "D",
+      "label": "G:maj",
+      "productLabel": "G",
       "start": 29.954
     },
     {
       "bar": 17,
-      "confidence": 0.7134185170997744,
-      "coverage": 1.0,
+      "confidence": 0.7879823406537374,
+      "coverage": 0.9754631947921886,
       "end": 33.948,
       "label": "G:maj",
       "productLabel": "G",
@@ -175,7 +175,7 @@
     },
     {
       "bar": 18,
-      "confidence": 0.713415907712005,
+      "confidence": 0.7879770811725458,
       "coverage": 1.0,
       "end": 36.50004535147392,
       "label": "G:maj",
@@ -263,31 +263,15 @@
   "schemaVersion": "chord_prediction_v1",
   "segments": [
     {
-      "confidence": 0.1151183999397538,
-      "end": 1.1,
-      "label": "D:maj",
-      "productLabel": "D",
+      "confidence": 0.19107606675889757,
+      "end": 1.8,
+      "label": "N",
+      "productLabel": "N.C.",
       "source": "student",
       "start": 0.0
     },
     {
-      "confidence": 0.15239295363426208,
-      "end": 1.2000000000000002,
-      "label": "D:7",
-      "productLabel": "D7",
-      "source": "student",
-      "start": 1.1
-    },
-    {
-      "confidence": 0.1419367790222168,
-      "end": 1.8,
-      "label": "D:maj",
-      "productLabel": "D",
-      "source": "student",
-      "start": 1.2000000000000002
-    },
-    {
-      "confidence": 0.7903694901224616,
+      "confidence": 0.8115401558734321,
       "end": 16.1,
       "label": "G:maj",
       "productLabel": "G",
@@ -295,7 +279,7 @@
       "start": 1.8
     },
     {
-      "confidence": 0.5338321931851215,
+      "confidence": 0.6003985924598498,
       "end": 20.0,
       "label": "D:maj",
       "productLabel": "D",
@@ -303,7 +287,7 @@
       "start": 16.1
     },
     {
-      "confidence": 0.7919617811354195,
+      "confidence": 0.8161441887297282,
       "end": 24.1,
       "label": "G:maj",
       "productLabel": "G",
@@ -311,7 +295,7 @@
       "start": 20.0
     },
     {
-      "confidence": 0.7527289237731543,
+      "confidence": 0.8186990267191178,
       "end": 28.0,
       "label": "C:maj",
       "productLabel": "C",
@@ -319,28 +303,28 @@
       "start": 24.1
     },
     {
-      "confidence": 0.7177246767899086,
-      "end": 30.900000000000002,
+      "confidence": 0.7488405346870423,
+      "end": 31.0,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
       "start": 28.0
     },
     {
-      "confidence": 0.2673026293516159,
-      "end": 31.900000000000002,
+      "confidence": 0.38304474800825117,
+      "end": 32.0,
       "label": "D:maj",
       "productLabel": "D",
       "source": "student",
-      "start": 30.900000000000002
+      "start": 31.0
     },
     {
-      "confidence": 0.7134185170997744,
+      "confidence": 0.7879823406537374,
       "end": 36.49995464852608,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
-      "start": 31.900000000000002
+      "start": 32.0
     },
     {
       "confidence": 0.64,

@@ -1,0 +1,14 @@
+{
+  "architecture": "transformer",
+  "boundaryBias": 0.0,
+  "boundaryScale": 0.6,
+  "bytes": 1423766,
+  "featureCount": 145,
+  "featureKind": "harmonic_cqt_v3",
+  "maximumAbsoluteError": 4.291534423828125e-06,
+  "modelFile": "chord-harmonic-cqt-transformer-v4.onnx",
+  "opset": 17,
+  "schemaVersion": "chord_onnx_export_v1",
+  "sha256": "bf1c518eb9bd9150108ff07e39034158fd459f409fd9d176e1bb8bf28a76c4dd",
+  "windowFrames": 256
+}

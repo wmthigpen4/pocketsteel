@@ -1,5 +1,9 @@
 # Chord Reader ML v3
 
+## Latest challenger
+
+The current development challenger is the harmonic-CQT root-guided ensemble documented in `docs/handoffs/task-completions/chord-reader-world-class-batch-3.md`. On 124 composition-held-out recordings it improves v3 on root, major/minor, detailed, boundary, and sequence metrics in every corpus. The audible three-song proof reaches 90.59% major/minor WCSR versus 85.91% for v2. Production remains v2; the 98% and Travis gates remain open.
+
 ## Objective
 
 Improve the Play Along chord reader with measured gains on held-out public audio while preserving the current v2 analyzer as an immediate fallback. The work is isolated on `feature/chord-reader-ml-v3`; production remains unchanged until every promotion gate passes.

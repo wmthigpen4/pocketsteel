@@ -1,0 +1,14 @@
+{
+  "architecture": "tcn",
+  "boundaryBias": 0.0,
+  "boundaryScale": 0.6,
+  "bytes": 371807,
+  "featureCount": 61,
+  "featureKind": "multiband_chroma_v2",
+  "maximumAbsoluteError": 2.193450927734375e-05,
+  "modelFile": "chord-multiband-idmt-tcn-v3.onnx",
+  "opset": 17,
+  "schemaVersion": "chord_onnx_export_v1",
+  "sha256": "9feebe799d138e8d2750c4d15095c6067cdedf11bd4a0f53548ce40e288e73fd",
+  "windowFrames": null
+}

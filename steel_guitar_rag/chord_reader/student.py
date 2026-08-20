@@ -23,10 +23,11 @@ STUDENT_FEATURE_KINDS = {
     "worker_chroma_v1": 13,
     "multiband_chroma_v2": 61,
     "basic_pitch_v1": 177,
+    "harmonic_cqt_v3": 145,
 }
 STUDENT_QUALITIES = ("maj", "min", "7", "min7")
 STUDENT_CLASSES = 1 + 12 * len(STUDENT_QUALITIES)
-STUDENT_ARCHITECTURES = ("tcn", "bigru", "transformer")
+STUDENT_ARCHITECTURES = ("tcn", "bigru", "transformer", "boundary_transformer")
 
 
 def student_index(symbol: str | None) -> int:
@@ -162,6 +163,39 @@ def basic_pitch_features(audio: Path) -> tuple[Any, float]:
     return numpy.concatenate((note, onset, activity), axis=1).astype(numpy.float32), duration
 
 
+def harmonic_cqt_features(audio: Path) -> tuple[Any, float]:
+    """Preserve register detail after harmonic/percussive separation for offline inference."""
+
+    numpy = importlib.import_module("numpy")
+    librosa = importlib.import_module("librosa")
+    samples, _source_rate = librosa.load(str(audio), sr=STUDENT_SAMPLE_RATE, mono=True)
+    duration = len(samples) / STUDENT_SAMPLE_RATE
+    harmonic = librosa.effects.harmonic(samples, margin=2.0)
+    hop_length = round(STUDENT_SAMPLE_RATE * STUDENT_FRAME_SECONDS)
+    cqt = numpy.abs(
+        librosa.cqt(
+            harmonic,
+            sr=STUDENT_SAMPLE_RATE,
+            hop_length=hop_length,
+            fmin=librosa.note_to_hz("C1"),
+            n_bins=72,
+            bins_per_octave=12,
+        )
+    ).T
+    cqt = numpy.log1p(10 * cqt)
+    cqt /= numpy.maximum(1e-8, numpy.linalg.norm(cqt, axis=1, keepdims=True))
+    frame_count = max(1, math.ceil(duration / STUDENT_FRAME_SECONDS))
+    target_times = numpy.arange(frame_count) * STUDENT_FRAME_SECONDS
+    source_times = numpy.arange(len(cqt)) * hop_length / STUDENT_SAMPLE_RATE
+    indices = numpy.clip(numpy.searchsorted(source_times, target_times), 0, len(cqt) - 1)
+    cqt = cqt[indices]
+    delta = numpy.concatenate((numpy.zeros((1, 72)), numpy.diff(cqt, axis=0)), axis=0)
+    energy = librosa.feature.rms(y=samples, frame_length=2048, hop_length=hop_length)[0]
+    energy_times = numpy.arange(len(energy)) * hop_length / STUDENT_SAMPLE_RATE
+    energy_indices = numpy.clip(numpy.searchsorted(energy_times, target_times), 0, len(energy) - 1)
+    return numpy.concatenate((cqt, delta, energy[energy_indices, None]), axis=1).astype(numpy.float32), duration
+
+
 def extract_student_features(audio: Path, feature_kind: str) -> tuple[Any, float]:
     if feature_kind == "worker_chroma_v1":
         return worker_compatible_features(audio)
@@ -169,6 +203,8 @@ def extract_student_features(audio: Path, feature_kind: str) -> tuple[Any, float
         return multiband_harmonic_features(audio)
     if feature_kind == "basic_pitch_v1":
         return basic_pitch_features(audio)
+    if feature_kind == "harmonic_cqt_v3":
+        return harmonic_cqt_features(audio)
     raise ValueError(f"Unknown student feature kind {feature_kind!r}.")
 
 
@@ -279,6 +315,39 @@ def merge_feature_caches(manifests: Iterable[Mapping[str, Any]]) -> dict[str, An
     }
 
 
+def composition_balance_feature_cache(
+    cache_manifest: Mapping[str, Any],
+    track_manifests: Iterable[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Give every composition equal total weight within its dataset and split."""
+
+    source_tracks = {
+        str(track["id"]): track
+        for manifest in track_manifests
+        for track in manifest.get("tracks", [])
+    }
+    enriched: list[dict[str, Any]] = []
+    counts: dict[tuple[str, str, str], int] = {}
+    for item in cache_manifest.get("tracks", []):
+        identifier = str(item["id"])
+        source = source_tracks.get(identifier)
+        if source is None:
+            raise ValueError(f"Missing source track metadata for cached track {identifier!r}.")
+        composition = str(source.get("compositionId") or source.get("splitGroup") or identifier)
+        key = (str(item["datasetId"]), str(item["split"]), composition)
+        counts[key] = counts.get(key, 0) + 1
+        enriched.append({**item, "compositionId": composition, "_balanceKey": key})
+    tracks = []
+    for item in enriched:
+        key = item.pop("_balanceKey")
+        tracks.append({**item, "trainingWeightOverride": 1 / counts[key]})
+    return {
+        **cache_manifest,
+        "compositionBalanced": True,
+        "tracks": tracks,
+    }
+
+
 def _torch_modules() -> tuple[Any, Any, Any]:
     torch = importlib.import_module("torch")
     return torch, torch.nn, torch.nn.functional
@@ -371,21 +440,56 @@ def build_student_model(architecture: str = "tcn", feature_count: int = STUDENT_
             hidden = torch.nn.functional.gelu(self.input(inputs.transpose(1, 2))).transpose(1, 2)
             return self.output(self.encoder(hidden))
 
+    class BoundaryTransformerChordNet(nn.Module):
+        """Jointly predict chord classes and chord-change evidence."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.input = nn.Conv1d(feature_count, 96, 5, padding=2)
+            layer = nn.TransformerEncoderLayer(
+                d_model=96,
+                nhead=4,
+                dim_feedforward=256,
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+                norm_first=False,
+            )
+            self.encoder = nn.TransformerEncoder(layer, num_layers=3)
+            self.chords = nn.Linear(96, STUDENT_CLASSES)
+            self.boundaries = nn.Linear(96, 1)
+
+        def forward(self, inputs: Any) -> Any:
+            hidden = torch.nn.functional.gelu(self.input(inputs.transpose(1, 2))).transpose(1, 2)
+            hidden = self.encoder(hidden)
+            return torch.cat((self.chords(hidden), self.boundaries(hidden)), dim=-1)
+
     return {
         "tcn": TemporalChordNet,
         "bigru": BidirectionalGruChordNet,
         "transformer": TransformerChordNet,
+        "boundary_transformer": BoundaryTransformerChordNet,
     }[architecture]()
 
 
-def _cache_windows(paths: list[Path], window_frames: int, numpy: Any) -> list[tuple[Any, Any, Any, float]]:
+def _split_student_outputs(outputs: Any) -> tuple[Any, Any | None]:
+    if outputs.shape[-1] == STUDENT_CLASSES:
+        return outputs, None
+    if outputs.shape[-1] == STUDENT_CLASSES + 1:
+        return outputs[..., :STUDENT_CLASSES], outputs[..., STUDENT_CLASSES]
+    raise ValueError(f"Unexpected student output width {outputs.shape[-1]}.")
+
+
+def _cache_windows(
+    paths: list[tuple[Path, float]], window_frames: int, numpy: Any
+) -> list[tuple[Any, Any, Any, float]]:
     output: list[tuple[Any, Any, Any, float]] = []
-    for path in paths:
+    for path, weight_override in paths:
         with numpy.load(path) as value:
             features = value["features"].astype(numpy.float32)
             labels = value["labels"].astype(numpy.int64)
             label_valid = value["label_valid"].astype(numpy.float32) if "label_valid" in value else None
-            weight = float(value["training_weight"])
+            weight = float(value["training_weight"]) * weight_override
         for start in range(0, len(features), window_frames):
             chunk_features = features[start : start + window_frames]
             chunk_labels = labels[start : start + window_frames]
@@ -420,7 +524,11 @@ def train_student(
     numpy.random.seed(seed)
     torch.manual_seed(seed)
     paths = {
-        split: [Path(item["path"]) for item in cache_manifest["tracks"] if item["split"] == split]
+        split: [
+            (Path(item["path"]), float(item.get("trainingWeightOverride", 1)))
+            for item in cache_manifest["tracks"]
+            if item["split"] == split
+        ]
         for split in ("train", "development")
     }
     if not paths["train"] or not paths["development"]:
@@ -457,6 +565,14 @@ def train_student(
                             feature_values[:, :, start + augment : start + 88] = original[:, :, : 88 - augment]
                         else:
                             feature_values[:, :, start : start + 88 + augment] = original[:, :, -augment:]
+                elif feature_kind == "harmonic_cqt_v3":
+                    for start in (0, 72):
+                        original = feature_values[:, :, start : start + 72].copy()
+                        feature_values[:, :, start : start + 72] = 0
+                        if augment > 0:
+                            feature_values[:, :, start + augment : start + 72] = original[:, :, : 72 - augment]
+                        else:
+                            feature_values[:, :, start : start + 72 + augment] = original[:, :, -augment:]
                 else:
                     chroma_features = 60 if feature_kind == "multiband_chroma_v2" else 12
                     for start in range(0, chroma_features, 12):
@@ -474,7 +590,7 @@ def train_student(
                 * torch.tensor(valid_values, dtype=torch.float32, device=device)
             )
             optimizer.zero_grad(set_to_none=True)
-            logits = model(inputs)
+            logits, boundary_logits = _split_student_outputs(model(inputs))
             full_loss = functional.cross_entropy(
                 logits.reshape(-1, STUDENT_CLASSES),
                 targets.reshape(-1),
@@ -500,15 +616,29 @@ def train_student(
             ).reshape(len(batch), -1)
             loss_values = 0.15 * full_loss + 0.5 * root_loss + 0.2 * major_minor_loss + 1.2 * joint_loss
             loss = (loss_values * sample_weights).sum() / sample_weights.sum().clamp_min(1)
+            if boundary_logits is not None:
+                boundary_targets = (targets[:, 1:] != targets[:, :-1]).to(torch.float32)
+                boundary_weights = sample_weights[:, 1:] * (sample_weights[:, :-1] > 0).to(torch.float32)
+                boundary_values = functional.binary_cross_entropy_with_logits(
+                    boundary_logits[:, 1:],
+                    boundary_targets,
+                    reduction="none",
+                    pos_weight=torch.tensor(8.0, dtype=torch.float32, device=device),
+                )
+                boundary_loss = (boundary_values * boundary_weights).sum() / boundary_weights.sum().clamp_min(1)
+                loss = loss + 0.35 * boundary_loss
             loss.backward()
             optimizer.step()
             losses.append(float(loss.detach().cpu()))
 
         model.eval()
         correct = root_correct = major_minor_correct = joint_correct = total = 0
+        boundary_true_positive = boundary_predicted = boundary_reference = 0
         with torch.no_grad():
             for features, labels, valid, _weight in windows["development"]:
-                logits = model(torch.tensor(features[None], dtype=torch.float32, device=device))
+                logits, boundary_logits = _split_student_outputs(
+                    model(torch.tensor(features[None], dtype=torch.float32, device=device))
+                )
                 predicted = logits.argmax(dim=-1).cpu().numpy()[0]
                 mask = valid.astype(bool)
                 correct += int((predicted[mask] == labels[mask]).sum())
@@ -524,11 +654,42 @@ def train_student(
                     ((predicted_root[mask] == label_root[mask]) & (predicted_major_minor[mask] == label_major_minor[mask])).sum()
                 )
                 total += int(mask.sum())
+                if boundary_logits is not None:
+                    probabilities = torch.sigmoid(boundary_logits[0]).cpu().numpy()
+                    reference_boundaries = {
+                        index
+                        for index in range(1, len(labels))
+                        if valid[index] and valid[index - 1] and labels[index] != labels[index - 1]
+                    }
+                    predicted_boundaries = {
+                        index
+                        for index in range(1, len(labels))
+                        if valid[index] and valid[index - 1] and probabilities[index] >= 0.5
+                    }
+                    matched: set[int] = set()
+                    for boundary in predicted_boundaries:
+                        choices = [
+                            candidate
+                            for candidate in reference_boundaries
+                            if candidate not in matched and abs(boundary - candidate) <= 2
+                        ]
+                        if choices:
+                            matched.add(min(choices, key=lambda candidate: abs(boundary - candidate)))
+                    boundary_true_positive += len(matched)
+                    boundary_predicted += len(predicted_boundaries)
+                    boundary_reference += len(reference_boundaries)
         accuracy = correct / max(1, total)
         root_accuracy = root_correct / max(1, total)
         major_minor_accuracy = major_minor_correct / max(1, total)
         joint_accuracy = joint_correct / max(1, total)
-        score = 0.25 * root_accuracy + 0.75 * joint_accuracy
+        boundary_precision = boundary_true_positive / max(1, boundary_predicted)
+        boundary_recall = boundary_true_positive / max(1, boundary_reference)
+        boundary_f1 = 2 * boundary_precision * boundary_recall / max(1e-12, boundary_precision + boundary_recall)
+        score = (
+            0.2 * root_accuracy + 0.65 * joint_accuracy + 0.15 * boundary_f1
+            if architecture == "boundary_transformer"
+            else 0.25 * root_accuracy + 0.75 * joint_accuracy
+        )
         history.append(
             {
                 "epoch": epoch,
@@ -537,6 +698,9 @@ def train_student(
                 "developmentRootAccuracy": root_accuracy,
                 "developmentMajorMinorAccuracy": major_minor_accuracy,
                 "developmentMajorMinorWcsrProxy": joint_accuracy,
+                "developmentBoundaryPrecision": boundary_precision,
+                "developmentBoundaryRecall": boundary_recall,
+                "developmentBoundaryF1": boundary_f1,
                 "selectionScore": score,
             }
         )
@@ -565,6 +729,7 @@ def train_student(
         "bestDevelopmentRootAccuracy": best_root_accuracy,
         "bestDevelopmentMajorMinorWcsrProxy": best_major_minor_accuracy,
         "bestSelectionScore": best_score,
+        "boundaryAware": architecture == "boundary_transformer",
         "history": history,
         "weights": weights_path.name,
     }
@@ -572,7 +737,13 @@ def train_student(
     return config
 
 
-def export_student_onnx(model_root: Path, output: Path) -> dict[str, Any]:
+def export_student_onnx(
+    model_root: Path,
+    output: Path,
+    *,
+    boundary_scale: float = 0.6,
+    boundary_bias: float = 0.0,
+) -> dict[str, Any]:
     torch, _nn, _functional = _torch_modules()
     safetensors = importlib.import_module("safetensors.torch")
     config = json.loads((model_root / "config.json").read_text(encoding="utf-8"))
@@ -584,7 +755,7 @@ def export_student_onnx(model_root: Path, output: Path) -> dict[str, Any]:
     model.eval()
     example = torch.zeros((1, 256, feature_count), dtype=torch.float32)
     output.parent.mkdir(parents=True, exist_ok=True)
-    window_frames = 256 if architecture == "transformer" else None
+    window_frames = 256 if architecture in {"transformer", "boundary_transformer"} else None
     dynamic_axes = (
         {"features": {0: "batch"}, "logits": {0: "batch"}}
         if window_frames
@@ -605,6 +776,9 @@ def export_student_onnx(model_root: Path, output: Path) -> dict[str, Any]:
     metadata = {
         "chordReaderArchitecture": architecture,
         "chordReaderFeatureKind": feature_kind,
+        "chordReaderBoundaryAware": str(architecture == "boundary_transformer").lower(),
+        "chordReaderBoundaryScale": str(boundary_scale),
+        "chordReaderBoundaryBias": str(boundary_bias),
     }
     if window_frames:
         metadata["chordReaderWindowFrames"] = str(window_frames)
@@ -632,10 +806,19 @@ def export_student_onnx(model_root: Path, output: Path) -> dict[str, Any]:
         "featureKind": feature_kind,
         "featureCount": feature_count,
         "windowFrames": window_frames,
+        "boundaryScale": boundary_scale,
+        "boundaryBias": boundary_bias,
     }
 
 
-def _viterbi_student(logits: Any, numpy: Any) -> list[int]:
+def _viterbi_student(
+    logits: Any,
+    numpy: Any,
+    boundary_probabilities: Any | None = None,
+    *,
+    boundary_scale: float = 0.6,
+    boundary_bias: float = 0.0,
+) -> list[int]:
     emissions = logits - numpy.log(numpy.exp(logits - logits.max(axis=1, keepdims=True)).sum(axis=1, keepdims=True))
     emissions -= logits.max(axis=1, keepdims=True)
     transition = numpy.full((STUDENT_CLASSES, STUDENT_CLASSES), -1.2, dtype=numpy.float32)
@@ -650,7 +833,12 @@ def _viterbi_student(logits: Any, numpy: Any) -> list[int]:
     scores = emissions[0]
     backpointers: list[Any] = []
     for frame in range(1, len(emissions)):
-        candidates = scores[:, None] + transition
+        frame_transition = transition
+        if boundary_probabilities is not None:
+            probability = float(numpy.clip(boundary_probabilities[frame], 0.02, 0.98))
+            change_evidence = boundary_scale * (math.log(probability / (1 - probability)) + boundary_bias)
+            frame_transition = transition + change_evidence * (1 - numpy.eye(STUDENT_CLASSES, dtype=numpy.float32))
+        candidates = scores[:, None] + frame_transition
         pointers = candidates.argmax(axis=0)
         scores = candidates[pointers, numpy.arange(STUDENT_CLASSES)] + emissions[frame]
         backpointers.append(pointers)
@@ -669,8 +857,11 @@ class StudentRecognizer:
         metadata = self.session.get_modelmeta().custom_metadata_map
         self.window_frames = int(metadata["chordReaderWindowFrames"]) if metadata.get("chordReaderWindowFrames") else None
         self.feature_kind = metadata.get("chordReaderFeatureKind", "worker_chroma_v1")
+        self.boundary_aware = metadata.get("chordReaderBoundaryAware") == "true"
+        self.boundary_scale = float(metadata.get("chordReaderBoundaryScale", "0.6"))
+        self.boundary_bias = float(metadata.get("chordReaderBoundaryBias", "0"))
 
-    def _logits(self, features: Any) -> Any:
+    def _outputs(self, features: Any) -> Any:
         if not self.window_frames:
             return self.session.run(None, {"features": features[None].astype(self.numpy.float32)})[0][0]
         chunks: list[Any] = []
@@ -683,12 +874,24 @@ class StudentRecognizer:
             chunks.append(logits[:valid])
         return self.numpy.concatenate(chunks, axis=0)
 
+    def _logits(self, features: Any) -> Any:
+        return _split_student_outputs(self._outputs(features))[0]
+
     def predict(self, audio: Path, *, prediction_id: str | None = None) -> dict[str, Any]:
         features, duration = extract_student_features(audio, self.feature_kind)
-        logits = self._logits(features)
+        logits, boundary_logits = _split_student_outputs(self._outputs(features))
+        boundary_probabilities = (
+            1 / (1 + self.numpy.exp(-boundary_logits)) if boundary_logits is not None else None
+        )
         probabilities = self.numpy.exp(logits - logits.max(axis=1, keepdims=True))
         probabilities /= probabilities.sum(axis=1, keepdims=True)
-        indices = _viterbi_student(logits, self.numpy)
+        indices = _viterbi_student(
+            logits,
+            self.numpy,
+            boundary_probabilities,
+            boundary_scale=self.boundary_scale,
+            boundary_bias=self.boundary_bias,
+        )
         confidences = [float(probabilities[index, value]) for index, value in enumerate(indices)]
         segments: list[dict[str, Any]] = []
         start = 0
@@ -718,6 +921,7 @@ class StudentRecognizer:
             "durationSeconds": duration,
             "sampleRate": STUDENT_SAMPLE_RATE,
             "frameSeconds": STUDENT_FRAME_SECONDS,
+            "boundaryAware": boundary_logits is not None,
             "segments": segments,
         }
 
@@ -736,7 +940,175 @@ class StudentEnsembleRecognizer(StudentRecognizer):
         self.numpy = members[0].numpy
         self.feature_kind = members[0].feature_kind
         self.model = Path("student-ensemble")
+        self.boundary_aware = False
+        self.boundary_scale = 0.0
+        self.boundary_bias = 0.0
 
-    def _logits(self, features: Any) -> Any:
+    def _outputs(self, features: Any) -> Any:
         values = [member._logits(features) for member in self.members]
         return self.numpy.mean(self.numpy.stack(values), axis=0)
+
+    def _logits(self, features: Any) -> Any:
+        return self._outputs(features)
+
+
+class StudentBoundaryGuidedEnsembleRecognizer(StudentEnsembleRecognizer):
+    """Use a frozen chord ensemble with a separately trained change-point guide."""
+
+    def __init__(self, chord_models: Iterable[Path], boundary_model: Path) -> None:
+        super().__init__(chord_models)
+        guide = StudentRecognizer(boundary_model)
+        if not guide.boundary_aware:
+            raise ValueError("The boundary guide model must expose a trained boundary head.")
+        if guide.feature_kind != self.feature_kind:
+            raise ValueError("The chord ensemble and boundary guide must use the same feature kind.")
+        self.guide = guide
+        self.model = Path("student-boundary-guided-ensemble")
+        self.boundary_aware = True
+        self.boundary_scale = guide.boundary_scale
+        self.boundary_bias = guide.boundary_bias
+
+    def _outputs(self, features: Any) -> Any:
+        chord_logits = super()._outputs(features)
+        _guide_chords, boundary_logits = _split_student_outputs(self.guide._outputs(features))
+        if boundary_logits is None:
+            raise ValueError("Boundary guide output is missing its boundary channel.")
+        return self.numpy.concatenate((chord_logits, boundary_logits[:, None]), axis=-1)
+
+
+class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
+    """Blend chord experts with different front ends and a separate boundary guide."""
+
+    def __init__(
+        self,
+        chord_models: Iterable[Path],
+        chord_weights: Iterable[float],
+        boundary_model: Path,
+        *,
+        root_guide_only: bool = False,
+    ) -> None:
+        self.members = [StudentRecognizer(model) for model in chord_models]
+        self.weights = [float(value) for value in chord_weights]
+        if len(self.members) < 2 or len(self.members) != len(self.weights):
+            raise ValueError("Heterogeneous ensemble models and weights must have the same length of at least two.")
+        if any(value < 0 for value in self.weights) or sum(self.weights) <= 0:
+            raise ValueError("Heterogeneous ensemble weights must be non-negative with a positive sum.")
+        self.root_guide_only = root_guide_only
+        if root_guide_only:
+            if len(self.members) < 3 or self.weights[-1] > 1:
+                raise ValueError("A root-guided ensemble requires base experts plus a final guide weight from 0 to 1.")
+            base_total = sum(self.weights[:-1])
+            if base_total <= 0:
+                raise ValueError("Root-guided base expert weights must have a positive sum.")
+            self.weights = [value / base_total for value in self.weights[:-1]] + [self.weights[-1]]
+        else:
+            total = sum(self.weights)
+            self.weights = [value / total for value in self.weights]
+        self.guide = StudentRecognizer(boundary_model)
+        if not self.guide.boundary_aware:
+            raise ValueError("The boundary guide model must expose a trained boundary head.")
+        self.numpy = self.members[0].numpy
+
+    def predict(self, audio: Path, *, prediction_id: str | None = None) -> dict[str, Any]:
+        feature_cache: dict[str, tuple[Any, float]] = {}
+
+        def features(kind: str) -> tuple[Any, float]:
+            if kind not in feature_cache:
+                feature_cache[kind] = extract_student_features(audio, kind)
+            return feature_cache[kind]
+
+        member_logits: list[Any] = []
+        durations: list[float] = []
+        for member in self.members:
+            values, duration = features(member.feature_kind)
+            member_logits.append(member._logits(values))
+            durations.append(duration)
+        guide_features, guide_duration = features(self.guide.feature_kind)
+        _guide_chords, boundary_logits = _split_student_outputs(self.guide._outputs(guide_features))
+        if boundary_logits is None:
+            raise ValueError("Boundary guide output is missing its boundary channel.")
+        durations.append(guide_duration)
+        frame_count = min([len(value) for value in member_logits] + [len(boundary_logits)])
+        if self.root_guide_only:
+            base_logits = sum(
+                weight * value[:frame_count]
+                for weight, value in zip(self.weights[:-1], member_logits[:-1], strict=True)
+            )
+            logits = _root_guided_logits(
+                base_logits,
+                member_logits[-1][:frame_count],
+                self.weights[-1],
+                self.numpy,
+            )
+        else:
+            logits = sum(
+                weight * value[:frame_count]
+                for weight, value in zip(self.weights, member_logits, strict=True)
+            )
+        boundary_probabilities = 1 / (1 + self.numpy.exp(-boundary_logits[:frame_count]))
+        duration = min(durations)
+        probabilities = self.numpy.exp(logits - logits.max(axis=1, keepdims=True))
+        probabilities /= probabilities.sum(axis=1, keepdims=True)
+        indices = _viterbi_student(
+            logits,
+            self.numpy,
+            boundary_probabilities,
+            boundary_scale=self.guide.boundary_scale,
+            boundary_bias=self.guide.boundary_bias,
+        )
+        confidences = [float(probabilities[index, value]) for index, value in enumerate(indices)]
+        segments: list[dict[str, Any]] = []
+        start = 0
+        for frame in range(1, len(indices) + 1):
+            if frame < len(indices) and indices[frame] == indices[start]:
+                continue
+            end_seconds = duration if frame == len(indices) else min(duration, frame * STUDENT_FRAME_SECONDS)
+            start_seconds = 0.0 if start == 0 else min(duration, start * STUDENT_FRAME_SECONDS)
+            label = normalize_chord(student_label(indices[start]))
+            if end_seconds > start_seconds:
+                segments.append(
+                    {
+                        "start": start_seconds,
+                        "end": end_seconds,
+                        "label": label.detailed_symbol,
+                        "productLabel": label.product_symbol,
+                        "confidence": sum(confidences[start:frame]) / (frame - start),
+                    }
+                )
+            start = frame
+        return {
+            "schemaVersion": "chord_prediction_v1",
+            "id": prediction_id or audio.name,
+            "engine": "chord-student-v1",
+            "model": "heterogeneous-boundary-guided-ensemble",
+            "featureKind": "+".join(sorted(feature_cache)),
+            "durationSeconds": duration,
+            "sampleRate": STUDENT_SAMPLE_RATE,
+            "frameSeconds": STUDENT_FRAME_SECONDS,
+            "boundaryAware": True,
+            "ensembleWeights": self.weights,
+            "rootGuideOnly": self.root_guide_only,
+            "segments": segments,
+        }
+
+
+def _root_guided_logits(base: Any, guide: Any, weight: float, numpy: Any) -> Any:
+    """Blend only root marginals while preserving the base model's conditional quality evidence."""
+
+    def root_logits(values: Any) -> Any:
+        output = [values[:, :1]]
+        for root in range(12):
+            selected = numpy.stack(
+                [values[:, 1 + quality * 12 + root] for quality in range(4)],
+                axis=-1,
+            )
+            maximum = selected.max(axis=-1, keepdims=True)
+            output.append(maximum + numpy.log(numpy.exp(selected - maximum).sum(axis=-1, keepdims=True)))
+        return numpy.concatenate(output, axis=-1)
+
+    delta = weight * (root_logits(guide) - root_logits(base))
+    output = base.copy()
+    output[:, 0] += delta[:, 0]
+    for quality in range(4):
+        output[:, 1 + quality * 12 : 1 + (quality + 1) * 12] += delta[:, 1:]
+    return output

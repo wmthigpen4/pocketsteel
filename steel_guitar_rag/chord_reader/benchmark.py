@@ -13,7 +13,12 @@ from typing import Any, Iterable, Mapping
 from .btc import BTCRecognizer
 from .hybrid import hybridize_predictions
 from .metrics import score_segments
-from .student import StudentEnsembleRecognizer, StudentRecognizer
+from .student import (
+    StudentBoundaryGuidedEnsembleRecognizer,
+    StudentEnsembleRecognizer,
+    StudentHeterogeneousBoundaryGuidedEnsembleRecognizer,
+    StudentRecognizer,
+)
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -83,6 +88,9 @@ def run_benchmark(
     local_files_only: bool = False,
     model: Path | None = None,
     ensemble_models: Iterable[Path] | None = None,
+    boundary_model: Path | None = None,
+    ensemble_weights: Iterable[float] | None = None,
+    root_guide_only: bool = False,
 ) -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[2]
     tracks = [track for track in manifest["tracks"] if split == "all" or track["split"] == split]
@@ -94,7 +102,21 @@ def run_benchmark(
         recognizer: Any = BTCRecognizer(device=device, local_files_only=local_files_only)
     elif engine == "student":
         ensemble = list(ensemble_models or [])
-        if ensemble:
+        weights = list(ensemble_weights or [])
+        if weights:
+            if boundary_model is None:
+                raise ValueError("A heterogeneous ensemble requires --boundary-model.")
+            recognizer = StudentHeterogeneousBoundaryGuidedEnsembleRecognizer(
+                ensemble,
+                weights,
+                boundary_model,
+                root_guide_only=root_guide_only,
+            )
+        elif boundary_model is not None:
+            if len(ensemble) < 2:
+                raise ValueError("A boundary-guided ensemble requires at least two --ensemble-model values.")
+            recognizer = StudentBoundaryGuidedEnsembleRecognizer(ensemble, boundary_model)
+        elif ensemble:
             recognizer = StudentEnsembleRecognizer(ensemble)
         elif model is None:
             raise ValueError("The student benchmark requires --model.")
@@ -141,6 +163,57 @@ def run_benchmark(
         "peakResidentMemoryBytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         "aggregate": _aggregate(rows),
         "strata": {dataset_id: _aggregate(row for row in rows if row["datasetId"] == dataset_id) for dataset_id in dataset_ids},
+        "tracks": rows,
+    }
+
+
+def run_prediction_benchmark(
+    manifest: Mapping[str, Any],
+    *,
+    prediction_root: Path,
+    engine: str,
+    split: str = "test",
+) -> dict[str, Any]:
+    """Rescore frozen predictions without rerunning or modifying inference."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    tracks = [track for track in manifest["tracks"] if split == "all" or track["split"] == split]
+    if not tracks:
+        raise ValueError(f"No tracks selected for split {split!r}.")
+    rows: list[dict[str, Any]] = []
+    for track in tracks:
+        identifier = str(track["id"])
+        prediction_path = prediction_root / f"{identifier}.json"
+        prediction = json.loads(prediction_path.read_text(encoding="utf-8"))
+        reference = json.loads(Path(track["referencePath"]).read_text(encoding="utf-8"))
+        rows.append(
+            {
+                "id": identifier,
+                "datasetId": track["datasetId"],
+                "split": track["split"],
+                "elapsedSeconds": 0.0,
+                "audioDurationSeconds": prediction.get("durationSeconds"),
+                "metrics": score_segments(reference["segments"], prediction["segments"]),
+                "predictionFile": f"predictions/{engine}/{identifier}.json",
+            }
+        )
+
+    dataset_ids = sorted({str(row["datasetId"]) for row in rows})
+    git_revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    return {
+        "schemaVersion": "chord_benchmark_report_v1",
+        "engine": engine,
+        "split": split,
+        "gitRevision": git_revision,
+        "rescoredFromFrozenPredictions": True,
+        "peakResidentMemoryBytes": 0,
+        "aggregate": _aggregate(rows),
+        "strata": {
+            dataset_id: _aggregate(row for row in rows if row["datasetId"] == dataset_id)
+            for dataset_id in dataset_ids
+        },
         "tracks": rows,
     }
 
