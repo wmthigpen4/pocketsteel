@@ -262,6 +262,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="Blend optional joint-head product evidence only after freezing the root path",
     )
+    factorized_cache_benchmark.add_argument(
+        "--allow-mixed-joint-members",
+        action="store_true",
+        help=(
+            "Development-only opt-in to combine legacy 90-output and joint "
+            "139-output ensemble members with head-aware weighting"
+        ),
+    )
 
     merge_reports = commands.add_parser(
         "merge-benchmark-reports",
@@ -639,6 +647,7 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             beat_grid_source=args.beat_grid_source,
             joint_product_blend=args.joint_product_blend,
+            allow_mixed_joint_members=args.allow_mixed_joint_members,
         )
         _write_json(result, args.report)
     elif args.command == "merge-benchmark-reports":

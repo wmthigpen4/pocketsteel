@@ -43,6 +43,9 @@ from .student import (
 
 BENCHMARK_REPORT_SCHEMA = "chord_benchmark_report_v2"
 BENCHMARK_PROVENANCE_SCHEMA = "chord_benchmark_provenance_v2"
+MIXED_JOINT_DEVELOPMENT_EXPERIMENT_SCHEMA = (
+    "chord_mixed_joint_development_experiment_v1"
+)
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -614,9 +617,20 @@ def run_factorized_cache_benchmark(
     limit: int | None = None,
     beat_grid_source: str = "none",
     joint_product_blend: float = 0.0,
+    allow_mixed_joint_members: bool = False,
 ) -> dict[str, Any]:
     """Decode a frozen feature cache without charging extraction to model runtime."""
 
+    if not isinstance(allow_mixed_joint_members, bool):
+        raise ValueError("allow_mixed_joint_members must be a boolean opt-in.")
+    if allow_mixed_joint_members and split not in {"dev", "development"}:
+        raise ValueError(
+            "Mixed joint ensemble benchmarking is development-only; split must be dev or development."
+        )
+    if allow_mixed_joint_members and beat_grid_source != "none":
+        raise ValueError(
+            "Mixed joint ensemble benchmarking requires beat_grid_source='none'."
+        )
     repo_root = Path(__file__).resolve().parents[2]
     timing_manifests = list(track_manifests)
     validate_split_protocol_manifest(
@@ -636,6 +650,10 @@ def run_factorized_cache_benchmark(
     if len(model_paths) == 1:
         if ensemble_weight_values:
             raise ValueError("Ensemble weights require at least two factorized models.")
+        if allow_mixed_joint_members:
+            raise ValueError(
+                "Mixed joint ensemble opt-in requires at least two factorized models."
+            )
         recognizer = FactorizedRecognizer(
             model_paths[0],
             **(
@@ -649,6 +667,11 @@ def run_factorized_cache_benchmark(
         recognizer = FactorizedEnsembleRecognizer(
             model_paths,
             weights=ensemble_weight_values or None,
+            **(
+                {"allow_mixed_joint_members": True}
+                if allow_mixed_joint_members
+                else {}
+            ),
             **(
                 {"joint_product_blend": joint_product_blend}
                 if joint_product_blend != 0
@@ -811,6 +834,7 @@ def run_factorized_cache_benchmark(
         beat_grid_source == "none"
         and source_tree_before["dirty"] is False
         and split != "all"
+        and not allow_mixed_joint_members
     )
     report = {
         "schemaVersion": BENCHMARK_REPORT_SCHEMA,
@@ -835,6 +859,35 @@ def run_factorized_cache_benchmark(
         },
         "tracks": rows,
     }
+    if allow_mixed_joint_members:
+        aggregation_policy = getattr(
+            recognizer,
+            "mixed_joint_ensemble_policy",
+            None,
+        )
+        if not isinstance(aggregation_policy, Mapping):
+            raise RuntimeError(
+                "Mixed joint benchmark recognizer did not expose its aggregation policy."
+            )
+        report.update(
+            {
+                "developmentOnlyExperiment": True,
+                "developmentExperiment": {
+                    "schemaVersion": MIXED_JOINT_DEVELOPMENT_EXPERIMENT_SCHEMA,
+                    "reason": (
+                        "head-aware legacy-90/joint-139 ensemble ablation"
+                    ),
+                    "allowedSplits": ["dev", "development"],
+                    "certificationPolicy": (
+                        "research-only; cannot produce calibration/test reports or enter promotion"
+                    ),
+                    "ensembleAggregationPolicy": aggregation_policy,
+                    "ensembleAggregationPolicySha256": canonical_sha256(
+                        aggregation_policy
+                    ),
+                },
+            }
+        )
     if promotion_eligible:
         validate_benchmark_v2_provenance(report)
     return report

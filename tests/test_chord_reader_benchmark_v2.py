@@ -199,6 +199,201 @@ def _patch_benchmark_runtime(
     monkeypatch.setattr(benchmark, "validate_factorized_artifact_manifest", validate_artifacts)
 
 
+@pytest.mark.parametrize("split", ["calibration", "test", "all"])
+def test_mixed_joint_cache_benchmark_is_strictly_development_only_before_validation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    split: str,
+) -> None:
+    entered: list[str] = []
+
+    def fail_validation(*_args: object, **_kwargs: object) -> None:
+        entered.append("split-validation")
+        raise AssertionError("split validation must not run")
+
+    class FailRecognizer:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            entered.append("recognizer")
+            raise AssertionError("recognizer must not load")
+
+    monkeypatch.setattr(
+        benchmark,
+        "validate_split_protocol_manifest",
+        fail_validation,
+    )
+    monkeypatch.setattr(benchmark, "FactorizedEnsembleRecognizer", FailRecognizer)
+    monkeypatch.setattr(
+        benchmark,
+        "validate_factorized_artifact_manifest",
+        fail_validation,
+    )
+
+    with pytest.raises(ValueError, match="development-only"):
+        benchmark.run_factorized_cache_benchmark(
+            {},
+            [],
+            model=tmp_path / "legacy.onnx",
+            ensemble_models=[tmp_path / "joint.onnx"],
+            output_root=tmp_path / "output",
+            split=split,
+            allow_mixed_joint_members=True,
+        )
+
+    assert entered == []
+
+
+def test_mixed_joint_cache_benchmark_rejects_beat_oracle_before_validation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entered: list[str] = []
+
+    def fail_validation(*_args: object, **_kwargs: object) -> None:
+        entered.append("protected-access")
+        raise AssertionError("validation or artifact access must not run")
+
+    monkeypatch.setattr(
+        benchmark,
+        "validate_split_protocol_manifest",
+        fail_validation,
+    )
+    monkeypatch.setattr(
+        benchmark,
+        "validate_factorized_artifact_manifest",
+        fail_validation,
+    )
+
+    with pytest.raises(ValueError, match="beat_grid_source='none'"):
+        benchmark.run_factorized_cache_benchmark(
+            {},
+            [],
+            model=tmp_path / "legacy.onnx",
+            ensemble_models=[tmp_path / "joint.onnx"],
+            output_root=tmp_path / "output",
+            split="development",
+            beat_grid_source="manifest-tempo-oracle",
+            allow_mixed_joint_members=True,
+        )
+
+    assert entered == []
+
+
+def test_mixed_joint_development_benchmark_loads_selected_cache_once_and_never_heldout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    development, development_timing, unused_bytes = _write_fixture_track(
+        tmp_path,
+        identifier="selected-development",
+        dataset_id="guitarset",
+        split="development",
+    )
+    heldout, heldout_timing, unused_bytes = _write_fixture_track(
+        tmp_path,
+        identifier="sealed-test",
+        dataset_id="guitarset",
+        split="test",
+    )
+    heldout["path"] = str((tmp_path / "unavailable-test-features.npz").resolve())
+    heldout["factorizedLabelsPath"] = str(
+        (tmp_path / "unavailable-test-labels.npz").resolve()
+    )
+    heldout_timing["referencePath"] = str(
+        (tmp_path / "unavailable-test-reference.json").resolve()
+    )
+    cache = _cache_manifest([development, heldout])
+    legacy_model = tmp_path / "legacy.onnx"
+    joint_model = tmp_path / "joint.onnx"
+    legacy_model.write_bytes(b"legacy fixture")
+    joint_model.write_bytes(b"joint fixture")
+    artifact_events: list[list[str]] = []
+    _patch_benchmark_runtime(
+        monkeypatch,
+        artifact_events=artifact_events,
+    )
+
+    class FakeMixedRecognizer(_FakeFactorizedRecognizer):
+        ensemble_sha256 = "e" * 64
+        mixed_joint_ensemble_policy = {
+            "schemaVersion": "chord_factorized_mixed_joint_ensemble_policy_v1",
+            "memberHeadTypes": ["legacy-90", "joint-139"],
+            "commonHeads": {"normalizedGlobalWeights": [0.5, 0.5]},
+            "jointRootProduct": {
+                "contributorIndices": [1],
+                "normalizedContributorWeights": [1.0],
+            },
+        }
+        decoder_contract = {
+            "schemaVersion": "fixture_mixed_decoder_v1",
+            "aggregation": {
+                "commonWeights": [0.5, 0.5],
+                "jointContributorIndices": [1],
+                "jointContributorWeights": [1.0],
+            },
+        }
+
+        def __init__(
+            self,
+            models: list[Path],
+            *,
+            weights: list[float] | None = None,
+            allow_mixed_joint_members: bool,
+        ) -> None:
+            assert models == [legacy_model.resolve(), joint_model.resolve()]
+            assert weights is None
+            assert allow_mixed_joint_members is True
+
+    monkeypatch.setattr(
+        benchmark,
+        "FactorizedEnsembleRecognizer",
+        FakeMixedRecognizer,
+    )
+    original_load = np.load
+    loaded_paths: list[Path] = []
+
+    def counted_load(path: Path, *args: object, **kwargs: object) -> Any:
+        resolved = Path(path).resolve()
+        loaded_paths.append(resolved)
+        if resolved == Path(heldout["path"]):
+            raise AssertionError("held-out features must remain unavailable")
+        return original_load(path, *args, **kwargs)
+
+    monkeypatch.setattr(np, "load", counted_load)
+    report = benchmark.run_factorized_cache_benchmark(
+        cache,
+        [{"tracks": [development_timing, heldout_timing]}],
+        model=legacy_model,
+        ensemble_models=[joint_model],
+        output_root=tmp_path / "output",
+        split="development",
+        allow_mixed_joint_members=True,
+    )
+
+    assert [row["id"] for row in report["tracks"]] == ["selected-development"]
+    assert _FakeFactorizedRecognizer.predicted_ids == ["selected-development"]
+    assert artifact_events == [
+        ["selected-development"],
+        ["selected-development"],
+    ]
+    assert loaded_paths == [Path(development["path"])]
+    assert Path(heldout["path"]) not in loaded_paths
+    assert report["promotionEligible"] is False
+    assert report["developmentOnlyExperiment"] is True
+    experiment = report["developmentExperiment"]
+    assert experiment["schemaVersion"] == (
+        benchmark.MIXED_JOINT_DEVELOPMENT_EXPERIMENT_SCHEMA
+    )
+    assert experiment["allowedSplits"] == ["dev", "development"]
+    assert experiment["ensembleAggregationPolicy"] == (
+        FakeMixedRecognizer.mixed_joint_ensemble_policy
+    )
+    assert experiment["ensembleAggregationPolicySha256"] == canonical_sha256(
+        FakeMixedRecognizer.mixed_joint_ensemble_policy
+    )
+    with pytest.raises(ValueError, match="promotion eligible"):
+        validate_benchmark_v2_provenance(report)
+
+
 def test_factorized_cache_v2_uses_exact_frozen_calibration_bar_set_and_validates_before_inference(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

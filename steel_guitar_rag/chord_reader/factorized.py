@@ -49,6 +49,9 @@ FACTORIZED_TRAINING_CONTRACT_SCHEMA = "chord_factorized_training_contract_v1"
 FACTORIZED_ENSEMBLE_SCHEMA = "chord_factorized_logit_ensemble_v1"
 FACTORIZED_ENSEMBLE_DECODER_SCHEMA = "chord_factorized_ensemble_decoder_v1"
 FACTORIZED_ENSEMBLE_PROVENANCE_SCHEMA = "chord_factorized_ensemble_provenance_v1"
+FACTORIZED_MIXED_JOINT_ENSEMBLE_SCHEMA = (
+    "chord_factorized_mixed_joint_ensemble_policy_v1"
+)
 FACTORIZED_OPTIONAL_HEADS_SCHEMA = "chord_factorized_optional_heads_v1"
 JOINT_ROOT_PRODUCT_SCHEMA = "chord_joint_root_product_head_v1"
 JOINT_ROOT_PRODUCT_CLASSES = 1 + 12 * 4
@@ -2270,17 +2273,109 @@ def _factorized_ensemble_compatibility_contract(
     }
 
 
+def _factorized_common_ensemble_compatibility_contract(
+    member_contract: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Select the exact 90-output contract shared by legacy and joint models."""
+
+    output = member_contract["output"]
+    common_head_order = list(_FACTORIZED_HEAD_ORDER)
+    common_head_widths = {
+        name: output["headWidths"][name] for name in common_head_order
+    }
+    return {
+        "feature": member_contract["feature"],
+        "vocabulary": member_contract["vocabulary"],
+        "output": {
+            "width": OUTPUT_WIDTH,
+            "headOrder": common_head_order,
+            "headWidths": common_head_widths,
+        },
+    }
+
+
+def _factorized_member_head_type(member_contract: Mapping[str, Any]) -> str:
+    return (
+        "joint-139"
+        if "joint_root_product" in member_contract["output"]["headOrder"]
+        else "legacy-90"
+    )
+
+
+def _mixed_joint_ensemble_policy(
+    weights: Sequence[float],
+    member_head_types: Sequence[str],
+) -> dict[str, Any]:
+    """Freeze the head-aware aggregation policy for an explicit mixed ensemble."""
+
+    if len(weights) != len(member_head_types) or len(weights) < 2:
+        raise ValueError(
+            "Mixed joint ensemble weights and member types must have equal length >= 2."
+        )
+    allowed_types = {"legacy-90", "joint-139"}
+    if any(value not in allowed_types for value in member_head_types):
+        raise ValueError("Mixed joint ensemble member types are invalid.")
+    if set(member_head_types) != allowed_types:
+        raise ValueError(
+            "Mixed joint ensemble opt-in requires at least one legacy and one joint member."
+        )
+    joint_indices = [
+        index
+        for index, member_type in enumerate(member_head_types)
+        if member_type == "joint-139"
+    ]
+    joint_mass = math.fsum(weights[index] for index in joint_indices)
+    if not math.isfinite(joint_mass) or joint_mass <= 0:
+        raise ValueError(
+            "Mixed joint ensemble requires positive total weight on joint contributors."
+        )
+    joint_weights = [weights[index] / joint_mass for index in joint_indices]
+    joint_weight_total = math.fsum(joint_weights)
+    joint_weights = [value / joint_weight_total for value in joint_weights]
+    return {
+        "schemaVersion": FACTORIZED_MIXED_JOINT_ENSEMBLE_SCHEMA,
+        "memberHeadTypes": list(member_head_types),
+        "commonHeads": {
+            "memberIndices": list(range(len(weights))),
+            "normalizedGlobalWeights": list(weights),
+            "aggregation": "member-weighted arithmetic mean of common pre-decode logits",
+        },
+        "jointRootProduct": {
+            "contributorIndices": joint_indices,
+            "globalWeightMass": joint_mass,
+            "normalizedContributorWeights": joint_weights,
+            "aggregation": (
+                "joint-contributor-weighted arithmetic mean of pre-decode logits"
+            ),
+        },
+        "output": {
+            "width": JOINT_ROOT_PRODUCT_OUTPUT_WIDTH,
+            "headOrder": list(_factorized_head_order(True)),
+        },
+    }
+
+
 def _factorized_ensemble_decoder_contract(
     *,
     bass_threshold: float,
     joint_root_product: bool = False,
     joint_product_blend: float = 0.0,
+    mixed_joint_ensemble_policy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     segmental = SegmentalConfig(bass_threshold=bass_threshold)
     segmental.validate()
     blend = _validated_joint_product_blend(joint_product_blend)
     if blend > 0 and not joint_root_product:
         raise ValueError("A nonzero joint product blend requires the optional joint head.")
+    if mixed_joint_ensemble_policy is not None:
+        if not joint_root_product:
+            raise ValueError(
+                "A mixed joint ensemble policy requires a joint-root/product output."
+            )
+        if mixed_joint_ensemble_policy.get("schemaVersion") != (
+            FACTORIZED_MIXED_JOINT_ENSEMBLE_SCHEMA
+        ):
+            raise ValueError("The mixed joint ensemble policy schema is incompatible.")
     contract = {
         "schemaVersion": FACTORIZED_ENSEMBLE_DECODER_SCHEMA,
         "frameSeconds": STUDENT_FRAME_SECONDS,
@@ -2319,7 +2414,9 @@ def _factorized_ensemble_decoder_contract(
     }
     if joint_root_product:
         contract["aggregation"]["jointRootProduct"] = (
-            "member-weighted arithmetic mean before frozen-root conditioning"
+            "joint-contributor-renormalized arithmetic mean before frozen-root conditioning"
+            if mixed_joint_ensemble_policy is not None
+            else "member-weighted arithmetic mean before frozen-root conditioning"
         )
         contract["hierarchicalDecoder"]["productConditionedOnFixedRoot"].update(
             {
@@ -2327,6 +2424,10 @@ def _factorized_ensemble_decoder_contract(
                 "jointConditionalLogProbabilityBlend": blend,
                 "rootAuthority": "independent root head is decoded and frozen first",
             }
+        )
+    if mixed_joint_ensemble_policy is not None:
+        contract["aggregation"]["mixedJointMembers"] = json.loads(
+            json.dumps(mixed_joint_ensemble_policy, allow_nan=False)
         )
     return contract
 
@@ -2392,45 +2493,103 @@ def _combine_factorized_member_outputs(
     numpy: Any,
     *,
     joint_root_product: bool = False,
+    member_joint_root_product: Sequence[bool] | None = None,
 ) -> Any:
     """Combine factor logits before one decode; never combine decoded segments."""
 
     if len(outputs) != len(weights) or len(outputs) < 2:
         raise ValueError("Factorized ensemble evidence and weights must have equal length >= 2.")
     arrays = [numpy.asarray(value) for value in outputs]
-    expected_shape = arrays[0].shape
-    expected_width = _factorized_output_width(joint_root_product)
-    for array in arrays:
+    mixed_joint_members = member_joint_root_product is not None
+    if mixed_joint_members:
+        member_joint = tuple(bool(value) for value in member_joint_root_product)
+        if len(member_joint) != len(arrays) or set(member_joint) != {False, True}:
+            raise ValueError(
+                "Mixed factorized ensemble evidence requires legacy and joint member flags."
+            )
+        if not joint_root_product:
+            raise ValueError(
+                "Mixed factorized ensemble evidence requires a joint-root/product output."
+            )
+        mixed_policy = _mixed_joint_ensemble_policy(
+            weights,
+            tuple(
+                "joint-139" if has_joint_head else "legacy-90"
+                for has_joint_head in member_joint
+            ),
+        )
+    else:
+        member_joint = tuple(joint_root_product for _array in arrays)
+        mixed_policy = None
+    expected_frames = arrays[0].shape[0] if arrays[0].ndim == 2 else None
+    for array, has_joint_head in zip(arrays, member_joint, strict=True):
+        expected_width = _factorized_output_width(has_joint_head)
         if (
             array.ndim != 2
-            or array.shape != expected_shape
+            or array.shape[0] != expected_frames
             or array.shape[-1] != expected_width
         ):
             raise ValueError("Factorized ensemble members returned incompatible output shapes.")
         if array.dtype.kind != "f" or not numpy.isfinite(array).all():
             raise ValueError("Factorized ensemble members must return finite floating-point logits.")
-    endpoint = [index for index, weight in enumerate(weights) if weight == 1.0]
-    if len(endpoint) == 1 and all(
-        weight == 0.0 or index == endpoint[0]
-        for index, weight in enumerate(weights)
-    ):
-        return arrays[endpoint[0]].copy()
+    if not mixed_joint_members:
+        endpoint = [index for index, weight in enumerate(weights) if weight == 1.0]
+        if len(endpoint) == 1 and all(
+            weight == 0.0 or index == endpoint[0]
+            for index, weight in enumerate(weights)
+        ):
+            return arrays[endpoint[0]].copy()
 
     member_heads = [
         split_factorized_outputs(
             array,
-            joint_root_product=joint_root_product,
+            joint_root_product=has_joint_head,
         )
-        for array in arrays
+        for array, has_joint_head in zip(arrays, member_joint, strict=True)
     ]
     combined: list[Any] = []
-    for name in _factorized_head_order(joint_root_product):
+    for name in _FACTORIZED_HEAD_ORDER:
         evidence = numpy.zeros(member_heads[0][name].shape, dtype=numpy.float64)
         for weight, heads in zip(weights, member_heads, strict=True):
             evidence += weight * heads[name].astype(numpy.float64)
         if not numpy.isfinite(evidence).all():
             raise ValueError(f"Factorized ensemble produced invalid {name} evidence.")
         combined.append(evidence.astype(numpy.float32))
+    if joint_root_product:
+        contributors = [
+            (index, heads)
+            for index, (heads, has_joint_head) in enumerate(
+                zip(member_heads, member_joint, strict=True)
+            )
+            if has_joint_head
+        ]
+        joint_mass = math.fsum(weights[index] for index, _heads in contributors)
+        if not math.isfinite(joint_mass) or joint_mass <= 0:
+            raise ValueError(
+                "Factorized ensemble requires positive total weight on joint contributors."
+            )
+        joint_evidence = numpy.zeros(
+            contributors[0][1]["joint_root_product"].shape,
+            dtype=numpy.float64,
+        )
+        contributor_weights = (
+            mixed_policy["jointRootProduct"]["normalizedContributorWeights"]
+            if mixed_policy is not None
+            else [weights[index] for index, _heads in contributors]
+        )
+        for contributor_weight, (_index, heads) in zip(
+            contributor_weights,
+            contributors,
+            strict=True,
+        ):
+            joint_evidence += contributor_weight * heads[
+                "joint_root_product"
+            ].astype(numpy.float64)
+        if not numpy.isfinite(joint_evidence).all():
+            raise ValueError(
+                "Factorized ensemble produced invalid joint_root_product evidence."
+            )
+        combined.append(joint_evidence.astype(numpy.float32))
     return numpy.concatenate(combined, axis=-1)
 
 
@@ -2919,7 +3078,12 @@ class FactorizedRecognizer:
 
 
 class FactorizedEnsembleRecognizer(FactorizedRecognizer):
-    """Average compatible same-feature factor logits before one frozen decode."""
+    """Average compatible same-feature factor logits before one frozen decode.
+
+    Legacy 90-output and optional 139-output members remain incompatible unless
+    ``allow_mixed_joint_members`` is explicitly enabled for a development-only
+    head-aware experiment.
+    """
 
     def __init__(
         self,
@@ -2929,6 +3093,7 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
         bass_threshold: float = 0.65,
         dasheng_snapshot_root: Path | None = None,
         joint_product_blend: float = 0.0,
+        allow_mixed_joint_members: bool = False,
     ) -> None:
         try:
             model_count = len(models)
@@ -2938,6 +3103,10 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             ) from exc
         if isinstance(models, (str, bytes, Path)) or model_count < 2:
             raise ValueError("A factorized ensemble requires at least two model paths.")
+        if not isinstance(allow_mixed_joint_members, bool):
+            raise ValueError(
+                "allow_mixed_joint_members must be an explicit boolean opt-in."
+            )
         if (
             isinstance(bass_threshold, bool)
             or not isinstance(bass_threshold, (int, float))
@@ -2979,19 +3148,50 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
                 }
             )
 
-        compatibility = _factorized_ensemble_compatibility_contract(
-            member_contracts[0]
+        member_head_types = tuple(
+            _factorized_member_head_type(contract) for contract in member_contracts
         )
-        for index, contract in enumerate(member_contracts[1:], start=1):
-            candidate = _factorized_ensemble_compatibility_contract(contract)
-            if candidate != compatibility:
-                raise ValueError(
-                    f"Factorized ensemble member {index} has an incompatible feature, "
-                    "frame, sample-rate, vocabulary, or output contract."
+        mixed_joint_policy: dict[str, Any] | None = None
+        if allow_mixed_joint_members:
+            mixed_joint_policy = _mixed_joint_ensemble_policy(
+                self.weights,
+                member_head_types,
+            )
+            compatibility = _factorized_common_ensemble_compatibility_contract(
+                member_contracts[0]
+            )
+            for index, contract in enumerate(member_contracts[1:], start=1):
+                candidate = _factorized_common_ensemble_compatibility_contract(
+                    contract
                 )
+                if candidate != compatibility:
+                    raise ValueError(
+                        f"Factorized ensemble member {index} has an incompatible feature, "
+                        "frame, sample-rate, vocabulary, or common 90-head contract."
+                    )
+            for item, member_type in zip(
+                provenance,
+                member_head_types,
+                strict=True,
+            ):
+                item["headType"] = member_type
+        else:
+            compatibility = _factorized_ensemble_compatibility_contract(
+                member_contracts[0]
+            )
+            for index, contract in enumerate(member_contracts[1:], start=1):
+                candidate = _factorized_ensemble_compatibility_contract(contract)
+                if candidate != compatibility:
+                    raise ValueError(
+                        f"Factorized ensemble member {index} has an incompatible feature, "
+                        "frame, sample-rate, vocabulary, or output contract."
+                    )
 
         self.members = tuple(members)
         self.member_contracts = tuple(member_contracts)
+        self.allow_mixed_joint_members = allow_mixed_joint_members
+        self.member_head_types = member_head_types
+        self.mixed_joint_ensemble_policy = mixed_joint_policy
         self.feature_kind = str(compatibility["feature"]["kind"])
         self.feature_count = int(compatibility["feature"]["count"])
         self.sample_rate = int(compatibility["feature"]["sampleRate"])
@@ -3000,10 +3200,11 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
         self.window_frames = None
         self.bass_threshold = float(bass_threshold)
         self.vocabulary_labels = factorized_vocabulary_labels()
-        self.output_width = int(compatibility["output"]["width"])
-        self.joint_root_product = "joint_root_product" in compatibility["output"][
-            "headOrder"
-        ]
+        self.joint_root_product = (
+            mixed_joint_policy is not None
+            or "joint_root_product" in compatibility["output"]["headOrder"]
+        )
+        self.output_width = _factorized_output_width(self.joint_root_product)
         self.joint_product_blend = _validated_joint_product_blend(
             joint_product_blend
         )
@@ -3015,6 +3216,7 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             bass_threshold=self.bass_threshold,
             joint_root_product=self.joint_root_product,
             joint_product_blend=self.joint_product_blend,
+            mixed_joint_ensemble_policy=mixed_joint_policy,
         )
         self.decoder_contract_sha256 = _factorized_canonical_sha256(
             self.decoder_contract
@@ -3035,6 +3237,9 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             ),
             "decoderContractSha256": self.decoder_contract_sha256,
         }
+        if mixed_joint_policy is not None:
+            specification["mixedJointEnsemblePolicy"] = mixed_joint_policy
+            specification["memberHeadTypes"] = list(member_head_types)
         self.ensemble_sha256 = _factorized_canonical_sha256(specification)
         self.ensemble_id = f"factorized-ensemble-{self.ensemble_sha256[:16]}"
         self.model = Path(self.ensemble_id)
@@ -3048,6 +3253,10 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             "weights": list(self.weights),
             "members": provenance,
         }
+        if mixed_joint_policy is not None:
+            self.model_provenance["mixedJointEnsemblePolicy"] = json.loads(
+                json.dumps(mixed_joint_policy, allow_nan=False)
+            )
 
     def _outputs(self, features: Any) -> Any:
         values = self.numpy.asarray(features)
@@ -3072,6 +3281,14 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             self.weights,
             self.numpy,
             joint_root_product=self.joint_root_product,
+            member_joint_root_product=(
+                tuple(
+                    member_type == "joint-139"
+                    for member_type in self.member_head_types
+                )
+                if self.mixed_joint_ensemble_policy is not None
+                else None
+            ),
         )
 
     def predict_features(

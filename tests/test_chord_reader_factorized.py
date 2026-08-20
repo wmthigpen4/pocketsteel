@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -16,6 +18,7 @@ from steel_guitar_rag.chord_reader.factorized import (
     FACTORIZED_LABEL_SCHEMA,
     FACTORIZED_ENSEMBLE_DECODER_SCHEMA,
     FACTORIZED_ENSEMBLE_PROVENANCE_SCHEMA,
+    FACTORIZED_MIXED_JOINT_ENSEMBLE_SCHEMA,
     FACTORIZED_OPTIONAL_HEADS_SCHEMA,
     FACTORIZED_MODES,
     FACTORIZED_PRODUCTS,
@@ -39,6 +42,7 @@ from steel_guitar_rag.chord_reader.factorized import (
     _development_counts,
     _development_metrics,
     _factorized_metadata_joint_root_product,
+    _factorized_canonical_sha256,
     _factorized_training_contract,
     _factorized_training_partitions,
     _factorized_mode_path,
@@ -47,6 +51,7 @@ from steel_guitar_rag.chord_reader.factorized import (
     _joint_root_product_class_weights,
     _joint_root_product_contract,
     _joint_root_product_targets,
+    _normalized_ensemble_weights,
     _split_protocol_training_provenance,
     _state_root_mode,
     _training_window_weight,
@@ -1203,11 +1208,13 @@ def test_factorized_cache_benchmark_cli_dispatches_joint_product_blend(
                 str(tmp_path / "report.json"),
                 "--joint-product-blend",
                 "0.625",
+                "--allow-mixed-joint-members",
             ]
         )
         == 0
     )
     assert received["joint_product_blend"] == pytest.approx(0.625)
+    assert received["allow_mixed_joint_members"] is True
 
 
 def test_factorized_recognizer_rejects_legacy_onnx(tmp_path: Path) -> None:
@@ -1482,24 +1489,49 @@ def _write_fake_ensemble_models(
     first_metadata: dict[str, str] | None = None,
     second_metadata: dict[str, str] | None = None,
 ) -> tuple[tuple[Path, Path], dict[str, list]]:
-    first = tmp_path / "first.onnx"
-    second = tmp_path / "second.onnx"
-    first.write_bytes(b"fixture factorized member one")
-    second.write_bytes(b"fixture factorized member two")
+    models, sessions = _write_fake_ensemble_member_set(
+        tmp_path,
+        monkeypatch,
+        (first_outputs, second_outputs),
+        (
+            first_metadata or _ensemble_onnx_metadata(),
+            second_metadata or _ensemble_onnx_metadata(),
+        ),
+    )
+    return (models[0], models[1]), sessions
+
+
+def _write_fake_ensemble_member_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outputs: tuple[np.ndarray, ...],
+    metadata: tuple[dict[str, str], ...],
+) -> tuple[tuple[Path, ...], dict[str, list]]:
+    assert len(outputs) == len(metadata) >= 2
+    names = (
+        ("first.onnx", "second.onnx")
+        if len(outputs) == 2
+        else tuple(f"member-{index}.onnx" for index in range(len(outputs)))
+    )
+    models = tuple(tmp_path / name for name in names)
+    for index, model in enumerate(models):
+        model.write_bytes(f"fixture factorized member {index}".encode())
     specifications = {
-        str(first): {
-            "metadata": first_metadata or _ensemble_onnx_metadata(),
-            "outputs": first_outputs,
-        },
-        str(second): {
-            "metadata": second_metadata or _ensemble_onnx_metadata(),
-            "outputs": second_outputs,
-        },
+        str(model): {
+            "metadata": member_metadata,
+            "outputs": member_outputs,
+        }
+        for model, member_metadata, member_outputs in zip(
+            models,
+            metadata,
+            outputs,
+            strict=True,
+        )
     }
     sessions = _install_fake_factorized_onnx_runtime(
         monkeypatch, specifications
     )
-    return (first, second), sessions
+    return models, sessions
 
 
 def test_factorized_ensemble_combines_each_head_before_one_decode(
@@ -1659,6 +1691,590 @@ def test_joint_head_metadata_is_exact_and_mixed_ensembles_fail_closed(
         FactorizedRecognizer(models[0], joint_product_blend=0.5)
     with pytest.raises(ValueError, match="incompatible feature"):
         FactorizedEnsembleRecognizer(models)
+
+
+def test_mixed_joint_ensemble_combines_common_heads_globally_and_joint_subset_only() -> None:
+    legacy = _ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        frames=3,
+    )
+    first_joint = _joint_ensemble_member_logits(
+        root_index=3,
+        product_index=PRODUCT_INDEX["minor"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+        frames=3,
+    )
+    second_joint = _joint_ensemble_member_logits(
+        root_index=8,
+        product_index=PRODUCT_INDEX["dominant"],
+        joint_product_index=PRODUCT_INDEX["minor-seventh"],
+        frames=3,
+    )
+    weights = (0.5, 0.3, 0.2)
+
+    combined = _combine_factorized_member_outputs(
+        (legacy, first_joint, second_joint),
+        weights,
+        np,
+        joint_root_product=True,
+        member_joint_root_product=(False, True, True),
+    )
+
+    expected_common = (
+        weights[0] * legacy.astype(np.float64)
+        + weights[1] * first_joint[:, :OUTPUT_WIDTH].astype(np.float64)
+        + weights[2] * second_joint[:, :OUTPUT_WIDTH].astype(np.float64)
+    ).astype(np.float32)
+    expected_joint = (
+        0.6 * first_joint[:, OUTPUT_WIDTH:].astype(np.float64)
+        + 0.4 * second_joint[:, OUTPUT_WIDTH:].astype(np.float64)
+    ).astype(np.float32)
+    assert combined.shape == (3, JOINT_ROOT_PRODUCT_OUTPUT_WIDTH)
+    assert np.array_equal(combined[:, :OUTPUT_WIDTH], expected_common)
+    assert np.array_equal(combined[:, OUTPUT_WIDTH:], expected_joint)
+
+
+def test_mixed_joint_ensemble_requires_explicit_opt_in_and_binds_policy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    legacy = _ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+    )
+    challenger = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    models, _sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        legacy,
+        challenger,
+        second_metadata=_ensemble_onnx_metadata(joint_root_product=True),
+    )
+
+    recognizer = FactorizedEnsembleRecognizer(
+        models,
+        weights=(0.75, 0.25),
+        joint_product_blend=1.0,
+        allow_mixed_joint_members=True,
+    )
+    outputs = recognizer._outputs(np.zeros((8, 61), dtype=np.float32))
+    prediction = recognizer.predict_features(
+        np.zeros((8, 61), dtype=np.float32),
+        0.8,
+        prediction_id="mixed-fixture",
+    )
+
+    policy = recognizer.mixed_joint_ensemble_policy
+    assert policy is not None
+    assert policy == {
+        "schemaVersion": FACTORIZED_MIXED_JOINT_ENSEMBLE_SCHEMA,
+        "memberHeadTypes": ["legacy-90", "joint-139"],
+        "commonHeads": {
+            "memberIndices": [0, 1],
+            "normalizedGlobalWeights": [0.75, 0.25],
+            "aggregation": (
+                "member-weighted arithmetic mean of common pre-decode logits"
+            ),
+        },
+        "jointRootProduct": {
+            "contributorIndices": [1],
+            "globalWeightMass": 0.25,
+            "normalizedContributorWeights": [1.0],
+            "aggregation": (
+                "joint-contributor-weighted arithmetic mean of pre-decode logits"
+            ),
+        },
+        "output": {
+            "width": JOINT_ROOT_PRODUCT_OUTPUT_WIDTH,
+            "headOrder": [
+                "root",
+                "mode",
+                "product",
+                "structure",
+                "quality",
+                "bass",
+                "boundary",
+                "joint_root_product",
+            ],
+        },
+    }
+    assert np.array_equal(outputs[:, OUTPUT_WIDTH:], challenger[:, OUTPUT_WIDTH:])
+    assert recognizer.output_width == JOINT_ROOT_PRODUCT_OUTPUT_WIDTH
+    assert prediction["segments"][0]["productLabel"] == "C7"
+    assert prediction["modelProvenance"]["mixedJointEnsemblePolicy"] == policy
+    assert prediction["ensembleDecoderContract"]["aggregation"][
+        "mixedJointMembers"
+    ] == policy
+    assert [
+        member["headType"] for member in prediction["modelProvenance"]["members"]
+    ] == ["legacy-90", "joint-139"]
+
+
+@pytest.mark.parametrize("joint_root_product", [False, True])
+def test_homogeneous_factorized_ensembles_keep_default_bit_exact_aggregation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    joint_root_product: bool,
+) -> None:
+    if joint_root_product:
+        first_outputs = _joint_ensemble_member_logits(
+            root_index=1,
+            product_index=PRODUCT_INDEX["major"],
+            joint_product_index=PRODUCT_INDEX["major"],
+        )
+        second_outputs = _joint_ensemble_member_logits(
+            root_index=8,
+            product_index=PRODUCT_INDEX["dominant"],
+            joint_product_index=PRODUCT_INDEX["dominant"],
+        )
+    else:
+        first_outputs = _ensemble_member_logits(
+            root_index=1,
+            product_index=PRODUCT_INDEX["major"],
+        )
+        second_outputs = _ensemble_member_logits(
+            root_index=8,
+            product_index=PRODUCT_INDEX["dominant"],
+        )
+    metadata = _ensemble_onnx_metadata(joint_root_product=joint_root_product)
+    models, _sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        first_outputs,
+        second_outputs,
+        first_metadata=metadata,
+        second_metadata=metadata,
+    )
+    recognizer = FactorizedEnsembleRecognizer(models, weights=(0.25, 0.75))
+
+    expected = (
+        0.25 * first_outputs.astype(np.float64)
+        + 0.75 * second_outputs.astype(np.float64)
+    ).astype(np.float32)
+    actual = recognizer._outputs(np.zeros((8, 61), dtype=np.float32))
+    assert np.array_equal(actual, expected)
+    assert recognizer.allow_mixed_joint_members is False
+    assert recognizer.mixed_joint_ensemble_policy is None
+    assert "mixedJointEnsemblePolicy" not in recognizer.model_provenance
+    assert all("headType" not in item for item in recognizer.model_provenance["members"])
+
+
+def test_homogeneous_joint_ensemble_preserves_adversarial_normalized_weights_verbatim() -> None:
+    raw_weights = (
+        0.06871806943489511,
+        0.7685706272824713,
+        0.16271130328263375,
+    )
+    weights = _normalized_ensemble_weights(3, raw_weights)
+    assert math.fsum(weights) == 0.9999999999999999
+    outputs = [
+        _joint_ensemble_member_logits(
+            root_index=1,
+            product_index=PRODUCT_INDEX["major"],
+            joint_product_index=PRODUCT_INDEX["major"],
+            frames=1,
+        ).astype(np.float64)
+        for _index in range(3)
+    ]
+    values = [2.4580338977940386, 4.835739785214589]
+    values.append(
+        -(weights[0] * values[0] + weights[1] * values[1]) / weights[2]
+    )
+    for output, value in zip(outputs, values, strict=True):
+        output[0, OUTPUT_WIDTH] = value
+
+    actual = _combine_factorized_member_outputs(
+        outputs,
+        weights,
+        np,
+        joint_root_product=True,
+    )
+    expected_evidence = np.zeros(outputs[0].shape, dtype=np.float64)
+    for weight, output in zip(weights, outputs, strict=True):
+        expected_evidence += weight * output
+    expected = expected_evidence.astype(np.float32)
+    assert np.array_equal(actual, expected)
+    assert actual[:, OUTPUT_WIDTH:].tobytes() == expected[:, OUTPUT_WIDTH:].tobytes()
+
+
+def test_mixed_joint_one_hot_joint_endpoint_exactly_reproduces_joint_member(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    legacy = _ensemble_member_logits(
+        root_index=8,
+        product_index=PRODUCT_INDEX["minor"],
+    )
+    joint_outputs = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    models, _sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        legacy,
+        joint_outputs,
+        second_metadata=_ensemble_onnx_metadata(joint_root_product=True),
+    )
+    mixed = FactorizedEnsembleRecognizer(
+        models,
+        weights=(0.0, 1.0),
+        joint_product_blend=0.7,
+        allow_mixed_joint_members=True,
+    )
+    joint_member = FactorizedRecognizer(models[1], joint_product_blend=0.7)
+    features = np.zeros((8, 61), dtype=np.float32)
+
+    assert np.array_equal(mixed._outputs(features), joint_member._outputs(features))
+    assert mixed.predict_features(
+        features,
+        0.8,
+        prediction_id="endpoint",
+    )["segments"] == joint_member.predict_features(
+        features,
+        0.8,
+        prediction_id="endpoint",
+    )["segments"]
+
+
+def test_mixed_blend_one_ignores_direct_product_and_never_moves_frame_roots(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    joint_metadata = _ensemble_onnx_metadata(joint_root_product=True)
+    joint_major_direct = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    (tmp_path / "major-direct").mkdir()
+    first_models, _first_sessions = _write_fake_ensemble_models(
+        tmp_path / "major-direct",
+        monkeypatch,
+        _ensemble_member_logits(
+            root_index=1,
+            product_index=PRODUCT_INDEX["major"],
+        ),
+        joint_major_direct,
+        second_metadata=joint_metadata,
+    )
+    first = FactorizedEnsembleRecognizer(
+        first_models,
+        weights=(0.5, 0.5),
+        joint_product_blend=1.0,
+        allow_mixed_joint_members=True,
+    )
+
+    joint_minor_direct = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["minor"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    (tmp_path / "minor-direct").mkdir()
+    second_models, _second_sessions = _write_fake_ensemble_models(
+        tmp_path / "minor-direct",
+        monkeypatch,
+        _ensemble_member_logits(
+            root_index=1,
+            product_index=PRODUCT_INDEX["minor"],
+        ),
+        joint_minor_direct,
+        second_metadata=joint_metadata,
+    )
+    second = FactorizedEnsembleRecognizer(
+        second_models,
+        weights=(0.5, 0.5),
+        joint_product_blend=1.0,
+        allow_mixed_joint_members=True,
+    )
+    features = np.zeros((8, 61), dtype=np.float32)
+    first_prediction = first.predict_features(
+        features,
+        0.8,
+        prediction_id="direct-major",
+    )
+    second_prediction = second.predict_features(
+        features,
+        0.8,
+        prediction_id="direct-minor",
+    )
+
+    assert first_prediction["segments"][0]["productLabel"] == "C7"
+    assert second_prediction["segments"][0]["productLabel"] == "C7"
+    assert first_prediction["segments"][0]["productConfidence"] == pytest.approx(
+        second_prediction["segments"][0]["productConfidence"],
+        abs=1e-12,
+    )
+    heads = split_factorized_outputs(
+        first._outputs(features),
+        joint_root_product=True,
+    )
+    boundary = 1 / (1 + np.exp(-heads["boundary"][:, 0]))
+    roots_direct, _products_direct = _hierarchical_product_path(
+        heads["root"],
+        heads["product"],
+        boundary,
+        np,
+        joint_root_product_logits=heads["joint_root_product"],
+        joint_product_blend=0.0,
+    )
+    roots_joint, _products_joint = _hierarchical_product_path(
+        heads["root"],
+        heads["product"],
+        boundary,
+        np,
+        joint_root_product_logits=heads["joint_root_product"],
+        joint_product_blend=1.0,
+    )
+    assert roots_direct == roots_joint == [1] * 8
+
+
+def test_mixed_product_confidence_uses_post_aggregation_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    legacy = _ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+    )
+    joint_major = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["major"],
+    )
+    joint_dominant = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    joint_metadata = _ensemble_onnx_metadata(joint_root_product=True)
+    models, _sessions = _write_fake_ensemble_member_set(
+        tmp_path,
+        monkeypatch,
+        (legacy, joint_major, joint_dominant),
+        (_ensemble_onnx_metadata(), joint_metadata, joint_metadata),
+    )
+    recognizer = FactorizedEnsembleRecognizer(
+        models,
+        weights=(0.5, 0.25, 0.25),
+        joint_product_blend=1.0,
+        allow_mixed_joint_members=True,
+    )
+    features = np.zeros((8, 61), dtype=np.float32)
+    prediction = recognizer.predict_features(
+        features,
+        0.8,
+        prediction_id="confidence",
+    )
+    heads = split_factorized_outputs(
+        recognizer._outputs(features),
+        joint_root_product=True,
+    )
+    root_probability = np.exp(
+        heads["root"][0, 1] - np.log(np.exp(heads["root"][0]).sum())
+    )
+    conditional = _conditional_product_evidence(
+        heads["product"],
+        heads["joint_root_product"],
+        1,
+        1.0,
+        np,
+    )
+    conditional_probability = np.exp(
+        conditional[0, 0] - np.log(np.exp(conditional[0]).sum())
+    )
+    expected_confidence = float(np.sqrt(root_probability * conditional_probability))
+
+    assert prediction["segments"][0]["productLabel"] == "C"
+    assert prediction["segments"][0]["productConfidence"] == pytest.approx(
+        expected_confidence,
+        abs=1e-6,
+    )
+    assert prediction["segments"][0]["productConfidence"] < 0.72
+
+
+def test_mixed_joint_ensemble_member_order_weights_and_policy_bind_hashes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    legacy = _ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+    )
+    challenger = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    models, _sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        legacy,
+        challenger,
+        second_metadata=_ensemble_onnx_metadata(joint_root_product=True),
+    )
+    arguments = {
+        "weights": (0.75, 0.25),
+        "joint_product_blend": 1.0,
+        "allow_mixed_joint_members": True,
+    }
+    first = FactorizedEnsembleRecognizer(models, **arguments)
+    duplicate = FactorizedEnsembleRecognizer(models, **arguments)
+    reordered = FactorizedEnsembleRecognizer(
+        tuple(reversed(models)),
+        weights=(0.25, 0.75),
+        joint_product_blend=1.0,
+        allow_mixed_joint_members=True,
+    )
+    reweighted = FactorizedEnsembleRecognizer(
+        models,
+        weights=(0.6, 0.4),
+        joint_product_blend=1.0,
+        allow_mixed_joint_members=True,
+    )
+    features = np.zeros((8, 61), dtype=np.float32)
+    predictions = [
+        recognizer.predict_features(features, 0.8, prediction_id="hash-fixture")
+        for recognizer in (first, duplicate, reordered, reweighted)
+    ]
+    prediction_file_hashes = [
+        hashlib.sha256(
+            (json.dumps(prediction, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        ).hexdigest()
+        for prediction in predictions
+    ]
+
+    assert first.ensemble_sha256 == duplicate.ensemble_sha256
+    assert first.decoder_contract_sha256 == duplicate.decoder_contract_sha256
+    assert first.model_provenance == duplicate.model_provenance
+    assert _factorized_canonical_sha256(predictions[0]) == (
+        _factorized_canonical_sha256(predictions[1])
+    )
+    assert prediction_file_hashes[0] == prediction_file_hashes[1]
+    assert len(
+        {
+            first.ensemble_sha256,
+            reordered.ensemble_sha256,
+            reweighted.ensemble_sha256,
+        }
+    ) == 3
+    assert len(
+        {
+            first.decoder_contract_sha256,
+            reordered.decoder_contract_sha256,
+            reweighted.decoder_contract_sha256,
+        }
+    ) == 3
+    assert len(
+        {
+            _factorized_canonical_sha256(predictions[0]),
+            _factorized_canonical_sha256(predictions[2]),
+            _factorized_canonical_sha256(predictions[3]),
+        }
+    ) == 3
+    assert len(
+        {
+            prediction_file_hashes[0],
+            prediction_file_hashes[2],
+            prediction_file_hashes[3],
+        }
+    ) == 3
+
+
+@pytest.mark.parametrize(
+    ("weights", "member_types", "message"),
+    [
+        ((1.0, 0.0), ("legacy", "joint"), "positive total weight"),
+        ((0.5, 0.5), ("legacy", "legacy"), "at least one legacy and one joint"),
+        ((0.5, 0.5), ("joint", "joint"), "at least one legacy and one joint"),
+    ],
+)
+def test_mixed_joint_ensemble_rejects_zero_joint_mass_or_nonmixed_members(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    weights: tuple[float, float],
+    member_types: tuple[str, str],
+    message: str,
+) -> None:
+    legacy = _ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+    )
+    challenger = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    outputs = {"legacy": legacy, "joint": challenger}
+    metadata = {
+        "legacy": _ensemble_onnx_metadata(),
+        "joint": _ensemble_onnx_metadata(joint_root_product=True),
+    }
+    models, _sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        outputs[member_types[0]],
+        outputs[member_types[1]],
+        first_metadata=metadata[member_types[0]],
+        second_metadata=metadata[member_types[1]],
+    )
+    with pytest.raises(ValueError, match=message):
+        FactorizedEnsembleRecognizer(
+            models,
+            weights=weights,
+            joint_product_blend=(
+                1.0 if member_types == ("legacy", "joint") else 0.0
+            ),
+            allow_mixed_joint_members=True,
+        )
+
+
+@pytest.mark.parametrize("mismatch", ["feature", "vocabulary"])
+def test_mixed_joint_ensemble_rejects_common_contract_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mismatch: str,
+) -> None:
+    legacy = _ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+    )
+    challenger = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    metadata = _ensemble_onnx_metadata(joint_root_product=True)
+    if mismatch == "feature":
+        metadata.update(
+            _ensemble_onnx_metadata(
+                feature_kind="harmonic_cqt_v3",
+                feature_count=145,
+                joint_root_product=True,
+            )
+        )
+    else:
+        metadata["chordReaderProducts"] = json.dumps(
+            list(reversed(FACTORIZED_PRODUCTS))
+        )
+    models, _sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        legacy,
+        challenger,
+        second_metadata=metadata,
+    )
+    with pytest.raises(ValueError, match="incompatible"):
+        FactorizedEnsembleRecognizer(
+            models,
+            allow_mixed_joint_members=True,
+        )
 
 
 def test_joint_recognizer_blend_changes_product_only_and_binds_decoder_hash(
@@ -1905,6 +2521,72 @@ def test_factorized_dasheng_ensemble_extracts_one_shared_feature_array(
     prediction = recognizer.predict(tmp_path / "fixture.wav")
 
     assert prediction["featureKind"] == "dasheng_base_v1"
+    assert extraction_calls == 1
+    assert all(
+        session.run_calls == 1
+        for member_sessions in sessions.values()
+        for session in member_sessions
+    )
+
+
+def test_mixed_joint_dasheng_ensemble_extracts_features_once_per_audio(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frames = 3
+    legacy = _ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        frames=frames,
+    )
+    joint = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+        frames=frames,
+    )
+    dasheng_metadata = _ensemble_onnx_metadata(
+        feature_kind="dasheng_base_v1",
+        feature_count=768,
+        sample_rate=16_000,
+        feature_spec_sha256="a" * 64,
+    )
+    joint_dasheng_metadata = _ensemble_onnx_metadata(
+        feature_kind="dasheng_base_v1",
+        feature_count=768,
+        sample_rate=16_000,
+        feature_spec_sha256="a" * 64,
+        joint_root_product=True,
+    )
+    models, sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        legacy,
+        joint,
+        first_metadata=dasheng_metadata,
+        second_metadata=joint_dasheng_metadata,
+    )
+    from steel_guitar_rag.chord_reader import dasheng
+
+    extraction_calls = 0
+
+    def extract_once(_audio: Path, snapshot_root: Path) -> tuple[np.ndarray, float]:
+        nonlocal extraction_calls
+        extraction_calls += 1
+        assert snapshot_root == tmp_path / "snapshot"
+        return np.zeros((frames, 768), dtype=np.float32), 0.3
+
+    monkeypatch.setattr(dasheng, "extract_dasheng_features", extract_once)
+    recognizer = FactorizedEnsembleRecognizer(
+        models,
+        dasheng_snapshot_root=tmp_path / "snapshot",
+        joint_product_blend=1.0,
+        allow_mixed_joint_members=True,
+    )
+    prediction = recognizer.predict(tmp_path / "fixture.wav")
+
+    assert prediction["featureKind"] == "dasheng_base_v1"
+    assert prediction["segments"][0]["productLabel"] == "C7"
     assert extraction_calls == 1
     assert all(
         session.run_calls == 1
