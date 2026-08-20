@@ -491,6 +491,7 @@ def run_benchmark(
     product_boundary_scale: float = 1.3,
     product_boundary_bias: float = -2.0,
     dasheng_snapshot_root: Path | None = None,
+    joint_product_blend: float = 0.0,
 ) -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[2]
     tracks = [track for track in manifest["tracks"] if split == "all" or track["split"] == split]
@@ -506,6 +507,11 @@ def run_benchmark(
         recognizer = FactorizedRecognizer(
             model,
             dasheng_snapshot_root=dasheng_snapshot_root,
+            **(
+                {"joint_product_blend": joint_product_blend}
+                if joint_product_blend != 0
+                else {}
+            ),
         )
     elif engine == "student":
         ensemble = list(ensemble_models or [])
@@ -607,6 +613,7 @@ def run_factorized_cache_benchmark(
     split: str = "development",
     limit: int | None = None,
     beat_grid_source: str = "none",
+    joint_product_blend: float = 0.0,
 ) -> dict[str, Any]:
     """Decode a frozen feature cache without charging extraction to model runtime."""
 
@@ -629,12 +636,24 @@ def run_factorized_cache_benchmark(
     if len(model_paths) == 1:
         if ensemble_weight_values:
             raise ValueError("Ensemble weights require at least two factorized models.")
-        recognizer = FactorizedRecognizer(model_paths[0])
+        recognizer = FactorizedRecognizer(
+            model_paths[0],
+            **(
+                {"joint_product_blend": joint_product_blend}
+                if joint_product_blend != 0
+                else {}
+            ),
+        )
         model_identity_before = member_identities_before[0]
     else:
         recognizer = FactorizedEnsembleRecognizer(
             model_paths,
             weights=ensemble_weight_values or None,
+            **(
+                {"joint_product_blend": joint_product_blend}
+                if joint_product_blend != 0
+                else {}
+            ),
         )
         model_identity_before = {
             "sha256": recognizer.ensemble_sha256,

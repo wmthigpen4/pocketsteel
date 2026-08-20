@@ -831,11 +831,11 @@ def test_aam_adapter_reads_official_files_without_data_marker(tmp_path: Path) ->
 
 
 def test_guitarset_adapter_reads_chord_namespace(tmp_path: Path) -> None:
-    path = tmp_path / "track.jams"
+    path = tmp_path / "track_comp.jams"
     path.write_text(
         json.dumps(
             {
-                "file_metadata": {"duration": 2},
+                "file_metadata": {"duration": 2, "title": "track_comp"},
                 "sandbox": {"tempo": 100, "time_signature": "4/4"},
                 "annotations": [
                     {
@@ -844,7 +844,22 @@ def test_guitarset_adapter_reads_chord_namespace(tmp_path: Path) -> None:
                             {"time": 0, "duration": 1, "value": "G:maj"},
                             {"time": 1, "duration": 1, "value": "D:7"},
                         ],
-                    }
+                    },
+                    {
+                        "namespace": "chord",
+                        "annotation_metadata": {
+                            "annotation_rules": (
+                                "Chord sheet-informed symbolic chord transcription based on "
+                                "the included separate string note transcriptions with the "
+                                "chord segmentation and root derived from sheet music."
+                            ),
+                            "data_source": "Semi-automatic chord transcription with manual verification",
+                        },
+                        "data": [
+                            {"time": 0, "duration": 1, "value": "G:maj/1"},
+                            {"time": 1, "duration": 1, "value": "D:maj/5"},
+                        ],
+                    },
                 ],
             }
         ),
@@ -853,6 +868,8 @@ def test_guitarset_adapter_reads_chord_namespace(tmp_path: Path) -> None:
     segments, metadata = parse_guitarset_jams(path)
     assert segments[-1] == {"start": 1.0, "end": 2.0, "label": "D:7"}
     assert metadata["tempo"] == 100
+    assert metadata["performanceRole"] == "comp"
+    assert metadata["performedSegments"][-1]["label"] == "D:maj/5"
 
 
 def test_winterreise_adapter_reads_audio_aligned_chords(tmp_path: Path) -> None:

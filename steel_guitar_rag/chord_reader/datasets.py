@@ -49,8 +49,19 @@ def _timing_manifest_fields(metadata: dict[str, Any]) -> dict[str, Any]:
     return {key: metadata[key] for key in _TIMING_MANIFEST_KEYS if key in metadata}
 
 
-def _merge_frames(frames: Iterable[tuple[float, str]], end_seconds: float | None = None) -> list[dict[str, Any]]:
-    values = sorted((float(start), normalize_chord(label).detailed_symbol) for start, label in frames)
+def _merge_frames(
+    frames: Iterable[tuple[float, str]],
+    end_seconds: float | None = None,
+    *,
+    normalize_labels: bool = True,
+) -> list[dict[str, Any]]:
+    values = sorted(
+        (
+            float(start),
+            normalize_chord(label).detailed_symbol if normalize_labels else str(label).strip(),
+        )
+        for start, label in frames
+    )
     if not values:
         return []
     if end_seconds is None:
@@ -130,23 +141,189 @@ def parse_aam_beatinfo(path: Path, end_seconds: float | None = None) -> tuple[li
     return segments, metadata
 
 
-def parse_guitarset_jams(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    value = json.loads(path.read_text(encoding="utf-8"))
-    duration = float(value.get("file_metadata", {}).get("duration") or 0)
-    chord_annotations = [item for item in value.get("annotations", []) if item.get("namespace") == "chord"]
-    if not chord_annotations:
-        raise ValueError(f"No chord annotation in {path}.")
-    frames: list[tuple[float, str]] = []
+def _guitarset_chord_role(
+    annotation: dict[str, Any],
+    path: Path,
+) -> tuple[str | None, str | None]:
+    metadata = annotation.get("annotation_metadata") or {}
+    sandbox = annotation.get("sandbox") or {}
+    explicit: set[str] = set()
+    for container in (annotation, metadata, sandbox):
+        if not isinstance(container, dict):
+            raise ValueError(f"Malformed GuitarSet chord annotation metadata in {path}.")
+        for key in ("annotationRole", "annotation_role", "chordRole", "chord_role", "role"):
+            if key not in container or container[key] in (None, ""):
+                continue
+            token = re.sub(r"[^a-z]+", " ", str(container[key]).lower()).strip()
+            if token in {"instructed", "instructed chord", "instructed chords", "lead sheet"}:
+                explicit.add("instructed")
+            elif token in {"performed", "performed chord", "performed chords", "performance"}:
+                explicit.add("performed")
+            else:
+                raise ValueError(f"Unsupported GuitarSet chord annotation role {container[key]!r} in {path}.")
+    if len(explicit) > 1:
+        raise ValueError(f"Conflicting GuitarSet chord annotation roles in {path}.")
+
+    description = " ".join(
+        str(metadata.get(key) or "")
+        for key in ("annotation_rules", "data_source", "annotation_tools", "validation")
+    ).lower()
+    described = None
+    if "note transcription" in description or "semi-automatic chord transcription" in description:
+        described = "performed"
+    elif "instructed chord" in description or "instructed lead sheet" in description:
+        described = "instructed"
+    if explicit and described and described not in explicit:
+        raise ValueError(f"Conflicting GuitarSet chord annotation metadata in {path}.")
+    if explicit:
+        return next(iter(explicit)), "explicit-annotation-role"
+    if described:
+        return described, "annotation-metadata-description"
+    return None, None
+
+
+def _guitarset_chord_annotations(
+    value: dict[str, Any],
+    path: Path,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
+    annotations = [item for item in value.get("annotations", []) if item.get("namespace") == "chord"]
+    if len(annotations) != 2:
+        raise ValueError(
+            f"GuitarSet requires exactly one instructed and one performed chord annotation in {path}; "
+            f"found {len(annotations)}."
+        )
+    selected: dict[str, dict[str, Any]] = {}
+    rules: dict[str, str] = {}
+    unmarked: list[dict[str, Any]] = []
+    for annotation in annotations:
+        role, rule = _guitarset_chord_role(annotation, path)
+        if role is None:
+            unmarked.append(annotation)
+        elif role in selected:
+            raise ValueError(f"Multiple GuitarSet {role} chord annotations in {path}.")
+        else:
+            selected[role] = annotation
+            rules[role] = str(rule)
+    if set(selected) == {"performed"} and len(unmarked) == 1:
+        selected["instructed"] = unmarked.pop()
+        rules["instructed"] = "official-unmarked-lead-sheet-counterpart"
+    if unmarked or set(selected) != {"instructed", "performed"}:
+        raise ValueError(f"Ambiguous or missing GuitarSet chord annotation roles in {path}.")
+    return selected["instructed"], selected["performed"], rules
+
+
+def _guitarset_performance_role(value: dict[str, Any], path: Path) -> str:
+    candidates: list[tuple[str, str]] = []
+    for source, container in (
+        ("file_metadata", value.get("file_metadata") or {}),
+        ("sandbox", value.get("sandbox") or {}),
+    ):
+        if not isinstance(container, dict):
+            raise ValueError(f"Malformed GuitarSet {source} in {path}.")
+        for key in ("performanceRole", "performance_role"):
+            if key in container and container[key] not in (None, ""):
+                role = str(container[key]).lower().strip()
+                if role not in {"comp", "solo"}:
+                    raise ValueError(f"Unsupported GuitarSet performance role {container[key]!r} in {path}.")
+                candidates.append((f"{source}.{key}", role))
+    for source, identity in (
+        ("file_metadata.title", (value.get("file_metadata") or {}).get("title")),
+        ("annotation filename", path.stem),
+    ):
+        match = re.search(r"_(comp|solo)$", str(identity or ""), re.IGNORECASE)
+        if match:
+            candidates.append((source, match.group(1).lower()))
+    if not candidates:
+        raise ValueError(f"Missing GuitarSet comp/solo performance identity in {path}.")
+    if len({role for _source, role in candidates}) != 1:
+        details = ", ".join(f"{source}={role}" for source, role in candidates)
+        raise ValueError(f"Conflicting GuitarSet comp/solo performance identity in {path}: {details}.")
+    return candidates[0][1]
+
+
+def _guitarset_chord_segments(
+    annotation: dict[str, Any],
+    duration: float,
+    role: str,
+    path: Path,
+    *,
+    normalize_labels: bool,
+) -> tuple[list[dict[str, Any]], float]:
+    segments: list[dict[str, Any]] = []
     explicit_end = duration
-    for item in chord_annotations[0].get("data", []):
-        start = float(item["time"])
-        item_duration = float(item.get("duration") or 0)
+    for item in annotation.get("data", []):
+        if not isinstance(item, dict):
+            raise ValueError(f"Malformed GuitarSet {role} chord observation in {path}.")
+        try:
+            start = float(item["time"])
+            item_duration = float(item["duration"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Malformed GuitarSet {role} chord interval in {path}."
+            ) from exc
+        if (
+            not math.isfinite(start)
+            or start < 0
+            or not math.isfinite(item_duration)
+            or item_duration <= 0
+        ):
+            raise ValueError(
+                f"GuitarSet {role} chord intervals must be finite, nonnegative, and nonempty in {path}."
+            )
         label = item.get("value")
         if isinstance(label, dict):
             label = label.get("label") or label.get("chord")
-        frames.append((start, str(label)))
-        explicit_end = max(explicit_end, start + item_duration)
-    segments = _merge_frames(frames, end_seconds=explicit_end or None)
+        if label in (None, ""):
+            raise ValueError(f"Malformed GuitarSet {role} chord label in {path}.")
+        end = start + item_duration
+        if not math.isfinite(end):
+            raise ValueError(f"Malformed GuitarSet {role} chord end in {path}.")
+        symbol = (
+            normalize_chord(str(label)).detailed_symbol
+            if normalize_labels
+            else str(label).strip()
+        )
+        segments.append({"start": start, "end": end, "label": symbol})
+        explicit_end = max(explicit_end, end)
+    if not segments:
+        raise ValueError(f"No GuitarSet {role} chord data in {path}.")
+    segments.sort(key=lambda item: (float(item["start"]), float(item["end"])))
+    merged: list[dict[str, Any]] = []
+    for segment in segments:
+        if merged and float(segment["start"]) < float(merged[-1]["end"]):
+            raise ValueError(f"Overlapping GuitarSet {role} chord intervals in {path}.")
+        if (
+            merged
+            and segment["label"] == merged[-1]["label"]
+            and float(segment["start"]) == float(merged[-1]["end"])
+        ):
+            merged[-1]["end"] = segment["end"]
+        else:
+            merged.append(segment)
+    return merged, explicit_end
+
+
+def parse_guitarset_jams(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    duration = float(value.get("file_metadata", {}).get("duration") or 0)
+    if not math.isfinite(duration) or duration < 0:
+        raise ValueError(f"Malformed GuitarSet file duration in {path}.")
+    instructed, performed, chord_rules = _guitarset_chord_annotations(value, path)
+    performance_role = _guitarset_performance_role(value, path)
+    segments, explicit_end = _guitarset_chord_segments(
+        instructed,
+        duration,
+        "instructed",
+        path,
+        normalize_labels=True,
+    )
+    performed_segments, performed_end = _guitarset_chord_segments(
+        performed,
+        duration,
+        "performed",
+        path,
+        normalize_labels=False,
+    )
     tempo_annotations = [item for item in value.get("annotations", []) if item.get("namespace") == "tempo"]
     beat_annotations = [item for item in value.get("annotations", []) if item.get("namespace") == "beat_position"]
     key_annotations = [item for item in value.get("annotations", []) if item.get("namespace") == "key_mode"]
@@ -187,25 +364,69 @@ def parse_guitarset_jams(path: Path) -> tuple[list[dict[str, Any]], dict[str, An
         "meter": meter,
         "key": key,
         "durationSeconds": explicit_end,
+        "performanceRole": performance_role,
+        "performedDurationSeconds": performed_end,
+        "performedSegments": performed_segments,
+        "chordProvenance": {
+            "performanceRole": performance_role,
+            "primaryReference": {
+                "sourceFormat": "guitarset-jams",
+                "sourceNamespace": "chord",
+                "annotationRole": "instructed",
+                "semanticTarget": "play-along-lead-sheet-harmony",
+                "selectionRule": chord_rules["instructed"],
+            },
+            "performedReference": {
+                "sourceFormat": "guitarset-jams",
+                "sourceNamespace": "chord",
+                "annotationRole": "performed",
+                "semanticTarget": "chord-sheet-informed-performed-quality",
+                "segmentationSource": "instructed-chord-sheet",
+                "rootSource": "instructed-chord-sheet",
+                "qualityEvidence": "separate-string-note-transcriptions",
+                "labelEncoding": "guitarset-harte",
+                "selectionRule": chord_rules["performed"],
+            },
+        },
+        "timingProvenance": {
+            "sourceFormat": "guitarset-jams",
+            "instructedChordSegmentsSeconds": {
+                "status": "explicit",
+                "sourceNamespace": "chord",
+                "annotationRole": "instructed",
+                "sourceFields": ["data.time", "data.duration"],
+            },
+            "performedChordSegmentsSeconds": {
+                "status": "explicit",
+                "sourceNamespace": "chord",
+                "annotationRole": "performed",
+                "sourceFields": ["data.time", "data.duration"],
+            },
+        },
     }
     if beat_times:
         metadata["beatTimesSeconds"] = beat_times
         metadata["downbeatTimesSeconds"] = downbeat_times
-        metadata["timingProvenance"] = {
-            "sourceFormat": "guitarset-jams-beat_position",
-            "beatTimesSeconds": {
-                "status": "explicit",
-                "sourceField": "beat_position.data.time",
-            },
-            "downbeatTimesSeconds": {
-                "status": "explicit",
-                "sourceRule": "beat_position.value.position-equals-1",
-            },
-            "barStartsSeconds": {
-                "status": "explicit" if _starts_at_zero(downbeat_times) else "uncertifiable",
-                "sourceRule": "beat_position.value.position-equals-1",
-            },
-        }
+        metadata["timingProvenance"].update(
+            {
+                "sourceFormat": "guitarset-jams-beat_position",
+                "beatTimesSeconds": {
+                    "status": "explicit",
+                    "sourceNamespace": "beat_position",
+                    "sourceField": "beat_position.data.time",
+                },
+                "downbeatTimesSeconds": {
+                    "status": "explicit",
+                    "sourceNamespace": "beat_position",
+                    "sourceRule": "beat_position.value.position-equals-1",
+                },
+                "barStartsSeconds": {
+                    "status": "explicit" if _starts_at_zero(downbeat_times) else "uncertifiable",
+                    "sourceNamespace": "beat_position",
+                    "sourceRule": "beat_position.value.position-equals-1",
+                },
+            }
+        )
         if _starts_at_zero(downbeat_times):
             metadata["barStartsSeconds"] = downbeat_times
         elif downbeat_times:
@@ -625,11 +846,23 @@ def _audio_index(audio_root: Path) -> dict[str, Path]:
     return output
 
 
-def _write_reference(path: Path, identifier: str, segments: list[dict[str, Any]]) -> None:
+def _write_reference(
+    path: Path,
+    identifier: str,
+    segments: list[dict[str, Any]],
+    *,
+    provenance: dict[str, Any] | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    value: dict[str, Any] = {
+        "schemaVersion": "chord_reference_v1",
+        "id": identifier,
+        "segments": segments,
+    }
+    if provenance:
+        value["provenance"] = provenance
     path.write_text(
-        json.dumps({"schemaVersion": "chord_reference_v1", "id": identifier, "segments": segments}, indent=2)
-        + "\n",
+        json.dumps(value, indent=2) + "\n",
         encoding="utf-8",
     )
 
@@ -653,7 +886,15 @@ def prepare_guitarset(
         segments, metadata = parse_guitarset_jams(annotation)
         identifier = f"guitarset-{annotation.stem}"
         reference = output_root / "references" / f"{identifier}.json"
+        performed_identifier = f"{identifier}-performed"
+        performed_reference = output_root / "references" / f"{performed_identifier}.json"
         _write_reference(reference, identifier, segments)
+        _write_reference(
+            performed_reference,
+            performed_identifier,
+            metadata["performedSegments"],
+            provenance=metadata["chordProvenance"]["performedReference"],
+        )
         player = annotation.stem.split("_")[0]
         composition = re.sub(r"_(?:comp|solo)$", "", re.sub(r"^\d+_", "", annotation.stem))
         tracks.append(
@@ -664,7 +905,16 @@ def prepare_guitarset(
                 "compositionId": composition,
                 "audioPath": str(audio_path),
                 "referencePath": str(reference.resolve()),
+                "performedReferencePath": str(performed_reference.resolve()),
                 "labelSource": "ground_truth",
+                "labelSourceDetail": "guitarset:chord:instructed-lead-sheet",
+                "labelSourceProvenance": metadata["chordProvenance"]["primaryReference"],
+                "performedLabelSourceDetail": (
+                    "guitarset:chord:sheet-informed-performed-quality"
+                ),
+                "performedLabelSourceProvenance": metadata["chordProvenance"]["performedReference"],
+                "performanceRole": metadata["performanceRole"],
+                "chordProvenance": metadata["chordProvenance"],
                 "trainingWeight": 1.0,
                 "durationSeconds": metadata["durationSeconds"],
                 "tempo": metadata.get("tempo"),

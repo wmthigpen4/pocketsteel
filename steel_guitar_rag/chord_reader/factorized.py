@@ -49,6 +49,9 @@ FACTORIZED_TRAINING_CONTRACT_SCHEMA = "chord_factorized_training_contract_v1"
 FACTORIZED_ENSEMBLE_SCHEMA = "chord_factorized_logit_ensemble_v1"
 FACTORIZED_ENSEMBLE_DECODER_SCHEMA = "chord_factorized_ensemble_decoder_v1"
 FACTORIZED_ENSEMBLE_PROVENANCE_SCHEMA = "chord_factorized_ensemble_provenance_v1"
+FACTORIZED_OPTIONAL_HEADS_SCHEMA = "chord_factorized_optional_heads_v1"
+JOINT_ROOT_PRODUCT_SCHEMA = "chord_joint_root_product_head_v1"
+JOINT_ROOT_PRODUCT_CLASSES = 1 + 12 * 4
 
 # These are exact normalized quality strings present in the public development
 # corpora, plus common lesson-chart extensions. Unknown qualities remain valid
@@ -143,6 +146,65 @@ OUTPUT_WIDTH = (
     + BASS_CLASSES
     + BOUNDARY_CLASSES
 )
+JOINT_ROOT_PRODUCT_OUTPUT_WIDTH = OUTPUT_WIDTH + JOINT_ROOT_PRODUCT_CLASSES
+
+
+def joint_root_product_class(root: int, product: int) -> int:
+    """Map N or one root/product pair into the optional 49-state head."""
+
+    if root == 0 and product == PRODUCT_INDEX["none"]:
+        return 0
+    if not 1 <= root <= 12:
+        raise ValueError("A joint chord state requires root class 1..12, or N/N.")
+    if product not in {
+        PRODUCT_INDEX["major"],
+        PRODUCT_INDEX["minor"],
+        PRODUCT_INDEX["dominant"],
+        PRODUCT_INDEX["minor-seventh"],
+    }:
+        raise ValueError("A pitched joint chord state requires a Play Along product class.")
+    return 1 + (product - 1) * 12 + (root - 1)
+
+
+def joint_root_product_components(value: int) -> tuple[int, int]:
+    """Invert :func:`joint_root_product_class`."""
+
+    if value == 0:
+        return 0, PRODUCT_INDEX["none"]
+    if not 1 <= value < JOINT_ROOT_PRODUCT_CLASSES:
+        raise ValueError(
+            f"Joint root/product class must be from 0 to {JOINT_ROOT_PRODUCT_CLASSES - 1}."
+        )
+    encoded = value - 1
+    return encoded % 12 + 1, encoded // 12 + 1
+
+
+def transpose_joint_root_product_class(value: int, semitones: int) -> int:
+    """Transpose only the root coordinate of one optional joint-head class."""
+
+    root, product = joint_root_product_components(value)
+    if root == 0:
+        return 0
+    return joint_root_product_class(1 + ((root - 1 + semitones) % 12), product)
+
+
+def _joint_root_product_contract() -> dict[str, Any]:
+    return {
+        "schemaVersion": JOINT_ROOT_PRODUCT_SCHEMA,
+        "classes": JOINT_ROOT_PRODUCT_CLASSES,
+        "outputOffset": OUTPUT_WIDTH,
+        "products": list(FACTORIZED_PRODUCTS[1:]),
+        "roots": list(SHARP_NAMES),
+        "classOrdering": "N; then listed product blocks, each in listed root order",
+    }
+
+
+def _factorized_output_width(joint_root_product: bool) -> int:
+    return JOINT_ROOT_PRODUCT_OUTPUT_WIDTH if joint_root_product else OUTPUT_WIDTH
+
+
+def _factorized_head_order(joint_root_product: bool) -> tuple[str, ...]:
+    return _FACTORIZED_HEAD_ORDER + (("joint_root_product",) if joint_root_product else ())
 
 
 def factorized_vocabulary_labels() -> tuple[str, ...]:
@@ -406,7 +468,12 @@ def _torch_modules() -> tuple[Any, Any, Any]:
     return torch, torch.nn, torch.nn.functional
 
 
-def build_factorized_model(feature_count: int, architecture: str = "transformer") -> Any:
+def build_factorized_model(
+    feature_count: int,
+    architecture: str = "transformer",
+    *,
+    joint_root_product: bool = False,
+) -> Any:
     """Build a shared temporal encoder with independent musical heads."""
 
     torch, nn, _functional = _torch_modules()
@@ -454,6 +521,11 @@ def build_factorized_model(feature_count: int, architecture: str = "transformer"
             self.quality = nn.Linear(channels, QUALITY_CLASSES)
             self.bass = nn.Linear(channels, BASS_CLASSES)
             self.boundary = nn.Linear(channels, BOUNDARY_CLASSES)
+            self.joint_root_product = (
+                nn.Linear(channels, JOINT_ROOT_PRODUCT_CLASSES)
+                if joint_root_product
+                else None
+            )
 
         def forward(self, inputs: Any) -> Any:
             hidden = torch.nn.functional.gelu(self.input(self.input_norm(inputs)))
@@ -461,25 +533,32 @@ def build_factorized_model(feature_count: int, architecture: str = "transformer"
                 hidden = self.temporal(hidden)
             else:
                 hidden = self.temporal(hidden.transpose(1, 2)).transpose(1, 2)
-            return torch.cat(
-                (
-                    self.root(hidden),
-                    self.mode(hidden),
-                    self.product(hidden),
-                    self.structure(hidden),
-                    self.quality(hidden),
-                    self.bass(hidden),
-                    self.boundary(hidden),
-                ),
-                dim=-1,
+            outputs = (
+                self.root(hidden),
+                self.mode(hidden),
+                self.product(hidden),
+                self.structure(hidden),
+                self.quality(hidden),
+                self.bass(hidden),
+                self.boundary(hidden),
             )
+            if self.joint_root_product is not None:
+                outputs = (*outputs, self.joint_root_product(hidden))
+            return torch.cat(outputs, dim=-1)
 
     return FactorizedChordNet()
 
 
-def split_factorized_outputs(outputs: Any) -> dict[str, Any]:
-    if outputs.shape[-1] != OUTPUT_WIDTH:
-        raise ValueError(f"Unexpected factorized output width {outputs.shape[-1]}; expected {OUTPUT_WIDTH}.")
+def split_factorized_outputs(
+    outputs: Any,
+    *,
+    joint_root_product: bool = False,
+) -> dict[str, Any]:
+    expected_width = _factorized_output_width(joint_root_product)
+    if outputs.shape[-1] != expected_width:
+        raise ValueError(
+            f"Unexpected factorized output width {outputs.shape[-1]}; expected {expected_width}."
+        )
     offset = 0
     result: dict[str, Any] = {}
     for name, width in (
@@ -493,6 +572,10 @@ def split_factorized_outputs(outputs: Any) -> dict[str, Any]:
     ):
         result[name] = outputs[..., offset : offset + width]
         offset += width
+    if joint_root_product:
+        result["joint_root_product"] = outputs[
+            ..., offset : offset + JOINT_ROOT_PRODUCT_CLASSES
+        ]
     return result
 
 
@@ -639,6 +722,51 @@ def _transpose_classes(values: Any, semitones: int, numpy: Any) -> Any:
     return numpy.where(values == 0, 0, 1 + ((values - 1 + semitones) % 12))
 
 
+def _joint_root_product_targets(roots: Any, products: Any, numpy: Any) -> Any:
+    """Vectorize the optional 49-state target without reading another split."""
+
+    root_values = numpy.asarray(roots)
+    product_values = numpy.asarray(products)
+    if root_values.shape != product_values.shape:
+        raise ValueError("Joint root/product target arrays must have matching shapes.")
+    no_chord = (root_values == 0) & (product_values == PRODUCT_INDEX["none"])
+    pitched = (
+        (root_values >= 1)
+        & (root_values <= 12)
+        & (product_values >= PRODUCT_INDEX["major"])
+        & (product_values <= PRODUCT_INDEX["minor-seventh"])
+    )
+    if not numpy.all(no_chord | pitched):
+        raise ValueError("Joint root/product targets contain an invalid root/product pair.")
+    return numpy.where(
+        no_chord,
+        0,
+        1 + (product_values - 1) * 12 + (root_values - 1),
+    ).astype(numpy.int64)
+
+
+def _joint_root_product_class_weights(product_weights: Any, numpy: Any) -> Any:
+    """Expand five train-only product weights across the 49-state vocabulary."""
+
+    values = numpy.asarray(product_weights, dtype=numpy.float32)
+    if values.shape != (PRODUCT_CLASSES,) or not numpy.isfinite(values).all():
+        raise ValueError("Product class weights must be a finite five-value vector.")
+    return numpy.concatenate(
+        (values[:1], numpy.repeat(values[1:], 12)),
+    ).astype(numpy.float32)
+
+
+def _validated_joint_product_blend(value: float) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(float(value))
+        or not 0 <= float(value) <= 1
+    ):
+        raise ValueError("joint_product_blend must be a finite value from zero to one.")
+    return float(value)
+
+
 def _validated_feature_contract(
     cache_manifest: Mapping[str, Any],
     *,
@@ -744,7 +872,22 @@ def _split_protocol_training_provenance(
         raise ValueError(
             "Strict split-protocol training requires an artifactIntegrity seal."
         )
-    validate_factorized_artifact_manifest(cache_manifest, verify_files=True)
+    # Validate the complete signed manifest and full artifact-set seal without
+    # touching any partition's files.  File inspection is deliberately scoped
+    # to the two partitions that training is permitted to consume below, so
+    # the immutable calibration artifacts remain physically unopened.
+    validate_factorized_artifact_manifest(cache_manifest, verify_files=False)
+    training_partitions = _factorized_training_partitions(cache_manifest)
+    verified_tracks = [
+        *training_partitions["train"],
+        *training_partitions["development"],
+    ]
+    # This is an artifact-verification projection, not a standalone signed
+    # split manifest.  The complete signed protocol was validated above; the
+    # artifact validator explicitly permits a selected subset when that signed
+    # protocol is present, while retaining the complete seal metadata.
+    training_projection = {**cache_manifest, "tracks": verified_tracks}
+    validate_factorized_artifact_manifest(training_projection, verify_files=True)
     assert isinstance(protocol, Mapping)
     artifact_integrity = cache_manifest["artifactIntegrity"]
     assert isinstance(artifact_integrity, Mapping)
@@ -762,6 +905,12 @@ def _split_protocol_training_provenance(
         "outputManifestSha256": protocol["outputManifestSha256"],
         "artifactIntegrityStatus": "validated",
         "artifactSetSha256": artifact_integrity["artifactSetSha256"],
+        "artifactFileVerification": {
+            "metadataScope": "full sealed manifest and artifact set",
+            "verifiedSplits": ["train", "development"],
+            "verifiedTrackCount": len(verified_tracks),
+            "calibrationFilesOpened": False,
+        },
     }
 
 
@@ -780,8 +929,8 @@ def _factorized_training_partitions(
     return selected
 
 
-def _development_counts() -> dict[str, int]:
-    return {
+def _development_counts(*, joint_root_product: bool = False) -> dict[str, int]:
+    counts = {
         name: 0
         for name in (
             "total",
@@ -797,6 +946,15 @@ def _development_counts() -> dict[str, int]:
             "boundary_ref",
         )
     }
+    if joint_root_product:
+        counts.update(
+            {
+                "joint_root_product": 0,
+                "joint_conditioned_product": 0,
+                "selection_product": 0,
+            }
+        )
+    return counts
 
 
 def _accumulate_development_counts(
@@ -804,6 +962,8 @@ def _accumulate_development_counts(
     window: Mapping[str, Any],
     predicted: Mapping[str, Any],
     boundary_probabilities: Any,
+    *,
+    joint_targets: Any | None = None,
 ) -> None:
     valid_mask = window["label_valid"].astype(bool)
     chord_mask = valid_mask & (window["root"] != 0)
@@ -823,6 +983,33 @@ def _accumulate_development_counts(
             & (predicted["product"][valid_mask] == window["product"][valid_mask])
         ).sum()
     )
+    if "joint_root_product" in counts:
+        if joint_targets is None:
+            raise ValueError("Joint development diagnostics require joint targets.")
+        counts["joint_root_product"] += int(
+            (
+                predicted["joint_root_product"][valid_mask]
+                == joint_targets[valid_mask]
+            ).sum()
+        )
+        counts["joint_conditioned_product"] += int(
+            (
+                (predicted["root"][valid_mask] == window["root"][valid_mask])
+                & (
+                    predicted["joint_conditioned_product"][valid_mask]
+                    == window["product"][valid_mask]
+                )
+            ).sum()
+        )
+        counts["selection_product"] += int(
+            (
+                (predicted["root"][valid_mask] == window["root"][valid_mask])
+                & (
+                    predicted["selection_product"][valid_mask]
+                    == window["product"][valid_mask]
+                )
+            ).sum()
+        )
     counts["quality"] += int(
         (predicted["quality"][quality_mask] == window["quality"][quality_mask]).sum()
     )
@@ -863,7 +1050,7 @@ def _accumulate_development_counts(
 def _development_metrics(counts: Mapping[str, int]) -> dict[str, float]:
     boundary_precision = counts["boundary_tp"] / max(1, counts["boundary_pred"])
     boundary_recall = counts["boundary_tp"] / max(1, counts["boundary_ref"])
-    return {
+    metrics = {
         "rootAccuracy": counts["root"] / max(1, counts["total"]),
         "modeAccuracy": counts["mode"] / max(1, counts["chord_total"]),
         "productAccuracy": counts["product"] / max(1, counts["total"]),
@@ -874,12 +1061,30 @@ def _development_metrics(counts: Mapping[str, int]) -> dict[str, float]:
         * boundary_recall
         / max(1e-12, boundary_precision + boundary_recall),
     }
+    if "joint_root_product" in counts:
+        metrics.update(
+            {
+                "jointRootProductAccuracy": counts["joint_root_product"]
+                / max(1, counts["total"]),
+                "jointConditionedProductAccuracy": counts[
+                    "joint_conditioned_product"
+                ]
+                / max(1, counts["total"]),
+                "selectionProductAccuracy": counts["selection_product"]
+                / max(1, counts["total"]),
+            }
+        )
+    return metrics
 
 
-def _factorized_selection_score(metrics: Mapping[str, float]) -> float:
+def _factorized_selection_score(
+    metrics: Mapping[str, float],
+    *,
+    product_metric: str = "productAccuracy",
+) -> float:
     return (
         0.25 * metrics["rootAccuracy"]
-        + 0.3 * metrics["productAccuracy"]
+        + 0.3 * metrics[product_metric]
         + 0.1 * metrics["modeAccuracy"]
         + 0.25 * metrics["detailedAccuracy"]
         + 0.1 * metrics["boundaryF1"]
@@ -891,16 +1096,26 @@ def _aggregate_factorized_selection(
     dataset_metrics: Mapping[str, Mapping[str, float]],
     *,
     dataset_balance: bool,
+    product_metric: str = "productAccuracy",
 ) -> tuple[float, dict[str, float]]:
     scores = {
-        dataset_id: _factorized_selection_score(metrics)
+        dataset_id: _factorized_selection_score(
+            metrics,
+            product_metric=product_metric,
+        )
         for dataset_id, metrics in sorted(dataset_metrics.items())
     }
     if dataset_balance:
         if not scores:
             raise ValueError("Dataset-macro selection requires development datasets.")
         return sum(scores.values()) / len(scores), scores
-    return _factorized_selection_score(micro_metrics), scores
+    return (
+        _factorized_selection_score(
+            micro_metrics,
+            product_metric=product_metric,
+        ),
+        scores,
+    )
 
 
 def _factorized_training_contract(
@@ -919,8 +1134,17 @@ def _factorized_training_contract(
     learning_rate: float,
     seed: int,
     window_frames: int,
+    joint_root_product: bool = False,
+    joint_root_product_loss_weight: float = 0.6,
+    product_class_weighting: bool = False,
+    joint_root_product_selection_blend: float = 0.5,
 ) -> dict[str, Any]:
-    return {
+    selection_blend = (
+        _validated_joint_product_blend(joint_root_product_selection_blend)
+        if joint_root_product
+        else 0.0
+    )
+    contract = {
         "schemaVersion": FACTORIZED_TRAINING_CONTRACT_SCHEMA,
         "splitProtocol": dict(protocol),
         "partitionUse": {
@@ -991,6 +1215,58 @@ def _factorized_training_contract(
             "classWeightPolicy": "sqrt inverse frequency, clipped 0.35..4.0, mean normalized",
         },
     }
+    if joint_root_product or product_class_weighting:
+        contract["optionalExperiment"] = {
+            "schemaVersion": FACTORIZED_OPTIONAL_HEADS_SCHEMA,
+            "jointRootProduct": {
+                **_joint_root_product_contract(),
+                "enabled": joint_root_product,
+                "lossWeight": (
+                    joint_root_product_loss_weight if joint_root_product else 0.0
+                ),
+                "targetSource": "train-only root and product sidecar arrays",
+                **(
+                    {
+                        "developmentSelectionBlend": selection_blend,
+                    }
+                    if joint_root_product
+                    else {}
+                ),
+            },
+            "productClassWeighting": {
+                "enabled": product_class_weighting,
+                "policy": (
+                    "sqrt inverse frequency, clipped 0.35..4.0, mean normalized"
+                    if product_class_weighting
+                    else "none"
+                ),
+                "scope": "train-only direct product and optional joint target losses",
+            },
+        }
+        contract["loss"]["jointRootProduct"] = (
+            joint_root_product_loss_weight if joint_root_product else 0.0
+        )
+        contract["loss"]["productClassWeighting"] = product_class_weighting
+    if joint_root_product:
+        contract["selection"]["score"].pop("productAccuracy")
+        contract["selection"]["score"]["selectionProductAccuracy"] = 0.3
+        contract["selection"]["jointRootProduct"] = {
+            "schemaVersion": "chord_joint_root_product_checkpoint_selection_v1",
+            "metric": "selectionProductAccuracy",
+            "diagnostics": [
+                "productAccuracy",
+                "jointRootProductAccuracy",
+                "jointConditionedProductAccuracy",
+                "selectionProductAccuracy",
+            ],
+            "rootAuthority": "independent root-head frame argmax",
+            "noChordPolicy": "independent root N forces product N",
+            "pitchedProductEvidence": (
+                "four-class conditional direct/joint log-probability blend"
+            ),
+            "jointProductBlend": selection_blend,
+        }
+    return contract
 
 
 def train_factorized_model(
@@ -1005,6 +1281,10 @@ def train_factorized_model(
     architecture: str = "transformer",
     augmentation: str = "none",
     dataset_balance: bool = False,
+    joint_root_product: bool = False,
+    joint_root_product_loss_weight: float = 0.6,
+    product_class_weighting: bool = False,
+    joint_root_product_selection_blend: float = 0.5,
 ) -> dict[str, Any]:
     """Train the existing-feature control for the v9 architecture tournament."""
 
@@ -1013,6 +1293,18 @@ def train_factorized_model(
     split_protocol = _split_protocol_training_provenance(cache_manifest)
     if augmentation not in {"none", "pitch-roll"}:
         raise ValueError("Factorized augmentation must be 'none' or 'pitch-roll'.")
+    if joint_root_product and (
+        isinstance(joint_root_product_loss_weight, bool)
+        or not isinstance(joint_root_product_loss_weight, (int, float))
+        or not math.isfinite(float(joint_root_product_loss_weight))
+        or float(joint_root_product_loss_weight) <= 0
+    ):
+        raise ValueError("joint_root_product_loss_weight must be a positive finite value.")
+    selection_blend = (
+        _validated_joint_product_blend(joint_root_product_selection_blend)
+        if joint_root_product
+        else 0.0
+    )
     feature_kind, feature_count, sample_rate, feature_spec = _validated_feature_contract(
         cache_manifest,
         augmentation=augmentation,
@@ -1066,7 +1358,24 @@ def train_factorized_model(
             dataset_balance=dataset_statistics,
         ),
     }
-    model = build_factorized_model(feature_count, architecture).to(device)
+    if product_class_weighting:
+        class_weights["product"] = _balanced_class_weights(
+            windows["train"],
+            "product",
+            PRODUCT_CLASSES,
+            numpy,
+            dataset_balance=dataset_statistics,
+        )
+    joint_class_weights = (
+        _joint_root_product_class_weights(class_weights["product"], numpy)
+        if joint_root_product and product_class_weighting
+        else None
+    )
+    model = build_factorized_model(
+        feature_count,
+        architecture,
+        joint_root_product=joint_root_product,
+    ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     best_score = -1.0
     best_state: dict[str, Any] | None = None
@@ -1110,6 +1419,10 @@ def train_factorized_model(
                 _augment_features(features, semitones, feature_kind, numpy)
                 targets["root"] = _transpose_classes(targets["root"], semitones, numpy)
                 targets["bass"] = _transpose_classes(targets["bass"], semitones, numpy)
+            if joint_root_product:
+                targets["joint_root_product"] = _joint_root_product_targets(
+                    targets["root"], targets["product"], numpy
+                )
 
             inputs = torch.tensor(features, dtype=torch.float32, device=device)
             tensors = {
@@ -1127,7 +1440,10 @@ def train_factorized_model(
                 else sample_weights
             )
             optimizer.zero_grad(set_to_none=True)
-            heads = split_factorized_outputs(model(inputs))
+            heads = split_factorized_outputs(
+                model(inputs),
+                joint_root_product=joint_root_product,
+            )
 
             root_loss = functional.cross_entropy(
                 heads["root"].reshape(-1, ROOT_CLASSES), tensors["root"].reshape(-1), reduction="none"
@@ -1141,6 +1457,11 @@ def train_factorized_model(
             product_loss = functional.cross_entropy(
                 heads["product"].reshape(-1, PRODUCT_CLASSES),
                 tensors["product"].reshape(-1),
+                weight=(
+                    torch.tensor(class_weights["product"], device=device)
+                    if product_class_weighting
+                    else None
+                ),
                 reduction="none",
             ).reshape(len(batch), -1)
             structure_loss = functional.cross_entropy(
@@ -1173,6 +1494,23 @@ def train_factorized_model(
                 + 0.9 * quality_loss * quality_mask
                 + 0.2 * bass_loss * chord_mask
             )
+            if joint_root_product:
+                joint_loss = functional.cross_entropy(
+                    heads["joint_root_product"].reshape(
+                        -1, JOINT_ROOT_PRODUCT_CLASSES
+                    ),
+                    tensors["joint_root_product"].reshape(-1),
+                    weight=(
+                        torch.tensor(joint_class_weights, device=device)
+                        if joint_class_weights is not None
+                        else None
+                    ),
+                    reduction="none",
+                ).reshape(len(batch), -1)
+                loss_values = (
+                    loss_values
+                    + float(joint_root_product_loss_weight) * joint_loss
+                )
             loss = (loss_values * sample_weights).sum() / normalization_weights.sum().clamp_min(1)
             boundary_values = functional.binary_cross_entropy_with_logits(
                 heads["boundary"].squeeze(-1),
@@ -1201,28 +1539,70 @@ def train_factorized_model(
             losses.append(float(loss.detach().cpu()))
 
         model.eval()
-        counts = _development_counts()
+        counts = _development_counts(joint_root_product=joint_root_product)
         counts_by_dataset = {
-            dataset_id: _development_counts()
+            dataset_id: _development_counts(
+                joint_root_product=joint_root_product,
+            )
             for dataset_id in development_dataset_ids
         }
         with torch.no_grad():
             for window in windows["development"]:
                 heads = split_factorized_outputs(
-                    model(torch.tensor(window["features"][None], dtype=torch.float32, device=device))
+                    model(
+                        torch.tensor(
+                            window["features"][None],
+                            dtype=torch.float32,
+                            device=device,
+                        )
+                    ),
+                    joint_root_product=joint_root_product,
                 )
                 predicted = {
                     name: value.argmax(dim=-1).cpu().numpy()[0]
                     for name, value in heads.items()
                     if name != "boundary"
                 }
+                joint_targets = None
+                if joint_root_product:
+                    roots = predicted["root"]
+                    direct_logits = heads["product"][0].cpu().numpy()
+                    joint_logits = heads["joint_root_product"][0].cpu().numpy()
+                    predicted["joint_conditioned_product"] = (
+                        _conditioned_product_predictions(
+                            roots,
+                            direct_logits,
+                            joint_logits,
+                            1.0,
+                            numpy,
+                        )
+                    )
+                    predicted["selection_product"] = _conditioned_product_predictions(
+                        roots,
+                        direct_logits,
+                        joint_logits,
+                        selection_blend,
+                        numpy,
+                    )
+                    joint_targets = _joint_root_product_targets(
+                        window["root"],
+                        window["product"],
+                        numpy,
+                    )
                 probabilities = torch.sigmoid(heads["boundary"][0, :, 0]).cpu().numpy()
-                _accumulate_development_counts(counts, window, predicted, probabilities)
+                _accumulate_development_counts(
+                    counts,
+                    window,
+                    predicted,
+                    probabilities,
+                    joint_targets=joint_targets,
+                )
                 _accumulate_development_counts(
                     counts_by_dataset[str(window["datasetId"])],
                     window,
                     predicted,
                     probabilities,
+                    joint_targets=joint_targets,
                 )
         metrics = _development_metrics(counts)
         dataset_metrics = {
@@ -1233,6 +1613,11 @@ def train_factorized_model(
             metrics,
             dataset_metrics,
             dataset_balance=dataset_balance,
+            product_metric=(
+                "selectionProductAccuracy"
+                if joint_root_product
+                else "productAccuracy"
+            ),
         )
         history.append(
             {
@@ -1241,6 +1626,14 @@ def train_factorized_model(
                 "selectionScore": score,
                 "selectionAggregation": (
                     "dataset-macro" if dataset_balance else "frame-micro"
+                ),
+                **(
+                    {
+                        "selectionProductMetric": "selectionProductAccuracy",
+                        "jointRootProductSelectionBlend": selection_blend,
+                    }
+                    if joint_root_product
+                    else {}
                 ),
                 "developmentByDataset": dataset_metrics,
                 "developmentDatasetSelectionScores": dataset_scores,
@@ -1273,10 +1666,19 @@ def train_factorized_model(
         learning_rate=learning_rate,
         seed=seed,
         window_frames=window_frames,
+        joint_root_product=joint_root_product,
+        joint_root_product_loss_weight=float(joint_root_product_loss_weight),
+        product_class_weighting=product_class_weighting,
+        joint_root_product_selection_blend=selection_blend,
     )
     training_contract["loss"]["classWeights"] = {
         name: class_weights[name].tolist() for name in sorted(class_weights)
     }
+    if joint_class_weights is not None:
+        training_contract["loss"]["jointRootProductClassWeights"] = (
+            joint_class_weights.tolist()
+        )
+    output_width = _factorized_output_width(joint_root_product)
     config = {
         "schemaVersion": FACTORIZED_SCHEMA,
         "sampleRate": sample_rate,
@@ -1293,7 +1695,7 @@ def train_factorized_model(
             "rootClasses": ROOT_CLASSES,
             "bassClasses": BASS_CLASSES,
         },
-        "outputWidth": OUTPUT_WIDTH,
+        "outputWidth": output_width,
         "seed": seed,
         "epochs": epochs,
         "augmentation": augmentation,
@@ -1313,8 +1715,42 @@ def train_factorized_model(
         "weights": weights_path.name,
         "weightsSha256": hashlib.sha256(weights_path.read_bytes()).hexdigest(),
     }
+    if joint_root_product or product_class_weighting:
+        config["optionalHeads"] = {
+            "schemaVersion": FACTORIZED_OPTIONAL_HEADS_SCHEMA,
+            "jointRootProduct": {
+                **_joint_root_product_contract(),
+                "enabled": joint_root_product,
+            },
+        }
+        config["productClassWeighting"] = product_class_weighting
+        config["jointRootProductLossWeight"] = (
+            float(joint_root_product_loss_weight) if joint_root_product else 0.0
+        )
+        if joint_root_product:
+            config["jointRootProductSelectionBlend"] = selection_blend
     (output_root / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     return config
+
+
+def _config_joint_root_product(config: Mapping[str, Any]) -> bool:
+    optional = config.get("optionalHeads")
+    if optional is None:
+        if int(config.get("outputWidth", OUTPUT_WIDTH)) != OUTPUT_WIDTH:
+            raise ValueError("A non-legacy output width requires an optional-head contract.")
+        return False
+    if not isinstance(optional, Mapping) or optional.get("schemaVersion") != FACTORIZED_OPTIONAL_HEADS_SCHEMA:
+        raise ValueError("The factorized optional-head contract is invalid.")
+    joint = optional.get("jointRootProduct")
+    if not isinstance(joint, Mapping) or not isinstance(joint.get("enabled"), bool):
+        raise ValueError("The joint root/product head contract is invalid.")
+    enabled = bool(joint["enabled"])
+    expected = _joint_root_product_contract()
+    if enabled and any(joint.get(key) != value for key, value in expected.items()):
+        raise ValueError("The joint root/product head contract is incompatible.")
+    if int(config.get("outputWidth", -1)) != _factorized_output_width(enabled):
+        raise ValueError("The factorized config output width contradicts its head contract.")
+    return enabled
 
 
 def export_factorized_onnx(model_root: Path, output: Path) -> dict[str, Any]:
@@ -1327,7 +1763,13 @@ def export_factorized_onnx(model_root: Path, output: Path) -> dict[str, Any]:
         raise ValueError("Unsupported factorized model configuration.")
     feature_count = int(config["featureCount"])
     architecture = str(config["architecture"])
-    model = build_factorized_model(feature_count, architecture)
+    joint_root_product = _config_joint_root_product(config)
+    output_width = _factorized_output_width(joint_root_product)
+    model = build_factorized_model(
+        feature_count,
+        architecture,
+        joint_root_product=joint_root_product,
+    )
     model.load_state_dict(safetensors.load_file(str(model_root / config["weights"])))
     model.eval()
     example = torch.zeros((1, 256, feature_count), dtype=torch.float32)
@@ -1355,7 +1797,7 @@ def export_factorized_onnx(model_root: Path, output: Path) -> dict[str, Any]:
         "chordReaderFeatureKind": str(config["featureKind"]),
         "chordReaderFactorizedSchema": FACTORIZED_SCHEMA,
         "chordReaderFrameSeconds": repr(STUDENT_FRAME_SECONDS),
-        "chordReaderOutputWidth": str(OUTPUT_WIDTH),
+        "chordReaderOutputWidth": str(output_width),
         "chordReaderQualities": json.dumps(list(FACTORIZED_QUALITIES)),
         "chordReaderModes": json.dumps(list(FACTORIZED_MODES)),
         "chordReaderProducts": json.dumps(list(FACTORIZED_PRODUCTS)),
@@ -1365,6 +1807,12 @@ def export_factorized_onnx(model_root: Path, output: Path) -> dict[str, Any]:
     }
     if config.get("featureSpecSha256"):
         metadata["chordReaderFeatureSpecSha256"] = str(config["featureSpecSha256"])
+    if joint_root_product:
+        metadata["chordReaderJointRootProduct"] = json.dumps(
+            _joint_root_product_contract(),
+            sort_keys=True,
+            separators=(",", ":"),
+        )
     if window_frames:
         metadata["chordReaderWindowFrames"] = str(window_frames)
     for key, value in metadata.items():
@@ -1380,7 +1828,7 @@ def export_factorized_onnx(model_root: Path, output: Path) -> dict[str, Any]:
     maximum_error = float(numpy.max(numpy.abs(expected - actual)))
     if maximum_error > 1e-4:
         raise ValueError(f"Factorized ONNX parity failed with max error {maximum_error}.")
-    return {
+    report = {
         "schemaVersion": "chord_factorized_onnx_export_v2",
         "modelFile": output.name,
         "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
@@ -1393,9 +1841,12 @@ def export_factorized_onnx(model_root: Path, output: Path) -> dict[str, Any]:
         "sampleRate": int(config["sampleRate"]),
         "frameSeconds": STUDENT_FRAME_SECONDS,
         "featureSpecSha256": config.get("featureSpecSha256"),
-        "outputWidth": OUTPUT_WIDTH,
+        "outputWidth": output_width,
         "windowFrames": window_frames,
     }
+    if joint_root_product:
+        report["jointRootProduct"] = _joint_root_product_contract()
+    return report
 
 
 def _log_softmax(values: Any, numpy: Any) -> Any:
@@ -1488,14 +1939,89 @@ def _independent_path(
     return list(reversed(path))
 
 
+def _conditional_product_evidence(
+    product_logits: Any,
+    joint_root_product_logits: Any | None,
+    root: int,
+    blend: float,
+    numpy: Any,
+) -> Any:
+    """Blend direct and joint product evidence after ``root`` is immutable."""
+
+    weight = _validated_joint_product_blend(blend)
+    direct = numpy.asarray(product_logits)
+    if direct.ndim != 2 or direct.shape[-1] != PRODUCT_CLASSES:
+        raise ValueError("Direct product logits must have shape (frames, 5).")
+    if weight == 0:
+        return direct[:, 1:]
+    if joint_root_product_logits is None:
+        raise ValueError("A nonzero joint product blend requires the optional joint head.")
+    if not 1 <= root <= 12:
+        raise ValueError("Joint conditional product evidence requires a pitched frozen root.")
+    joint = numpy.asarray(joint_root_product_logits)
+    if (
+        joint.ndim != 2
+        or joint.shape[0] != direct.shape[0]
+        or joint.shape[-1] != JOINT_ROOT_PRODUCT_CLASSES
+    ):
+        raise ValueError("Joint root/product logits must have shape (frames, 49).")
+    conditional = joint[:, 1:].reshape(len(joint), 4, 12)[:, :, root - 1]
+    if weight == 1:
+        return conditional
+    return (1 - weight) * _log_softmax(direct[:, 1:], numpy) + weight * _log_softmax(
+        conditional, numpy
+    )
+
+
+def _conditioned_product_predictions(
+    roots: Any,
+    product_logits: Any,
+    joint_root_product_logits: Any,
+    blend: float,
+    numpy: Any,
+) -> Any:
+    """Decode frame products for fixed independent roots during checkpoint selection."""
+
+    root_values = numpy.asarray(roots)
+    direct = numpy.asarray(product_logits)
+    joint = numpy.asarray(joint_root_product_logits)
+    if root_values.ndim != 1:
+        raise ValueError("Checkpoint-selection roots must be a one-dimensional array.")
+    if direct.shape != (len(root_values), PRODUCT_CLASSES):
+        raise ValueError("Checkpoint-selection direct product logits are misaligned.")
+    if joint.shape != (len(root_values), JOINT_ROOT_PRODUCT_CLASSES):
+        raise ValueError("Checkpoint-selection joint product logits are misaligned.")
+    weight = _validated_joint_product_blend(blend)
+    products = numpy.zeros(len(root_values), dtype=numpy.int64)
+    for root in range(1, ROOT_CLASSES):
+        mask = root_values == root
+        if not mask.any():
+            continue
+        evidence = _conditional_product_evidence(
+            direct[mask],
+            joint[mask],
+            root,
+            weight,
+            numpy,
+        )
+        products[mask] = evidence.argmax(axis=-1) + 1
+    return products
+
+
 def _hierarchical_product_path(
     root_logits: Any,
     product_logits: Any,
     boundary_probabilities: Any,
     numpy: Any,
+    *,
+    joint_root_product_logits: Any | None = None,
+    joint_product_blend: float = 0.0,
 ) -> tuple[list[int], list[int]]:
     """Decode roots first, then products, so quality can never move a root."""
 
+    blend = _validated_joint_product_blend(joint_product_blend)
+    if blend > 0 and joint_root_product_logits is None:
+        raise ValueError("A nonzero joint product blend requires the optional joint head.")
     roots = _independent_path(
         root_logits,
         boundary_probabilities,
@@ -1510,8 +2036,19 @@ def _hierarchical_product_path(
         if frame < len(roots) and roots[frame] == roots[start]:
             continue
         if roots[start] != 0:
+            evidence = _conditional_product_evidence(
+                product_logits[start:frame],
+                (
+                    joint_root_product_logits[start:frame]
+                    if joint_root_product_logits is not None
+                    else None
+                ),
+                roots[start],
+                blend,
+                numpy,
+            )
             local = _independent_path(
-                product_logits[start:frame, 1:],
+                evidence,
                 boundary_probabilities[start:frame],
                 numpy,
                 change_penalty=-0.75,
@@ -1578,6 +2115,21 @@ def _factorized_metadata_vocabulary(
     return result
 
 
+def _factorized_metadata_joint_root_product(
+    metadata: Mapping[str, str],
+) -> bool:
+    raw = metadata.get("chordReaderJointRootProduct")
+    if raw is None:
+        return False
+    try:
+        value = json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("The joint root/product ONNX metadata is invalid.") from exc
+    if value != _joint_root_product_contract():
+        raise ValueError("The joint root/product ONNX metadata is incompatible.")
+    return True
+
+
 def _factorized_onnx_runtime_contract(recognizer: FactorizedRecognizer) -> dict[str, Any]:
     """Return and validate the evidence contract exposed by one ONNX member."""
 
@@ -1599,9 +2151,11 @@ def _factorized_onnx_runtime_contract(recognizer: FactorizedRecognizer) -> dict[
     feature_kind = metadata.get("chordReaderFeatureKind", "")
     if not feature_kind or feature_count <= 0 or sample_rate <= 0:
         raise ValueError("The ONNX member has an incomplete feature contract.")
-    if output_width != OUTPUT_WIDTH:
+    joint_root_product = _factorized_metadata_joint_root_product(metadata)
+    expected_output_width = _factorized_output_width(joint_root_product)
+    if output_width != expected_output_width:
         raise ValueError(
-            f"The ONNX member output width is {output_width}; expected {OUTPUT_WIDTH}."
+            f"The ONNX member output width is {output_width}; expected {expected_output_width}."
         )
     if not math.isfinite(frame_seconds) or not math.isclose(
         frame_seconds,
@@ -1665,12 +2219,23 @@ def _factorized_onnx_runtime_contract(recognizer: FactorizedRecognizer) -> dict[
     output_shape = outputs[0].shape
     if len(input_shape) != 3 or input_shape[-1] != feature_count:
         raise ValueError("The ONNX member input shape contradicts its feature contract.")
-    if len(output_shape) != 3 or output_shape[-1] != OUTPUT_WIDTH:
+    if len(output_shape) != 3 or output_shape[-1] != expected_output_width:
         raise ValueError("The ONNX member output shape contradicts its factorized contract.")
     if window_frames is not None and input_shape[1] != window_frames:
         raise ValueError("The ONNX member input shape contradicts its window contract.")
 
-    return {
+    head_widths = {
+        "root": ROOT_CLASSES,
+        "mode": MODE_CLASSES,
+        "product": PRODUCT_CLASSES,
+        "structure": STRUCTURE_CLASSES,
+        "quality": QUALITY_CLASSES,
+        "bass": BASS_CLASSES,
+        "boundary": BOUNDARY_CLASSES,
+    }
+    if joint_root_product:
+        head_widths["joint_root_product"] = JOINT_ROOT_PRODUCT_CLASSES
+    contract = {
         "schemaVersion": "chord_factorized_onnx_runtime_contract_v1",
         "architecture": architecture,
         "windowFrames": window_frames,
@@ -1683,19 +2248,14 @@ def _factorized_onnx_runtime_contract(recognizer: FactorizedRecognizer) -> dict[
         },
         "vocabulary": vocabulary,
         "output": {
-            "width": OUTPUT_WIDTH,
-            "headOrder": list(_FACTORIZED_HEAD_ORDER),
-            "headWidths": {
-                "root": ROOT_CLASSES,
-                "mode": MODE_CLASSES,
-                "product": PRODUCT_CLASSES,
-                "structure": STRUCTURE_CLASSES,
-                "quality": QUALITY_CLASSES,
-                "bass": BASS_CLASSES,
-                "boundary": BOUNDARY_CLASSES,
-            },
+            "width": expected_output_width,
+            "headOrder": list(_factorized_head_order(joint_root_product)),
+            "headWidths": head_widths,
         },
     }
+    if joint_root_product:
+        contract["output"]["jointRootProduct"] = _joint_root_product_contract()
+    return contract
 
 
 def _factorized_ensemble_compatibility_contract(
@@ -1713,10 +2273,15 @@ def _factorized_ensemble_compatibility_contract(
 def _factorized_ensemble_decoder_contract(
     *,
     bass_threshold: float,
+    joint_root_product: bool = False,
+    joint_product_blend: float = 0.0,
 ) -> dict[str, Any]:
     segmental = SegmentalConfig(bass_threshold=bass_threshold)
     segmental.validate()
-    return {
+    blend = _validated_joint_product_blend(joint_product_blend)
+    if blend > 0 and not joint_root_product:
+        raise ValueError("A nonzero joint product blend requires the optional joint head.")
+    contract = {
         "schemaVersion": FACTORIZED_ENSEMBLE_DECODER_SCHEMA,
         "frameSeconds": STUDENT_FRAME_SECONDS,
         "aggregation": {
@@ -1752,6 +2317,45 @@ def _factorized_ensemble_decoder_contract(
             "config": dict(segmental.__dict__),
         },
     }
+    if joint_root_product:
+        contract["aggregation"]["jointRootProduct"] = (
+            "member-weighted arithmetic mean before frozen-root conditioning"
+        )
+        contract["hierarchicalDecoder"]["productConditionedOnFixedRoot"].update(
+            {
+                "jointRootProductSchemaVersion": JOINT_ROOT_PRODUCT_SCHEMA,
+                "jointConditionalLogProbabilityBlend": blend,
+                "rootAuthority": "independent root head is decoded and frozen first",
+            }
+        )
+    return contract
+
+
+def _factorized_single_decoder_contract(
+    *,
+    bass_threshold: float,
+    joint_product_blend: float,
+) -> dict[str, Any]:
+    blend = _validated_joint_product_blend(joint_product_blend)
+    return {
+        "schemaVersion": "chord_factorized_joint_product_decoder_v1",
+        "frameSeconds": STUDENT_FRAME_SECONDS,
+        "root": {
+            "authority": "independent root head",
+            "changePenalty": -1.25,
+            "boundaryScale": 1.0,
+            "boundaryBias": -1.5,
+        },
+        "productConditionedOnFrozenRoot": {
+            "directProductLogProbabilityWeight": 1 - blend,
+            "jointConditionalLogProbabilityWeight": blend,
+            "jointRootProductSchemaVersion": JOINT_ROOT_PRODUCT_SCHEMA,
+            "changePenalty": -0.75,
+            "boundaryScale": 0.8,
+            "boundaryBias": -1.5,
+        },
+        "bassThreshold": bass_threshold,
+    }
 
 
 def _normalized_ensemble_weights(
@@ -1786,6 +2390,8 @@ def _combine_factorized_member_outputs(
     outputs: Sequence[Any],
     weights: Sequence[float],
     numpy: Any,
+    *,
+    joint_root_product: bool = False,
 ) -> Any:
     """Combine factor logits before one decode; never combine decoded segments."""
 
@@ -1793,8 +2399,13 @@ def _combine_factorized_member_outputs(
         raise ValueError("Factorized ensemble evidence and weights must have equal length >= 2.")
     arrays = [numpy.asarray(value) for value in outputs]
     expected_shape = arrays[0].shape
+    expected_width = _factorized_output_width(joint_root_product)
     for array in arrays:
-        if array.ndim != 2 or array.shape != expected_shape or array.shape[-1] != OUTPUT_WIDTH:
+        if (
+            array.ndim != 2
+            or array.shape != expected_shape
+            or array.shape[-1] != expected_width
+        ):
             raise ValueError("Factorized ensemble members returned incompatible output shapes.")
         if array.dtype.kind != "f" or not numpy.isfinite(array).all():
             raise ValueError("Factorized ensemble members must return finite floating-point logits.")
@@ -1805,9 +2416,15 @@ def _combine_factorized_member_outputs(
     ):
         return arrays[endpoint[0]].copy()
 
-    member_heads = [split_factorized_outputs(array) for array in arrays]
+    member_heads = [
+        split_factorized_outputs(
+            array,
+            joint_root_product=joint_root_product,
+        )
+        for array in arrays
+    ]
     combined: list[Any] = []
-    for name in _FACTORIZED_HEAD_ORDER:
+    for name in _factorized_head_order(joint_root_product):
         evidence = numpy.zeros(member_heads[0][name].shape, dtype=numpy.float64)
         for weight, heads in zip(weights, member_heads, strict=True):
             evidence += weight * heads[name].astype(numpy.float64)
@@ -1826,6 +2443,7 @@ class FactorizedRecognizer:
         *,
         bass_threshold: float = 0.65,
         dasheng_snapshot_root: Path | None = None,
+        joint_product_blend: float = 0.0,
     ) -> None:
         runtime = importlib.import_module("onnxruntime")
         self.numpy = importlib.import_module("numpy")
@@ -1842,6 +2460,25 @@ class FactorizedRecognizer:
         self.window_frames = int(metadata["chordReaderWindowFrames"]) if metadata.get("chordReaderWindowFrames") else None
         self.bass_threshold = bass_threshold
         self.vocabulary_labels = factorized_vocabulary_labels()
+        self.joint_root_product = _factorized_metadata_joint_root_product(metadata)
+        self.output_width = _factorized_output_width(self.joint_root_product)
+        if self.joint_root_product:
+            _factorized_onnx_runtime_contract(self)
+        self.joint_product_blend = _validated_joint_product_blend(
+            joint_product_blend
+        )
+        if self.joint_product_blend > 0 and not self.joint_root_product:
+            raise ValueError(
+                "A nonzero joint product blend requires a model with the optional joint head."
+            )
+        if self.joint_root_product:
+            self.decoder_contract = _factorized_single_decoder_contract(
+                bass_threshold=self.bass_threshold,
+                joint_product_blend=self.joint_product_blend,
+            )
+            self.decoder_contract_sha256 = _factorized_canonical_sha256(
+                self.decoder_contract
+            )
 
     def _outputs(self, features: Any) -> Any:
         if not self.window_frames:
@@ -1855,6 +2492,28 @@ class FactorizedRecognizer:
             outputs = self.session.run(None, {"features": values[None].astype(self.numpy.float32)})[0][0]
             chunks.append(outputs[:valid])
         return self.numpy.concatenate(chunks, axis=0)
+
+    def _joint_prediction_metadata(self) -> dict[str, Any]:
+        if not bool(getattr(self, "joint_root_product", False)):
+            return {}
+        contract = getattr(
+            self,
+            "decoder_contract",
+            _factorized_single_decoder_contract(
+                bass_threshold=self.bass_threshold,
+                joint_product_blend=float(
+                    getattr(self, "joint_product_blend", 0.0)
+                ),
+            ),
+        )
+        return {
+            "jointRootProductHead": _joint_root_product_contract(),
+            "jointProductBlend": float(
+                getattr(self, "joint_product_blend", 0.0)
+            ),
+            "decoderContract": json.loads(json.dumps(contract, allow_nan=False)),
+            "decoderContractSha256": _factorized_canonical_sha256(contract),
+        }
 
     def _segmental_prediction(
         self,
@@ -1952,7 +2611,21 @@ class FactorizedRecognizer:
                 detailed_confidence = confidence
                 play_along_symbol = "N.C."
             else:
-                product_scores = product_log[start:end, 1:].mean(axis=0)
+                joint_product_blend = float(
+                    getattr(self, "joint_product_blend", 0.0)
+                )
+                conditional_product = _conditional_product_evidence(
+                    heads["product"][start:end],
+                    (
+                        heads["joint_root_product"][start:end]
+                        if "joint_root_product" in heads
+                        else None
+                    ),
+                    root,
+                    joint_product_blend,
+                    self.numpy,
+                )
+                product_scores = conditional_product.mean(axis=0)
                 product = int(product_scores.argmax()) + 1
                 allowed = [
                     index
@@ -1987,9 +2660,16 @@ class FactorizedRecognizer:
                 bass = int(span["bass"])
                 symbol = factorized_symbol(root, quality, bass)
                 root_confidence = float(root_probabilities[start:end, root].mean())
-                product_head_confidence = float(
-                    product_probabilities[start:end, product].mean()
-                )
+                if "joint_root_product" in heads:
+                    product_head_confidence = float(
+                        self.numpy.exp(
+                            _log_softmax(conditional_product, self.numpy)
+                        )[:, product - 1].mean()
+                    )
+                else:
+                    product_head_confidence = float(
+                        product_probabilities[start:end, product].mean()
+                    )
                 quality_confidence = float(
                     quality_probabilities[start:end, quality].mean()
                 )
@@ -2039,6 +2719,7 @@ class FactorizedRecognizer:
             },
             "segmentalDiagnostics": decoded["diagnostics"],
             "segments": segments,
+            **self._joint_prediction_metadata(),
         }
 
     def predict_features(
@@ -2056,7 +2737,12 @@ class FactorizedRecognizer:
             raise ValueError(
                 f"Factorized features must have shape (frames, {self.feature_count})."
             )
-        heads = split_factorized_outputs(self._outputs(features))
+        joint_root_product = bool(getattr(self, "joint_root_product", False))
+        joint_product_blend = float(getattr(self, "joint_product_blend", 0.0))
+        heads = split_factorized_outputs(
+            self._outputs(features),
+            joint_root_product=joint_root_product,
+        )
         validated_beat_grid = (
             usable_beat_grid(beat_grid, duration_seconds=duration)
             if beat_grid is not None
@@ -2079,6 +2765,8 @@ class FactorizedRecognizer:
             heads["product"],
             boundary_probabilities,
             self.numpy,
+            joint_root_product_logits=heads.get("joint_root_product"),
+            joint_product_blend=joint_product_blend,
         )
         root_probabilities = self.numpy.exp(_log_softmax(heads["root"], self.numpy))
         product_log = _log_softmax(heads["product"], self.numpy)
@@ -2135,9 +2823,27 @@ class FactorizedRecognizer:
                     bass = 0
                 symbol = factorized_symbol(root, quality, bass)
                 root_confidence = float(root_probabilities[start:frame, root].mean())
-                product_confidence = float(
-                    product_probabilities[start:frame, product].mean()
-                )
+                if joint_root_product:
+                    conditional_product = _conditional_product_evidence(
+                        heads["product"][start:frame],
+                        (
+                            heads["joint_root_product"][start:frame]
+                            if "joint_root_product" in heads
+                            else None
+                        ),
+                        root,
+                        joint_product_blend,
+                        self.numpy,
+                    )
+                    product_confidence = float(
+                        self.numpy.exp(
+                            _log_softmax(conditional_product, self.numpy)
+                        )[:, product - 1].mean()
+                    )
+                else:
+                    product_confidence = float(
+                        product_probabilities[start:frame, product].mean()
+                    )
                 quality_confidence = float(quality_probabilities[start:frame, quality].mean())
                 confidence = math.sqrt(max(0.0, root_confidence * product_confidence))
                 detailed_confidence = math.sqrt(
@@ -2177,6 +2883,7 @@ class FactorizedRecognizer:
             },
             "bassThreshold": self.bass_threshold,
             "segments": segments,
+            **self._joint_prediction_metadata(),
         }
 
     def predict(
@@ -2221,6 +2928,7 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
         weights: Sequence[float] | None = None,
         bass_threshold: float = 0.65,
         dasheng_snapshot_root: Path | None = None,
+        joint_product_blend: float = 0.0,
     ) -> None:
         try:
             model_count = len(models)
@@ -2292,8 +3000,21 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
         self.window_frames = None
         self.bass_threshold = float(bass_threshold)
         self.vocabulary_labels = factorized_vocabulary_labels()
+        self.output_width = int(compatibility["output"]["width"])
+        self.joint_root_product = "joint_root_product" in compatibility["output"][
+            "headOrder"
+        ]
+        self.joint_product_blend = _validated_joint_product_blend(
+            joint_product_blend
+        )
+        if self.joint_product_blend > 0 and not self.joint_root_product:
+            raise ValueError(
+                "A nonzero joint product blend requires ensemble members with the optional joint head."
+            )
         self.decoder_contract = _factorized_ensemble_decoder_contract(
-            bass_threshold=self.bass_threshold
+            bass_threshold=self.bass_threshold,
+            joint_root_product=self.joint_root_product,
+            joint_product_blend=self.joint_product_blend,
         )
         self.decoder_contract_sha256 = _factorized_canonical_sha256(
             self.decoder_contract
@@ -2346,7 +3067,12 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             raise ValueError(
                 "A factorized ensemble member returned a different frame count."
             )
-        return _combine_factorized_member_outputs(outputs, self.weights, self.numpy)
+        return _combine_factorized_member_outputs(
+            outputs,
+            self.weights,
+            self.numpy,
+            joint_root_product=self.joint_root_product,
+        )
 
     def predict_features(
         self,

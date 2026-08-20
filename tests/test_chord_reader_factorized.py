@@ -16,10 +16,14 @@ from steel_guitar_rag.chord_reader.factorized import (
     FACTORIZED_LABEL_SCHEMA,
     FACTORIZED_ENSEMBLE_DECODER_SCHEMA,
     FACTORIZED_ENSEMBLE_PROVENANCE_SCHEMA,
+    FACTORIZED_OPTIONAL_HEADS_SCHEMA,
     FACTORIZED_MODES,
     FACTORIZED_PRODUCTS,
     FACTORIZED_QUALITIES,
     FACTORIZED_STRUCTURES,
+    FACTORIZED_SCHEMA,
+    JOINT_ROOT_PRODUCT_CLASSES,
+    JOINT_ROOT_PRODUCT_OUTPUT_WIDTH,
     MODE_INDEX,
     OUTPUT_WIDTH,
     PRODUCT_INDEX,
@@ -27,32 +31,48 @@ from steel_guitar_rag.chord_reader.factorized import (
     STRUCTURE_INDEX,
     FactorizedRecognizer,
     FactorizedEnsembleRecognizer,
+    _accumulate_development_counts,
     _aggregate_factorized_selection,
+    _conditioned_product_predictions,
+    _conditional_product_evidence,
     _dataset_balance_statistics,
+    _development_counts,
+    _development_metrics,
+    _factorized_metadata_joint_root_product,
     _factorized_training_contract,
     _factorized_training_partitions,
     _factorized_mode_path,
     _hierarchical_product_path,
     _combine_factorized_member_outputs,
+    _joint_root_product_class_weights,
+    _joint_root_product_contract,
+    _joint_root_product_targets,
     _split_protocol_training_provenance,
     _state_root_mode,
     _training_window_weight,
     _validated_feature_contract,
     build_factorized_model,
     cache_factorized_labels,
+    export_factorized_onnx,
     factorized_components,
     factorized_symbol,
     factorized_vocabulary_labels,
+    joint_root_product_class,
+    joint_root_product_components,
     product_class,
     product_symbol,
     quality_mode,
     quality_structure,
     split_factorized_outputs,
+    transpose_joint_root_product_class,
     train_factorized_model,
 )
 from steel_guitar_rag.chord_reader.cli import build_parser
 from steel_guitar_rag.chord_reader.metrics import score_segments, vocabulary_for_prediction
-from steel_guitar_rag.chord_reader.split_protocol import build_leak_resistant_split_manifest
+from steel_guitar_rag.chord_reader.split_protocol import (
+    build_leak_resistant_split_manifest,
+    output_manifest_sha256,
+)
 
 
 @pytest.mark.parametrize(
@@ -181,6 +201,141 @@ def test_factorized_model_exposes_independent_heads() -> None:
     assert heads["bass"].shape[-1] == 13
 
 
+def test_joint_root_product_mapping_and_transposition_contract() -> None:
+    assert joint_root_product_class(0, PRODUCT_INDEX["none"]) == 0
+    assert joint_root_product_class(1, PRODUCT_INDEX["major"]) == 1
+    assert joint_root_product_class(12, PRODUCT_INDEX["major"]) == 12
+    assert joint_root_product_class(1, PRODUCT_INDEX["minor"]) == 13
+    assert joint_root_product_class(1, PRODUCT_INDEX["dominant"]) == 25
+    assert joint_root_product_class(1, PRODUCT_INDEX["minor-seventh"]) == 37
+    assert joint_root_product_components(48) == (
+        12,
+        PRODUCT_INDEX["minor-seventh"],
+    )
+    assert transpose_joint_root_product_class(
+        joint_root_product_class(1, PRODUCT_INDEX["dominant"]),
+        2,
+    ) == joint_root_product_class(3, PRODUCT_INDEX["dominant"])
+    assert transpose_joint_root_product_class(0, 11) == 0
+    assert all(
+        joint_root_product_class(*joint_root_product_components(value)) == value
+        for value in range(JOINT_ROOT_PRODUCT_CLASSES)
+    )
+    with pytest.raises(ValueError, match="requires root class"):
+        joint_root_product_class(0, PRODUCT_INDEX["major"])
+
+
+def test_joint_root_product_targets_and_train_only_product_weight_expansion() -> None:
+    roots = np.asarray([[0, 1, 12, 3]], dtype=np.int64)
+    products = np.asarray(
+        [
+            [
+                PRODUCT_INDEX["none"],
+                PRODUCT_INDEX["major"],
+                PRODUCT_INDEX["dominant"],
+                PRODUCT_INDEX["minor-seventh"],
+            ]
+        ],
+        dtype=np.int64,
+    )
+    targets = _joint_root_product_targets(roots, products, np)
+    assert targets.tolist() == [
+        [
+            0,
+            joint_root_product_class(1, PRODUCT_INDEX["major"]),
+            joint_root_product_class(12, PRODUCT_INDEX["dominant"]),
+            joint_root_product_class(3, PRODUCT_INDEX["minor-seventh"]),
+        ]
+    ]
+
+    product_weights = np.asarray([0.5, 1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    expanded = _joint_root_product_class_weights(product_weights, np)
+    assert expanded.shape == (JOINT_ROOT_PRODUCT_CLASSES,)
+    assert expanded[0] == pytest.approx(0.5)
+    assert np.array_equal(expanded[1:13], np.full(12, 1.0, dtype=np.float32))
+    assert np.array_equal(expanded[25:37], np.full(12, 3.0, dtype=np.float32))
+
+
+def test_optional_joint_head_appends_outputs_without_changing_legacy_parameters() -> None:
+    torch = pytest.importorskip("torch")
+    torch.manual_seed(7)
+    legacy = build_factorized_model(61, "tcn")
+    torch.manual_seed(7)
+    challenger = build_factorized_model(61, "tcn", joint_root_product=True)
+
+    legacy_state = legacy.state_dict()
+    challenger_state = challenger.state_dict()
+    assert set(legacy_state).issubset(challenger_state)
+    assert all(
+        torch.equal(value, challenger_state[name])
+        for name, value in legacy_state.items()
+    )
+    assert not any(name.startswith("joint_root_product") for name in legacy_state)
+
+    outputs = challenger(torch.zeros((2, 17, 61), dtype=torch.float32))
+    assert outputs.shape == (2, 17, JOINT_ROOT_PRODUCT_OUTPUT_WIDTH)
+    heads = split_factorized_outputs(outputs, joint_root_product=True)
+    assert heads["joint_root_product"].shape == (2, 17, JOINT_ROOT_PRODUCT_CLASSES)
+    with pytest.raises(ValueError, match=str(OUTPUT_WIDTH)):
+        split_factorized_outputs(outputs)
+
+
+def test_optional_joint_head_exports_width_and_exact_onnx_metadata(
+    tmp_path: Path,
+) -> None:
+    pytest.importorskip("torch")
+    safetensors = pytest.importorskip("safetensors.torch")
+    onnx = pytest.importorskip("onnx")
+    pytest.importorskip("onnxruntime")
+    model_root = tmp_path / "joint-model"
+    model_root.mkdir()
+    weights = model_root / "weights.safetensors"
+    safetensors.save_file(
+        build_factorized_model(
+            61,
+            "tcn",
+            joint_root_product=True,
+        ).state_dict(),
+        str(weights),
+    )
+    config = {
+        "schemaVersion": FACTORIZED_SCHEMA,
+        "sampleRate": 11_025,
+        "frameSeconds": 0.1,
+        "featureKind": "multiband_chroma_v2",
+        "featureCount": 61,
+        "featureSpecSha256": "a" * 64,
+        "architecture": "tcn",
+        "outputWidth": JOINT_ROOT_PRODUCT_OUTPUT_WIDTH,
+        "weights": weights.name,
+        "optionalHeads": {
+            "schemaVersion": FACTORIZED_OPTIONAL_HEADS_SCHEMA,
+            "jointRootProduct": {
+                **_joint_root_product_contract(),
+                "enabled": True,
+            },
+        },
+    }
+    (model_root / "config.json").write_text(
+        json.dumps(config),
+        encoding="utf-8",
+    )
+
+    output = tmp_path / "joint-model.onnx"
+    report = export_factorized_onnx(model_root, output)
+    metadata = {
+        item.key: item.value for item in onnx.load(str(output)).metadata_props
+    }
+    assert report["outputWidth"] == JOINT_ROOT_PRODUCT_OUTPUT_WIDTH
+    assert report["jointRootProduct"] == _joint_root_product_contract()
+    assert metadata["chordReaderOutputWidth"] == str(
+        JOINT_ROOT_PRODUCT_OUTPUT_WIDTH
+    )
+    assert json.loads(metadata["chordReaderJointRootProduct"]) == (
+        _joint_root_product_contract()
+    )
+
+
 def test_strict_browser_feature_contract_preserves_sealed_spec_hash() -> None:
     digest = "a" * 64
     contract = {
@@ -262,6 +417,154 @@ def test_product_logits_cannot_change_hierarchically_decoded_roots() -> None:
     roots_b, _products_b = _hierarchical_product_path(root_logits, second, boundary, np)
 
     assert roots_a == roots_b
+
+
+def test_joint_product_blend_has_exact_endpoints_and_cannot_move_root() -> None:
+    frames = 8
+    root_logits = np.full((frames, 13), -8.0, dtype=np.float32)
+    root_logits[:, 1] = 8.0
+    direct = np.full((frames, PRODUCT_INDEX["minor-seventh"] + 1), -8.0, dtype=np.float32)
+    direct[:, PRODUCT_INDEX["major"]] = 8.0
+    joint = np.full(
+        (frames, JOINT_ROOT_PRODUCT_CLASSES),
+        -8.0,
+        dtype=np.float32,
+    )
+    joint[:, joint_root_product_class(1, PRODUCT_INDEX["dominant"])] = 8.0
+    # Strong evidence at another root must be ignored once the independent C
+    # root path has been frozen.
+    joint[:, joint_root_product_class(7, PRODUCT_INDEX["minor-seventh"])] = 80.0
+    boundary = np.full(frames, 0.05, dtype=np.float32)
+
+    assert np.array_equal(
+        _conditional_product_evidence(direct, joint, 1, 0.0, np),
+        direct[:, 1:],
+    )
+    expected_joint = joint[:, 1:].reshape(frames, 4, 12)[:, :, 0]
+    assert np.array_equal(
+        _conditional_product_evidence(direct, joint, 1, 1.0, np),
+        expected_joint,
+    )
+
+    legacy_roots, legacy_products = _hierarchical_product_path(
+        root_logits,
+        direct,
+        boundary,
+        np,
+        joint_root_product_logits=joint,
+        joint_product_blend=0.0,
+    )
+    joint_roots, joint_products = _hierarchical_product_path(
+        root_logits,
+        direct,
+        boundary,
+        np,
+        joint_root_product_logits=joint,
+        joint_product_blend=1.0,
+    )
+    assert legacy_roots == joint_roots == [1] * frames
+    assert legacy_products == [PRODUCT_INDEX["major"]] * frames
+    assert joint_products == [PRODUCT_INDEX["dominant"]] * frames
+
+
+def test_joint_product_conditioning_transposes_with_the_frozen_root() -> None:
+    frames = 4
+    root_logits = np.full((frames, 13), -8.0, dtype=np.float32)
+    root_logits[:, 3] = 8.0  # D
+    direct = np.zeros((frames, len(FACTORIZED_PRODUCTS)), dtype=np.float32)
+    joint = np.full((frames, JOINT_ROOT_PRODUCT_CLASSES), -8.0, dtype=np.float32)
+    transposed = transpose_joint_root_product_class(
+        joint_root_product_class(1, PRODUCT_INDEX["dominant"]),
+        2,
+    )
+    joint[:, transposed] = 8.0
+
+    roots, products = _hierarchical_product_path(
+        root_logits,
+        direct,
+        np.full(frames, 0.05, dtype=np.float32),
+        np,
+        joint_root_product_logits=joint,
+        joint_product_blend=1.0,
+    )
+    assert roots == [3] * frames
+    assert products == [PRODUCT_INDEX["dominant"]] * frames
+
+
+def test_joint_checkpoint_selection_uses_bound_blend_and_reports_diagnostics() -> None:
+    roots = np.asarray([0, 1, 1], dtype=np.int64)
+    direct = np.full((3, len(FACTORIZED_PRODUCTS)), -8.0, dtype=np.float32)
+    direct[0, PRODUCT_INDEX["none"]] = 8.0
+    direct[1:, PRODUCT_INDEX["major"]] = 8.0
+    joint = np.full((3, JOINT_ROOT_PRODUCT_CLASSES), -8.0, dtype=np.float32)
+    joint[0, 0] = 8.0
+    joint[1:, joint_root_product_class(1, PRODUCT_INDEX["dominant"])] = 8.0
+
+    assert _conditioned_product_predictions(roots, direct, joint, 0.0, np).tolist() == [
+        PRODUCT_INDEX["none"],
+        PRODUCT_INDEX["major"],
+        PRODUCT_INDEX["major"],
+    ]
+    assert _conditioned_product_predictions(roots, direct, joint, 1.0, np).tolist() == [
+        PRODUCT_INDEX["none"],
+        PRODUCT_INDEX["dominant"],
+        PRODUCT_INDEX["dominant"],
+    ]
+
+    reference_products = np.asarray(
+        [
+            PRODUCT_INDEX["none"],
+            PRODUCT_INDEX["major"],
+            PRODUCT_INDEX["dominant"],
+        ],
+        dtype=np.int64,
+    )
+    window = {
+        "label_valid": np.ones(3, dtype=np.float32),
+        "root": roots,
+        "mode": np.asarray([0, 1, 1], dtype=np.int64),
+        "product": reference_products,
+        "quality": np.asarray([-1, 0, 2], dtype=np.int64),
+        "bass": np.zeros(3, dtype=np.int64),
+        "boundary": np.zeros(3, dtype=np.float32),
+    }
+    joint_targets = _joint_root_product_targets(roots, reference_products, np)
+    predicted = {
+        "root": roots.copy(),
+        "mode": window["mode"].copy(),
+        "product": np.asarray([0, 1, 1], dtype=np.int64),
+        "quality": window["quality"].copy(),
+        "bass": window["bass"].copy(),
+        "joint_root_product": joint_targets.copy(),
+        "joint_conditioned_product": np.asarray([0, 3, 3], dtype=np.int64),
+        "selection_product": reference_products.copy(),
+    }
+    counts = _development_counts(joint_root_product=True)
+    _accumulate_development_counts(
+        counts,
+        window,
+        predicted,
+        np.zeros(3, dtype=np.float32),
+        joint_targets=joint_targets,
+    )
+    metrics = _development_metrics(counts)
+    assert metrics["productAccuracy"] == pytest.approx(2 / 3)
+    assert metrics["jointRootProductAccuracy"] == 1.0
+    assert metrics["jointConditionedProductAccuracy"] == pytest.approx(2 / 3)
+    assert metrics["selectionProductAccuracy"] == 1.0
+
+    score, _by_dataset = _aggregate_factorized_selection(
+        metrics,
+        {"fixture": metrics},
+        dataset_balance=False,
+        product_metric="selectionProductAccuracy",
+    )
+    direct_score, _direct_by_dataset = _aggregate_factorized_selection(
+        metrics,
+        {"fixture": metrics},
+        dataset_balance=False,
+    )
+    assert score - direct_score == pytest.approx(0.3 * (1 / 3))
 
 
 def test_factorized_label_cache_reuses_frozen_features(tmp_path: Path) -> None:
@@ -485,11 +788,14 @@ def test_factorized_training_rejects_unsealed_strict_split_before_model_setup(
         )
 
 
-def test_factorized_training_verifies_sealed_files_before_model_setup(
+@pytest.mark.parametrize("split", ("train", "development"))
+def test_factorized_training_verifies_selected_sealed_files_before_model_setup(
     tmp_path: Path,
+    split: str,
 ) -> None:
     manifest = _sealed_split_protocol_fixture(tmp_path)
-    feature = Path(manifest["tracks"][0]["path"])
+    selected = next(track for track in manifest["tracks"] if track["split"] == split)
+    feature = Path(selected["path"])
     with np.load(feature, allow_pickle=False) as cached:
         features = cached["features"].copy()
         labels = cached["labels"].copy()
@@ -506,6 +812,77 @@ def test_factorized_training_verifies_sealed_files_before_model_setup(
 
     with pytest.raises(ValueError, match="hash or byte count changed"):
         train_factorized_model(manifest, tmp_path / "model", epochs=1)
+
+
+@pytest.mark.parametrize("split", ("train", "development"))
+def test_factorized_training_verifies_selected_label_files_before_model_setup(
+    tmp_path: Path,
+    split: str,
+) -> None:
+    manifest = _sealed_split_protocol_fixture(tmp_path)
+    selected = next(track for track in manifest["tracks"] if track["split"] == split)
+    labels_path = Path(selected["factorizedLabelsPath"])
+    with np.load(labels_path, allow_pickle=False) as cached:
+        arrays = {name: cached[name].copy() for name in cached.files}
+    arrays["root"][0] = 2
+    np.savez_compressed(labels_path, **arrays)
+
+    with pytest.raises(ValueError, match="hash or byte count changed"):
+        train_factorized_model(manifest, tmp_path / "model", epochs=1)
+
+
+def test_strict_training_provenance_never_opens_calibration_artifacts(
+    tmp_path: Path,
+) -> None:
+    manifest = _sealed_split_protocol_fixture(tmp_path)
+    calibration_tracks = [
+        track for track in manifest["tracks"] if track["split"] == "calibration"
+    ]
+    assert calibration_tracks
+    for track in calibration_tracks:
+        for key in ("path", "factorizedLabelsPath"):
+            sealed_path = Path(track[key])
+            sealed_path.rename(sealed_path.with_name(f"unavailable-{sealed_path.name}"))
+    manifest_before = json.dumps(manifest, sort_keys=True)
+
+    provenance = _split_protocol_training_provenance(manifest)
+
+    assert json.dumps(manifest, sort_keys=True) == manifest_before
+    assert provenance["artifactSetSha256"] == manifest["artifactIntegrity"][
+        "artifactSetSha256"
+    ]
+    assert provenance["artifactFileVerification"] == {
+        "metadataScope": "full sealed manifest and artifact set",
+        "verifiedSplits": ["train", "development"],
+        "verifiedTrackCount": sum(
+            track["split"] in {"train", "development"}
+            for track in manifest["tracks"]
+        ),
+        "calibrationFilesOpened": False,
+    }
+
+
+def test_strict_training_provenance_rejects_calibration_seal_metadata_tamper(
+    tmp_path: Path,
+) -> None:
+    manifest = _sealed_split_protocol_fixture(tmp_path)
+    calibration_id = next(
+        track["id"]
+        for track in manifest["tracks"]
+        if track["split"] == "calibration"
+    )
+    calibration_seal = next(
+        entry
+        for entry in manifest["artifactIntegrity"]["tracks"]
+        if entry["id"] == calibration_id
+    )
+    calibration_seal["featureArtifact"]["sha256"] = "0" * 64
+    manifest["splitProtocol"]["outputManifestSha256"] = output_manifest_sha256(
+        manifest
+    )
+
+    with pytest.raises(ValueError, match="artifact-set hash mismatch"):
+        _split_protocol_training_provenance(manifest)
 
 
 def test_factorized_training_contract_records_balance_and_split_hashes(
@@ -555,12 +932,96 @@ def test_factorized_training_contract_records_balance_and_split_hashes(
     assert contract["splitProtocol"]["artifactSetSha256"] == manifest[
         "artifactIntegrity"
     ]["artifactSetSha256"]
+    assert contract["splitProtocol"]["artifactFileVerification"] == {
+        "metadataScope": "full sealed manifest and artifact set",
+        "verifiedSplits": ["train", "development"],
+        "verifiedTrackCount": sum(
+            track["split"] in {"train", "development"}
+            for track in manifest["tracks"]
+        ),
+        "calibrationFilesOpened": False,
+    }
     assert contract["datasetBalance"]["datasets"] == statistics
     assert contract["selection"]["aggregation"] == "dataset-macro"
+    assert contract["selection"]["score"]["productAccuracy"] == 0.3
+    assert "jointRootProduct" not in contract["selection"]
+    assert "optionalExperiment" not in contract
     assert contract["partitionUse"]["calibration"].startswith("excluded")
     assert _split_protocol_training_provenance(
         {"schemaVersion": FACTORIZED_LABEL_SCHEMA, "tracks": []}
     )["status"] == "absent"
+
+
+def test_joint_head_training_contract_records_head_loss_and_weight_policy(
+    tmp_path: Path,
+) -> None:
+    manifest = _sealed_split_protocol_fixture(tmp_path)
+    contract = _factorized_training_contract(
+        protocol=_split_protocol_training_provenance(manifest),
+        dataset_balance=False,
+        dataset_statistics={},
+        development_datasets=("fixture",),
+        feature_kind="multiband_chroma_v2",
+        feature_count=61,
+        sample_rate=11_025,
+        architecture="tcn",
+        augmentation="pitch-roll",
+        epochs=30,
+        batch_size=12,
+        learning_rate=3e-4,
+        seed=20260820,
+        window_frames=256,
+        joint_root_product=True,
+        joint_root_product_loss_weight=0.6,
+        product_class_weighting=True,
+        joint_root_product_selection_blend=0.5,
+    )
+
+    experiment = contract["optionalExperiment"]
+    assert experiment["schemaVersion"] == FACTORIZED_OPTIONAL_HEADS_SCHEMA
+    assert experiment["jointRootProduct"] == {
+        **_joint_root_product_contract(),
+        "enabled": True,
+        "lossWeight": 0.6,
+        "targetSource": "train-only root and product sidecar arrays",
+        "developmentSelectionBlend": 0.5,
+    }
+    assert experiment["productClassWeighting"]["enabled"] is True
+    assert experiment["productClassWeighting"]["scope"].startswith("train-only")
+    assert contract["loss"]["jointRootProduct"] == 0.6
+    assert contract["loss"]["productClassWeighting"] is True
+    assert contract["selection"]["score"]["selectionProductAccuracy"] == 0.3
+    assert "productAccuracy" not in contract["selection"]["score"]
+    assert contract["selection"]["jointRootProduct"] == {
+        "schemaVersion": "chord_joint_root_product_checkpoint_selection_v1",
+        "metric": "selectionProductAccuracy",
+        "diagnostics": [
+            "productAccuracy",
+            "jointRootProductAccuracy",
+            "jointConditionedProductAccuracy",
+            "selectionProductAccuracy",
+        ],
+        "rootAuthority": "independent root-head frame argmax",
+        "noChordPolicy": "independent root N forces product N",
+        "pitchedProductEvidence": (
+            "four-class conditional direct/joint log-probability blend"
+        ),
+        "jointProductBlend": 0.5,
+    }
+
+
+def test_joint_checkpoint_selection_blend_fails_closed_before_model_setup(
+    tmp_path: Path,
+) -> None:
+    manifest = _sealed_split_protocol_fixture(tmp_path)
+    with pytest.raises(ValueError, match="joint_product_blend"):
+        train_factorized_model(
+            manifest,
+            tmp_path / "model",
+            epochs=1,
+            joint_root_product=True,
+            joint_root_product_selection_blend=1.1,
+        )
 
 
 def test_dataset_balanced_selection_is_unweighted_development_dataset_macro() -> None:
@@ -593,6 +1054,46 @@ def test_factorized_cli_exposes_explicit_dataset_balance_challenger() -> None:
         ]
     )
     assert args.dataset_balance is True
+    assert args.joint_root_product_selection_blend == pytest.approx(0.5)
+
+
+def test_factorized_cli_exposes_joint_head_training_and_frozen_root_blend() -> None:
+    train_args = build_parser().parse_args(
+        [
+            "train-factorized",
+            "cache.json",
+            "--output-root",
+            "model",
+            "--joint-root-product",
+            "--joint-root-product-loss-weight",
+            "0.4",
+            "--joint-root-product-selection-blend",
+            "0.65",
+            "--product-class-weighting",
+        ]
+    )
+    benchmark_args = build_parser().parse_args(
+        [
+            "benchmark-factorized-cache",
+            "cache.json",
+            "--track-manifest",
+            "tracks.json",
+            "--model",
+            "model.onnx",
+            "--output-root",
+            "outputs",
+            "--report",
+            "report.json",
+            "--joint-product-blend",
+            "0.75",
+        ]
+    )
+
+    assert train_args.joint_root_product is True
+    assert train_args.joint_root_product_loss_weight == pytest.approx(0.4)
+    assert train_args.joint_root_product_selection_blend == pytest.approx(0.65)
+    assert train_args.product_class_weighting is True
+    assert benchmark_args.joint_product_blend == pytest.approx(0.75)
 
 
 def test_factorized_cli_dispatches_dataset_balance(
@@ -619,11 +1120,21 @@ def test_factorized_cli_dispatches_dataset_balance(
                 "--output-root",
                 str(tmp_path / "model"),
                 "--dataset-balance",
+                "--joint-root-product",
+                "--joint-root-product-loss-weight",
+                "0.4",
+                "--joint-root-product-selection-blend",
+                "0.65",
+                "--product-class-weighting",
             ]
         )
         == 0
     )
     assert received["dataset_balance"] is True
+    assert received["joint_root_product"] is True
+    assert received["joint_root_product_loss_weight"] == pytest.approx(0.4)
+    assert received["joint_root_product_selection_blend"] == pytest.approx(0.65)
+    assert received["product_class_weighting"] is True
 
 
 def test_factorized_cache_benchmark_cli_rejects_tampered_protocol_before_entry(
@@ -660,6 +1171,43 @@ def test_factorized_cache_benchmark_cli_rejects_tampered_protocol_before_entry(
             ]
         )
     assert entered is False
+
+
+def test_factorized_cache_benchmark_cli_dispatches_joint_product_blend(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache_path = tmp_path / "cache.json"
+    cache_path.write_text('{"tracks": []}', encoding="utf-8")
+    tracks_path = tmp_path / "tracks.json"
+    tracks_path.write_text('{"tracks": []}', encoding="utf-8")
+    received: dict[str, object] = {}
+
+    def capture(*_args: object, **kwargs: object) -> dict:
+        received.update(kwargs)
+        return {"jointProductBlend": kwargs["joint_product_blend"]}
+
+    monkeypatch.setattr(chord_reader_cli, "run_factorized_cache_benchmark", capture)
+    assert (
+        chord_reader_cli.main(
+            [
+                "benchmark-factorized-cache",
+                str(cache_path),
+                "--track-manifest",
+                str(tracks_path),
+                "--model",
+                str(tmp_path / "model.onnx"),
+                "--output-root",
+                str(tmp_path / "outputs"),
+                "--report",
+                str(tmp_path / "report.json"),
+                "--joint-product-blend",
+                "0.625",
+            ]
+        )
+        == 0
+    )
+    assert received["joint_product_blend"] == pytest.approx(0.625)
 
 
 def test_factorized_recognizer_rejects_legacy_onnx(tmp_path: Path) -> None:
@@ -811,19 +1359,43 @@ def _ensemble_member_logits(
     )
 
 
+def _joint_ensemble_member_logits(
+    *,
+    root_index: int,
+    product_index: int,
+    joint_product_index: int,
+    frames: int = 8,
+) -> np.ndarray:
+    legacy = _ensemble_member_logits(
+        root_index=root_index,
+        product_index=product_index,
+        frames=frames,
+    )
+    joint = np.full(
+        (frames, JOINT_ROOT_PRODUCT_CLASSES),
+        -8.0,
+        dtype=np.float32,
+    )
+    joint[:, joint_root_product_class(root_index, joint_product_index)] = 8.0
+    return np.concatenate((legacy, joint), axis=1)
+
+
 def _ensemble_onnx_metadata(
     *,
     feature_kind: str = "multiband_chroma_v2",
     feature_count: int = 61,
     sample_rate: int = 11_025,
     feature_spec_sha256: str | None = None,
+    joint_root_product: bool = False,
 ) -> dict[str, str]:
     metadata = {
         "chordReaderArchitecture": "tcn",
         "chordReaderFeatureKind": feature_kind,
         "chordReaderFactorizedSchema": "chord_factorized_model_v2",
         "chordReaderFrameSeconds": "0.1",
-        "chordReaderOutputWidth": str(OUTPUT_WIDTH),
+        "chordReaderOutputWidth": str(
+            JOINT_ROOT_PRODUCT_OUTPUT_WIDTH if joint_root_product else OUTPUT_WIDTH
+        ),
         "chordReaderQualities": json.dumps(list(FACTORIZED_QUALITIES)),
         "chordReaderModes": json.dumps(list(FACTORIZED_MODES)),
         "chordReaderProducts": json.dumps(list(FACTORIZED_PRODUCTS)),
@@ -833,6 +1405,12 @@ def _ensemble_onnx_metadata(
     }
     if feature_spec_sha256 is not None:
         metadata["chordReaderFeatureSpecSha256"] = feature_spec_sha256
+    if joint_root_product:
+        metadata["chordReaderJointRootProduct"] = json.dumps(
+            _joint_root_product_contract(),
+            sort_keys=True,
+            separators=(",", ":"),
+        )
     return metadata
 
 
@@ -1046,6 +1624,159 @@ def test_factorized_ensemble_rejects_incompatible_member_contracts(
     )
     with pytest.raises(ValueError, match="incompatible feature"):
         FactorizedEnsembleRecognizer(models)
+
+
+def test_joint_head_metadata_is_exact_and_mixed_ensembles_fail_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    metadata = _ensemble_onnx_metadata(joint_root_product=True)
+    assert _factorized_metadata_joint_root_product(metadata) is True
+    tampered = dict(metadata)
+    tampered["chordReaderJointRootProduct"] = json.dumps(
+        {**_joint_root_product_contract(), "classes": 48}
+    )
+    with pytest.raises(ValueError, match="incompatible"):
+        _factorized_metadata_joint_root_product(tampered)
+
+    legacy = _ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+    )
+    challenger = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    models, _sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        legacy,
+        challenger,
+        second_metadata=metadata,
+    )
+    with pytest.raises(ValueError, match="requires a model with the optional joint head"):
+        FactorizedRecognizer(models[0], joint_product_blend=0.5)
+    with pytest.raises(ValueError, match="incompatible feature"):
+        FactorizedEnsembleRecognizer(models)
+
+
+def test_joint_recognizer_blend_changes_product_only_and_binds_decoder_hash(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    outputs = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["dominant"],
+    )
+    metadata = _ensemble_onnx_metadata(joint_root_product=True)
+    models, _sessions = _write_fake_ensemble_models(
+        tmp_path,
+        monkeypatch,
+        outputs,
+        outputs,
+        first_metadata=metadata,
+        second_metadata=metadata,
+    )
+    direct = FactorizedRecognizer(models[0], joint_product_blend=0.0)
+    joint = FactorizedRecognizer(models[0], joint_product_blend=1.0)
+    features = np.zeros((8, 61), dtype=np.float32)
+
+    direct_prediction = direct.predict_features(
+        features,
+        0.8,
+        prediction_id="joint-fixture",
+    )
+    joint_prediction = joint.predict_features(
+        features,
+        0.8,
+        prediction_id="joint-fixture",
+    )
+    assert [segment["productLabel"] for segment in direct_prediction["segments"]] == [
+        "C"
+    ]
+    assert [segment["productLabel"] for segment in joint_prediction["segments"]] == [
+        "C7"
+    ]
+    assert all(
+        segment["label"].startswith("C:")
+        for prediction in (direct_prediction, joint_prediction)
+        for segment in prediction["segments"]
+    )
+    assert direct_prediction["decoderContractSha256"] != joint_prediction[
+        "decoderContractSha256"
+    ]
+    assert direct_prediction["jointProductBlend"] == 0.0
+    assert joint_prediction["jointProductBlend"] == 1.0
+
+
+def test_joint_zero_blend_confidence_is_continuous_without_changing_legacy_confidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    outputs = _joint_ensemble_member_logits(
+        root_index=1,
+        product_index=PRODUCT_INDEX["major"],
+        joint_product_index=PRODUCT_INDEX["major"],
+    )
+    product_offset = 13 + len(FACTORIZED_MODES)
+    outputs[:, product_offset + PRODUCT_INDEX["none"]] = 8.0
+    legacy_outputs = outputs[:, :OUTPUT_WIDTH].copy()
+    joint_metadata = _ensemble_onnx_metadata(joint_root_product=True)
+
+    legacy_root = tmp_path / "legacy"
+    legacy_root.mkdir()
+    legacy_models, _legacy_sessions = _write_fake_ensemble_models(
+        legacy_root,
+        monkeypatch,
+        legacy_outputs,
+        legacy_outputs,
+    )
+    legacy = FactorizedRecognizer(legacy_models[0])
+
+    joint_root = tmp_path / "joint"
+    joint_root.mkdir()
+    joint_models, _joint_sessions = _write_fake_ensemble_models(
+        joint_root,
+        monkeypatch,
+        outputs,
+        outputs,
+        first_metadata=joint_metadata,
+        second_metadata=joint_metadata,
+    )
+    joint_zero = FactorizedRecognizer(joint_models[0], joint_product_blend=0.0)
+    joint_epsilon = FactorizedRecognizer(
+        joint_models[0],
+        joint_product_blend=1e-9,
+    )
+    features = np.zeros((8, 61), dtype=np.float32)
+
+    legacy_prediction = legacy.predict_features(
+        features,
+        0.8,
+        prediction_id="confidence-fixture",
+    )
+    zero_prediction = joint_zero.predict_features(
+        features,
+        0.8,
+        prediction_id="confidence-fixture",
+    )
+    epsilon_prediction = joint_epsilon.predict_features(
+        features,
+        0.8,
+        prediction_id="confidence-fixture",
+    )
+    assert [
+        prediction["segments"][0]["productLabel"]
+        for prediction in (legacy_prediction, zero_prediction, epsilon_prediction)
+    ] == ["C", "C", "C"]
+    legacy_confidence = legacy_prediction["segments"][0]["productConfidence"]
+    zero_confidence = zero_prediction["segments"][0]["productConfidence"]
+    epsilon_confidence = epsilon_prediction["segments"][0]["productConfidence"]
+    assert legacy_confidence == pytest.approx(2**-0.5, abs=1e-5)
+    assert zero_confidence > 0.999
+    assert epsilon_confidence == pytest.approx(zero_confidence, abs=1e-8)
 
 
 @pytest.mark.parametrize(

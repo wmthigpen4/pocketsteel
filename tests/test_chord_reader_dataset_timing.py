@@ -73,7 +73,7 @@ def test_aam_preparer_copies_exact_timing_and_provenance(tmp_path: Path) -> None
 def _guitarset_value() -> dict[str, Any]:
     beat_times = (0.0, 0.49, 1.03, 1.55, 2.12, 2.61)
     return {
-        "file_metadata": {"duration": 3.0},
+        "file_metadata": {"duration": 3.0, "title": "00_BN1-129-Eb_comp"},
         "sandbox": {"tempo": 112, "time_signature": "4/4"},
         "annotations": [
             {
@@ -81,6 +81,21 @@ def _guitarset_value() -> dict[str, Any]:
                 "data": [
                     {"time": 0, "duration": 2.12, "value": "C:maj"},
                     {"time": 2.12, "duration": 0.88, "value": "G:7"},
+                ],
+            },
+            {
+                "namespace": "chord",
+                "annotation_metadata": {
+                    "annotation_rules": (
+                        "Chord sheet-informed symbolic chord transcription based on the "
+                        "included separate string note transcriptions with the chord "
+                        "segmentation and root derived from sheet music."
+                    ),
+                    "data_source": "Semi-automatic chord transcription with manual verification",
+                },
+                "data": [
+                    {"time": 0, "duration": 2.12, "value": "C:maj7/1"},
+                    {"time": 2.12, "duration": 0.88, "value": "G:maj/5"},
                 ],
             },
             {
@@ -117,6 +132,138 @@ def test_guitarset_uses_beat_position_for_beats_and_downbeats(tmp_path: Path) ->
     assert metadata["timingProvenance"]["downbeatTimesSeconds"]["sourceRule"] == (
         "beat_position.value.position-equals-1"
     )
+    assert metadata["timingProvenance"]["instructedChordSegmentsSeconds"]["annotationRole"] == (
+        "instructed"
+    )
+    assert metadata["timingProvenance"]["performedChordSegmentsSeconds"]["annotationRole"] == (
+        "performed"
+    )
+
+
+def test_guitarset_selects_roles_independently_of_annotation_order(tmp_path: Path) -> None:
+    value = _guitarset_value()
+    instructed, performed, beats = value["annotations"]
+    value["annotations"] = [performed, beats, instructed]
+    annotation = tmp_path / "00_BN1-129-Eb_comp.jams"
+    annotation.write_text(json.dumps(value), encoding="utf-8")
+
+    segments, metadata = parse_guitarset_jams(annotation)
+
+    assert segments == [
+        {"start": 0.0, "end": 2.12, "label": "C:maj"},
+        {"start": 2.12, "end": 3.0, "label": "G:7"},
+    ]
+    assert metadata["performedSegments"] == [
+        {"start": 0.0, "end": 2.12, "label": "C:maj7/1"},
+        {"start": 2.12, "end": 3.0, "label": "G:maj/5"},
+    ]
+    assert metadata["chordProvenance"]["primaryReference"]["selectionRule"] == (
+        "official-unmarked-lead-sheet-counterpart"
+    )
+    assert metadata["chordProvenance"]["performedReference"]["sourceNamespace"] == "chord"
+    assert metadata["chordProvenance"]["performedReference"]["segmentationSource"] == (
+        "instructed-chord-sheet"
+    )
+    assert metadata["chordProvenance"]["performedReference"]["rootSource"] == (
+        "instructed-chord-sheet"
+    )
+    assert metadata["chordProvenance"]["performedReference"]["qualityEvidence"] == (
+        "separate-string-note-transcriptions"
+    )
+
+
+def test_guitarset_preserves_explicit_half_open_gaps(tmp_path: Path) -> None:
+    value = _guitarset_value()
+    value["annotations"][0]["data"] = [
+        {"time": 0.0, "duration": 0.75, "value": "C:maj"},
+        {"time": 1.25, "duration": 0.5, "value": "G:7"},
+    ]
+    value["annotations"][1]["data"] = [
+        {"time": 0.0, "duration": 0.5, "value": "C:maj7/1"},
+        {"time": 1.0, "duration": 0.5, "value": "G:maj/5"},
+    ]
+    annotation = tmp_path / "00_BN1-129-Eb_comp.jams"
+    annotation.write_text(json.dumps(value), encoding="utf-8")
+
+    segments, metadata = parse_guitarset_jams(annotation)
+
+    assert segments == [
+        {"start": 0.0, "end": 0.75, "label": "C:maj"},
+        {"start": 1.25, "end": 1.75, "label": "G:7"},
+    ]
+    assert metadata["performedSegments"] == [
+        {"start": 0.0, "end": 0.5, "label": "C:maj7/1"},
+        {"start": 1.0, "end": 1.5, "label": "G:maj/5"},
+    ]
+
+
+def test_guitarset_does_not_merge_same_label_across_a_gap(tmp_path: Path) -> None:
+    value = _guitarset_value()
+    value["annotations"][0]["data"] = [
+        {"time": 0.0, "duration": 0.5, "value": "C:maj"},
+        {"time": 1.0, "duration": 0.5, "value": "C:maj"},
+    ]
+    annotation = tmp_path / "00_BN1-129-Eb_comp.jams"
+    annotation.write_text(json.dumps(value), encoding="utf-8")
+
+    segments, _metadata = parse_guitarset_jams(annotation)
+
+    assert segments == [
+        {"start": 0.0, "end": 0.5, "label": "C:maj"},
+        {"start": 1.0, "end": 1.5, "label": "C:maj"},
+    ]
+
+
+@pytest.mark.parametrize("annotation_index", [0, 1])
+def test_guitarset_rejects_overlapping_chord_intervals(
+    tmp_path: Path,
+    annotation_index: int,
+) -> None:
+    value = _guitarset_value()
+    value["annotations"][annotation_index]["data"][0]["duration"] = 2.5
+    annotation = tmp_path / "00_BN1-129-Eb_comp.jams"
+    annotation.write_text(json.dumps(value), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Overlapping GuitarSet"):
+        parse_guitarset_jams(annotation)
+
+
+def test_guitarset_fails_closed_on_missing_or_ambiguous_chord_roles(tmp_path: Path) -> None:
+    missing = _guitarset_value()
+    missing["annotations"].pop(1)
+    missing_path = tmp_path / "missing_comp.jams"
+    missing_path.write_text(json.dumps(missing), encoding="utf-8")
+    with pytest.raises(ValueError, match="exactly one instructed and one performed"):
+        parse_guitarset_jams(missing_path)
+
+    ambiguous = _guitarset_value()
+    ambiguous["annotations"][0]["annotation_metadata"] = {"annotationRole": "performed"}
+    ambiguous_path = tmp_path / "ambiguous_comp.jams"
+    ambiguous_path.write_text(json.dumps(ambiguous), encoding="utf-8")
+    with pytest.raises(ValueError, match="Multiple GuitarSet performed"):
+        parse_guitarset_jams(ambiguous_path)
+
+
+def test_guitarset_requires_consistent_comp_or_solo_identity(tmp_path: Path) -> None:
+    solo = _guitarset_value()
+    solo["file_metadata"]["title"] = "00_BN1-129-Eb_solo"
+    solo_path = tmp_path / "00_BN1-129-Eb_solo.jams"
+    solo_path.write_text(json.dumps(solo), encoding="utf-8")
+    assert parse_guitarset_jams(solo_path)[1]["performanceRole"] == "solo"
+
+    missing = _guitarset_value()
+    missing["file_metadata"]["title"] = "00_BN1-129-Eb"
+    missing_path = tmp_path / "missing.jams"
+    missing_path.write_text(json.dumps(missing), encoding="utf-8")
+    with pytest.raises(ValueError, match="Missing GuitarSet comp/solo"):
+        parse_guitarset_jams(missing_path)
+
+    conflicting = _guitarset_value()
+    conflicting["file_metadata"]["title"] = "00_BN1-129-Eb_solo"
+    conflicting_path = tmp_path / "00_BN1-129-Eb_comp.jams"
+    conflicting_path.write_text(json.dumps(conflicting), encoding="utf-8")
+    with pytest.raises(ValueError, match="Conflicting GuitarSet comp/solo"):
+        parse_guitarset_jams(conflicting_path)
 
 
 def test_guitarset_preparer_preserves_native_timing(tmp_path: Path) -> None:
@@ -139,6 +286,27 @@ def test_guitarset_preparer_preserves_native_timing(tmp_path: Path) -> None:
     assert track["timingProvenance"]["sourceFormat"] == (
         "guitarset-jams-beat_position"
     )
+    assert track["performanceRole"] == "comp"
+    assert track["labelSource"] == "ground_truth"
+    assert track["labelSourceProvenance"]["annotationRole"] == "instructed"
+    assert track["labelSourceProvenance"]["sourceNamespace"] == "chord"
+
+    primary = json.loads(Path(track["referencePath"]).read_text(encoding="utf-8"))
+    assert primary == {
+        "schemaVersion": "chord_reference_v1",
+        "id": f"guitarset-{name}",
+        "segments": [
+            {"start": 0.0, "end": 2.12, "label": "C:maj"},
+            {"start": 2.12, "end": 3.0, "label": "G:7"},
+        ],
+    }
+    performed = json.loads(Path(track["performedReferencePath"]).read_text(encoding="utf-8"))
+    assert performed["segments"] == [
+        {"start": 0.0, "end": 2.12, "label": "C:maj7/1"},
+        {"start": 2.12, "end": 3.0, "label": "G:maj/5"},
+    ]
+    assert performed["provenance"]["annotationRole"] == "performed"
+    assert performed["provenance"]["labelEncoding"] == "guitarset-harte"
 
 
 def _message(kind: str, time: int = 0, **values: Any) -> SimpleNamespace:
@@ -283,7 +451,10 @@ def test_native_timing_rejects_nonfinite_or_duplicate_source_starts(tmp_path: Pa
         parse_aam_beatinfo(aam)
 
     guitarset = _guitarset_value()
-    guitarset["annotations"][1]["data"][1]["time"] = 0.0
+    beat_annotation = next(
+        item for item in guitarset["annotations"] if item["namespace"] == "beat_position"
+    )
+    beat_annotation["data"][1]["time"] = 0.0
     jams = tmp_path / "duplicate.jams"
     jams.write_text(json.dumps(guitarset), encoding="utf-8")
     with pytest.raises(ValueError, match="strictly increasing"):

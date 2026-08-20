@@ -161,6 +161,7 @@ def build_parser() -> argparse.ArgumentParser:
     predict_factorized.add_argument("--output", type=Path)
     predict_factorized.add_argument("--id")
     predict_factorized.add_argument("--dasheng-snapshot-root", type=Path)
+    predict_factorized.add_argument("--joint-product-blend", type=float, default=0.0)
 
     chart = commands.add_parser("build-chart-reference", help="Map a reviewed chart onto a frozen timing grid")
     chart.add_argument("chart", type=Path)
@@ -214,6 +215,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run.add_argument("--product-boundary-scale", type=float, default=1.3)
     benchmark_run.add_argument("--product-boundary-bias", type=float, default=-2.0)
     benchmark_run.add_argument("--dasheng-snapshot-root", type=Path)
+    benchmark_run.add_argument("--joint-product-blend", type=float, default=0.0)
 
     rescore = commands.add_parser("benchmark-predictions", help="Rescore an existing frozen prediction directory")
     rescore.add_argument("manifest", type=Path)
@@ -253,6 +255,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--beat-grid-source",
         choices=("none", "manifest-tempo-oracle"),
         default="none",
+    )
+    factorized_cache_benchmark.add_argument(
+        "--joint-product-blend",
+        type=float,
+        default=0.0,
+        help="Blend optional joint-head product evidence only after freezing the root path",
     )
 
     merge_reports = commands.add_parser(
@@ -388,6 +396,30 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Equalize train dataset frame mass and select epochs by development-dataset macro score",
     )
+    factorized_train.add_argument(
+        "--joint-root-product",
+        action="store_true",
+        help="Append and train the optional 49-state root/product auxiliary head",
+    )
+    factorized_train.add_argument(
+        "--joint-root-product-loss-weight",
+        type=float,
+        default=0.6,
+    )
+    factorized_train.add_argument(
+        "--joint-root-product-selection-blend",
+        type=float,
+        default=0.5,
+        help=(
+            "Bind joint-model checkpoint selection to this development-only "
+            "direct/joint pitched-product blend"
+        ),
+    )
+    factorized_train.add_argument(
+        "--product-class-weighting",
+        action="store_true",
+        help="Apply train-only inverse-sqrt product weights to direct and optional joint CE",
+    )
 
     export = commands.add_parser("export-student", help="Export and verify a trained student as ONNX")
     export.add_argument("model_root", type=Path)
@@ -520,6 +552,11 @@ def main(argv: list[str] | None = None) -> int:
         result = FactorizedRecognizer(
             args.model,
             dasheng_snapshot_root=args.dasheng_snapshot_root,
+            **(
+                {"joint_product_blend": args.joint_product_blend}
+                if args.joint_product_blend != 0
+                else {}
+            ),
         ).predict(args.audio, prediction_id=args.id)
         _write_json(result, args.output)
     elif args.command == "build-chart-reference":
@@ -576,6 +613,7 @@ def main(argv: list[str] | None = None) -> int:
             product_boundary_scale=args.product_boundary_scale,
             product_boundary_bias=args.product_boundary_bias,
             dasheng_snapshot_root=args.dasheng_snapshot_root,
+            joint_product_blend=args.joint_product_blend,
         )
         _write_json(result, args.report)
     elif args.command == "benchmark-predictions":
@@ -600,6 +638,7 @@ def main(argv: list[str] | None = None) -> int:
             split=args.split,
             limit=args.limit,
             beat_grid_source=args.beat_grid_source,
+            joint_product_blend=args.joint_product_blend,
         )
         _write_json(result, args.report)
     elif args.command == "merge-benchmark-reports":
@@ -732,6 +771,12 @@ def main(argv: list[str] | None = None) -> int:
             architecture=args.architecture,
             augmentation=args.augmentation,
             dataset_balance=args.dataset_balance,
+            joint_root_product=args.joint_root_product,
+            joint_root_product_loss_weight=args.joint_root_product_loss_weight,
+            product_class_weighting=args.product_class_weighting,
+            joint_root_product_selection_blend=(
+                args.joint_root_product_selection_blend
+            ),
         )
         _write_json(result, None)
     elif args.command == "export-student":
