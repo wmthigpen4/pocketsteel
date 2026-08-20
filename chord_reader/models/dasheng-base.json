@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "chord_reader_dasheng_snapshot_v1",
+  "featureKind": "dasheng_base_v1",
+  "modelId": "mispeech/dasheng-base",
+  "revision": "d29a721c75b996ffa49e2a1f985349d191a4ae5e",
+  "license": {
+    "spdx": "Apache-2.0",
+    "modelCardUrl": "https://huggingface.co/mispeech/dasheng-base/blob/d29a721c75b996ffa49e2a1f985349d191a4ae5e/README.md",
+    "upstreamLicenseUrl": "https://github.com/RicherMans/Dasheng/blob/91bc15c728f08e8d10f741311d8afc42fb33d497/LICENSE"
+  },
+  "sampleRate": 16000,
+  "nativeFrameSeconds": 0.04,
+  "frameSeconds": 0.1,
+  "featureCount": 768,
+  "pooling": "interval_overlap_mean_v1",
+  "timestampConvention": "left_edge_seconds_v1",
+  "files": [
+    {
+      "path": "config.json",
+      "bytes": 518,
+      "sha256": "b9ff40da4167dd776cb2fe084c9a80c0fdd6568c3b995e0255b46a9d435e7b80",
+      "sourceUrl": "https://huggingface.co/mispeech/dasheng-base/resolve/d29a721c75b996ffa49e2a1f985349d191a4ae5e/config.json"
+    },
+    {
+      "path": "configuration_dasheng.py",
+      "bytes": 2798,
+      "sha256": "7a524b9d37c0e0392b75bbfb0fe5e2d1f60f62a8f2c46917bb186b638580966b",
+      "sourceUrl": "https://huggingface.co/mispeech/dasheng-base/resolve/d29a721c75b996ffa49e2a1f985349d191a4ae5e/configuration_dasheng.py"
+    },
+    {
+      "path": "feature_extraction_dasheng.py",
+      "bytes": 6717,
+      "sha256": "78139c9219ff9bc48f9c5f86fb3fba9e727cb765679a92db69066d5caeb9875c",
+      "sourceUrl": "https://huggingface.co/mispeech/dasheng-base/resolve/d29a721c75b996ffa49e2a1f985349d191a4ae5e/feature_extraction_dasheng.py"
+    },
+    {
+      "path": "modeling_dasheng.py",
+      "bytes": 19558,
+      "sha256": "6d2a548ed05ee216ed5f70dcf2f4586c5d2c0c1a730011db8e9347eab36143d9",
+      "sourceUrl": "https://huggingface.co/mispeech/dasheng-base/resolve/d29a721c75b996ffa49e2a1f985349d191a4ae5e/modeling_dasheng.py"
+    },
+    {
+      "path": "preprocessor_config.json",
+      "bytes": 445,
+      "sha256": "16b23e7bd7eb867d288aa4cea8a9a9531f5ebb60534b14154feaaad10dc34f6c",
+      "sourceUrl": "https://huggingface.co/mispeech/dasheng-base/resolve/d29a721c75b996ffa49e2a1f985349d191a4ae5e/preprocessor_config.json"
+    },
+    {
+      "path": "model.safetensors",
+      "bytes": 341807392,
+      "sha256": "adaa439ebec13933501242364a29b7912c2695d0354061b278c873438b2736c3",
+      "sourceUrl": "https://huggingface.co/mispeech/dasheng-base/resolve/d29a721c75b996ffa49e2a1f985349d191a4ae5e/model.safetensors"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+-r chord-reader.in
+torchaudio==2.7.1
+transformers==4.35.2
+einops==0.8.1

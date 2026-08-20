@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from fractions import Fraction
 import hashlib
 import importlib
 import json
@@ -15,6 +16,37 @@ import wave
 
 from .labels import normalize_chord
 from .manifests import assign_group_splits
+
+
+_TIMING_MANIFEST_KEYS = (
+    "beatTimesSeconds",
+    "downbeatTimesSeconds",
+    "barStartsSeconds",
+    "gridStartSeconds",
+    "prefixExcludedSeconds",
+    "timingProvenance",
+)
+
+
+def _strict_source_times(values: Iterable[float], *, name: str) -> list[float]:
+    """Return source timestamps in strict order without rounding or inference."""
+
+    output = sorted(float(value) for value in values)
+    if any(not math.isfinite(value) or value < 0 for value in output):
+        raise ValueError(f"{name} must contain finite, nonnegative source timestamps.")
+    if any(right <= left for left, right in zip(output, output[1:])):
+        raise ValueError(f"{name} must contain strictly increasing source timestamps.")
+    return output
+
+
+def _starts_at_zero(values: list[float]) -> bool:
+    return bool(values) and math.isclose(values[0], 0.0, rel_tol=0, abs_tol=1e-9)
+
+
+def _timing_manifest_fields(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Copy only certified native timing fields into a prepared track row."""
+
+    return {key: metadata[key] for key in _TIMING_MANIFEST_KEYS if key in metadata}
 
 
 def _merge_frames(frames: Iterable[tuple[float, str]], end_seconds: float | None = None) -> list[dict[str, Any]]:
@@ -57,12 +89,45 @@ def parse_aam_beatinfo(path: Path, end_seconds: float | None = None) -> tuple[li
     rows = _arff_rows(path)
     frames = [(float(row[0]), row[3]) for row in rows if len(row) >= 4 and row[3].strip()]
     segments = _merge_frames(frames, end_seconds=end_seconds)
+    beat_times = _strict_source_times(
+        (float(row[0]) for row in rows if len(row) >= 3),
+        name="AAM beatTimesSeconds",
+    )
+    source_bar_starts = _strict_source_times(
+        (
+            float(row[0])
+            for row in rows
+            if len(row) >= 3 and math.isclose(float(row[2]), 1.0, rel_tol=0, abs_tol=1e-9)
+        ),
+        name="AAM barStartsSeconds",
+    )
     tempo = None
-    if len(frames) > 1:
-        intervals = [right[0] - left[0] for left, right in zip(frames, frames[1:]) if right[0] > left[0]]
+    if len(beat_times) > 1:
+        intervals = [right - left for left, right in zip(beat_times, beat_times[1:])]
         if intervals:
             tempo = 60 / statistics.median(intervals)
-    return segments, {"tempo": tempo, "meter": "4/4"}
+    provenance: dict[str, Any] = {
+        "sourceFormat": "aam-beatinfo-arff",
+        "beatTimesSeconds": {
+            "status": "explicit",
+            "sourceField": "column-0-seconds",
+        },
+        "barStartsSeconds": {
+            "status": "explicit" if _starts_at_zero(source_bar_starts) else "uncertifiable",
+            "sourceRule": "column-2-quarter-count-equals-1",
+        },
+    }
+    if source_bar_starts and not _starts_at_zero(source_bar_starts):
+        provenance["barStartsSeconds"]["reason"] = "first annotated downbeat is not at zero"
+    metadata: dict[str, Any] = {
+        "tempo": tempo,
+        "meter": "4/4",
+        "beatTimesSeconds": beat_times,
+        "timingProvenance": provenance,
+    }
+    if _starts_at_zero(source_bar_starts):
+        metadata["barStartsSeconds"] = source_bar_starts
+    return segments, metadata
 
 
 def parse_guitarset_jams(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -90,18 +155,64 @@ def parse_guitarset_jams(path: Path) -> tuple[list[dict[str, Any]], dict[str, An
     if tempo_annotations and tempo_annotations[0].get("data"):
         tempo = tempo_annotations[0]["data"][0].get("value")
     meter = sandbox.get("time_signature")
+    beat_times: list[float] = []
+    downbeat_times: list[float] = []
     if beat_annotations and beat_annotations[0].get("data"):
-        beat_value = beat_annotations[0]["data"][0].get("value", {})
+        beat_data = beat_annotations[0]["data"]
+        beat_times = _strict_source_times(
+            (float(item["time"]) for item in beat_data),
+            name="GuitarSet beatTimesSeconds",
+        )
+        for item in beat_data:
+            beat_value = item.get("value")
+            if not isinstance(beat_value, dict):
+                raise ValueError(f"Malformed GuitarSet beat_position value in {path}.")
+            try:
+                position = float(beat_value["position"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(f"Malformed GuitarSet beat position in {path}.") from exc
+            if math.isclose(position, 1.0, rel_tol=0, abs_tol=1e-9):
+                downbeat_times.append(float(item["time"]))
+        downbeat_times = _strict_source_times(
+            downbeat_times,
+            name="GuitarSet downbeatTimesSeconds",
+        )
+        beat_value = beat_data[0].get("value", {})
         meter = f"{beat_value.get('num_beats')}/{beat_value.get('beat_units')}"
     key = None
     if key_annotations and key_annotations[0].get("data"):
         key = key_annotations[0]["data"][0].get("value")
-    return segments, {
+    metadata: dict[str, Any] = {
         "tempo": tempo,
         "meter": meter,
         "key": key,
         "durationSeconds": explicit_end,
     }
+    if beat_times:
+        metadata["beatTimesSeconds"] = beat_times
+        metadata["downbeatTimesSeconds"] = downbeat_times
+        metadata["timingProvenance"] = {
+            "sourceFormat": "guitarset-jams-beat_position",
+            "beatTimesSeconds": {
+                "status": "explicit",
+                "sourceField": "beat_position.data.time",
+            },
+            "downbeatTimesSeconds": {
+                "status": "explicit",
+                "sourceRule": "beat_position.value.position-equals-1",
+            },
+            "barStartsSeconds": {
+                "status": "explicit" if _starts_at_zero(downbeat_times) else "uncertifiable",
+                "sourceRule": "beat_position.value.position-equals-1",
+            },
+        }
+        if _starts_at_zero(downbeat_times):
+            metadata["barStartsSeconds"] = downbeat_times
+        elif downbeat_times:
+            metadata["timingProvenance"]["barStartsSeconds"]["reason"] = (
+                "first annotated downbeat is not at zero"
+            )
+    return segments, metadata
 
 
 def parse_winterreise_chords(path: Path) -> list[dict[str, Any]]:
@@ -163,14 +274,22 @@ def parse_idmt_chords(path: Path, end_seconds: float | None = None) -> tuple[lis
     """Read beat-aligned IDMT dataset-4 chord changes and footer metadata."""
 
     frames: list[tuple[float, str]] = []
+    beat_rows: list[tuple[float, int, int]] = []
     footer: list[str] = []
     for line in path.read_text(encoding="utf-8-sig").splitlines():
         value = line.strip()
         if not value:
             continue
-        if ":" in value:
-            position, beat = value.split(",", 1)
-            frames.append((float(position), _idmt_chord_symbol(beat.split(":", 1)[1])))
+        position, separator, payload = value.partition(",")
+        beat_text, chord_separator, chord = payload.partition(":")
+        beat_match = re.fullmatch(r"(\d+)\.(\d+)", beat_text.strip())
+        if separator and beat_match:
+            time_seconds = float(position)
+            beat_rows.append(
+                (time_seconds, int(beat_match.group(1)), int(beat_match.group(2)))
+            )
+            if chord_separator:
+                frames.append((time_seconds, _idmt_chord_symbol(chord)))
         else:
             footer.append(value)
     if not frames:
@@ -181,10 +300,51 @@ def parse_idmt_chords(path: Path, end_seconds: float | None = None) -> tuple[lis
         if separator:
             meter = f"{int(numerator)}/{int(denominator)}"
     tempo_match = re.search(r"_(\d+)BPM$", path.stem, flags=re.IGNORECASE)
-    return _merge_frames(frames, end_seconds=end_seconds), {
+    metadata: dict[str, Any] = {
         "tempo": float(tempo_match.group(1)) if tempo_match else None,
         "meter": meter,
     }
+    beat_times = _strict_source_times(
+        (time_seconds for time_seconds, _bar, _beat in beat_rows),
+        name="IDMT beatTimesSeconds",
+    )
+    downbeat_times = _strict_source_times(
+        (time_seconds for time_seconds, _bar, beat in beat_rows if beat == 1),
+        name="IDMT barStartsSeconds",
+    )
+    # The filename BPM is useful scalar metadata, but it does not establish bar
+    # phase. The bar.beat rows do: IDMT often places 1.1 after a count-in, so the
+    # exact pre-roll is disclosed rather than shifting or discarding the grid.
+    if beat_times and downbeat_times:
+        grid_start = downbeat_times[0]
+        metadata.update(
+            {
+                "beatTimesSeconds": beat_times,
+                "downbeatTimesSeconds": downbeat_times,
+                "barStartsSeconds": downbeat_times,
+                "gridStartSeconds": grid_start,
+                "prefixExcludedSeconds": grid_start,
+                "timingProvenance": {
+                    "sourceFormat": "idmt-dataset-4-chord-csv",
+                    "beatTimesSeconds": {
+                        "status": "explicit",
+                        "sourceField": "bar.beat annotation rows",
+                    },
+                    "barStartsSeconds": {
+                        "status": "explicit",
+                        "sourceRule": "annotated beat-number-equals-1",
+                        "gridStartSeconds": grid_start,
+                        "prefixExcludedSeconds": grid_start,
+                    },
+                    "tempo": {
+                        "status": "derived",
+                        "sourceRule": "filename BPM suffix",
+                        "establishesBarPhase": False,
+                    },
+                },
+            }
+        )
+    return _merge_frames(frames, end_seconds=end_seconds), metadata
 
 
 _MIDI_CHORD_TEMPLATES = {
@@ -234,30 +394,124 @@ def _midi_chord_label(notes: Iterable[int]) -> str | None:
     return normalize_chord(symbol).detailed_symbol
 
 
+def _certified_midi_bar_timing(
+    *,
+    ticks_per_beat: int,
+    end_tick: int,
+    tempo_events: list[tuple[int, int]],
+    time_signature_events: list[tuple[int, int, int]],
+) -> tuple[list[float] | None, dict[str, Any]]:
+    """Certify MIDI bar phase only when every signature boundary is exact."""
+
+    tempo_map = [
+        {
+            "tick": tick,
+            "microsecondsPerQuarter": tempo,
+            "timeSeconds": _tick_seconds(tick, ticks_per_beat, tempo_events),
+        }
+        for tick, tempo in tempo_events
+    ]
+    signature_map = [
+        {"tick": tick, "numerator": numerator, "denominator": denominator}
+        for tick, numerator, denominator in time_signature_events
+    ]
+    provenance: dict[str, Any] = {
+        "sourceFormat": "standard-midi-file",
+        "ticksPerQuarterNote": ticks_per_beat,
+        "tempoMap": tempo_map,
+        "timeSignatureMap": signature_map,
+        "barStartsSeconds": {
+            "status": "uncertifiable",
+            "sourceRule": "MIDI ticks through explicit time-signature and tempo maps",
+        },
+    }
+
+    def uncertifiable(reason: str) -> tuple[None, dict[str, Any]]:
+        provenance["barStartsSeconds"]["reason"] = reason
+        return None, provenance
+
+    if ticks_per_beat <= 0 or end_tick <= 0:
+        return uncertifiable("MIDI resolution or duration is not positive")
+    if not time_signature_events or time_signature_events[0][0] != 0:
+        return uncertifiable("no explicit time-signature event establishes bar phase at tick zero")
+    if any(tempo <= 0 for _tick, tempo in tempo_events):
+        return uncertifiable("tempo map contains a non-positive tempo")
+
+    bar_ticks: list[int] = []
+    previous_start: int | None = None
+    previous_step: int | None = None
+    for index, (start_tick, numerator, denominator) in enumerate(time_signature_events):
+        if numerator <= 0 or denominator <= 0 or denominator & (denominator - 1):
+            return uncertifiable("time-signature map contains an invalid signature")
+        ticks_per_bar = Fraction(numerator * ticks_per_beat * 4, denominator)
+        if ticks_per_bar.denominator != 1 or ticks_per_bar.numerator <= 0:
+            return uncertifiable("time signature does not resolve to whole MIDI ticks per bar")
+        if (
+            previous_start is not None
+            and previous_step is not None
+            and (start_tick - previous_start) % previous_step
+        ):
+            return uncertifiable("a time-signature change occurs between certified bar boundaries")
+        step = int(ticks_per_bar)
+        next_tick = (
+            time_signature_events[index + 1][0]
+            if index + 1 < len(time_signature_events)
+            else end_tick
+        )
+        if next_tick < start_tick:
+            return uncertifiable("time-signature events are not monotonic")
+        tick = start_tick
+        while tick < min(next_tick, end_tick):
+            bar_ticks.append(tick)
+            tick += step
+        previous_start = start_tick
+        previous_step = step
+
+    starts = _strict_source_times(
+        (_tick_seconds(tick, ticks_per_beat, tempo_events) for tick in sorted(set(bar_ticks))),
+        name="NRG-CP barStartsSeconds",
+    )
+    if not _starts_at_zero(starts):
+        return uncertifiable("certified MIDI bar starts do not begin at zero")
+    provenance["barStartsSeconds"] = {
+        "status": "explicit",
+        "sourceRule": "MIDI ticks through explicit time-signature and tempo maps",
+        "barPhaseAnchorTick": 0,
+    }
+    return starts, provenance
+
+
 def parse_nrgcp_midi(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Derive beat-aligned ground truth from an NRG-CP progression MIDI file."""
+    """Derive beat-aligned ground truth and certified native MIDI bar timing."""
 
     mido = importlib.import_module("mido")
     midi = mido.MidiFile(path)
-    tempo = 500_000
-    numerator, denominator = 4, 4
-    for track in midi.tracks:
-        for message in track:
-            if message.type == "set_tempo":
-                tempo = int(message.tempo)
-            elif message.type == "time_signature":
-                numerator, denominator = int(message.numerator), int(message.denominator)
+    merged = list(mido.merge_tracks(midi.tracks))
     attacks: dict[int, list[int]] = {}
     absolute_tick = 0
-    for message in mido.merge_tracks(midi.tracks):
+    tempo_by_tick: dict[int, int] = {0: 500_000}
+    signature_by_tick: dict[int, tuple[int, int]] = {}
+    for message in merged:
         absolute_tick += int(message.time)
-        if message.type == "note_on" and int(message.velocity) > 0:
+        if message.type == "set_tempo":
+            tempo_by_tick[absolute_tick] = int(message.tempo)
+        elif message.type == "time_signature":
+            signature_by_tick[absolute_tick] = (
+                int(message.numerator),
+                int(message.denominator),
+            )
+        elif message.type == "note_on" and int(message.velocity) > 0:
             beat = absolute_tick // midi.ticks_per_beat
             attacks.setdefault(beat, []).append(int(message.note))
     if not attacks:
         raise ValueError(f"No note attacks in {path}.")
+    end_tick = absolute_tick
+    tempo_events = sorted(tempo_by_tick.items())
+    signature_events = [
+        (tick, numerator, denominator)
+        for tick, (numerator, denominator) in sorted(signature_by_tick.items())
+    ]
     last_beat = max(attacks)
-    seconds_per_beat = mido.tick2second(midi.ticks_per_beat, midi.ticks_per_beat, tempo)
     frames: list[tuple[float, str]] = []
     active: str | None = None
     for beat in range(last_beat + 1):
@@ -265,13 +519,36 @@ def parse_nrgcp_midi(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         if inferred is not None:
             active = inferred
         if active is not None:
-            frames.append((beat * seconds_per_beat, active))
-    end_seconds = float(midi.length)
-    return _merge_frames(frames, end_seconds=end_seconds), {
-        "tempo": float(mido.tempo2bpm(tempo)),
-        "meter": f"{numerator}/{denominator}",
-        "durationSeconds": end_seconds,
+            frames.append(
+                (
+                    _tick_seconds(beat * midi.ticks_per_beat, midi.ticks_per_beat, tempo_events),
+                    active,
+                )
+            )
+    end_seconds = _tick_seconds(end_tick, midi.ticks_per_beat, tempo_events)
+    bar_starts, timing_provenance = _certified_midi_bar_timing(
+        ticks_per_beat=midi.ticks_per_beat,
+        end_tick=end_tick,
+        tempo_events=tempo_events,
+        time_signature_events=signature_events,
+    )
+    tempo_values = {tempo for _tick, tempo in tempo_events}
+    signature_values = {
+        (numerator, denominator) for _tick, numerator, denominator in signature_events
     }
+    metadata: dict[str, Any] = {
+        "tempo": 60_000_000 / tempo_events[0][1] if len(tempo_values) == 1 else None,
+        "meter": (
+            f"{signature_events[0][1]}/{signature_events[0][2]}"
+            if bar_starts is not None and len(signature_values) == 1 and signature_events
+            else None
+        ),
+        "durationSeconds": end_seconds,
+        "timingProvenance": timing_provenance,
+    }
+    if bar_starts is not None:
+        metadata["barStartsSeconds"] = bar_starts
+    return _merge_frames(frames, end_seconds=end_seconds), metadata
 
 
 def _render_nrgcp_midi(path: Path, output: Path, *, sample_rate: int = 11_025) -> float:
@@ -393,6 +670,7 @@ def prepare_guitarset(
                 "tempo": metadata.get("tempo"),
                 "meter": metadata.get("meter"),
                 "key": metadata.get("key"),
+                **_timing_manifest_fields(metadata),
             }
         )
     frozen = assign_group_splits(tracks, seed=seed)
@@ -436,6 +714,7 @@ def prepare_aam(
                 "trainingWeight": 1.0,
                 "tempo": metadata["tempo"],
                 "meter": metadata["meter"],
+                **_timing_manifest_fields(metadata),
             }
         )
     frozen = assign_group_splits(tracks, seed=seed)
@@ -527,6 +806,7 @@ def prepare_idmt_guitar(
                 "meter": metadata["meter"],
                 "genre": genre,
                 "performanceSpeed": speed,
+                **_timing_manifest_fields(metadata),
             }
         )
     frozen = assign_group_splits(tracks, seed=seed)
@@ -589,6 +869,7 @@ def prepare_nrgcp(
                 "durationSeconds": duration,
                 "tempo": metadata["tempo"],
                 "meter": metadata["meter"],
+                **_timing_manifest_fields(metadata),
             }
         )
     frozen = assign_group_splits(tracks, seed=seed)

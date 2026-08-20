@@ -13,6 +13,13 @@ import random
 from typing import Any, Iterable, Mapping
 
 from .labels import PITCH_CLASS, SHARP_NAMES, normalize_chord
+from .routing import (
+    FactorizedEvidence,
+    ROUTER_FEATURE_NAMES,
+    ROUTER_FEATURE_SCHEMA,
+    router_summary_features,
+    router_weight,
+)
 
 
 STUDENT_SCHEMA = "chord_student_model_v1"
@@ -1267,6 +1274,102 @@ class StudentBoundaryGuidedEnsembleRecognizer(StudentEnsembleRecognizer):
         return self.numpy.concatenate((chord_logits, boundary_logits[:, None]), axis=-1)
 
 
+def _student_probabilities(logits: Any, numpy: Any) -> Any:
+    values = logits - logits.max(axis=1, keepdims=True)
+    probabilities = numpy.exp(values)
+    return probabilities / probabilities.sum(axis=1, keepdims=True)
+
+
+def _student_factor_probabilities(logits: Any, numpy: Any) -> tuple[Any, Any, Any]:
+    """Return normalized root, conditional-quality, and global-quality evidence."""
+
+    probabilities = _student_probabilities(logits, numpy)
+    root = numpy.zeros((len(probabilities), 13), dtype=probabilities.dtype)
+    root[:, 0] = probabilities[:, 0]
+    conditional_quality = numpy.zeros((len(probabilities), 12, 4), dtype=probabilities.dtype)
+    global_quality = numpy.zeros((len(probabilities), 5), dtype=probabilities.dtype)
+    global_quality[:, 0] = probabilities[:, 0]
+    for quality in range(4):
+        selected = probabilities[:, 1 + quality * 12 : 1 + (quality + 1) * 12]
+        root[:, 1:] += selected
+        global_quality[:, quality + 1] = selected.sum(axis=1)
+        conditional_quality[:, :, quality] = selected
+    conditional_quality /= numpy.maximum(root[:, 1:, None], 1e-12)
+    # A root with effectively no joint mass still needs a valid conditional
+    # distribution so that later quality blending cannot change its root mass.
+    missing = root[:, 1:] <= 1e-12
+    conditional_quality[missing] = 0.25
+    return root, conditional_quality, global_quality
+
+
+def _student_factorized_evidence(
+    logits: Any,
+    boundary_probabilities: Any,
+    numpy: Any,
+) -> FactorizedEvidence:
+    """Adapt the 49-state student output to the router's normalized factors."""
+
+    root, _conditional_quality, quality = _student_factor_probabilities(logits, numpy)
+    mode = numpy.stack(
+        (
+            quality[:, 0],
+            quality[:, 1] + quality[:, 3],
+            quality[:, 2] + quality[:, 4],
+        ),
+        axis=-1,
+    )
+    # The student vocabulary has no independent bass head.  Reusing its root
+    # marginal is explicit and neutral; the runtime blend below does not use it.
+    return FactorizedEvidence(
+        root=root,
+        mode=mode,
+        quality=quality,
+        bass=root.copy(),
+        boundary=boundary_probabilities,
+    )
+
+
+def _blend_student_factor_logits(expanded: Any, conservative: Any, weight: float, numpy: Any) -> Any:
+    """Blend root and per-root quality probabilities without cross-factor feedback."""
+
+    if weight <= 0:
+        return expanded
+    if weight >= 1:
+        return conservative
+    expanded_root, expanded_quality, _expanded_global = _student_factor_probabilities(
+        expanded,
+        numpy,
+    )
+    conservative_root, conservative_quality, _conservative_global = _student_factor_probabilities(
+        conservative,
+        numpy,
+    )
+    root = (1 - weight) * expanded_root + weight * conservative_root
+    quality = (1 - weight) * expanded_quality + weight * conservative_quality
+    probabilities = numpy.zeros_like(expanded_root[:, :1].repeat(STUDENT_CLASSES, axis=1))
+    probabilities[:, 0] = root[:, 0]
+    for quality_index in range(4):
+        probabilities[:, 1 + quality_index * 12 : 1 + (quality_index + 1) * 12] = (
+            root[:, 1:] * quality[:, :, quality_index]
+        )
+    return numpy.log(numpy.maximum(probabilities, 1e-30))
+
+
+def _router_context_value(context: Mapping[str, Any] | None, name: str) -> float:
+    if not isinstance(context, Mapping):
+        return 0.0
+    value = context.get(name, 0.0)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0.0
+    result = float(value)
+    return result if math.isfinite(result) else 0.0
+
+
+def _soft_router_is_valid(artifact: Mapping[str, Any] | None) -> bool:
+    neutral_features = {name: 0.0 for name in ROUTER_FEATURE_NAMES}
+    return router_weight(neutral_features, artifact) > 0
+
+
 class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
     """Blend chord experts with different front ends and a separate boundary guide."""
 
@@ -1279,6 +1382,7 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
         secondary_boundary_model: Path | None = None,
         secondary_boundary_weight: float = 0.5,
         domain_gate: Path | None = None,
+        soft_router: Path | None = None,
         root_guide_only: bool = False,
         quality_models: Iterable[Path] | None = None,
         quality_mode_threshold: float = 0.6,
@@ -1287,6 +1391,8 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
         product_boundary_scale: float = 1.3,
         product_boundary_bias: float = -2.0,
     ) -> None:
+        if domain_gate is not None and soft_router is not None:
+            raise ValueError("The legacy domain gate and soft router are mutually exclusive.")
         self.members = [StudentRecognizer(model) for model in chord_models]
         self.weights = [float(value) for value in chord_weights]
         if len(self.members) < 2 or len(self.members) != len(self.weights):
@@ -1316,6 +1422,14 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
         self.domain_gate = json.loads(domain_gate.read_text(encoding="utf-8")) if domain_gate else None
         if self.domain_gate and self.domain_gate.get("schemaVersion") != "chord_domain_gate_v1":
             raise ValueError("Unsupported chord domain gate schema.")
+        self.soft_router = None
+        if soft_router is not None:
+            try:
+                candidate = json.loads(soft_router.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                candidate = None
+            if isinstance(candidate, Mapping):
+                self.soft_router = candidate
         self.numpy = self.members[0].numpy
         self.quality_guides = [StudentRecognizer(model) for model in quality_models or []]
         if self.quality_guides and len(self.quality_guides) != 2:
@@ -1328,7 +1442,12 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
         self.product_boundary_scale = product_boundary_scale
         self.product_boundary_bias = product_boundary_bias
 
-    def predict(self, audio: Path, *, prediction_id: str | None = None) -> dict[str, Any]:
+    def _inference_state(
+        self,
+        audio: Path,
+        *,
+        include_router_texture: bool,
+    ) -> dict[str, Any]:
         feature_cache: dict[str, tuple[Any, float]] = {}
 
         def features(kind: str) -> tuple[Any, float]:
@@ -1400,40 +1519,89 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
                 (1 - self.secondary_boundary_weight) * boundary_probabilities
                 + self.secondary_boundary_weight * secondary_probabilities
             )
-        duration = min(durations)
-        indices = (
+        prediction_feature_kinds = tuple(sorted(feature_cache))
+        if include_router_texture:
+            features("multiband_chroma_v2")
+        return {
+            "audio": audio,
+            "featureCache": feature_cache,
+            "predictionFeatureKinds": prediction_feature_kinds,
+            "frameCount": frame_count,
+            "duration": min(durations),
+            "expandedLogits": logits,
+            "conservativeLogits": fallback_logits,
+            "expandedBoundary": boundary_probabilities,
+            "conservativeBoundary": primary_boundary_probabilities,
+        }
+
+    def _expanded_path(self, state: Mapping[str, Any]) -> Any:
+        return (
             _factorized_student_path(
-                logits,
+                state["expandedLogits"],
                 self.numpy,
-                boundary_probabilities,
+                state["expandedBoundary"],
                 boundary_scale=self.product_boundary_scale,
                 boundary_bias=self.product_boundary_bias,
             )
             if self.factorized_decoder
             else _viterbi_student(
-                logits,
+                state["expandedLogits"],
                 self.numpy,
-                boundary_probabilities,
+                state["expandedBoundary"],
                 boundary_scale=self.guide.boundary_scale,
                 boundary_bias=self.guide.boundary_bias,
             )
         )
-        route = "expanded-mixture"
-        gate_probability = None
-        if self.domain_gate:
-            gate_probability = domain_gate_probability(guide_features[:frame_count], self.domain_gate, self.numpy)
-            if gate_probability >= float(self.domain_gate["threshold"]):
-                route = "conservative-sparse"
-                logits = fallback_logits
-                indices = _viterbi_student(
-                    fallback_logits,
-                    self.numpy,
-                    primary_boundary_probabilities,
-                    boundary_scale=self.guide.boundary_scale,
-                    boundary_bias=self.guide.boundary_bias,
-                )
-        probabilities = self.numpy.exp(logits - logits.max(axis=1, keepdims=True))
-        probabilities /= probabilities.sum(axis=1, keepdims=True)
+
+    def _conservative_path(self, state: Mapping[str, Any]) -> Any:
+        return _viterbi_student(
+            state["conservativeLogits"],
+            self.numpy,
+            state["conservativeBoundary"],
+            boundary_scale=self.guide.boundary_scale,
+            boundary_bias=self.guide.boundary_bias,
+        )
+
+    def _router_features(
+        self,
+        state: Mapping[str, Any],
+        router_context: Mapping[str, Any] | None,
+    ) -> dict[str, float]:
+        texture_features, _texture_duration = state["featureCache"]["multiband_chroma_v2"]
+        frame_count = int(state["frameCount"])
+        expanded = _student_factorized_evidence(
+            state["expandedLogits"],
+            state["expandedBoundary"],
+            self.numpy,
+        )
+        conservative = _student_factorized_evidence(
+            state["conservativeLogits"],
+            state["conservativeBoundary"],
+            self.numpy,
+        )
+        return router_summary_features(
+            student_audio_profile(texture_features[:frame_count], self.numpy),
+            expanded,
+            conservative,
+            beat_confidence=_router_context_value(router_context, "beatConfidence"),
+            downbeat_confidence=_router_context_value(router_context, "downbeatConfidence"),
+            ood_distance=_router_context_value(router_context, "oodDistance"),
+        )
+
+    def _prediction_payload(
+        self,
+        state: Mapping[str, Any],
+        logits: Any,
+        indices: Any,
+        *,
+        prediction_id: str | None,
+        route: str,
+        gate_probability: float | None,
+        soft_router_weight: float | None = None,
+    ) -> dict[str, Any]:
+        audio = state["audio"]
+        duration = state["duration"]
+        probabilities = _student_probabilities(logits, self.numpy)
         confidences = [float(probabilities[index, value]) for index, value in enumerate(indices)]
         segments: list[dict[str, Any]] = []
         start = 0
@@ -1454,12 +1622,12 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
                     }
                 )
             start = frame
-        return {
+        prediction = {
             "schemaVersion": "chord_prediction_v1",
             "id": prediction_id or audio.name,
             "engine": "chord-student-v1",
             "model": "heterogeneous-boundary-guided-ensemble",
-            "featureKind": "+".join(sorted(feature_cache)),
+            "featureKind": "+".join(state["predictionFeatureKinds"]),
             "durationSeconds": duration,
             "sampleRate": STUDENT_SAMPLE_RATE,
             "frameSeconds": STUDENT_FRAME_SECONDS,
@@ -1477,6 +1645,123 @@ class StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
             "productBoundaryScale": self.product_boundary_scale if self.factorized_decoder else None,
             "productBoundaryBias": self.product_boundary_bias if self.factorized_decoder else None,
             "segments": segments,
+        }
+        if soft_router_weight is not None:
+            prediction["softRouterWeight"] = soft_router_weight
+            prediction["softRouterFeatureSchemaVersion"] = ROUTER_FEATURE_SCHEMA
+        return prediction
+
+    def predict(
+        self,
+        audio: Path,
+        *,
+        prediction_id: str | None = None,
+        router_context: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        soft_router_active = _soft_router_is_valid(self.soft_router)
+        state = self._inference_state(
+            audio,
+            include_router_texture=soft_router_active,
+        )
+        logits = state["expandedLogits"]
+        indices = self._expanded_path(state)
+        route = "expanded-mixture"
+        gate_probability = None
+        soft_weight = None
+        if self.domain_gate:
+            guide_features, _guide_duration = state["featureCache"][self.guide.feature_kind]
+            gate_probability = domain_gate_probability(
+                guide_features[: state["frameCount"]],
+                self.domain_gate,
+                self.numpy,
+            )
+            if gate_probability >= float(self.domain_gate["threshold"]):
+                route = "conservative-sparse"
+                logits = state["conservativeLogits"]
+                indices = self._conservative_path(state)
+        elif soft_router_active:
+            try:
+                features = self._router_features(state, router_context)
+            except (FloatingPointError, IndexError, TypeError, ValueError):
+                features = None
+            weight = router_weight(features, self.soft_router)
+            if weight > 0:
+                soft_weight = weight
+                logits = _blend_student_factor_logits(
+                    state["expandedLogits"],
+                    state["conservativeLogits"],
+                    weight,
+                    self.numpy,
+                )
+                if weight >= 1:
+                    route = "conservative-sparse"
+                    indices = self._conservative_path(state)
+                else:
+                    route = "soft-routed-mixture"
+                    boundary = (
+                        (1 - weight) * state["expandedBoundary"]
+                        + weight * state["conservativeBoundary"]
+                    )
+                    indices = (
+                        _factorized_student_path(
+                            logits,
+                            self.numpy,
+                            boundary,
+                            boundary_scale=self.product_boundary_scale,
+                            boundary_bias=self.product_boundary_bias,
+                        )
+                        if self.factorized_decoder
+                        else _viterbi_student(
+                            logits,
+                            self.numpy,
+                            boundary,
+                            boundary_scale=self.guide.boundary_scale,
+                            boundary_bias=self.guide.boundary_bias,
+                        )
+                    )
+        return self._prediction_payload(
+            state,
+            logits,
+            indices,
+            prediction_id=prediction_id,
+            route=route,
+            gate_probability=gate_probability,
+            soft_router_weight=soft_weight,
+        )
+
+    def predict_counterfactuals(
+        self,
+        audio: Path,
+        *,
+        prediction_id: str | None = None,
+        router_context: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Emit both frozen experts and label-free router features from one pass."""
+
+        state = self._inference_state(audio, include_router_texture=True)
+        expanded = self._prediction_payload(
+            state,
+            state["expandedLogits"],
+            self._expanded_path(state),
+            prediction_id=prediction_id,
+            route="expanded-mixture",
+            gate_probability=None,
+        )
+        conservative = self._prediction_payload(
+            state,
+            state["conservativeLogits"],
+            self._conservative_path(state),
+            prediction_id=prediction_id,
+            route="conservative-sparse",
+            gate_probability=None,
+        )
+        return {
+            "schemaVersion": "chord_router_counterfactual_v1",
+            "id": prediction_id or audio.name,
+            "routerFeatureSchemaVersion": ROUTER_FEATURE_SCHEMA,
+            "routerFeatures": self._router_features(state, router_context),
+            "expanded": expanded,
+            "conservative": conservative,
         }
 
 

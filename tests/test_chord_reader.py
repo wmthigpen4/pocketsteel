@@ -9,6 +9,7 @@ import shutil
 
 import numpy as np
 import pytest
+import steel_guitar_rag.chord_reader.student as student_module
 
 from steel_guitar_rag.chord_reader.benchmark import run_hybrid_benchmark, run_prediction_benchmark
 from steel_guitar_rag.chord_reader.labels import normalize_chord, transpose_chord
@@ -34,6 +35,8 @@ from steel_guitar_rag.chord_reader.manifests import (
 from steel_guitar_rag.chord_reader.metrics import score_segments
 from steel_guitar_rag.chord_reader.student import (
     STUDENT_CLASSES,
+    StudentHeterogeneousBoundaryGuidedEnsembleRecognizer,
+    _blend_student_factor_logits,
     composition_balance_feature_cache,
     frame_labels,
     frame_label_mask,
@@ -51,6 +54,7 @@ from steel_guitar_rag.chord_reader.student import (
     student_label,
     transpose_student_index,
 )
+from steel_guitar_rag.chord_reader.routing import ROUTER_FEATURE_NAMES
 from steel_guitar_rag.chord_reader.promotion import evaluate_promotion
 from steel_guitar_rag.chord_reader.review import build_travis_packet, score_travis_review
 
@@ -131,6 +135,157 @@ def test_domain_gate_profile_and_probability_are_finite() -> None:
     config = json.loads((ROOT / "ui/models/chord-domain-gate-v1.json").read_text())
     probability = domain_gate_probability(features, config, np)
     assert 0 <= probability <= 1
+
+
+class _FakeStudentExpert:
+    def __init__(self, logits: np.ndarray, boundary: np.ndarray | None = None) -> None:
+        self.feature_kind = "multiband_chroma_v2"
+        self.logits = logits
+        self.boundary = boundary
+        self.boundary_aware = boundary is not None
+        self.boundary_scale = 1.0
+        self.boundary_bias = -1.0
+        self.calls = 0
+
+    def _logits(self, _features: np.ndarray) -> np.ndarray:
+        self.calls += 1
+        return self.logits.copy()
+
+    def _outputs(self, _features: np.ndarray) -> np.ndarray:
+        self.calls += 1
+        if self.boundary is None:
+            return self.logits.copy()
+        return np.concatenate((self.logits, self.boundary[:, None]), axis=-1)
+
+
+def _fake_soft_router_recognizer(
+    *,
+    soft_router: dict[str, object] | None,
+) -> StudentHeterogeneousBoundaryGuidedEnsembleRecognizer:
+    frames = 6
+    base = np.full((frames, STUDENT_CLASSES), -9.0, dtype=np.float64)
+    base[:3, student_index("C:maj")] = 9.0
+    base[3:, student_index("G:maj")] = 9.0
+    quality = np.full_like(base, -9.0)
+    quality[:3, student_index("C:7")] = 9.0
+    quality[3:, student_index("G:7")] = 9.0
+    guide_boundary = np.asarray([-8.0, -8.0, 8.0, -8.0, -8.0, -8.0])
+    secondary_boundary = np.asarray([-8.0, 5.0, 5.0, -8.0, -8.0, -8.0])
+
+    recognizer = StudentHeterogeneousBoundaryGuidedEnsembleRecognizer.__new__(
+        StudentHeterogeneousBoundaryGuidedEnsembleRecognizer
+    )
+    recognizer.members = [_FakeStudentExpert(base), _FakeStudentExpert(base), _FakeStudentExpert(base)]
+    recognizer.weights = [0.5, 0.5, 0.0]
+    recognizer.root_guide_only = True
+    recognizer.guide = _FakeStudentExpert(base, guide_boundary)
+    recognizer.secondary_guide = _FakeStudentExpert(base, secondary_boundary)
+    recognizer.secondary_boundary_weight = 0.5
+    recognizer.domain_gate = None
+    recognizer.soft_router = soft_router
+    recognizer.numpy = np
+    recognizer.quality_guides = [_FakeStudentExpert(quality), _FakeStudentExpert(quality)]
+    recognizer.quality_mode_threshold = 0.6
+    recognizer.quality_extension_threshold = 0.7
+    recognizer.factorized_decoder = True
+    recognizer.product_boundary_scale = 1.3
+    recognizer.product_boundary_bias = -2.0
+    return recognizer
+
+
+def _fake_multiband_features(_audio: Path, _kind: str) -> tuple[np.ndarray, float]:
+    features = np.full((6, 61), 1 / 12, dtype=np.float32)
+    features[:, -1] = np.linspace(0.1, 0.2, 6)
+    return features, 0.6
+
+
+def _student_root_probabilities(logits: np.ndarray) -> np.ndarray:
+    values = np.exp(logits - logits.max(axis=1, keepdims=True))
+    values /= values.sum(axis=1, keepdims=True)
+    output = np.zeros((len(values), 13))
+    output[:, 0] = values[:, 0]
+    for quality in range(4):
+        output[:, 1:] += values[:, 1 + quality * 12 : 1 + (quality + 1) * 12]
+    return output
+
+
+def test_soft_router_and_legacy_domain_gate_are_mutually_exclusive() -> None:
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        StudentHeterogeneousBoundaryGuidedEnsembleRecognizer(
+            [],
+            [],
+            Path("boundary.onnx"),
+            domain_gate=Path("domain-gate.json"),
+            soft_router=Path("soft-router.json"),
+        )
+
+
+def test_factor_blend_has_exact_endpoints_and_quality_cannot_move_root() -> None:
+    expanded = np.full((2, STUDENT_CLASSES), -6.0)
+    conservative = np.full((2, STUDENT_CLASSES), -6.0)
+    expanded[:, student_index("C:maj")] = 7.0
+    expanded[:, student_index("G:min7")] = 2.0
+    conservative[:, student_index("C:7")] = 2.0
+    conservative[:, student_index("G:min")] = 7.0
+
+    assert _blend_student_factor_logits(expanded, conservative, 0.0, np) is expanded
+    assert _blend_student_factor_logits(expanded, conservative, 1.0, np) is conservative
+    mixed = _blend_student_factor_logits(expanded, conservative, 0.35, np)
+    expected_root = 0.65 * _student_root_probabilities(expanded) + 0.35 * _student_root_probabilities(
+        conservative
+    )
+    assert _student_root_probabilities(mixed) == pytest.approx(expected_root)
+
+
+def test_invalid_or_zero_soft_router_preserves_existing_prediction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(student_module, "extract_student_features", _fake_multiband_features)
+    baseline = _fake_soft_router_recognizer(soft_router=None).predict(Path("fixture.wav"))
+    invalid = _fake_soft_router_recognizer(soft_router={"schemaVersion": "invalid"}).predict(
+        Path("fixture.wav")
+    )
+    monkeypatch.setattr(student_module, "router_weight", lambda _features, _artifact: 0.0)
+    zero = _fake_soft_router_recognizer(soft_router={}).predict(Path("fixture.wav"))
+    assert invalid == baseline
+    assert zero == baseline
+
+
+def test_soft_router_conservative_endpoint_matches_counterfactual(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(student_module, "extract_student_features", _fake_multiband_features)
+    monkeypatch.setattr(student_module, "router_weight", lambda _features, _artifact: 1.0)
+    routed = _fake_soft_router_recognizer(soft_router={}).predict(Path("fixture.wav"))
+    counterfactual = _fake_soft_router_recognizer(soft_router={}).predict_counterfactuals(
+        Path("fixture.wav")
+    )
+    assert routed["domainRoute"] == "conservative-sparse"
+    assert routed["softRouterWeight"] == 1.0
+    assert routed["segments"] == counterfactual["conservative"]["segments"]
+
+
+def test_counterfactual_api_emits_named_features_from_one_inference_pass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(student_module, "extract_student_features", _fake_multiband_features)
+    recognizer = _fake_soft_router_recognizer(soft_router=None)
+    result = recognizer.predict_counterfactuals(
+        Path("fixture.wav"),
+        prediction_id="fixture",
+        router_context={"beatConfidence": 0.8, "downbeatConfidence": 0.7, "oodDistance": 0.2},
+    )
+    experts = recognizer.members + recognizer.quality_guides + [recognizer.guide, recognizer.secondary_guide]
+    assert all(expert.calls == 1 for expert in experts)
+    assert result["schemaVersion"] == "chord_router_counterfactual_v1"
+    assert list(result["routerFeatures"]) == list(ROUTER_FEATURE_NAMES)
+    assert result["routerFeatures"]["beatConfidence"] == 0.8
+    assert result["routerFeatures"]["downbeatConfidence"] == 0.7
+    assert result["routerFeatures"]["oodDistance"] == 0.2
+    assert result["expanded"]["domainRoute"] == "expanded-mixture"
+    assert result["conservative"]["domainRoute"] == "conservative-sparse"
+    with pytest.raises(TypeError):
+        recognizer.predict_counterfactuals(Path("fixture.wav"), reference={})  # type: ignore[call-arg]
 
 
 def test_group_splits_prevent_composition_leakage() -> None:
@@ -287,6 +442,135 @@ def test_segment_metrics_keep_enharmonic_quality_and_bass_errors_visible() -> No
     assert result["detailedWeightedRecall"] == 0
 
 
+def test_segment_metrics_report_exact_vocabulary_ceiling_and_oov_duration() -> None:
+    reference = [
+        {"start": 0, "end": 1, "label": "Eb:7"},
+        {"start": 1, "end": 3, "label": "C:maj7"},
+        {"start": 3, "end": 4, "label": "D:sus4"},
+        {"start": 4, "end": 5, "label": "A:min/C"},
+    ]
+    prediction = [{"start": 0, "end": 5, "label": "N", "confidence": 0.1}]
+
+    result = score_segments(reference, prediction)
+    coverage = result["vocabularyCoverage"]
+
+    assert coverage["available"] is True
+    assert coverage["vocabularySize"] == 49
+    assert coverage["referenceDurationSeconds"] == 5
+    assert coverage["supportedDurationSeconds"] == 1
+    assert coverage["outOfVocabularyDurationSeconds"] == 4
+    assert coverage["exactDetailedWeightedRecallCeiling"] == pytest.approx(0.2)
+    assert coverage["outOfVocabulary"] == [
+        {"label": "C:maj7", "durationSeconds": 2.0},
+        {"label": "A:min/C", "durationSeconds": 1.0},
+        {"label": "D:sus4", "durationSeconds": 1.0},
+    ]
+
+
+def test_segment_metrics_report_duration_weighted_confusion_and_confidence_curve() -> None:
+    reference = [
+        {"start": 0, "end": 1, "label": "C:maj"},
+        {"start": 1, "end": 2, "label": "G:maj"},
+    ]
+    prediction = [
+        {"start": 0, "end": 1, "label": "C:maj", "confidence": 0.9},
+        {"start": 1, "end": 2, "label": "D:maj", "confidence": 0.2},
+    ]
+
+    result = score_segments(reference, prediction)
+
+    assert result["confusion"]["root"]["cells"] == [
+        {"reference": "C", "prediction": "C", "durationSeconds": 1.0},
+        {"reference": "G", "prediction": "D", "durationSeconds": 1.0},
+    ]
+    curve = {
+        point["minimumConfidence"]: point for point in result["confidenceCoverage"]["curve"]
+    }
+    assert curve[0.0]["coverage"] == 1
+    assert curve[0.0]["detailedPrecision"] == pytest.approx(0.5)
+    assert curve[0.5]["coverage"] == pytest.approx(0.5)
+    assert curve[0.5]["detailedPrecision"] == 1
+    assert curve[0.95]["coverage"] == 0
+    assert curve[0.95]["detailedPrecision"] is None
+    assert result["confidenceCoverage"]["calibration"]["expectedCalibrationError"][
+        "detailed"
+    ] == pytest.approx(0.15)
+
+
+def test_segment_metrics_keep_play_along_product_precision_separate_from_detail() -> None:
+    reference = [{"start": 0, "end": 2, "label": "C:maj7/E"}]
+    prediction = [{"start": 0, "end": 2, "label": "C:maj", "confidence": 0.9}]
+
+    result = score_segments(reference, prediction)
+    curve = {
+        point["minimumConfidence"]: point for point in result["confidenceCoverage"]["curve"]
+    }
+
+    assert result["productWeightedRecall"] == 1
+    assert result["detailedWeightedRecall"] == 0
+    assert curve[0.5]["productPrecision"] == 1
+    assert curve[0.5]["detailedPrecision"] == 0
+    assert curve[0.5]["productCorrectDurationSeconds"] == 2
+    product_cell = result["confusion"]["product"]["cells"][0]
+    assert product_cell == {"reference": "C", "prediction": "C", "durationSeconds": 2.0}
+
+
+@pytest.mark.parametrize(
+    ("reference_labels", "prediction_labels", "operation", "counts"),
+    [
+        (["C", "D"], ["C", "G", "D"], "insert", (1, 0, 0)),
+        (["C", "G", "D"], ["C", "D"], "delete", (0, 1, 0)),
+        (["C", "G"], ["C", "D"], "substitute", (0, 0, 1)),
+    ],
+)
+def test_segment_metrics_report_levenshtein_operation_counts(
+    reference_labels: list[str],
+    prediction_labels: list[str],
+    operation: str,
+    counts: tuple[int, int, int],
+) -> None:
+    reference = [
+        {"start": index, "end": index + 1, "label": label}
+        for index, label in enumerate(reference_labels)
+    ]
+    prediction_duration = len(reference_labels)
+    prediction = [
+        {
+            "start": index * prediction_duration / len(prediction_labels),
+            "end": (index + 1) * prediction_duration / len(prediction_labels),
+            "label": label,
+        }
+        for index, label in enumerate(prediction_labels)
+    ]
+
+    edits = score_segments(reference, prediction)["sequenceEdits"]
+
+    assert edits["distance"] == 1
+    assert edits["counts"] == {
+        "insertions": counts[0],
+        "deletions": counts[1],
+        "substitutions": counts[2],
+    }
+    assert [item["operation"] for item in edits["operations"]] == [operation]
+
+
+def test_segment_metrics_use_collapsed_musical_changes_for_canonical_boundaries() -> None:
+    reference = [
+        {"start": 0, "end": 1, "label": "C:maj"},
+        {"start": 1, "end": 2, "label": "B#:maj7"},
+        {"start": 2, "end": 3, "label": "G:maj"},
+    ]
+    prediction = [
+        {"start": 0, "end": 2, "label": "C:maj"},
+        {"start": 2, "end": 3, "label": "G:maj"},
+    ]
+
+    result = score_segments(reference, prediction)
+
+    assert result["boundary"]["f1"] == 1
+    assert result["authoredSegmentBoundary"]["f1"] == pytest.approx(2 / 3)
+
+
 def test_hybrid_preserves_strong_no_chord_without_forcing_bar_labels() -> None:
     v2 = {
         "id": "song",
@@ -412,6 +696,76 @@ def test_prediction_benchmark_rescores_frozen_predictions_enharmonically(tmp_pat
     assert report["aggregate"]["detailedWeightedRecall"] == 1
 
 
+def test_prediction_benchmark_aggregates_domain_routes_and_extended_diagnostics(
+    tmp_path: Path,
+) -> None:
+    prediction_root = tmp_path / "predictions"
+    prediction_root.mkdir()
+    tracks = []
+    cases = [
+        ("sparse", "C:maj", "C:maj", 0.9, "conservative-sparse", 0.8),
+        ("mixture", "D:maj", "G:maj", 0.4, "expanded-mixture", 0.2),
+    ]
+    for identifier, truth, predicted, confidence, route, gate_probability in cases:
+        reference = tmp_path / f"{identifier}-reference.json"
+        reference.write_text(
+            json.dumps({"segments": [{"start": 0, "end": 2, "label": truth}]}),
+            encoding="utf-8",
+        )
+        (prediction_root / f"{identifier}.json").write_text(
+            json.dumps(
+                {
+                    "engine": "chord-student-v1",
+                    "durationSeconds": 2,
+                    "domainRoute": route,
+                    "domainGateProbability": gate_probability,
+                    "segments": [
+                        {
+                            "start": 0,
+                            "end": 2,
+                            "label": predicted,
+                            "confidence": confidence,
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        tracks.append(
+            {
+                "id": identifier,
+                "datasetId": "fixture",
+                "split": "test",
+                "referencePath": str(reference),
+            }
+        )
+
+    report = run_prediction_benchmark(
+        {"tracks": tracks},
+        prediction_root=prediction_root,
+        engine="student-v8",
+    )
+
+    aggregate = report["aggregate"]
+    assert aggregate["vocabularyCoverage"]["exactDetailedWeightedRecallCeiling"] == 1
+    assert aggregate["sequenceEdits"]["counts"]["substitutions"] == 1
+    assert aggregate["confusion"]["root"]["totalDurationSeconds"] == 4
+    confidence_curve = {
+        point["minimumConfidence"]: point for point in aggregate["confidenceCoverage"]["curve"]
+    }
+    assert confidence_curve[0.5]["coverage"] == pytest.approx(0.5)
+    assert confidence_curve[0.5]["detailedPrecision"] == 1
+    assert aggregate["domainRoutes"]["availableTrackCount"] == 2
+    assert aggregate["domainRoutes"]["meanDomainGateProbability"] == pytest.approx(0.5)
+    assert aggregate["domainRoutes"]["routes"]["conservative-sparse"][
+        "detailedWeightedRecall"
+    ] == 1
+    assert aggregate["domainRoutes"]["routes"]["expanded-mixture"][
+        "detailedWeightedRecall"
+    ] == 0
+    assert report["strata"]["fixture"]["domainRoutes"]["availableTrackCount"] == 2
+
+
 def test_cli_scores_json_segments(tmp_path: Path) -> None:
     reference = tmp_path / "reference.json"
     prediction = tmp_path / "prediction.json"
@@ -535,7 +889,12 @@ def test_idmt_parser_expands_changes_and_normalizes_dataset_notation(tmp_path: P
         {"start": 9.0, "end": 9.5, "label": "E:hdim7"},
         {"start": 9.5, "end": 10.0, "label": "N"},
     ]
-    assert metadata == {"tempo": 120.0, "meter": "4/4"}
+    assert metadata["tempo"] == 120.0
+    assert metadata["meter"] == "4/4"
+    assert metadata["barStartsSeconds"] == [8.0]
+    assert metadata["gridStartSeconds"] == 8.0
+    assert metadata["prefixExcludedSeconds"] == 8.0
+    assert metadata["timingProvenance"]["barStartsSeconds"]["status"] == "explicit"
 
 
 def test_student_frame_labels_use_time_aligned_reference() -> None:
@@ -722,6 +1081,7 @@ def test_promotion_gate_requires_material_gain_and_runtime() -> None:
             "elapsedSeconds": 10,
         }
         return {
+            "schemaVersion": "chord_benchmark_report_v1",
             "engine": engine,
             "aggregate": aggregate,
             "strata": {"guitarset": aggregate},
