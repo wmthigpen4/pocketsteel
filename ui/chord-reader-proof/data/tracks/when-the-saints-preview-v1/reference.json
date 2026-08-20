@@ -1,0 +1,118 @@
+{
+  "barStartsSeconds": [
+    2.0,
+    4.0,
+    6.0,
+    8.0,
+    10.0,
+    12.0,
+    14.0,
+    16.0,
+    18.0,
+    20.0,
+    22.0,
+    24.0,
+    26.0,
+    28.0,
+    30.0,
+    32.0,
+    34.0
+  ],
+  "durationSeconds": 36.5,
+  "id": "when-the-saints-preview-v1",
+  "schemaVersion": "chord_reference_v1",
+  "segments": [
+    {
+      "end": 2.0,
+      "label": "N",
+      "start": 0.0
+    },
+    {
+      "end": 4.0,
+      "label": "G:maj",
+      "start": 2.0
+    },
+    {
+      "end": 6.0,
+      "label": "G:maj",
+      "start": 4.0
+    },
+    {
+      "end": 8.0,
+      "label": "G:maj",
+      "start": 6.0
+    },
+    {
+      "end": 10.0,
+      "label": "G:maj",
+      "start": 8.0
+    },
+    {
+      "end": 12.0,
+      "label": "G:maj",
+      "start": 10.0
+    },
+    {
+      "end": 14.0,
+      "label": "G:maj",
+      "start": 12.0
+    },
+    {
+      "end": 16.0,
+      "label": "G:maj",
+      "start": 14.0
+    },
+    {
+      "end": 18.0,
+      "label": "D:7",
+      "start": 16.0
+    },
+    {
+      "end": 20.0,
+      "label": "D:7",
+      "start": 18.0
+    },
+    {
+      "end": 22.0,
+      "label": "G:maj",
+      "start": 20.0
+    },
+    {
+      "end": 24.0,
+      "label": "G:maj",
+      "start": 22.0
+    },
+    {
+      "end": 26.0,
+      "label": "C:maj",
+      "start": 24.0
+    },
+    {
+      "end": 28.0,
+      "label": "C:maj",
+      "start": 26.0
+    },
+    {
+      "end": 30.0,
+      "label": "G:maj",
+      "start": 28.0
+    },
+    {
+      "end": 32.0,
+      "label": "D:7",
+      "start": 30.0
+    },
+    {
+      "end": 34.0,
+      "label": "G:maj",
+      "start": 32.0
+    },
+    {
+      "end": 36.5,
+      "label": "G:maj",
+      "start": 34.0
+    }
+  ],
+  "source": "hand-authored Steel Guitar RAG lesson timeline",
+  "title": "When the Saints Go Marching In"
+}

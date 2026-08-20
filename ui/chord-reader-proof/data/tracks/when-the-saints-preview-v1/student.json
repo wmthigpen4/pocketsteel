@@ -1,0 +1,67 @@
+{
+  "durationSeconds": 36.49995464852608,
+  "engine": "chord-student-v1",
+  "frameSeconds": 0.1,
+  "id": "when-the-saints-preview-v1",
+  "model": "chord-student-v1.onnx",
+  "sampleRate": 11025,
+  "schemaVersion": "chord_prediction_v1",
+  "segments": [
+    {
+      "confidence": 0.13200638029310438,
+      "end": 1.8,
+      "label": "D#:maj",
+      "productLabel": "D#",
+      "start": 0.0
+    },
+    {
+      "confidence": 0.696195733713937,
+      "end": 16.1,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 1.8
+    },
+    {
+      "confidence": 0.510949664008923,
+      "end": 20.0,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 16.1
+    },
+    {
+      "confidence": 0.6936864133288221,
+      "end": 24.1,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 20.0
+    },
+    {
+      "confidence": 0.6590968132019043,
+      "end": 28.1,
+      "label": "C:maj",
+      "productLabel": "C",
+      "start": 24.1
+    },
+    {
+      "confidence": 0.6602132834237198,
+      "end": 31.0,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 28.1
+    },
+    {
+      "confidence": 0.4399355351924896,
+      "end": 32.1,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 31.0
+    },
+    {
+      "confidence": 0.7151278541846708,
+      "end": 36.49995464852608,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 32.1
+    }
+  ]
+}

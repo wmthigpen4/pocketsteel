@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chord Reader Proof · Amazing Grace</title>
+  <title>Chord Reader Proof Suite</title>
   <link rel="stylesheet" href="./proof.css">
 </head>
 <body>
@@ -11,16 +11,18 @@
     <header class="hero">
       <div>
         <p class="eyebrow">Chord Reader ML v3 · visual proof</p>
-        <h1>Hear the song. Watch both readers.</h1>
-        <p class="lede">This is a real, licensed recording with a hand-authored chord chart. Press play and inspect every bar—green means the reader matches the expected root and major/minor quality; coral means it does not.</p>
+        <h1>Hear every claim.</h1>
+        <p class="lede">Three public-domain songs, 49 hand-authored bars, and every mistake exposed. Choose a song, press play, and compare v2, the raw model, and the hardened hybrid in time with the music.</p>
       </div>
-      <div class="hero-badge"><span id="student-bars">—</span><small>revised bars correct</small></div>
+      <div class="hero-badge"><span id="suite-bars">—</span><small>hybrid bars correct across suite</small></div>
     </header>
+
+    <nav id="track-selector" class="track-selector" aria-label="Choose a proof song"></nav>
 
     <section class="player-card" aria-labelledby="song-title">
       <div class="song-head">
         <div>
-          <p class="eyebrow">Public-domain composition · CC BY recording</p>
+          <p class="eyebrow" id="recording-type">Public-domain proof recording</p>
           <h2 id="song-title">Loading proof…</h2>
           <p id="song-credit" class="muted"></p>
         </div>
@@ -33,7 +35,8 @@
         <div class="bar-marker"><span>BAR</span><strong id="current-bar">Count-in</strong></div>
         <div class="current-chord expected"><span>Hand-authored</span><strong id="current-expected">N.C.</strong></div>
         <div class="current-chord v2"><span>Current v2</span><strong id="current-v2">N.C.</strong></div>
-        <div class="current-chord student"><span>Revised model</span><strong id="current-student">N.C.</strong></div>
+        <div class="current-chord student"><span>Raw model</span><strong id="current-student">N.C.</strong></div>
+        <div class="current-chord hybrid"><span>Hardened hybrid</span><strong id="current-hybrid">N.C.</strong></div>
       </div>
 
       <div class="legend" aria-label="Result legend">
@@ -47,8 +50,8 @@
 
     <section class="results" aria-labelledby="result-heading">
       <div class="section-heading">
-        <p class="eyebrow">What this song proves</p>
-        <h2 id="result-heading">The revised model hears both C changes that v2 misses.</h2>
+        <p class="eyebrow">Selected-song result</p>
+        <h2 id="result-heading">Loading the frozen comparison…</h2>
       </div>
       <div class="score-grid">
         <article class="score-card baseline">
@@ -57,19 +60,39 @@
           <span>musical bars correct</span>
         </article>
         <article class="score-card challenger">
-          <p>Revised model</p>
+          <p>Raw model</p>
           <strong id="student-bar-score">—</strong>
           <span>musical bars correct</span>
         </article>
+        <article class="score-card hybrid">
+          <p>Hardened hybrid</p>
+          <strong id="hybrid-bar-score">—</strong>
+          <span>musical bars correct</span>
+        </article>
         <article class="score-card delta">
-          <p>Difference</p>
+          <p>Hybrid vs v2</p>
           <strong id="bar-delta">—</strong>
           <span>additional correct bars</span>
         </article>
       </div>
       <div class="honesty-note">
-        <h3>The unflattering metric is visible too.</h3>
-        <p>The revised model labels the two-bar count-in as chords and has noisier boundaries. Whole-track major/minor WCSR is therefore <strong id="student-song-wcsr">—</strong>, versus <strong id="v2-song-wcsr">—</strong> for v2—even though the revised model identifies 15 of 16 musical bars versus 13 of 16. This is the next concrete defect to fix, not something this page hides.</p>
+        <h3>Duration-weighted score, including regressions</h3>
+        <p id="track-note">Loading…</p>
+      </div>
+    </section>
+
+    <section class="public-proof" aria-labelledby="suite-heading">
+      <div class="section-heading">
+        <p class="eyebrow">Public-domain proof suite</p>
+        <h2 id="suite-heading">Three songs · 49 musical bars</h2>
+        <p class="muted">The licensed human performance and two app-owned deterministic performances are reported separately. A win on a generated track is not presented as equivalent to a human recording.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Song</th><th>Recording</th><th>v2 bars</th><th>Hybrid bars</th><th>v2 WCSR</th><th>Hybrid WCSR</th></tr></thead>
+          <tbody id="suite-body"></tbody>
+          <tfoot id="suite-foot"></tfoot>
+        </table>
       </div>
     </section>
 
@@ -96,7 +119,7 @@
       <div>
         <p class="eyebrow">No hand-picked output</p>
         <h2 id="reproduce-heading">Regenerate the evidence locally</h2>
-        <p>The page reads frozen JSON emitted directly by the current v2 analyzer and the tracked ONNX model. The model and audio hashes are displayed so a changed artifact cannot masquerade as this run.</p>
+        <p>The page reads frozen JSON emitted directly by v2, the tracked ONNX model, and the conservative no-chord overlay. The model and selected-audio hashes are displayed so changed artifacts cannot masquerade as this run.</p>
       </div>
       <div class="code-panel">
         <code id="reproduce-command">python scripts/build_chord_reader_proof.py</code>

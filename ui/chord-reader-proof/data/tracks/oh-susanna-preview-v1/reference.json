@@ -1,0 +1,117 @@
+{
+  "barStartsSeconds": [
+    1.9,
+    3.8,
+    5.7,
+    7.6,
+    9.5,
+    11.4,
+    13.3,
+    15.2,
+    17.1,
+    19.0,
+    20.9,
+    22.8,
+    24.7,
+    26.6,
+    28.5,
+    30.4
+  ],
+  "durationSeconds": 32.8,
+  "id": "oh-susanna-preview-v1",
+  "schemaVersion": "chord_reference_v1",
+  "segments": [
+    {
+      "end": 1.9,
+      "label": "N",
+      "start": 0.0
+    },
+    {
+      "end": 3.8,
+      "label": "G:maj",
+      "start": 1.9
+    },
+    {
+      "end": 5.7,
+      "label": "G:maj",
+      "start": 3.8
+    },
+    {
+      "end": 7.6,
+      "label": "G:maj",
+      "start": 5.7
+    },
+    {
+      "end": 9.5,
+      "label": "G:maj",
+      "start": 7.6
+    },
+    {
+      "end": 11.4,
+      "label": "D:7",
+      "start": 9.5
+    },
+    {
+      "end": 13.3,
+      "label": "G:maj",
+      "start": 11.4
+    },
+    {
+      "end": 15.2,
+      "label": "G:maj",
+      "start": 13.3
+    },
+    {
+      "end": 17.1,
+      "label": "D:7",
+      "start": 15.2
+    },
+    {
+      "end": 18.05,
+      "label": "G:maj",
+      "start": 17.1
+    },
+    {
+      "end": 19.0,
+      "label": "C:maj",
+      "start": 18.05
+    },
+    {
+      "end": 20.9,
+      "label": "C:maj",
+      "start": 19.0
+    },
+    {
+      "end": 22.8,
+      "label": "G:maj",
+      "start": 20.9
+    },
+    {
+      "end": 24.7,
+      "label": "D:7",
+      "start": 22.8
+    },
+    {
+      "end": 26.6,
+      "label": "G:maj",
+      "start": 24.7
+    },
+    {
+      "end": 28.5,
+      "label": "G:maj",
+      "start": 26.6
+    },
+    {
+      "end": 30.4,
+      "label": "D:7",
+      "start": 28.5
+    },
+    {
+      "end": 32.8,
+      "label": "G:maj",
+      "start": 30.4
+    }
+  ],
+  "source": "hand-authored Steel Guitar RAG lesson timeline",
+  "title": "Oh! Susanna"
+}

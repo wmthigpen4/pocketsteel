@@ -1,0 +1,95 @@
+{
+  "durationSeconds": 32.8,
+  "engine": "chord-student-v1",
+  "frameSeconds": 0.1,
+  "id": "oh-susanna-preview-v1",
+  "model": "chord-student-v1.onnx",
+  "sampleRate": 11025,
+  "schemaVersion": "chord_prediction_v1",
+  "segments": [
+    {
+      "confidence": 0.10230635479092598,
+      "end": 1.4000000000000001,
+      "label": "D#:maj",
+      "productLabel": "D#",
+      "start": 0.0
+    },
+    {
+      "confidence": 0.628326138412511,
+      "end": 9.5,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 1.4000000000000001
+    },
+    {
+      "confidence": 0.5951610025432374,
+      "end": 11.3,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 9.5
+    },
+    {
+      "confidence": 0.6125947156300148,
+      "end": 16.1,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 11.3
+    },
+    {
+      "confidence": 0.27601496428251265,
+      "end": 17.1,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 16.1
+    },
+    {
+      "confidence": 0.28473176807165146,
+      "end": 17.900000000000002,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 17.1
+    },
+    {
+      "confidence": 0.738703197799623,
+      "end": 21.1,
+      "label": "C:maj",
+      "productLabel": "C",
+      "start": 17.900000000000002
+    },
+    {
+      "confidence": 0.6704080104827881,
+      "end": 22.900000000000002,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 21.1
+    },
+    {
+      "confidence": 0.5688267963774064,
+      "end": 24.6,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 22.900000000000002
+    },
+    {
+      "confidence": 0.6252171695232391,
+      "end": 29.3,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 24.6
+    },
+    {
+      "confidence": 0.38083047247849977,
+      "end": 30.6,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 29.3
+    },
+    {
+      "confidence": 0.5020663311535661,
+      "end": 32.8,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 30.6
+    }
+  ]
+}

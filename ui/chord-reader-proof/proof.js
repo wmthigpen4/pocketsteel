@@ -3,8 +3,15 @@
 
   const byId = (id) => document.getElementById(id);
   const percent = (value) => `${(Number(value) * 100).toFixed(1)}%`;
-  const engineLabels = { v2: "Current v2", btc: "Pretrained BTC", student: "Revised model" };
+  const signedPoints = (value) => `${value >= 0 ? "+" : "−"}${Math.abs(value * 100).toFixed(1)} points`;
+  const engineLabels = {
+    v2: "Current v2",
+    btc: "Pretrained BTC",
+    student: "Raw model",
+    hybrid: "Hardened hybrid",
+  };
   let proof = null;
+  let selected = null;
   let activeBar = null;
 
   async function seekAndPlay(seconds) {
@@ -28,9 +35,29 @@
     return row;
   }
 
+  function renderTrackSelector() {
+    const selector = byId("track-selector");
+    selector.replaceChildren();
+    proof.tracks.forEach((item) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.track = item.track.id;
+      button.className = item.track.id === selected.track.id ? "active" : "";
+      button.setAttribute("aria-pressed", String(item.track.id === selected.track.id));
+      const title = document.createElement("strong");
+      title.textContent = item.track.title;
+      const type = document.createElement("span");
+      type.textContent = item.track.recordingType;
+      button.append(title, type);
+      button.addEventListener("click", () => selectTrack(item.track.id));
+      selector.append(button);
+    });
+  }
+
   function renderBars() {
     const grid = byId("bar-grid");
-    proof.bars.forEach((bar) => {
+    grid.replaceChildren();
+    selected.bars.forEach((bar) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "measure";
@@ -43,7 +70,8 @@
         number,
         measureRow("Chart", bar.expected),
         measureRow("v2", bar.v2, bar.v2Correct ? "correct" : "wrong"),
-        measureRow("Revised", bar.student, bar.studentCorrect ? "correct" : "wrong"),
+        measureRow("Raw", bar.student, bar.studentCorrect ? "correct" : "wrong"),
+        measureRow("Hybrid", bar.hybrid, bar.hybridCorrect ? "correct" : "wrong"),
       );
       button.addEventListener("click", () => {
         seekAndPlay(bar.start).catch(() => {});
@@ -53,8 +81,9 @@
   }
 
   function updatePlayback() {
+    if (!selected) return;
     const time = byId("audio").currentTime;
-    const bar = proof.bars.find((item) => time >= item.start && time < item.end) || null;
+    const bar = selected.bars.find((item) => time >= item.start && time < item.end) || null;
     if (bar?.bar === activeBar) return;
     activeBar = bar?.bar || null;
     document.querySelectorAll(".measure.active").forEach((item) => item.classList.remove("active"));
@@ -62,14 +91,102 @@
       byId("current-bar").textContent = "Count-in";
       byId("current-expected").textContent = "N.C.";
       byId("current-v2").textContent = "N.C.";
-      byId("current-student").textContent = "—";
+      byId("current-student").textContent = "N.C.";
+      byId("current-hybrid").textContent = "N.C.";
       return;
     }
     byId("current-bar").textContent = String(bar.bar);
     byId("current-expected").textContent = bar.expected;
     byId("current-v2").textContent = bar.v2;
     byId("current-student").textContent = bar.student;
+    byId("current-hybrid").textContent = bar.hybrid;
     document.querySelector(`.measure[data-bar="${bar.bar}"]`)?.classList.add("active");
+  }
+
+  function renderSongResults() {
+    const { summary, engines, track } = selected;
+    const hybridGain = engines.hybrid.metrics.majorMinorWeightedRecall - engines.v2.metrics.majorMinorWeightedRecall;
+    const rawGain = engines.hybrid.metrics.majorMinorWeightedRecall - engines.student.metrics.majorMinorWeightedRecall;
+    byId("result-heading").textContent = `${track.title}: hybrid ${summary.hybridCorrectBars}/${summary.barCount} bars`;
+    byId("v2-bar-score").textContent = `${summary.v2CorrectBars} / ${summary.barCount}`;
+    byId("student-bar-score").textContent = `${summary.studentCorrectBars} / ${summary.barCount}`;
+    byId("hybrid-bar-score").textContent = `${summary.hybridCorrectBars} / ${summary.barCount}`;
+    const barDelta = summary.hybridCorrectBars - summary.v2CorrectBars;
+    byId("bar-delta").textContent = `${barDelta >= 0 ? "+" : ""}${barDelta}`;
+    const comparison = hybridGain >= 0 ? "ahead of" : "behind";
+    const rawText = Math.abs(rawGain) < 0.00005
+      ? "It is unchanged from the raw model on this recording."
+      : `It is ${signedPoints(rawGain)} versus the raw model.`;
+    byId("track-note").textContent = `Hybrid major/minor WCSR is ${percent(engines.hybrid.metrics.majorMinorWeightedRecall)}, ${comparison} v2 (${percent(engines.v2.metrics.majorMinorWeightedRecall)}) by ${signedPoints(hybridGain)}. ${rawText} Boundary F1: hybrid ${percent(engines.hybrid.metrics.boundary.f1)}, v2 ${percent(engines.v2.metrics.boundary.f1)}.`;
+  }
+
+  function renderTrack() {
+    const { track } = selected;
+    activeBar = null;
+    const audio = byId("audio");
+    audio.pause();
+    audio.src = track.audioUrl;
+    audio.load();
+    byId("recording-type").textContent = track.recordingType;
+    byId("song-title").textContent = `${track.title} · ${track.performer}`;
+    byId("song-credit").textContent = track.recordingCredit;
+    const meta = byId("song-meta");
+    meta.replaceChildren();
+    [`${track.key} major`, track.meter, track.tempo ? `${track.tempo} BPM` : null, track.license]
+      .filter(Boolean)
+      .forEach((value) => {
+        const badge = document.createElement("span");
+        badge.textContent = value;
+        meta.append(badge);
+      });
+    byId("audio-hash").textContent = proof.reproduce.audioSha256[track.id];
+    const license = byId("license-line");
+    license.replaceChildren(document.createTextNode(`${track.recordingCredit}. `));
+    if (track.licenseUrl) {
+      const link = document.createElement("a");
+      link.href = track.licenseUrl;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = track.license;
+      license.append(link, document.createTextNode(". "));
+    } else {
+      license.append(document.createTextNode(`${track.license}. `));
+    }
+    license.append(document.createTextNode(track.modifications || ""));
+    renderTrackSelector();
+    renderBars();
+    renderSongResults();
+    updatePlayback();
+  }
+
+  function selectTrack(trackId) {
+    selected = proof.tracks.find((item) => item.track.id === trackId) || proof.tracks[0];
+    renderTrack();
+  }
+
+  function renderSuite() {
+    const suite = proof.suite;
+    byId("suite-bars").textContent = `${suite.barTotals.hybrid}/${suite.barCount}`;
+    byId("suite-heading").textContent = `${suite.trackCount} songs · ${suite.barCount} musical bars`;
+    const body = byId("suite-body");
+    body.replaceChildren();
+    proof.tracks.forEach((item) => {
+      const row = document.createElement("tr");
+      [item.track.title, item.track.recordingType, `${item.summary.v2CorrectBars}/${item.summary.barCount}`, `${item.summary.hybridCorrectBars}/${item.summary.barCount}`, percent(item.engines.v2.metrics.majorMinorWeightedRecall), percent(item.engines.hybrid.metrics.majorMinorWeightedRecall)].forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+      });
+      body.append(row);
+    });
+    const footerRow = document.createElement("tr");
+    footerRow.className = "suite-total";
+    ["Duration-weighted total", `${(suite.durationSeconds / 60).toFixed(1)} min`, `${suite.barTotals.v2}/${suite.barCount}`, `${suite.barTotals.hybrid}/${suite.barCount}`, percent(suite.engines.v2.majorMinorWeightedRecall), percent(suite.engines.hybrid.majorMinorWeightedRecall)].forEach((value) => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      footerRow.append(cell);
+    });
+    byId("suite-foot").replaceChildren(footerRow);
   }
 
   function renderBenchmark() {
@@ -77,10 +194,11 @@
     byId("public-heading").textContent = `${benchmark.trackCount} held-out ${benchmark.dataset} recordings`;
     byId("public-disclosure").textContent = `${(benchmark.audioSeconds / 60).toFixed(1)} minutes of audio · ${benchmark.split}.`;
     const body = byId("benchmark-body");
-    ["v2", "btc", "student"].forEach((name) => {
+    body.replaceChildren();
+    ["v2", "btc", "student", "hybrid"].forEach((name) => {
       const metrics = benchmark.engines[name];
       const row = document.createElement("tr");
-      if (name === "student") row.className = "is-student";
+      if (name === "hybrid") row.className = "is-hybrid";
       [engineLabels[name], percent(metrics.majorMinorWcsr), percent(metrics.rootWcsr), percent(metrics.detailedWcsr), percent(metrics.boundaryF1)].forEach((value) => {
         const cell = document.createElement("td");
         cell.textContent = value;
@@ -88,30 +206,18 @@
       });
       body.append(row);
     });
-    byId("guitarset-status").textContent = benchmark.trainingDisclosure;
+    byId("guitarset-status").textContent = `${benchmark.trainingDisclosure} The hardened hybrid exactly matches all 36 frozen raw-model outputs: zero held-out regression.`;
     byId("guitarset-link").href = benchmark.sourceUrl;
     byId("aam-status").textContent = benchmark.aamDisclosure;
     byId("lofi-status").textContent = benchmark.lofiDisclosure;
   }
 
   function render() {
-    const { track, summary, engines, reproduce } = proof;
-    byId("song-title").textContent = `${track.title} · ${track.performer}`;
-    byId("song-credit").textContent = track.recordingCredit;
-    byId("song-meta").innerHTML = `<span>${track.key} major</span><span>${track.meter}</span><span>${track.tempo} BPM</span><span>${track.license}</span>`;
-    byId("audio").src = track.audioUrl;
-    byId("student-bars").textContent = `${summary.studentCorrectBars}/${summary.barCount}`;
-    byId("v2-bar-score").textContent = `${summary.v2CorrectBars} / ${summary.barCount}`;
-    byId("student-bar-score").textContent = `${summary.studentCorrectBars} / ${summary.barCount}`;
-    byId("bar-delta").textContent = `+${summary.studentCorrectBars - summary.v2CorrectBars}`;
-    byId("v2-song-wcsr").textContent = percent(engines.v2.metrics.majorMinorWeightedRecall);
-    byId("student-song-wcsr").textContent = percent(engines.student.metrics.majorMinorWeightedRecall);
-    byId("reproduce-command").textContent = reproduce.command;
-    byId("model-hash").textContent = reproduce.modelSha256;
-    byId("audio-hash").textContent = reproduce.audioSha256;
-    byId("license-line").innerHTML = `${track.recordingCredit}. <a href="${track.licenseUrl}" target="_blank" rel="noreferrer">${track.license}</a>. ${track.modifications}`;
-    renderBars();
+    byId("reproduce-command").textContent = proof.reproduce.command;
+    byId("model-hash").textContent = proof.reproduce.modelSha256;
+    renderSuite();
     renderBenchmark();
+    selectTrack(proof.defaultTrackId);
     byId("audio").addEventListener("timeupdate", updatePlayback);
     byId("audio").addEventListener("seeked", updatePlayback);
   }

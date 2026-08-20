@@ -11,6 +11,7 @@ import time
 from typing import Any, Iterable, Mapping
 
 from .btc import BTCRecognizer
+from .hybrid import hybridize_predictions
 from .metrics import score_segments
 from .student import StudentRecognizer
 
@@ -135,5 +136,60 @@ def run_benchmark(
         "peakResidentMemoryBytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         "aggregate": _aggregate(rows),
         "strata": {dataset_id: _aggregate(row for row in rows if row["datasetId"] == dataset_id) for dataset_id in dataset_ids},
+        "tracks": rows,
+    }
+
+
+def run_hybrid_benchmark(
+    manifest: Mapping[str, Any],
+    *,
+    v2_prediction_root: Path,
+    student_prediction_root: Path,
+    output_root: Path,
+    split: str = "test",
+) -> dict[str, Any]:
+    """Freeze the conservative hybrid from already-frozen engine predictions."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    tracks = [track for track in manifest["tracks"] if split == "all" or track["split"] == split]
+    if not tracks:
+        raise ValueError(f"No tracks selected for split {split!r}.")
+    rows: list[dict[str, Any]] = []
+    for track in tracks:
+        identifier = str(track["id"])
+        v2 = json.loads((v2_prediction_root / f"{identifier}.json").read_text(encoding="utf-8"))
+        student = json.loads((student_prediction_root / f"{identifier}.json").read_text(encoding="utf-8"))
+        started = time.perf_counter()
+        prediction = hybridize_predictions(v2, student)
+        elapsed = time.perf_counter() - started
+        prediction_path = output_root / "predictions" / "hybrid" / f"{identifier}.json"
+        _write_json(prediction_path, prediction)
+        reference = json.loads(Path(track["referencePath"]).read_text(encoding="utf-8"))
+        rows.append(
+            {
+                "id": identifier,
+                "datasetId": track["datasetId"],
+                "split": track["split"],
+                "elapsedSeconds": elapsed,
+                "audioDurationSeconds": prediction.get("durationSeconds"),
+                "metrics": score_segments(reference["segments"], prediction["segments"]),
+                "predictionFile": f"predictions/hybrid/{identifier}.json",
+            }
+        )
+    dataset_ids = sorted({str(row["datasetId"]) for row in rows})
+    git_revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    return {
+        "schemaVersion": "chord_benchmark_report_v1",
+        "engine": "hybrid",
+        "split": split,
+        "gitRevision": git_revision,
+        "peakResidentMemoryBytes": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        "aggregate": _aggregate(rows),
+        "strata": {
+            dataset_id: _aggregate(row for row in rows if row["datasetId"] == dataset_id)
+            for dataset_id in dataset_ids
+        },
         "tracks": rows,
     }

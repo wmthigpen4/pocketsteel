@@ -51,48 +51,99 @@
     try { return global.localStorage?.getItem(ML_FEATURE_FLAG) === "ml-v3"; } catch (_error) { return false; }
   }
 
-  function nearestBeat(value, beatTimesMs) {
-    if (!beatTimesMs.length) return value;
-    const nearest = beatTimesMs.reduce((best, beat) => Math.abs(beat - value) < Math.abs(best - value) ? beat : best, beatTimesMs[0]);
-    const intervals = beatTimesMs.slice(1).map((beat, index) => beat - beatTimesMs[index]).filter((interval) => interval > 0);
-    const typical = intervals.length ? intervals.sort((left, right) => left - right)[Math.floor(intervals.length / 2)] : 500;
-    return Math.abs(nearest - value) <= Math.max(120, typical * 0.48) ? nearest : value;
+  function overlapMs(start, end, segment) {
+    return Math.max(0, Math.min(end, Number(segment.endMs)) - Math.max(start, Number(segment.startMs)));
+  }
+
+  function dominantSegment(segments, start, end, symbolKey) {
+    const values = new Map();
+    (segments || []).forEach((segment) => {
+      const duration = overlapMs(start, end, segment);
+      if (!duration) return;
+      const symbol = String(segment[symbolKey] || segment.symbol || segment.finalSymbol || "N.C.");
+      const current = values.get(symbol) || { duration: 0, confidenceMass: 0 };
+      current.duration += duration;
+      current.confidenceMass += duration * Number(segment.confidence || 0);
+      values.set(symbol, current);
+    });
+    if (!values.size) return null;
+    const [symbol, value] = [...values.entries()].sort((left, right) => right[1].duration - left[1].duration)[0];
+    return {
+      symbol,
+      coverage: value.duration / Math.max(1, end - start),
+      confidence: value.confidenceMass / Math.max(1, value.duration)
+    };
+  }
+
+  function hybridSegments(base, ml) {
+    const durationMs = Number(base.durationMs);
+    let leadingEnd = 0, leadingConfidenceMass = 0;
+    for (const segment of [...(base.chords || [])].sort((left, right) => Number(left.startMs) - Number(right.startMs))) {
+      const start = Number(segment.startMs), end = Number(segment.endMs), confidence = Number(segment.confidence || 0);
+      if (start > leadingEnd + 50 || String(segment.symbol || segment.finalSymbol) !== "N.C." || confidence < 0.75) break;
+      leadingConfidenceMass += (end - start) * confidence;
+      leadingEnd = end;
+    }
+    let studentConfidenceMass = 0, studentDuration = 0;
+    (ml.segments || []).forEach((segment) => {
+      const duration = overlapMs(0, leadingEnd, segment);
+      studentConfidenceMass += duration * Number(segment.confidence || 0);
+      studentDuration += duration;
+    });
+    const studentMeanConfidence = studentConfidenceMass / Math.max(1, studentDuration);
+    const noChord = leadingEnd >= 3000 && studentDuration > 0 && studentMeanConfidence <= 0.32
+      ? [{ startMs: 0, endMs: leadingEnd, confidence: leadingConfidenceMass / Math.max(1, leadingEnd) }]
+      : [];
+    const boundaries = new Set([0, durationMs]);
+    (ml.segments || []).forEach((segment) => { boundaries.add(Number(segment.startMs)); boundaries.add(Number(segment.endMs)); });
+    noChord.forEach((segment) => { boundaries.add(Number(segment.startMs)); boundaries.add(Number(segment.endMs)); });
+    const ordered = [...boundaries].filter((value) => value >= 0 && value <= durationMs).sort((left, right) => left - right);
+    const output = [];
+    for (let index = 0; index + 1 < ordered.length; index += 1) {
+      const startMs = ordered[index], endMs = ordered[index + 1];
+      if (endMs <= startMs) continue;
+      const midpoint = startMs + (endMs - startMs) / 2;
+      const silence = noChord.find((segment) => Number(segment.startMs) <= midpoint && midpoint < Number(segment.endMs));
+      const student = dominantSegment(ml.segments, startMs, endMs, "symbol");
+      const fallback = dominantSegment(base.chords, startMs, endMs, "symbol");
+      const value = silence
+        ? { symbol: "N.C.", confidence: Number(silence.confidence || 0), sourceEngine: "v2-no-chord" }
+        : student
+          ? { symbol: student.symbol, confidence: student.confidence, sourceEngine: "student" }
+          : { symbol: fallback?.symbol || "N.C.", confidence: fallback?.confidence || 0, sourceEngine: "v2-fallback" };
+      const previous = output.at(-1);
+      if (previous && previous.symbol === value.symbol && previous.sourceEngine === value.sourceEngine) {
+        const previousDuration = previous.endMs - previous.startMs, currentDuration = endMs - startMs;
+        previous.confidence = (previous.confidence * previousDuration + value.confidence * currentDuration) / Math.max(1, previousDuration + currentDuration);
+        previous.endMs = endMs;
+      } else output.push({ startMs, endMs, ...value });
+    }
+    return output;
   }
 
   function mergeMlAnalysis(base, ml) {
     if (!Array.isArray(ml?.segments) || !ml.segments.length) throw new Error("The ML reader returned no chord segments.");
-    const barStarts = Array.isArray(base.barStartsMs) ? base.barStartsMs : [];
-    const beatTimes = Array.isArray(base.beatTimesMs) ? base.beatTimesMs : [];
-    const snapped = ml.segments.map((segment) => ({ ...segment, startMs: nearestBeat(Number(segment.startMs), beatTimes) }));
-    const chords = [];
-    snapped.forEach((segment, index) => {
-      let barIndex = barStarts.findIndex((start) => start > segment.startMs) - 1;
-      if (barIndex < 0) barIndex = Math.max(0, barStarts.length - 1);
-      if (barStarts.length && segment.startMs < barStarts[0]) barIndex = 0;
-      const barStart = Number(barStarts[barIndex] ?? 0);
-      const barEnd = Number(barStarts[barIndex + 1] ?? base.durationMs);
-      const startMs = Math.max(barStart, Number(segment.startMs));
-      const endMs = Math.max(startMs + 1, Math.min(Number(snapped[index + 1]?.startMs ?? segment.endMs), Number(base.durationMs)));
+    const barStarts = Array.isArray(base.barStartsMs) ? base.barStartsMs.map(Number) : [];
+    const chords = hybridSegments(base, ml).map((segment, index) => {
+      let barIndex = 0;
+      barStarts.forEach((start, candidate) => { if (start <= segment.startMs) barIndex = candidate; });
       const confidence = Number(segment.confidence || 0);
-      const reviewed = confidence >= 0.8;
+      const reviewed = segment.sourceEngine === "v2-no-chord" || confidence >= 0.8;
       const symbol = String(segment.symbol || "N.C.");
-      const event = {
-        id: `ml-chord-${barIndex + 1}-${index + 1}`,
+      return {
+        id: `hybrid-chord-${index + 1}`,
         bar: barIndex + 1,
-        startFraction: Math.max(0, Math.min(1, (startMs - barStart) / Math.max(1, barEnd - barStart))),
-        startMs, endMs, symbol, rawCandidate: symbol, finalSymbol: symbol,
+        startFraction: barStarts.length ? Math.max(0, Math.min(1, (segment.startMs - barStarts[barIndex]) / Math.max(1, Number(barStarts[barIndex + 1] ?? base.durationMs) - barStarts[barIndex]))) : 0,
+        startMs: segment.startMs, endMs: segment.endMs, symbol, rawCandidate: symbol, finalSymbol: symbol,
         alternatives: [], confidence, contextualAdjusted: false, rootAdjusted: false, qualityAdjusted: false,
         rootStatus: symbol === "N.C." ? "no_chord" : "audio_supported",
         qualityStatus: "audio_supported", publicationSymbol: reviewed ? symbol : null,
         sequenceConfidence: confidence,
-        reviewReasons: [reviewed ? "The supervised audio model strongly supports this chord." : "The supervised audio model is uncertain; review this chord."],
-        reviewed, needsAttention: !reviewed, sourceEngine: "chord-student-v1"
+        reviewReasons: [segment.sourceEngine === "v2-no-chord" ? "The timing reader strongly supports a no-chord region." : reviewed ? "The supervised audio model strongly supports this bar-level chord." : "The supervised audio model is uncertain; review this bar-level chord."],
+        reviewed, needsAttention: !reviewed, sourceEngine: segment.sourceEngine
       };
-      const previous = chords.at(-1);
-      if (previous && previous.symbol === event.symbol && previous.bar === event.bar) previous.endMs = event.endMs;
-      else chords.push(event);
     });
-    return { ...base, analysisVersion: 3, chordReaderEngine: "ml-v3", mlModel: ml.engine, chords };
+    return { ...base, analysisVersion: 3, chordReaderEngine: "hybrid-v1", mlModel: ml.engine, chords };
   }
 
   async function analyzeFile(file, options = {}, onProgress = () => {}, signal) {
@@ -136,7 +187,7 @@
   }
 
   global.STEEL_RAG_ANALYSIS_CLIENT = {
-    WORKER_URL, ML_WORKER_URL, ML_FEATURE_FLAG, decodeAudio, monoSamples, runWorker, mlEnabled, mergeMlAnalysis,
+    WORKER_URL, ML_WORKER_URL, ML_FEATURE_FLAG, decodeAudio, monoSamples, runWorker, mlEnabled, dominantSegment, hybridSegments, mergeMlAnalysis,
     analyzeFile, redecode, redecodeRegions
   };
 })(window);

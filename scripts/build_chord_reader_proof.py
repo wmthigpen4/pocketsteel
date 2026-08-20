@@ -1,33 +1,41 @@
 #!/usr/bin/env python3
-"""Build the committed, inspectable Amazing Grace chord-reader proof data."""
+"""Build the committed, inspectable public-domain chord-reader proof suite."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
 import subprocess
 import sys
-from typing import Any, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from steel_guitar_rag.chord_reader.hybrid import hybridize_predictions
 from steel_guitar_rag.chord_reader.labels import normalize_chord
 from steel_guitar_rag.chord_reader.metrics import score_segments
 from steel_guitar_rag.chord_reader.student import StudentRecognizer
 
 
 TRACK_MANIFEST = REPO_ROOT / "steel_guitar_rag/resources/song_practice_tracks/manifest.json"
-TRACK_ID = "amazing-grace-kevin-macleod-lesson-v1"
+TRACK_IDS = (
+    "amazing-grace-kevin-macleod-lesson-v1",
+    "when-the-saints-preview-v1",
+    "oh-susanna-preview-v1",
+)
+DEFAULT_TRACK_ID = TRACK_IDS[0]
 MODEL = REPO_ROOT / "ui/models/chord-student-v1.onnx"
 DEFAULT_OUTPUT = REPO_ROOT / "ui/chord-reader-proof/data"
 PUBLIC_REPORTS = {
     "v2": REPO_ROOT / "chord_reader/benchmarks/guitarset-v1/v2.json",
     "btc": REPO_ROOT / "chord_reader/benchmarks/guitarset-v1/btc.json",
     "student": REPO_ROOT / "chord_reader/benchmarks/guitarset-v1/student.json",
+    "hybrid": REPO_ROOT / "chord_reader/benchmarks/guitarset-v1/hybrid.json",
 }
 
 
@@ -40,31 +48,38 @@ def _write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _track() -> Mapping[str, Any]:
+def _tracks() -> list[Mapping[str, Any]]:
     manifest = _read_json(TRACK_MANIFEST)
-    return next(item for item in manifest["tracks"] if item["id"] == TRACK_ID)
+    by_id = {str(item["id"]): item for item in manifest["tracks"]}
+    return [by_id[track_id] for track_id in TRACK_IDS]
 
 
-def _chart_chords(chart: str) -> list[str]:
+def _chart_cells(chart: str) -> list[list[str]]:
     without_sections = re.sub(r"\[[^]]+\]", "", chart)
-    return [part.strip() for part in without_sections.split("|") if part.strip()]
+    return [part.strip().split() for part in without_sections.split("|") if part.strip()]
 
 
 def _reference(track: Mapping[str, Any]) -> dict[str, Any]:
-    chords = _chart_chords(str(track["chart"]))
+    cells = _chart_cells(str(track["chart"]))
     starts = [float(value) / 1000 for value in track["barStartsMs"]]
     duration = float(track["durationMs"]) / 1000
-    if len(chords) != len(starts):
-        raise ValueError(f"Expected one chart chord per bar; found {len(chords)} chords and {len(starts)} bars.")
+    if len(cells) != len(starts):
+        raise ValueError(f"Expected one chart cell per bar; found {len(cells)} cells and {len(starts)} bars.")
     segments: list[dict[str, Any]] = []
     if starts[0] > 0:
         segments.append({"start": 0.0, "end": starts[0], "label": "N"})
-    for index, (start, chord) in enumerate(zip(starts, chords, strict=True)):
+    for index, (start, chords) in enumerate(zip(starts, cells, strict=True)):
         end = starts[index + 1] if index + 1 < len(starts) else duration
-        segments.append({"start": start, "end": end, "label": normalize_chord(chord).detailed_symbol})
+        chord_duration = (end - start) / len(chords)
+        for chord_index, chord in enumerate(chords):
+            chord_start = start + chord_index * chord_duration
+            chord_end = end if chord_index + 1 == len(chords) else chord_start + chord_duration
+            segments.append(
+                {"start": chord_start, "end": chord_end, "label": normalize_chord(chord).detailed_symbol}
+            )
     return {
         "schemaVersion": "chord_reference_v1",
-        "id": TRACK_ID,
+        "id": track["id"],
         "title": track["title"],
         "source": "hand-authored Steel Guitar RAG lesson timeline",
         "durationSeconds": duration,
@@ -82,34 +97,37 @@ def _v2(track: Mapping[str, Any], audio: Path, output: Path) -> dict[str, Any]:
         "--output",
         str(output),
         "--id",
-        TRACK_ID,
-        "--key",
-        str(track["key"]),
-        "--mode",
-        "major",
-        "--meter",
-        str(track["meter"]),
-        "--tempo",
-        str(track["tempo"]),
+        str(track["id"]),
     ]
     result = subprocess.run(command, cwd=REPO_ROOT, capture_output=True, text=True, check=False)
     if result.returncode:
-        raise RuntimeError(result.stderr.strip() or "The v2 proof run failed.")
+        raise RuntimeError(result.stderr.strip() or f"The v2 proof run failed for {track['id']}.")
     return _read_json(output)
 
 
-def _overlap(left: Mapping[str, Any], right: Mapping[str, Any]) -> float:
-    return max(0.0, min(float(left["end"]), float(right["end"])) - max(float(left["start"]), float(right["start"])))
+def _overlap(start: float, end: float, segment: Mapping[str, Any]) -> float:
+    return max(0.0, min(end, float(segment["end"])) - max(start, float(segment["start"])))
+
+
+def _labels_in_interval(segments: Sequence[Mapping[str, Any]], start: float, end: float) -> list[str]:
+    labels: list[str] = []
+    for segment in segments:
+        if _overlap(start, end, segment) <= 0:
+            continue
+        label = normalize_chord(str(segment.get("productLabel") or segment.get("label") or "N")).product_symbol
+        if not labels or labels[-1] != label:
+            labels.append(label)
+    return labels or ["N.C."]
 
 
 def _dominant_label(segments: Sequence[Mapping[str, Any]], start: float, end: float) -> str:
-    bar = {"start": start, "end": end}
     totals: dict[str, float] = {}
     for segment in segments:
-        duration = _overlap(bar, segment)
-        if duration:
-            label = normalize_chord(str(segment.get("label") or "N")).product_symbol
-            totals[label] = totals.get(label, 0.0) + duration
+        duration = _overlap(start, end, segment)
+        if not duration:
+            continue
+        label = normalize_chord(str(segment.get("productLabel") or segment.get("label") or "N")).product_symbol
+        totals[label] = totals.get(label, 0.0) + duration
     return max(totals, key=totals.get) if totals else "N.C."
 
 
@@ -117,87 +135,142 @@ def _major_minor_key(symbol: str) -> tuple[str | None, str]:
     label = normalize_chord(symbol)
     if label.root is None:
         return None, "none"
-    quality = "minor" if label.quality.startswith("min") else "major"
-    return label.root, quality
+    return label.root, "minor" if label.quality.startswith("min") else "major"
+
+
+def _bar_score(reference: Sequence[Mapping[str, Any]], prediction: Sequence[Mapping[str, Any]]) -> float:
+    return float(score_segments(reference, prediction)["majorMinorWeightedRecall"])
 
 
 def _bar_rows(
-    reference: Mapping[str, Any], v2: Mapping[str, Any], student: Mapping[str, Any]
+    reference: Mapping[str, Any], engines: Mapping[str, Mapping[str, Any]]
 ) -> list[dict[str, Any]]:
     starts = reference["barStartsSeconds"]
     duration = float(reference["durationSeconds"])
-    expected = [item for item in reference["segments"] if item["label"] != "N"]
     rows: list[dict[str, Any]] = []
     for index, start in enumerate(starts):
         end = starts[index + 1] if index + 1 < len(starts) else duration
-        truth = normalize_chord(str(expected[index]["label"])).product_symbol
-        v2_label = _dominant_label(v2["segments"], start, end)
-        student_label = _dominant_label(student["segments"], start, end)
-        truth_key = _major_minor_key(truth)
-        rows.append(
-            {
-                "bar": index + 1,
-                "start": start,
-                "end": end,
-                "expected": truth,
-                "v2": v2_label,
-                "student": student_label,
-                "v2Correct": _major_minor_key(v2_label) == truth_key,
-                "studentCorrect": _major_minor_key(student_label) == truth_key,
-            }
-        )
+        truth = [segment for segment in reference["segments"] if _overlap(start, end, segment) > 0]
+        truth_labels = _labels_in_interval(truth, start, end)
+        row: dict[str, Any] = {
+            "bar": index + 1,
+            "start": start,
+            "end": end,
+            "expected": " → ".join(truth_labels),
+        }
+        for name, prediction in engines.items():
+            row[name] = _dominant_label(prediction["segments"], start, end)
+            row[f"{name}Score"] = _bar_score(truth, prediction["segments"])
+            row[f"{name}Correct"] = (
+                _major_minor_key(row[name]) == _major_minor_key(truth_labels[0])
+                if len(truth_labels) == 1
+                else row[f"{name}Score"] >= 0.75
+            )
+        rows.append(row)
     return rows
 
 
-def build(output_root: Path) -> dict[str, Any]:
-    track = _track()
+def _track_metadata(track: Mapping[str, Any], reference: Mapping[str, Any], audio: Path) -> dict[str, Any]:
+    licensed_human_performance = bool(track.get("rightsUrl"))
+    return {
+        "id": track["id"],
+        "title": track["title"],
+        "performer": track.get("performer") or track.get("performerCredits") or "Steel Guitar RAG practice master",
+        "audioUrl": f"/{track['audioPath']}",
+        "rightsUrl": track.get("rightsUrl"),
+        "license": track.get("license") or ("App-owned deterministic master" if not licensed_human_performance else "Reviewed license"),
+        "licenseUrl": track.get("licenseUrl"),
+        "recordingCredit": track.get("recordingCredit") or track.get("performerCredits"),
+        "modifications": track.get("modifications") or track.get("masterRightsBasis"),
+        "compositionStatus": track.get("compositionStatus"),
+        "recordingType": "licensed human performance" if licensed_human_performance else "app-owned deterministic performance",
+        "key": track.get("key"),
+        "meter": track.get("meter"),
+        "tempo": track.get("tempo"),
+        "durationSeconds": reference["durationSeconds"],
+        "audioSha256": hashlib.sha256(audio.read_bytes()).hexdigest(),
+    }
+
+
+def _aggregate(track_proofs: Iterable[Mapping[str, Any]], engine: str) -> dict[str, Any]:
+    values = list(track_proofs)
+    duration = sum(float(track["engines"][engine]["metrics"]["evaluatedDurationSeconds"]) for track in values)
+    return {
+        name: sum(
+            float(track["engines"][engine]["metrics"][name])
+            * float(track["engines"][engine]["metrics"]["evaluatedDurationSeconds"])
+            for track in values
+        )
+        / max(1e-12, duration)
+        for name in ("majorMinorWeightedRecall", "rootWeightedRecall", "detailedWeightedRecall")
+    }
+
+
+def _build_track(
+    track: Mapping[str, Any], output_root: Path, recognizer: StudentRecognizer
+) -> dict[str, Any]:
+    track_root = output_root / "tracks" / str(track["id"])
+    track_root.mkdir(parents=True, exist_ok=True)
     audio = REPO_ROOT / str(track["audioPath"])
     reference = _reference(track)
-    output_root.mkdir(parents=True, exist_ok=True)
-    v2_path = output_root / "v2.json"
+    v2_path = track_root / "v2.json"
     v2 = _v2(track, audio, v2_path)
-    student = StudentRecognizer(MODEL).predict(audio, prediction_id=TRACK_ID)
-    v2_metrics = score_segments(reference["segments"], v2["segments"])
-    student_metrics = score_segments(reference["segments"], student["segments"])
-    rows = _bar_rows(reference, v2, student)
-    public_reports = {name: _read_json(path) for name, path in PUBLIC_REPORTS.items()}
+    student = recognizer.predict(audio, prediction_id=str(track["id"]))
+    hybrid = hybridize_predictions(v2, student)
+    engines = {"v2": v2, "student": student, "hybrid": hybrid}
+    rows = _bar_rows(reference, engines)
     proof = {
-        "schemaVersion": "chord_reader_visual_proof_v1",
-        "track": {
-            "id": TRACK_ID,
-            "title": track["title"],
-            "performer": track["performer"],
-            "audioUrl": f"/{track['audioPath']}",
-            "rightsUrl": track["rightsUrl"],
-            "license": track["license"],
-            "licenseUrl": track["licenseUrl"],
-            "recordingCredit": track["recordingCredit"],
-            "modifications": track["modifications"],
-            "key": track["key"],
-            "meter": track["meter"],
-            "tempo": track["tempo"],
-            "durationSeconds": reference["durationSeconds"],
-        },
+        "track": _track_metadata(track, reference, audio),
         "reference": {
             "source": reference["source"],
             "metricsLabel": "hand-authored expected chord timeline",
+            "segments": reference["segments"],
         },
         "engines": {
-            "v2": {"label": "Current Play Along v2", "metrics": v2_metrics, "segments": v2["segments"]},
-            "student": {
-                "label": "Revised chord-student-v1",
-                "metrics": student_metrics,
-                "segments": student["segments"],
-            },
+            name: {
+                "label": {
+                    "v2": "Current Play Along v2",
+                    "student": "Raw chord-student-v1",
+                    "hybrid": "Hardened hybrid v1",
+                }[name],
+                "metrics": score_segments(reference["segments"], prediction["segments"]),
+                "segments": prediction["segments"],
+            }
+            for name, prediction in engines.items()
         },
         "bars": rows,
         "summary": {
-            "v2CorrectBars": sum(bool(row["v2Correct"]) for row in rows),
-            "studentCorrectBars": sum(bool(row["studentCorrect"]) for row in rows),
             "barCount": len(rows),
-            "majorMinorWcsrGain": student_metrics["majorMinorWeightedRecall"]
-            - v2_metrics["majorMinorWeightedRecall"],
-            "rootWcsrGain": student_metrics["rootWeightedRecall"] - v2_metrics["rootWeightedRecall"],
+            **{
+                f"{name}CorrectBars": sum(bool(row[f"{name}Correct"]) for row in rows)
+                for name in engines
+            },
+        },
+    }
+    _write_json(track_root / "reference.json", reference)
+    _write_json(track_root / "student.json", student)
+    _write_json(track_root / "hybrid.json", hybrid)
+    return proof
+
+
+def build(output_root: Path) -> dict[str, Any]:
+    output_root.mkdir(parents=True, exist_ok=True)
+    recognizer = StudentRecognizer(MODEL)
+    track_proofs = [_build_track(track, output_root, recognizer) for track in _tracks()]
+    public_reports = {name: _read_json(path) for name, path in PUBLIC_REPORTS.items()}
+    proof = {
+        "schemaVersion": "chord_reader_visual_proof_v2",
+        "defaultTrackId": DEFAULT_TRACK_ID,
+        "tracks": track_proofs,
+        "suite": {
+            "trackCount": len(track_proofs),
+            "durationSeconds": sum(float(track["track"]["durationSeconds"]) for track in track_proofs),
+            "engines": {name: _aggregate(track_proofs, name) for name in ("v2", "student", "hybrid")},
+            "barTotals": {
+                name: sum(int(track["summary"][f"{name}CorrectBars"]) for track in track_proofs)
+                for name in ("v2", "student", "hybrid")
+            },
+            "barCount": sum(int(track["summary"]["barCount"]) for track in track_proofs),
         },
         "publicBenchmark": {
             "dataset": "GuitarSet",
@@ -220,12 +293,10 @@ def build(output_root: Path) -> dict[str, Any]:
         },
         "reproduce": {
             "command": "python scripts/build_chord_reader_proof.py",
-            "modelSha256": __import__("hashlib").sha256(MODEL.read_bytes()).hexdigest(),
-            "audioSha256": __import__("hashlib").sha256(audio.read_bytes()).hexdigest(),
+            "modelSha256": hashlib.sha256(MODEL.read_bytes()).hexdigest(),
+            "audioSha256": {track["track"]["id"]: track["track"]["audioSha256"] for track in track_proofs},
         },
     }
-    _write_json(output_root / "reference.json", reference)
-    _write_json(output_root / "student.json", student)
     _write_json(output_root / "proof.json", proof)
     return proof
 
@@ -235,7 +306,7 @@ def main() -> int:
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
     proof = build(args.output_root)
-    print(json.dumps(proof["summary"], indent=2, sort_keys=True))
+    print(json.dumps(proof["suite"], indent=2, sort_keys=True))
     return 0
 
 

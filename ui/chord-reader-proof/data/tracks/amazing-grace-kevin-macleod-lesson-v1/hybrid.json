@@ -1,0 +1,347 @@
+{
+  "barStartsSeconds": [
+    0.0,
+    2.345,
+    4.69,
+    7.036,
+    9.381,
+    11.749,
+    14.118,
+    16.533,
+    18.947,
+    21.386,
+    23.824,
+    26.285,
+    28.746,
+    31.184,
+    33.622,
+    36.084,
+    38.545,
+    40.983
+  ],
+  "bars": [
+    {
+      "bar": 1,
+      "confidence": 0.9799999999999999,
+      "coverage": 1.0,
+      "end": 2.345,
+      "label": "N",
+      "productLabel": "N.C.",
+      "start": 0.0
+    },
+    {
+      "bar": 2,
+      "confidence": 0.9799999999999999,
+      "coverage": 1.0,
+      "end": 4.69,
+      "label": "N",
+      "productLabel": "N.C.",
+      "start": 2.345
+    },
+    {
+      "bar": 3,
+      "confidence": 0.619193386124528,
+      "coverage": 0.8678601875532823,
+      "end": 7.036,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 4.69
+    },
+    {
+      "bar": 4,
+      "confidence": 0.619193386124528,
+      "coverage": 1.0,
+      "end": 9.381,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 7.036
+    },
+    {
+      "bar": 5,
+      "confidence": 0.32594916969537735,
+      "coverage": 0.9075168918918914,
+      "end": 11.749,
+      "label": "C:maj",
+      "productLabel": "C",
+      "start": 9.381
+    },
+    {
+      "bar": 6,
+      "confidence": 0.6971760811940045,
+      "coverage": 0.9784719290840016,
+      "end": 14.118,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 11.749
+    },
+    {
+      "bar": 7,
+      "confidence": 0.6971760811940045,
+      "coverage": 1.0,
+      "end": 16.533,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 14.118
+    },
+    {
+      "bar": 8,
+      "confidence": 0.6971760811940045,
+      "coverage": 0.9805302402651214,
+      "end": 18.947,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 16.533
+    },
+    {
+      "bar": 9,
+      "confidence": 0.5003816720018995,
+      "coverage": 1.0,
+      "end": 21.386,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 18.947
+    },
+    {
+      "bar": 10,
+      "confidence": 0.5003816720018995,
+      "coverage": 0.9081214109926169,
+      "end": 23.824,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 21.386
+    },
+    {
+      "bar": 11,
+      "confidence": 0.7791722082361883,
+      "coverage": 1.0,
+      "end": 26.285,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 23.824
+    },
+    {
+      "bar": 12,
+      "confidence": 0.7791722082361883,
+      "coverage": 0.9000406338886636,
+      "end": 28.746,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 26.285
+    },
+    {
+      "bar": 13,
+      "confidence": 0.44346345216035843,
+      "coverage": 0.7194421657095978,
+      "end": 31.184,
+      "label": "C:maj",
+      "productLabel": "C",
+      "start": 28.746
+    },
+    {
+      "bar": 14,
+      "confidence": 0.531745302581018,
+      "coverage": 1.0,
+      "end": 33.622,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 31.184
+    },
+    {
+      "bar": 15,
+      "confidence": 0.531745302581018,
+      "coverage": 1.0,
+      "end": 36.084,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 33.622
+    },
+    {
+      "bar": 16,
+      "confidence": 0.4459648847579956,
+      "coverage": 0.6095083299471763,
+      "end": 38.545,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 36.084
+    },
+    {
+      "bar": 17,
+      "confidence": 0.5663110061238209,
+      "coverage": 1.0,
+      "end": 40.983,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 38.545
+    },
+    {
+      "bar": 18,
+      "confidence": 0.5663210114219518,
+      "coverage": 1.0,
+      "end": 42.94739229024943,
+      "label": "G:maj",
+      "productLabel": "G",
+      "start": 40.983
+    }
+  ],
+  "beatTimesSeconds": [
+    0,
+    0.789,
+    1.579,
+    2.345,
+    3.111,
+    3.901,
+    4.69,
+    5.48,
+    6.269,
+    7.036,
+    7.825,
+    8.615,
+    9.381,
+    10.17,
+    10.96,
+    11.749,
+    12.539,
+    13.328,
+    14.118,
+    14.907,
+    15.72,
+    16.533,
+    17.322,
+    18.135,
+    18.947,
+    19.76,
+    20.573,
+    21.386,
+    22.198,
+    23.011,
+    23.824,
+    24.636,
+    25.472,
+    26.285,
+    27.098,
+    27.91,
+    28.746,
+    29.559,
+    30.372,
+    31.184,
+    31.997,
+    32.81,
+    33.622,
+    34.435,
+    35.271,
+    36.084,
+    36.897,
+    37.709,
+    38.545,
+    39.358,
+    40.171,
+    40.983,
+    41.796,
+    42.609
+  ],
+  "durationSeconds": 42.94739229024943,
+  "engine": "chord-hybrid-v1",
+  "id": "amazing-grace-kevin-macleod-lesson-v1",
+  "key": "G",
+  "meter": "3/4",
+  "schemaVersion": "chord_prediction_v1",
+  "segments": [
+    {
+      "confidence": 0.9799999999999999,
+      "end": 4.69,
+      "label": "N",
+      "productLabel": "N.C.",
+      "source": "v2-no-chord",
+      "start": 0.0
+    },
+    {
+      "confidence": 0.29120842516422274,
+      "end": 5.0,
+      "label": "D:maj",
+      "productLabel": "D",
+      "source": "student",
+      "start": 4.69
+    },
+    {
+      "confidence": 0.619193386124528,
+      "end": 9.600000000000001,
+      "label": "G:maj",
+      "productLabel": "G",
+      "source": "student",
+      "start": 5.0
+    },
+    {
+      "confidence": 0.32594916969537735,
+      "end": 11.8,
+      "label": "C:maj",
+      "productLabel": "C",
+      "source": "student",
+      "start": 9.600000000000001
+    },
+    {
+      "confidence": 0.6971760811940045,
+      "end": 18.900000000000002,
+      "label": "G:maj",
+      "productLabel": "G",
+      "source": "student",
+      "start": 11.8
+    },
+    {
+      "confidence": 0.5003816720018995,
+      "end": 23.6,
+      "label": "D:maj",
+      "productLabel": "D",
+      "source": "student",
+      "start": 18.900000000000002
+    },
+    {
+      "confidence": 0.7791722082361883,
+      "end": 28.5,
+      "label": "G:maj",
+      "productLabel": "G",
+      "source": "student",
+      "start": 23.6
+    },
+    {
+      "confidence": 0.44346345216035843,
+      "end": 30.5,
+      "label": "C:maj",
+      "productLabel": "C",
+      "source": "student",
+      "start": 28.5
+    },
+    {
+      "confidence": 0.531745302581018,
+      "end": 36.7,
+      "label": "G:maj",
+      "productLabel": "G",
+      "source": "student",
+      "start": 30.5
+    },
+    {
+      "confidence": 0.4459648847579956,
+      "end": 38.2,
+      "label": "D:maj",
+      "productLabel": "D",
+      "source": "student",
+      "start": 36.7
+    },
+    {
+      "confidence": 0.5663110061238209,
+      "end": 42.94730158730159,
+      "label": "G:maj",
+      "productLabel": "G",
+      "source": "student",
+      "start": 38.2
+    },
+    {
+      "confidence": 0.7829999999999999,
+      "end": 42.94739229024943,
+      "label": "G:maj",
+      "productLabel": "G",
+      "source": "v2-fallback",
+      "start": 42.94730158730159
+    }
+  ],
+  "tempo": 75
+}

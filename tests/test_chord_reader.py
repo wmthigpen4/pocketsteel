@@ -9,9 +9,11 @@ import shutil
 
 import pytest
 
+from steel_guitar_rag.chord_reader.benchmark import run_hybrid_benchmark
 from steel_guitar_rag.chord_reader.labels import normalize_chord, transpose_chord
 from steel_guitar_rag.chord_reader.btc import load_model_registry, verify_model_snapshot
 from steel_guitar_rag.chord_reader.chart_reference import build_chart_reference
+from steel_guitar_rag.chord_reader.hybrid import hybridize_predictions
 from steel_guitar_rag.chord_reader.datasets import parse_aam_beatinfo, parse_guitarset_jams
 from steel_guitar_rag.chord_reader.manifests import (
     WeakLabelDiagnostics,
@@ -183,6 +185,98 @@ def test_segment_metrics_measure_roots_qualities_boundaries_and_edits() -> None:
     assert result["detailedWeightedRecall"] == 0
     assert result["boundary"]["f1"] == 1
     assert result["sequenceEditRate"] == pytest.approx(0.5)
+
+
+def test_hybrid_preserves_strong_no_chord_without_forcing_bar_labels() -> None:
+    v2 = {
+        "id": "song",
+        "durationSeconds": 6,
+        "barStartsSeconds": [0, 2, 4],
+        "segments": [
+            {"start": 0, "end": 2, "label": "N.C.", "confidence": 0.98},
+            {"start": 2, "end": 4, "label": "N.C.", "confidence": 0.98},
+            {"start": 4, "end": 6, "label": "C", "confidence": 0.9},
+        ],
+    }
+    student = {
+        "id": "song",
+        "segments": [
+            {"start": 0, "end": 1, "label": "E:maj", "confidence": 0.3},
+            {"start": 1, "end": 4.4, "label": "E:min", "confidence": 0.3},
+            {"start": 4.4, "end": 6, "label": "G:7", "confidence": 0.7},
+        ],
+    }
+    result = hybridize_predictions(v2, student)
+    assert [{key: value for key, value in segment.items() if key != "confidence"} for segment in result["segments"]] == [
+        {
+            "start": 0.0,
+            "end": 4.0,
+            "label": "N",
+            "productLabel": "N.C.",
+            "source": "v2-no-chord",
+        },
+        {
+            "start": 4.0,
+            "end": 4.4,
+            "label": "E:min",
+            "productLabel": "Em",
+            "source": "student",
+        },
+        {
+            "start": 4.4,
+            "end": 6.0,
+            "label": "G:7",
+            "productLabel": "G7",
+            "source": "student",
+        },
+    ]
+    assert [segment["confidence"] for segment in result["segments"]] == pytest.approx([0.98, 0.3, 0.7])
+
+
+def test_hybrid_benchmark_scores_and_freezes_existing_predictions(tmp_path: Path) -> None:
+    reference = tmp_path / "reference.json"
+    reference.write_text(
+        json.dumps({"segments": [{"start": 0, "end": 4, "label": "C:maj"}]}),
+        encoding="utf-8",
+    )
+    v2_root = tmp_path / "v2"
+    student_root = tmp_path / "student"
+    v2_root.mkdir()
+    student_root.mkdir()
+    (v2_root / "track.json").write_text(
+        json.dumps(
+            {
+                "durationSeconds": 4,
+                "barStartsSeconds": [0],
+                "segments": [{"start": 0, "end": 4, "label": "N.C.", "confidence": 0.9}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (student_root / "track.json").write_text(
+        json.dumps({"durationSeconds": 4, "segments": [{"start": 0, "end": 4, "label": "C:maj", "confidence": 0.8}]}),
+        encoding="utf-8",
+    )
+    report = run_hybrid_benchmark(
+        {
+            "tracks": [
+                {
+                    "id": "track",
+                    "datasetId": "fixture",
+                    "split": "test",
+                    "referencePath": str(reference),
+                }
+            ]
+        },
+        v2_prediction_root=v2_root,
+        student_prediction_root=student_root,
+        output_root=tmp_path / "out",
+    )
+    assert report["engine"] == "hybrid"
+    assert report["aggregate"]["trackCount"] == 1
+    assert report["aggregate"]["majorMinorWeightedRecall"] == 1
+    frozen = json.loads((tmp_path / "out/predictions/hybrid/track.json").read_text(encoding="utf-8"))
+    assert frozen["segments"][0]["productLabel"] == "C"
 
 
 def test_cli_scores_json_segments(tmp_path: Path) -> None:
@@ -380,22 +474,23 @@ def test_browser_runtime_executes_student_onnx_on_synthetic_c_major() -> None:
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node required")
-def test_browser_client_snaps_ml_segments_to_v2_timing() -> None:
+def test_browser_client_overlays_no_chord_without_forcing_bar_labels() -> None:
     script = """
       global.window={localStorage:{getItem:()=>null}};require('./ui/practice-analysis-client.js');
       const c=window.STEEL_RAG_ANALYSIS_CLIENT;
-      const base={durationMs:4000,barStartsMs:[0,2000],beatTimesMs:[0,500,1000,1500,2000,2500,3000,3500],chords:[]};
-      const ml={engine:'chord-student-v1',segments:[{startMs:80,endMs:2080,symbol:'C',confidence:.9},{startMs:2080,endMs:4000,symbol:'G7',confidence:.7}]};
+      const base={durationMs:6000,barStartsMs:[0,2000,4000],beatTimesMs:[0,500,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500],chords:[{startMs:0,endMs:2000,symbol:'N.C.',confidence:.98},{startMs:2000,endMs:4000,symbol:'N.C.',confidence:.98}]};
+      const ml={engine:'chord-student-v1',segments:[{startMs:0,endMs:1000,symbol:'E',confidence:.3},{startMs:1000,endMs:4080,symbol:'Em',confidence:.3},{startMs:4080,endMs:6000,symbol:'G7',confidence:.7}]};
       const result=c.mergeMlAnalysis(base,ml);console.log(JSON.stringify(result));
     """
     result = subprocess.run(["node", "-e", script], cwd=ROOT, check=False, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     value = json.loads(result.stdout)
     assert value["analysisVersion"] == 3
-    assert value["chordReaderEngine"] == "ml-v3"
-    assert [(item["bar"], item["symbol"], item["needsAttention"]) for item in value["chords"]] == [
-        (1, "C", False),
-        (2, "G7", True),
+    assert value["chordReaderEngine"] == "hybrid-v1"
+    assert [(item["bar"], item["symbol"], item["needsAttention"], item["sourceEngine"]) for item in value["chords"]] == [
+        (1, "N.C.", False, "v2-no-chord"),
+        (3, "Em", True, "student"),
+        (3, "G7", True, "student"),
     ]
 
 

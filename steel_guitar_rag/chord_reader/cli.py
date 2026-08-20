@@ -10,7 +10,7 @@ import subprocess
 from typing import Any
 
 from .btc import predict_btc
-from .benchmark import run_benchmark
+from .benchmark import run_benchmark, run_hybrid_benchmark
 from .chart_reference import build_chart_reference
 from .datasets import prepare_aam, prepare_guitarset
 from .labels import normalize_chord, transpose_chord
@@ -121,6 +121,16 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run.add_argument("--device", default="cpu")
     benchmark_run.add_argument("--local-files-only", action="store_true")
     benchmark_run.add_argument("--model", type=Path)
+
+    hybrid_benchmark = commands.add_parser(
+        "benchmark-hybrid", help="Freeze the conservative hybrid from existing v2 and student predictions"
+    )
+    hybrid_benchmark.add_argument("manifest", type=Path)
+    hybrid_benchmark.add_argument("--v2-predictions", type=Path, required=True)
+    hybrid_benchmark.add_argument("--student-predictions", type=Path, required=True)
+    hybrid_benchmark.add_argument("--split", default="test")
+    hybrid_benchmark.add_argument("--output-root", type=Path, required=True)
+    hybrid_benchmark.add_argument("--report", type=Path, required=True)
 
     feature_cache = commands.add_parser("cache-student-features", help="Cache browser-compatible chroma and labels")
     feature_cache.add_argument("manifest", type=Path)
@@ -264,6 +274,15 @@ def main(argv: list[str] | None = None) -> int:
             device=args.device,
             local_files_only=args.local_files_only,
             model=args.model,
+        )
+        _write_json(result, args.report)
+    elif args.command == "benchmark-hybrid":
+        result = run_hybrid_benchmark(
+            _read_json(args.manifest),
+            v2_prediction_root=args.v2_predictions,
+            student_prediction_root=args.student_predictions,
+            output_root=args.output_root,
+            split=args.split,
         )
         _write_json(result, args.report)
     elif args.command == "cache-student-features":

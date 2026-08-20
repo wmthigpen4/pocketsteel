@@ -1,476 +1,5 @@
 {
-  "bars": [
-    {
-      "bar": 1,
-      "end": 7.105,
-      "expected": "G",
-      "start": 4.737,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 2,
-      "end": 9.474,
-      "expected": "G",
-      "start": 7.105,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 3,
-      "end": 11.842,
-      "expected": "C",
-      "start": 9.474,
-      "student": "C",
-      "studentCorrect": true,
-      "v2": "Am7",
-      "v2Correct": false
-    },
-    {
-      "bar": 4,
-      "end": 14.211,
-      "expected": "G",
-      "start": 11.842,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 5,
-      "end": 16.579,
-      "expected": "G",
-      "start": 14.211,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 6,
-      "end": 18.947,
-      "expected": "G",
-      "start": 16.579,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 7,
-      "end": 21.316,
-      "expected": "D7",
-      "start": 18.947,
-      "student": "D",
-      "studentCorrect": true,
-      "v2": "D",
-      "v2Correct": true
-    },
-    {
-      "bar": 8,
-      "end": 23.684,
-      "expected": "D7",
-      "start": 21.316,
-      "student": "D",
-      "studentCorrect": true,
-      "v2": "D",
-      "v2Correct": true
-    },
-    {
-      "bar": 9,
-      "end": 26.053,
-      "expected": "G",
-      "start": 23.684,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 10,
-      "end": 28.421,
-      "expected": "G",
-      "start": 26.053,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 11,
-      "end": 30.789,
-      "expected": "C",
-      "start": 28.421,
-      "student": "C",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": false
-    },
-    {
-      "bar": 12,
-      "end": 33.158,
-      "expected": "G",
-      "start": 30.789,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 13,
-      "end": 35.526,
-      "expected": "Em",
-      "start": 33.158,
-      "student": "G",
-      "studentCorrect": false,
-      "v2": "G",
-      "v2Correct": false
-    },
-    {
-      "bar": 14,
-      "end": 37.895,
-      "expected": "D7",
-      "start": 35.526,
-      "student": "D",
-      "studentCorrect": true,
-      "v2": "D",
-      "v2Correct": true
-    },
-    {
-      "bar": 15,
-      "end": 40.263,
-      "expected": "G",
-      "start": 37.895,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    },
-    {
-      "bar": 16,
-      "end": 42.947,
-      "expected": "G",
-      "start": 40.263,
-      "student": "G",
-      "studentCorrect": true,
-      "v2": "G",
-      "v2Correct": true
-    }
-  ],
-  "engines": {
-    "student": {
-      "label": "Revised chord-student-v1",
-      "metrics": {
-        "boundary": {
-          "f1": 0.30303030303030304,
-          "precision": 0.29411764705882354,
-          "recall": 0.3125
-        },
-        "detailedWeightedRecall": 0.6423033040724613,
-        "evaluatedDurationSeconds": 42.947,
-        "majorMinorWeightedRecall": 0.7784711388455537,
-        "predictedChordCount": 18,
-        "referenceChordCount": 11,
-        "rootWeightedRecall": 0.7784711388455537,
-        "sequenceEditRate": 1.0909090909090908
-      },
-      "segments": [
-        {
-          "confidence": 0.23034010082483292,
-          "end": 1.0,
-          "label": "E:maj",
-          "productLabel": "E",
-          "start": 0.0
-        },
-        {
-          "confidence": 0.17493464052677155,
-          "end": 1.2000000000000002,
-          "label": "E:min",
-          "productLabel": "Em",
-          "start": 1.0
-        },
-        {
-          "confidence": 0.2354493886232376,
-          "end": 1.8,
-          "label": "E:maj",
-          "productLabel": "E",
-          "start": 1.2000000000000002
-        },
-        {
-          "confidence": 0.2282564863562584,
-          "end": 2.0,
-          "label": "E:min",
-          "productLabel": "Em",
-          "start": 1.8
-        },
-        {
-          "confidence": 0.3058273543914159,
-          "end": 2.6,
-          "label": "E:maj",
-          "productLabel": "E",
-          "start": 2.0
-        },
-        {
-          "confidence": 0.21517032384872437,
-          "end": 2.8000000000000003,
-          "label": "E:min",
-          "productLabel": "Em",
-          "start": 2.6
-        },
-        {
-          "confidence": 0.17405070960521699,
-          "end": 3.3000000000000003,
-          "label": "E:maj",
-          "productLabel": "E",
-          "start": 2.8000000000000003
-        },
-        {
-          "confidence": 0.12371913716197014,
-          "end": 3.5,
-          "label": "E:min",
-          "productLabel": "Em",
-          "start": 3.3000000000000003
-        },
-        {
-          "confidence": 0.2912084480126699,
-          "end": 5.0,
-          "label": "D:maj",
-          "productLabel": "D",
-          "start": 3.5
-        },
-        {
-          "confidence": 0.6191933705754902,
-          "end": 9.600000000000001,
-          "label": "G:maj",
-          "productLabel": "G",
-          "start": 5.0
-        },
-        {
-          "confidence": 0.32594918324188754,
-          "end": 11.8,
-          "label": "C:maj",
-          "productLabel": "C",
-          "start": 9.600000000000001
-        },
-        {
-          "confidence": 0.6971760811940045,
-          "end": 18.900000000000002,
-          "label": "G:maj",
-          "productLabel": "G",
-          "start": 11.8
-        },
-        {
-          "confidence": 0.5003817220951648,
-          "end": 23.6,
-          "label": "D:maj",
-          "productLabel": "D",
-          "start": 18.900000000000002
-        },
-        {
-          "confidence": 0.7791722210086122,
-          "end": 28.5,
-          "label": "G:maj",
-          "productLabel": "G",
-          "start": 23.6
-        },
-        {
-          "confidence": 0.44346334487199784,
-          "end": 30.5,
-          "label": "C:maj",
-          "productLabel": "C",
-          "start": 28.5
-        },
-        {
-          "confidence": 0.5317452184615596,
-          "end": 36.7,
-          "label": "G:maj",
-          "productLabel": "G",
-          "start": 30.5
-        },
-        {
-          "confidence": 0.4459649046262105,
-          "end": 38.2,
-          "label": "D:maj",
-          "productLabel": "D",
-          "start": 36.7
-        },
-        {
-          "confidence": 0.5663109887391329,
-          "end": 42.94730158730159,
-          "label": "G:maj",
-          "productLabel": "G",
-          "start": 38.2
-        }
-      ]
-    },
-    "v2": {
-      "label": "Current Play Along v2",
-      "metrics": {
-        "boundary": {
-          "f1": 0.6060606060606061,
-          "precision": 0.5882352941176471,
-          "recall": 0.625
-        },
-        "detailedWeightedRecall": 0.6474724660628215,
-        "evaluatedDurationSeconds": 42.947,
-        "majorMinorWeightedRecall": 0.7999394602649776,
-        "predictedChordCount": 8,
-        "referenceChordCount": 11,
-        "rootWeightedRecall": 0.7999394602649776,
-        "sequenceEditRate": 0.5454545454545454
-      },
-      "segments": [
-        {
-          "bar": 1,
-          "confidence": 0.98,
-          "end": 2.345,
-          "label": "N.C.",
-          "start": 0,
-          "startFraction": 0
-        },
-        {
-          "bar": 2,
-          "confidence": 0.98,
-          "end": 4.69,
-          "label": "N.C.",
-          "start": 2.345,
-          "startFraction": 0
-        },
-        {
-          "bar": 3,
-          "confidence": 0.98,
-          "end": 7.036,
-          "label": "G",
-          "start": 4.69,
-          "startFraction": 0
-        },
-        {
-          "bar": 4,
-          "confidence": 0.943,
-          "end": 9.381,
-          "label": "G",
-          "start": 7.036,
-          "startFraction": 0
-        },
-        {
-          "bar": 5,
-          "confidence": 0.799,
-          "end": 11.749,
-          "label": "Am7",
-          "start": 9.381,
-          "startFraction": 0
-        },
-        {
-          "bar": 6,
-          "confidence": 0.98,
-          "end": 14.118,
-          "label": "G",
-          "start": 11.749,
-          "startFraction": 0
-        },
-        {
-          "bar": 7,
-          "confidence": 0.98,
-          "end": 16.533,
-          "label": "G",
-          "start": 14.118,
-          "startFraction": 0
-        },
-        {
-          "bar": 8,
-          "confidence": 0.98,
-          "end": 18.947,
-          "label": "G",
-          "start": 16.533,
-          "startFraction": 0
-        },
-        {
-          "bar": 9,
-          "confidence": 0.98,
-          "end": 21.386,
-          "label": "D",
-          "start": 18.947,
-          "startFraction": 0
-        },
-        {
-          "bar": 10,
-          "confidence": 0.98,
-          "end": 23.824,
-          "label": "D",
-          "start": 21.386,
-          "startFraction": 0
-        },
-        {
-          "bar": 11,
-          "confidence": 0.98,
-          "end": 26.285,
-          "label": "G",
-          "start": 23.824,
-          "startFraction": 0
-        },
-        {
-          "bar": 12,
-          "confidence": 0.98,
-          "end": 28.746,
-          "label": "G",
-          "start": 26.285,
-          "startFraction": 0
-        },
-        {
-          "bar": 13,
-          "confidence": 0.721,
-          "end": 31.184,
-          "label": "G",
-          "start": 28.746,
-          "startFraction": 0
-        },
-        {
-          "bar": 14,
-          "confidence": 0.98,
-          "end": 33.622,
-          "label": "G",
-          "start": 31.184,
-          "startFraction": 0
-        },
-        {
-          "bar": 15,
-          "confidence": 0.98,
-          "end": 36.084,
-          "label": "G",
-          "start": 33.622,
-          "startFraction": 0
-        },
-        {
-          "bar": 16,
-          "confidence": 0.98,
-          "end": 38.545,
-          "label": "D",
-          "start": 36.084,
-          "startFraction": 0
-        },
-        {
-          "bar": 17,
-          "confidence": 0.98,
-          "end": 40.983,
-          "label": "G",
-          "start": 38.545,
-          "startFraction": 0
-        },
-        {
-          "bar": 18,
-          "confidence": 0.783,
-          "end": 42.94739229024943,
-          "label": "G",
-          "start": 40.983,
-          "startFraction": 0
-        }
-      ]
-    }
-  },
+  "defaultTrackId": "amazing-grace-kevin-macleod-lesson-v1",
   "publicBenchmark": {
     "aamDisclosure": "AAM annotation import is implemented and tested, but AAM audio was not downloaded or used in this model run.",
     "audioSeconds": 1291.9673469387756,
@@ -481,6 +10,12 @@
         "detailedWcsr": 0.37519074772951466,
         "majorMinorWcsr": 0.43252724070049864,
         "rootWcsr": 0.4539079533322353
+      },
+      "hybrid": {
+        "boundaryF1": 0.5013375729248429,
+        "detailedWcsr": 0.4725751905937081,
+        "majorMinorWcsr": 0.5214142525343602,
+        "rootWcsr": 0.5835486285867362
       },
       "student": {
         "boundaryF1": 0.5013375729248429,
@@ -501,36 +36,2300 @@
     "trackCount": 36,
     "trainingDisclosure": "The student trained on 264 GuitarSet recordings, selected on 60 development recordings, and was scored once on these 36 held-out recordings."
   },
-  "reference": {
-    "metricsLabel": "hand-authored expected chord timeline",
-    "source": "hand-authored Steel Guitar RAG lesson timeline"
-  },
   "reproduce": {
-    "audioSha256": "c0126a24458b913168ee5f3f58a0a54f75a32a6dfcd8fa1e23d80ffe8a91e417",
+    "audioSha256": {
+      "amazing-grace-kevin-macleod-lesson-v1": "c0126a24458b913168ee5f3f58a0a54f75a32a6dfcd8fa1e23d80ffe8a91e417",
+      "oh-susanna-preview-v1": "7aedadbc7ceec2f3e50faa19dba3209454daaae5a68ee79c40e6b2ccc96625ac",
+      "when-the-saints-preview-v1": "08aeb59219f14541a5526f02a688d1a27594a12626ec8a6d18dcdf3db3cf7cbb"
+    },
     "command": "python scripts/build_chord_reader_proof.py",
     "modelSha256": "9035a36c8ae25fb33265911c9c452b09cc8f5187357fd3f392f218b8789ba30a"
   },
-  "schemaVersion": "chord_reader_visual_proof_v1",
-  "summary": {
-    "barCount": 16,
-    "majorMinorWcsrGain": -0.021468321419423897,
-    "rootWcsrGain": -0.021468321419423897,
-    "studentCorrectBars": 15,
-    "v2CorrectBars": 13
+  "schemaVersion": "chord_reader_visual_proof_v2",
+  "suite": {
+    "barCount": 49,
+    "barTotals": {
+      "hybrid": 47,
+      "student": 47,
+      "v2": 43
+    },
+    "durationSeconds": 112.247,
+    "engines": {
+      "hybrid": {
+        "detailedWeightedRecall": 0.741445205662512,
+        "majorMinorWeightedRecall": 0.88708829634645,
+        "rootWeightedRecall": 0.88708829634645
+      },
+      "student": {
+        "detailedWeightedRecall": 0.6996622304314543,
+        "majorMinorWeightedRecall": 0.8453053799600074,
+        "rootWeightedRecall": 0.8453053799600074
+      },
+      "v2": {
+        "detailedWeightedRecall": 0.6897912639090577,
+        "majorMinorWeightedRecall": 0.8590697301486899,
+        "rootWeightedRecall": 0.8590697301486899
+      }
+    },
+    "trackCount": 3
   },
-  "track": {
-    "audioUrl": "/ui/assets/song-practice/amazing-grace-2011-guide.mp3",
-    "durationSeconds": 42.947,
-    "id": "amazing-grace-kevin-macleod-lesson-v1",
-    "key": "G",
-    "license": "CC BY 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
-    "meter": "3/4",
-    "modifications": "First 16-bar verse extracted, transposed from C to G, slowed from 79 to 76 BPM, two-bar count-in added, and lesson chord/beat/lyric timeline hand-authored. No endorsement by Kevin MacLeod is implied.",
-    "performer": "Kevin MacLeod \u00b7 Steel Guitar RAG lesson edit",
-    "recordingCredit": "\u201cAmazing Grace 2011\u201d Kevin MacLeod (incompetech.com), licensed under CC BY 3.0",
-    "rightsUrl": "https://commons.wikimedia.org/wiki/File:Amazing_Grace_2011_(ISRC_USUAN1100820).mp3",
-    "tempo": 76,
-    "title": "Amazing Grace"
-  }
+  "tracks": [
+    {
+      "bars": [
+        {
+          "bar": 1,
+          "end": 7.105,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 0.8889358108108109,
+          "start": 4.737,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 0.8889358108108109,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 2,
+          "end": 9.474,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 7.105,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.9607429295061207
+        },
+        {
+          "bar": 3,
+          "end": 11.842,
+          "expected": "C",
+          "hybrid": "C",
+          "hybridCorrect": true,
+          "hybridScore": 0.9290540540540536,
+          "start": 9.474,
+          "student": "C",
+          "studentCorrect": true,
+          "studentScore": 0.9290540540540536,
+          "v2": "Am7",
+          "v2Correct": false,
+          "v2Score": 0.0
+        },
+        {
+          "bar": 4,
+          "end": 14.211,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 11.842,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 5,
+          "end": 16.579,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 14.211,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 6,
+          "end": 18.947,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 0.9801520270270283,
+          "start": 16.579,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 0.9801520270270283,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 7,
+          "end": 21.316,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 18.947,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 8,
+          "end": 23.684,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 0.9645270270270272,
+          "start": 21.316,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 0.9645270270270272,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 9,
+          "end": 26.053,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 23.684,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.9409033347403966
+        },
+        {
+          "bar": 10,
+          "end": 28.421,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 26.053,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 11,
+          "end": 30.789,
+          "expected": "C",
+          "hybrid": "C",
+          "hybridCorrect": true,
+          "hybridScore": 0.8445945945945939,
+          "start": 28.421,
+          "student": "C",
+          "studentCorrect": true,
+          "studentScore": 0.8445945945945939,
+          "v2": "G",
+          "v2Correct": false,
+          "v2Score": 0.0
+        },
+        {
+          "bar": 12,
+          "end": 33.158,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 30.789,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 13,
+          "end": 35.526,
+          "expected": "Em",
+          "hybrid": "G",
+          "hybridCorrect": false,
+          "hybridScore": 0.0,
+          "start": 33.158,
+          "student": "G",
+          "studentCorrect": false,
+          "studentScore": 0.0,
+          "v2": "G",
+          "v2Correct": false,
+          "v2Score": 0.0
+        },
+        {
+          "bar": 14,
+          "end": 37.895,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 0.5044322498944704,
+          "start": 35.526,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 0.5044322498944704,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 0.7644575770367245
+        },
+        {
+          "bar": 15,
+          "end": 40.263,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 0.8711993243243241,
+          "start": 37.895,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 0.8711993243243241,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.7255067567567568
+        },
+        {
+          "bar": 16,
+          "end": 42.947,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 40.263,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        }
+      ],
+      "engines": {
+        "hybrid": {
+          "label": "Hardened hybrid v1",
+          "metrics": {
+            "boundary": {
+              "f1": 0.4444444444444444,
+              "precision": 0.5454545454545454,
+              "recall": 0.375
+            },
+            "detailedWeightedRecall": 0.7515076722471883,
+            "evaluatedDurationSeconds": 42.947,
+            "majorMinorWeightedRecall": 0.8876755070202808,
+            "predictedChordCount": 11,
+            "referenceChordCount": 11,
+            "rootWeightedRecall": 0.8876755070202808,
+            "sequenceEditRate": 0.36363636363636365
+          },
+          "segments": [
+            {
+              "confidence": 0.9799999999999999,
+              "end": 4.69,
+              "label": "N",
+              "productLabel": "N.C.",
+              "source": "v2-no-chord",
+              "start": 0.0
+            },
+            {
+              "confidence": 0.29120842516422274,
+              "end": 5.0,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 4.69
+            },
+            {
+              "confidence": 0.619193386124528,
+              "end": 9.600000000000001,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 5.0
+            },
+            {
+              "confidence": 0.32594916969537735,
+              "end": 11.8,
+              "label": "C:maj",
+              "productLabel": "C",
+              "source": "student",
+              "start": 9.600000000000001
+            },
+            {
+              "confidence": 0.6971760811940045,
+              "end": 18.900000000000002,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 11.8
+            },
+            {
+              "confidence": 0.5003816720018995,
+              "end": 23.6,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 18.900000000000002
+            },
+            {
+              "confidence": 0.7791722082361883,
+              "end": 28.5,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 23.6
+            },
+            {
+              "confidence": 0.44346345216035843,
+              "end": 30.5,
+              "label": "C:maj",
+              "productLabel": "C",
+              "source": "student",
+              "start": 28.5
+            },
+            {
+              "confidence": 0.531745302581018,
+              "end": 36.7,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 30.5
+            },
+            {
+              "confidence": 0.4459648847579956,
+              "end": 38.2,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 36.7
+            },
+            {
+              "confidence": 0.5663110061238209,
+              "end": 42.94730158730159,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 38.2
+            },
+            {
+              "confidence": 0.7829999999999999,
+              "end": 42.94739229024943,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "v2-fallback",
+              "start": 42.94730158730159
+            }
+          ]
+        },
+        "student": {
+          "label": "Raw chord-student-v1",
+          "metrics": {
+            "boundary": {
+              "f1": 0.30303030303030304,
+              "precision": 0.29411764705882354,
+              "recall": 0.3125
+            },
+            "detailedWeightedRecall": 0.6423033040724613,
+            "evaluatedDurationSeconds": 42.947,
+            "majorMinorWeightedRecall": 0.7784711388455537,
+            "predictedChordCount": 18,
+            "referenceChordCount": 11,
+            "rootWeightedRecall": 0.7784711388455537,
+            "sequenceEditRate": 1.0909090909090908
+          },
+          "segments": [
+            {
+              "confidence": 0.23034005612134933,
+              "end": 1.0,
+              "label": "E:maj",
+              "productLabel": "E",
+              "start": 0.0
+            },
+            {
+              "confidence": 0.17493480443954468,
+              "end": 1.2000000000000002,
+              "label": "E:min",
+              "productLabel": "Em",
+              "start": 1.0
+            },
+            {
+              "confidence": 0.23544937868913016,
+              "end": 1.8,
+              "label": "E:maj",
+              "productLabel": "E",
+              "start": 1.2000000000000002
+            },
+            {
+              "confidence": 0.228256493806839,
+              "end": 2.0,
+              "label": "E:min",
+              "productLabel": "Em",
+              "start": 1.8
+            },
+            {
+              "confidence": 0.3058273494243622,
+              "end": 2.6,
+              "label": "E:maj",
+              "productLabel": "E",
+              "start": 2.0
+            },
+            {
+              "confidence": 0.21517028659582138,
+              "end": 2.8000000000000003,
+              "label": "E:min",
+              "productLabel": "Em",
+              "start": 2.6
+            },
+            {
+              "confidence": 0.17405077815055847,
+              "end": 3.3000000000000003,
+              "label": "E:maj",
+              "productLabel": "E",
+              "start": 2.8000000000000003
+            },
+            {
+              "confidence": 0.12371912598609924,
+              "end": 3.5,
+              "label": "E:min",
+              "productLabel": "Em",
+              "start": 3.3000000000000003
+            },
+            {
+              "confidence": 0.29120842516422274,
+              "end": 5.0,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 3.5
+            },
+            {
+              "confidence": 0.619193386124528,
+              "end": 9.600000000000001,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 5.0
+            },
+            {
+              "confidence": 0.32594916969537735,
+              "end": 11.8,
+              "label": "C:maj",
+              "productLabel": "C",
+              "start": 9.600000000000001
+            },
+            {
+              "confidence": 0.6971760811940045,
+              "end": 18.900000000000002,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 11.8
+            },
+            {
+              "confidence": 0.5003816720018995,
+              "end": 23.6,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 18.900000000000002
+            },
+            {
+              "confidence": 0.7791722082361883,
+              "end": 28.5,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 23.6
+            },
+            {
+              "confidence": 0.44346345216035843,
+              "end": 30.5,
+              "label": "C:maj",
+              "productLabel": "C",
+              "start": 28.5
+            },
+            {
+              "confidence": 0.531745302581018,
+              "end": 36.7,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 30.5
+            },
+            {
+              "confidence": 0.4459648847579956,
+              "end": 38.2,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 36.7
+            },
+            {
+              "confidence": 0.5663110061238209,
+              "end": 42.94730158730159,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 38.2
+            }
+          ]
+        },
+        "v2": {
+          "label": "Current Play Along v2",
+          "metrics": {
+            "boundary": {
+              "f1": 0.6060606060606061,
+              "precision": 0.5882352941176471,
+              "recall": 0.625
+            },
+            "detailedWeightedRecall": 0.6474724660628215,
+            "evaluatedDurationSeconds": 42.947,
+            "majorMinorWeightedRecall": 0.7999394602649776,
+            "predictedChordCount": 8,
+            "referenceChordCount": 11,
+            "rootWeightedRecall": 0.7999394602649776,
+            "sequenceEditRate": 0.5454545454545454
+          },
+          "segments": [
+            {
+              "bar": 1,
+              "confidence": 0.98,
+              "end": 2.345,
+              "label": "N.C.",
+              "start": 0,
+              "startFraction": 0
+            },
+            {
+              "bar": 2,
+              "confidence": 0.98,
+              "end": 4.69,
+              "label": "N.C.",
+              "start": 2.345,
+              "startFraction": 0
+            },
+            {
+              "bar": 3,
+              "confidence": 0.98,
+              "end": 7.036,
+              "label": "G",
+              "start": 4.69,
+              "startFraction": 0
+            },
+            {
+              "bar": 4,
+              "confidence": 0.943,
+              "end": 9.381,
+              "label": "G",
+              "start": 7.036,
+              "startFraction": 0
+            },
+            {
+              "bar": 5,
+              "confidence": 0.799,
+              "end": 11.749,
+              "label": "Am7",
+              "start": 9.381,
+              "startFraction": 0
+            },
+            {
+              "bar": 6,
+              "confidence": 0.98,
+              "end": 14.118,
+              "label": "G",
+              "start": 11.749,
+              "startFraction": 0
+            },
+            {
+              "bar": 7,
+              "confidence": 0.98,
+              "end": 16.533,
+              "label": "G",
+              "start": 14.118,
+              "startFraction": 0
+            },
+            {
+              "bar": 8,
+              "confidence": 0.98,
+              "end": 18.947,
+              "label": "G",
+              "start": 16.533,
+              "startFraction": 0
+            },
+            {
+              "bar": 9,
+              "confidence": 0.98,
+              "end": 21.386,
+              "label": "D",
+              "start": 18.947,
+              "startFraction": 0
+            },
+            {
+              "bar": 10,
+              "confidence": 0.98,
+              "end": 23.824,
+              "label": "D",
+              "start": 21.386,
+              "startFraction": 0
+            },
+            {
+              "bar": 11,
+              "confidence": 0.98,
+              "end": 26.285,
+              "label": "G",
+              "start": 23.824,
+              "startFraction": 0
+            },
+            {
+              "bar": 12,
+              "confidence": 0.98,
+              "end": 28.746,
+              "label": "G",
+              "start": 26.285,
+              "startFraction": 0
+            },
+            {
+              "bar": 13,
+              "confidence": 0.721,
+              "end": 31.184,
+              "label": "G",
+              "start": 28.746,
+              "startFraction": 0
+            },
+            {
+              "bar": 14,
+              "confidence": 0.98,
+              "end": 33.622,
+              "label": "G",
+              "start": 31.184,
+              "startFraction": 0
+            },
+            {
+              "bar": 15,
+              "confidence": 0.98,
+              "end": 36.084,
+              "label": "G",
+              "start": 33.622,
+              "startFraction": 0
+            },
+            {
+              "bar": 16,
+              "confidence": 0.98,
+              "end": 38.545,
+              "label": "D",
+              "start": 36.084,
+              "startFraction": 0
+            },
+            {
+              "bar": 17,
+              "confidence": 0.98,
+              "end": 40.983,
+              "label": "G",
+              "start": 38.545,
+              "startFraction": 0
+            },
+            {
+              "bar": 18,
+              "confidence": 0.783,
+              "end": 42.94739229024943,
+              "label": "G",
+              "start": 40.983,
+              "startFraction": 0
+            }
+          ]
+        }
+      },
+      "reference": {
+        "metricsLabel": "hand-authored expected chord timeline",
+        "segments": [
+          {
+            "end": 4.737,
+            "label": "N",
+            "start": 0.0
+          },
+          {
+            "end": 7.105,
+            "label": "G:maj",
+            "start": 4.737
+          },
+          {
+            "end": 9.474,
+            "label": "G:maj",
+            "start": 7.105
+          },
+          {
+            "end": 11.842,
+            "label": "C:maj",
+            "start": 9.474
+          },
+          {
+            "end": 14.211,
+            "label": "G:maj",
+            "start": 11.842
+          },
+          {
+            "end": 16.579,
+            "label": "G:maj",
+            "start": 14.211
+          },
+          {
+            "end": 18.947,
+            "label": "G:maj",
+            "start": 16.579
+          },
+          {
+            "end": 21.316,
+            "label": "D:7",
+            "start": 18.947
+          },
+          {
+            "end": 23.684,
+            "label": "D:7",
+            "start": 21.316
+          },
+          {
+            "end": 26.053,
+            "label": "G:maj",
+            "start": 23.684
+          },
+          {
+            "end": 28.421,
+            "label": "G:maj",
+            "start": 26.053
+          },
+          {
+            "end": 30.789,
+            "label": "C:maj",
+            "start": 28.421
+          },
+          {
+            "end": 33.158,
+            "label": "G:maj",
+            "start": 30.789
+          },
+          {
+            "end": 35.526,
+            "label": "E:min",
+            "start": 33.158
+          },
+          {
+            "end": 37.895,
+            "label": "D:7",
+            "start": 35.526
+          },
+          {
+            "end": 40.263,
+            "label": "G:maj",
+            "start": 37.895
+          },
+          {
+            "end": 42.947,
+            "label": "G:maj",
+            "start": 40.263
+          }
+        ],
+        "source": "hand-authored Steel Guitar RAG lesson timeline"
+      },
+      "summary": {
+        "barCount": 16,
+        "hybridCorrectBars": 15,
+        "studentCorrectBars": 15,
+        "v2CorrectBars": 13
+      },
+      "track": {
+        "audioSha256": "c0126a24458b913168ee5f3f58a0a54f75a32a6dfcd8fa1e23d80ffe8a91e417",
+        "audioUrl": "/ui/assets/song-practice/amazing-grace-2011-guide.mp3",
+        "compositionStatus": "public_domain_composition",
+        "durationSeconds": 42.947,
+        "id": "amazing-grace-kevin-macleod-lesson-v1",
+        "key": "G",
+        "license": "CC BY 3.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+        "meter": "3/4",
+        "modifications": "First 16-bar verse extracted, transposed from C to G, slowed from 79 to 76 BPM, two-bar count-in added, and lesson chord/beat/lyric timeline hand-authored. No endorsement by Kevin MacLeod is implied.",
+        "performer": "Kevin MacLeod \u00b7 Steel Guitar RAG lesson edit",
+        "recordingCredit": "\u201cAmazing Grace 2011\u201d Kevin MacLeod (incompetech.com), licensed under CC BY 3.0",
+        "recordingType": "licensed human performance",
+        "rightsUrl": "https://commons.wikimedia.org/wiki/File:Amazing_Grace_2011_(ISRC_USUAN1100820).mp3",
+        "tempo": 76,
+        "title": "Amazing Grace"
+      }
+    },
+    {
+      "bars": [
+        {
+          "bar": 1,
+          "end": 4.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 2.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 2,
+          "end": 6.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 4.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 3,
+          "end": 8.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 6.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 4,
+          "end": 10.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 8.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 5,
+          "end": 12.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 10.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 6,
+          "end": 14.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 12.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 7,
+          "end": 16.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 14.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.976
+        },
+        {
+          "bar": 8,
+          "end": 18.0,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 0.9499999999999993,
+          "start": 16.0,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 0.9499999999999993,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 9,
+          "end": 20.0,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 18.0,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "Bm7",
+          "v2Correct": false,
+          "v2Score": 0.4740000000000002
+        },
+        {
+          "bar": 10,
+          "end": 22.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 20.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 11,
+          "end": 24.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 22.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.9815000000000005
+        },
+        {
+          "bar": 12,
+          "end": 26.0,
+          "expected": "C",
+          "hybrid": "C",
+          "hybridCorrect": true,
+          "hybridScore": 0.9499999999999993,
+          "start": 24.0,
+          "student": "C",
+          "studentCorrect": true,
+          "studentScore": 0.9499999999999993,
+          "v2": "C",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 13,
+          "end": 28.0,
+          "expected": "C",
+          "hybrid": "C",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 26.0,
+          "student": "C",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "C",
+          "v2Correct": true,
+          "v2Score": 0.9785000000000004
+        },
+        {
+          "bar": 14,
+          "end": 30.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 0.9499999999999993,
+          "start": 28.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 0.9499999999999993,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.9770000000000003
+        },
+        {
+          "bar": 15,
+          "end": 32.0,
+          "expected": "D7",
+          "hybrid": "G",
+          "hybridCorrect": false,
+          "hybridScore": 0.5,
+          "start": 30.0,
+          "student": "G",
+          "studentCorrect": false,
+          "studentScore": 0.5,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 0.9755000000000003
+        },
+        {
+          "bar": 16,
+          "end": 34.0,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 0.9499999999999993,
+          "start": 32.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 0.9499999999999993,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 17,
+          "end": 36.5,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 34.0,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        }
+      ],
+      "engines": {
+        "hybrid": {
+          "label": "Hardened hybrid v1",
+          "metrics": {
+            "boundary": {
+              "f1": 0.48,
+              "precision": 0.75,
+              "recall": 0.35294117647058826
+            },
+            "detailedWeightedRecall": 0.7726027397260273,
+            "evaluatedDurationSeconds": 36.5,
+            "majorMinorWeightedRecall": 0.906849315068493,
+            "predictedChordCount": 8,
+            "referenceChordCount": 8,
+            "rootWeightedRecall": 0.906849315068493,
+            "sequenceEditRate": 0.375
+          },
+          "segments": [
+            {
+              "confidence": 0.13200638029310438,
+              "end": 1.8,
+              "label": "D#:maj",
+              "productLabel": "D#",
+              "source": "student",
+              "start": 0.0
+            },
+            {
+              "confidence": 0.6961957337139368,
+              "end": 16.1,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 1.8
+            },
+            {
+              "confidence": 0.510949664008923,
+              "end": 20.0,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 16.1
+            },
+            {
+              "confidence": 0.6936864133288221,
+              "end": 24.1,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 20.0
+            },
+            {
+              "confidence": 0.6590968132019043,
+              "end": 28.1,
+              "label": "C:maj",
+              "productLabel": "C",
+              "source": "student",
+              "start": 24.1
+            },
+            {
+              "confidence": 0.6602132834237198,
+              "end": 31.0,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 28.1
+            },
+            {
+              "confidence": 0.4399355351924896,
+              "end": 32.1,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 31.0
+            },
+            {
+              "confidence": 0.7151278541846708,
+              "end": 36.49995464852608,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 32.1
+            },
+            {
+              "confidence": 0.64,
+              "end": 36.50004535147392,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "v2-fallback",
+              "start": 36.49995464852608
+            }
+          ]
+        },
+        "student": {
+          "label": "Raw chord-student-v1",
+          "metrics": {
+            "boundary": {
+              "f1": 0.5,
+              "precision": 0.8571428571428571,
+              "recall": 0.35294117647058826
+            },
+            "detailedWeightedRecall": 0.7726024571831853,
+            "evaluatedDurationSeconds": 36.49995464852608,
+            "majorMinorWeightedRecall": 0.9068491993280517,
+            "predictedChordCount": 8,
+            "referenceChordCount": 8,
+            "rootWeightedRecall": 0.9068491993280517,
+            "sequenceEditRate": 0.375
+          },
+          "segments": [
+            {
+              "confidence": 0.13200638029310438,
+              "end": 1.8,
+              "label": "D#:maj",
+              "productLabel": "D#",
+              "start": 0.0
+            },
+            {
+              "confidence": 0.696195733713937,
+              "end": 16.1,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 1.8
+            },
+            {
+              "confidence": 0.510949664008923,
+              "end": 20.0,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 16.1
+            },
+            {
+              "confidence": 0.6936864133288221,
+              "end": 24.1,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 20.0
+            },
+            {
+              "confidence": 0.6590968132019043,
+              "end": 28.1,
+              "label": "C:maj",
+              "productLabel": "C",
+              "start": 24.1
+            },
+            {
+              "confidence": 0.6602132834237198,
+              "end": 31.0,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 28.1
+            },
+            {
+              "confidence": 0.4399355351924896,
+              "end": 32.1,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 31.0
+            },
+            {
+              "confidence": 0.7151278541846708,
+              "end": 36.49995464852608,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 32.1
+            }
+          ]
+        },
+        "v2": {
+          "label": "Current Play Along v2",
+          "metrics": {
+            "boundary": {
+              "f1": 0.9411764705882353,
+              "precision": 0.9411764705882353,
+              "recall": 0.9411764705882353
+            },
+            "detailedWeightedRecall": 0.7760547945205479,
+            "evaluatedDurationSeconds": 36.5,
+            "majorMinorWeightedRecall": 0.9102739726027398,
+            "predictedChordCount": 8,
+            "referenceChordCount": 8,
+            "rootWeightedRecall": 0.9102739726027398,
+            "sequenceEditRate": 0.5
+          },
+          "segments": [
+            {
+              "bar": 1,
+              "confidence": 0.98,
+              "end": 3.971,
+              "label": "G",
+              "start": 0,
+              "startFraction": 0
+            },
+            {
+              "bar": 2,
+              "confidence": 0.98,
+              "end": 6.014,
+              "label": "G",
+              "start": 3.971,
+              "startFraction": 0
+            },
+            {
+              "bar": 3,
+              "confidence": 0.98,
+              "end": 7.988,
+              "label": "G",
+              "start": 6.014,
+              "startFraction": 0
+            },
+            {
+              "bar": 4,
+              "confidence": 0.98,
+              "end": 9.961,
+              "label": "G",
+              "start": 7.988,
+              "startFraction": 0
+            },
+            {
+              "bar": 5,
+              "confidence": 0.98,
+              "end": 11.958,
+              "label": "G",
+              "start": 9.961,
+              "startFraction": 0
+            },
+            {
+              "bar": 6,
+              "confidence": 0.98,
+              "end": 13.955,
+              "label": "G",
+              "start": 11.958,
+              "startFraction": 0
+            },
+            {
+              "bar": 7,
+              "confidence": 0.98,
+              "end": 15.952,
+              "label": "G",
+              "start": 13.955,
+              "startFraction": 0
+            },
+            {
+              "bar": 8,
+              "confidence": 0.98,
+              "end": 17.926,
+              "label": "D",
+              "start": 15.952,
+              "startFraction": 0
+            },
+            {
+              "bar": 9,
+              "confidence": 0.98,
+              "end": 18.948,
+              "label": "D",
+              "start": 17.926,
+              "startFraction": 0
+            },
+            {
+              "bar": 9,
+              "confidence": 0.916,
+              "end": 19.969,
+              "label": "Bm7",
+              "start": 18.948,
+              "startFraction": 0.5
+            },
+            {
+              "bar": 10,
+              "confidence": 0.98,
+              "end": 21.989,
+              "label": "G",
+              "start": 19.969,
+              "startFraction": 0
+            },
+            {
+              "bar": 11,
+              "confidence": 0.98,
+              "end": 23.963,
+              "label": "G",
+              "start": 21.989,
+              "startFraction": 0
+            },
+            {
+              "bar": 12,
+              "confidence": 0.98,
+              "end": 25.96,
+              "label": "C",
+              "start": 23.963,
+              "startFraction": 0
+            },
+            {
+              "bar": 13,
+              "confidence": 0.98,
+              "end": 27.957,
+              "label": "C",
+              "start": 25.96,
+              "startFraction": 0
+            },
+            {
+              "bar": 14,
+              "confidence": 0.98,
+              "end": 29.954,
+              "label": "G",
+              "start": 27.957,
+              "startFraction": 0
+            },
+            {
+              "bar": 15,
+              "confidence": 0.98,
+              "end": 31.951,
+              "label": "D",
+              "start": 29.954,
+              "startFraction": 0
+            },
+            {
+              "bar": 16,
+              "confidence": 0.98,
+              "end": 33.948,
+              "label": "G",
+              "start": 31.951,
+              "startFraction": 0
+            },
+            {
+              "bar": 17,
+              "confidence": 0.64,
+              "end": 36.50004535147392,
+              "label": "G",
+              "start": 33.948,
+              "startFraction": 0
+            }
+          ]
+        }
+      },
+      "reference": {
+        "metricsLabel": "hand-authored expected chord timeline",
+        "segments": [
+          {
+            "end": 2.0,
+            "label": "N",
+            "start": 0.0
+          },
+          {
+            "end": 4.0,
+            "label": "G:maj",
+            "start": 2.0
+          },
+          {
+            "end": 6.0,
+            "label": "G:maj",
+            "start": 4.0
+          },
+          {
+            "end": 8.0,
+            "label": "G:maj",
+            "start": 6.0
+          },
+          {
+            "end": 10.0,
+            "label": "G:maj",
+            "start": 8.0
+          },
+          {
+            "end": 12.0,
+            "label": "G:maj",
+            "start": 10.0
+          },
+          {
+            "end": 14.0,
+            "label": "G:maj",
+            "start": 12.0
+          },
+          {
+            "end": 16.0,
+            "label": "G:maj",
+            "start": 14.0
+          },
+          {
+            "end": 18.0,
+            "label": "D:7",
+            "start": 16.0
+          },
+          {
+            "end": 20.0,
+            "label": "D:7",
+            "start": 18.0
+          },
+          {
+            "end": 22.0,
+            "label": "G:maj",
+            "start": 20.0
+          },
+          {
+            "end": 24.0,
+            "label": "G:maj",
+            "start": 22.0
+          },
+          {
+            "end": 26.0,
+            "label": "C:maj",
+            "start": 24.0
+          },
+          {
+            "end": 28.0,
+            "label": "C:maj",
+            "start": 26.0
+          },
+          {
+            "end": 30.0,
+            "label": "G:maj",
+            "start": 28.0
+          },
+          {
+            "end": 32.0,
+            "label": "D:7",
+            "start": 30.0
+          },
+          {
+            "end": 34.0,
+            "label": "G:maj",
+            "start": 32.0
+          },
+          {
+            "end": 36.5,
+            "label": "G:maj",
+            "start": 34.0
+          }
+        ],
+        "source": "hand-authored Steel Guitar RAG lesson timeline"
+      },
+      "summary": {
+        "barCount": 17,
+        "hybridCorrectBars": 16,
+        "studentCorrectBars": 16,
+        "v2CorrectBars": 16
+      },
+      "track": {
+        "audioSha256": "08aeb59219f14541a5526f02a688d1a27594a12626ec8a6d18dcdf3db3cf7cbb",
+        "audioUrl": "/ui/assets/song-practice/when-the-saints-preview.mp3",
+        "compositionStatus": "traditional_public_domain_composition_us_preview_reviewed",
+        "durationSeconds": 36.5,
+        "id": "when-the-saints-preview-v1",
+        "key": "G",
+        "license": "App-owned deterministic master",
+        "licenseUrl": null,
+        "meter": "4/4",
+        "modifications": "Original app-owned melody-and-accompaniment master rendered from reviewed public-domain score data by scripts/build_song_practice_tracks.py",
+        "performer": "Steel Guitar RAG practice track",
+        "recordingCredit": "Original Steel Guitar RAG practice master",
+        "recordingType": "app-owned deterministic performance",
+        "rightsUrl": null,
+        "tempo": 120,
+        "title": "When the Saints Go Marching In"
+      }
+    },
+    {
+      "bars": [
+        {
+          "bar": 1,
+          "end": 3.8,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 1.9,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "N.C.",
+          "v2Correct": false,
+          "v2Score": 0.0
+        },
+        {
+          "bar": 2,
+          "end": 5.7,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 3.8,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.9957894736842106
+        },
+        {
+          "bar": 3,
+          "end": 7.6,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 5.7,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 4,
+          "end": 9.5,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 7.6,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.9863157894736844
+        },
+        {
+          "bar": 5,
+          "end": 11.4,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 0.9473684210526317,
+          "start": 9.5,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 0.9473684210526317,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 0.9884210526315789
+        },
+        {
+          "bar": 6,
+          "end": 13.3,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 11.4,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "Em7",
+          "v2Correct": false,
+          "v2Score": 0.49894736842105275
+        },
+        {
+          "bar": 7,
+          "end": 15.2,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 13.3,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 8,
+          "end": 17.1,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 0.5263157894736836,
+          "start": 15.2,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 0.5263157894736836,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 0.989999999999999
+        },
+        {
+          "bar": 9,
+          "end": 19.0,
+          "expected": "G \u2192 C",
+          "hybrid": "C",
+          "hybridCorrect": true,
+          "hybridScore": 0.921052631578948,
+          "start": 17.1,
+          "student": "C",
+          "studentCorrect": true,
+          "studentScore": 0.921052631578948,
+          "v2": "C",
+          "v2Correct": true,
+          "v2Score": 0.989999999999999
+        },
+        {
+          "bar": 10,
+          "end": 20.9,
+          "expected": "C",
+          "hybrid": "C",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 19.0,
+          "student": "C",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "C",
+          "v2Correct": true,
+          "v2Score": 0.9868421052631586
+        },
+        {
+          "bar": 11,
+          "end": 22.8,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 0.8947368421052618,
+          "start": 20.9,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 0.8947368421052618,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.9889473684210522
+        },
+        {
+          "bar": 12,
+          "end": 24.7,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 0.8947368421052635,
+          "start": 22.8,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 0.8947368421052635,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 1.0
+        },
+        {
+          "bar": 13,
+          "end": 26.6,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 24.7,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.5021052631578945
+        },
+        {
+          "bar": 14,
+          "end": 28.5,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 1.0,
+          "start": 26.6,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 1.0,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 0.9952631578947366
+        },
+        {
+          "bar": 15,
+          "end": 30.4,
+          "expected": "D7",
+          "hybrid": "D",
+          "hybridCorrect": true,
+          "hybridScore": 0.578947368421052,
+          "start": 28.5,
+          "student": "D",
+          "studentCorrect": true,
+          "studentScore": 0.578947368421052,
+          "v2": "D",
+          "v2Correct": true,
+          "v2Score": 0.9973684210526321
+        },
+        {
+          "bar": 16,
+          "end": 32.8,
+          "expected": "G",
+          "hybrid": "G",
+          "hybridCorrect": true,
+          "hybridScore": 0.9166666666666654,
+          "start": 30.4,
+          "student": "G",
+          "studentCorrect": true,
+          "studentScore": 0.9166666666666654,
+          "v2": "G",
+          "v2Correct": true,
+          "v2Score": 1.0
+        }
+      ],
+      "engines": {
+        "hybrid": {
+          "label": "Hardened hybrid v1",
+          "metrics": {
+            "boundary": {
+              "f1": 0.5714285714285714,
+              "precision": 0.7272727272727273,
+              "recall": 0.47058823529411764
+            },
+            "detailedWeightedRecall": 0.6935975609756097,
+            "evaluatedDurationSeconds": 32.8,
+            "majorMinorWeightedRecall": 0.8643292682926828,
+            "predictedChordCount": 12,
+            "referenceChordCount": 12,
+            "rootWeightedRecall": 0.8643292682926828,
+            "sequenceEditRate": 0.4166666666666667
+          },
+          "segments": [
+            {
+              "confidence": 0.10230635479092598,
+              "end": 1.4000000000000001,
+              "label": "D#:maj",
+              "productLabel": "D#",
+              "source": "student",
+              "start": 0.0
+            },
+            {
+              "confidence": 0.628326138412511,
+              "end": 9.5,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 1.4000000000000001
+            },
+            {
+              "confidence": 0.5951610025432374,
+              "end": 11.3,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 9.5
+            },
+            {
+              "confidence": 0.6125947156300148,
+              "end": 16.1,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 11.3
+            },
+            {
+              "confidence": 0.27601496428251265,
+              "end": 17.1,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 16.1
+            },
+            {
+              "confidence": 0.28473176807165146,
+              "end": 17.900000000000002,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 17.1
+            },
+            {
+              "confidence": 0.7387031977996229,
+              "end": 21.1,
+              "label": "C:maj",
+              "productLabel": "C",
+              "source": "student",
+              "start": 17.900000000000002
+            },
+            {
+              "confidence": 0.6704080104827881,
+              "end": 22.900000000000002,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 21.1
+            },
+            {
+              "confidence": 0.5688267963774064,
+              "end": 24.6,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 22.900000000000002
+            },
+            {
+              "confidence": 0.6252171695232391,
+              "end": 29.3,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 24.6
+            },
+            {
+              "confidence": 0.38083047247849977,
+              "end": 30.6,
+              "label": "D:maj",
+              "productLabel": "D",
+              "source": "student",
+              "start": 29.3
+            },
+            {
+              "confidence": 0.5020663311535661,
+              "end": 32.8,
+              "label": "G:maj",
+              "productLabel": "G",
+              "source": "student",
+              "start": 30.6
+            }
+          ]
+        },
+        "student": {
+          "label": "Raw chord-student-v1",
+          "metrics": {
+            "boundary": {
+              "f1": 0.5714285714285714,
+              "precision": 0.7272727272727273,
+              "recall": 0.47058823529411764
+            },
+            "detailedWeightedRecall": 0.6935975609756097,
+            "evaluatedDurationSeconds": 32.8,
+            "majorMinorWeightedRecall": 0.8643292682926828,
+            "predictedChordCount": 12,
+            "referenceChordCount": 12,
+            "rootWeightedRecall": 0.8643292682926828,
+            "sequenceEditRate": 0.4166666666666667
+          },
+          "segments": [
+            {
+              "confidence": 0.10230635479092598,
+              "end": 1.4000000000000001,
+              "label": "D#:maj",
+              "productLabel": "D#",
+              "start": 0.0
+            },
+            {
+              "confidence": 0.628326138412511,
+              "end": 9.5,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 1.4000000000000001
+            },
+            {
+              "confidence": 0.5951610025432374,
+              "end": 11.3,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 9.5
+            },
+            {
+              "confidence": 0.6125947156300148,
+              "end": 16.1,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 11.3
+            },
+            {
+              "confidence": 0.27601496428251265,
+              "end": 17.1,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 16.1
+            },
+            {
+              "confidence": 0.28473176807165146,
+              "end": 17.900000000000002,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 17.1
+            },
+            {
+              "confidence": 0.738703197799623,
+              "end": 21.1,
+              "label": "C:maj",
+              "productLabel": "C",
+              "start": 17.900000000000002
+            },
+            {
+              "confidence": 0.6704080104827881,
+              "end": 22.900000000000002,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 21.1
+            },
+            {
+              "confidence": 0.5688267963774064,
+              "end": 24.6,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 22.900000000000002
+            },
+            {
+              "confidence": 0.6252171695232391,
+              "end": 29.3,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 24.6
+            },
+            {
+              "confidence": 0.38083047247849977,
+              "end": 30.6,
+              "label": "D:maj",
+              "productLabel": "D",
+              "start": 29.3
+            },
+            {
+              "confidence": 0.5020663311535661,
+              "end": 32.8,
+              "label": "G:maj",
+              "productLabel": "G",
+              "start": 30.6
+            }
+          ]
+        },
+        "v2": {
+          "label": "Current Play Along v2",
+          "metrics": {
+            "boundary": {
+              "f1": 0.9444444444444444,
+              "precision": 0.8947368421052632,
+              "recall": 1.0
+            },
+            "detailedWeightedRecall": 0.6492073170731707,
+            "evaluatedDurationSeconds": 32.8,
+            "majorMinorWeightedRecall": 0.8795121951219511,
+            "predictedChordCount": 16,
+            "referenceChordCount": 12,
+            "rootWeightedRecall": 0.8795121951219511,
+            "sequenceEditRate": 0.6666666666666666
+          },
+          "segments": [
+            {
+              "bar": 1,
+              "confidence": 0.98,
+              "end": 2.02,
+              "label": "N.C.",
+              "start": 0,
+              "startFraction": 0
+            },
+            {
+              "bar": 2,
+              "confidence": 0.9,
+              "end": 3.808,
+              "label": "N.C.",
+              "start": 2.02,
+              "startFraction": 0
+            },
+            {
+              "bar": 3,
+              "confidence": 0.98,
+              "end": 5.642,
+              "label": "G",
+              "start": 3.808,
+              "startFraction": 0
+            },
+            {
+              "bar": 4,
+              "confidence": 0.98,
+              "end": 7.57,
+              "label": "G",
+              "start": 5.642,
+              "startFraction": 0
+            },
+            {
+              "bar": 5,
+              "confidence": 0.98,
+              "end": 9.474,
+              "label": "G",
+              "start": 7.57,
+              "startFraction": 0
+            },
+            {
+              "bar": 6,
+              "confidence": 0.98,
+              "end": 11.378,
+              "label": "D",
+              "start": 9.474,
+              "startFraction": 0
+            },
+            {
+              "bar": 7,
+              "confidence": 0.98,
+              "end": 12.33,
+              "label": "G",
+              "start": 11.378,
+              "startFraction": 0
+            },
+            {
+              "bar": 7,
+              "confidence": 0.98,
+              "end": 13.282,
+              "label": "Em7",
+              "start": 12.33,
+              "startFraction": 0.5
+            },
+            {
+              "bar": 8,
+              "confidence": 0.98,
+              "end": 15.209,
+              "label": "G",
+              "start": 13.282,
+              "startFraction": 0
+            },
+            {
+              "bar": 9,
+              "confidence": 0.815,
+              "end": 17.09,
+              "label": "D",
+              "start": 15.209,
+              "startFraction": 0
+            },
+            {
+              "bar": 10,
+              "confidence": 0.98,
+              "end": 18.031,
+              "label": "G",
+              "start": 17.09,
+              "startFraction": 0
+            },
+            {
+              "bar": 10,
+              "confidence": 0.98,
+              "end": 18.971,
+              "label": "C",
+              "start": 18.031,
+              "startFraction": 0.5
+            },
+            {
+              "bar": 11,
+              "confidence": 0.98,
+              "end": 20.875,
+              "label": "C",
+              "start": 18.971,
+              "startFraction": 0
+            },
+            {
+              "bar": 12,
+              "confidence": 0.98,
+              "end": 22.779,
+              "label": "G",
+              "start": 20.875,
+              "startFraction": 0
+            },
+            {
+              "bar": 13,
+              "confidence": 0.98,
+              "end": 24.706,
+              "label": "D",
+              "start": 22.779,
+              "startFraction": 0
+            },
+            {
+              "bar": 14,
+              "confidence": 0.98,
+              "end": 25.647,
+              "label": "G",
+              "start": 24.706,
+              "startFraction": 0
+            },
+            {
+              "bar": 14,
+              "confidence": 0.98,
+              "end": 26.587,
+              "label": "Em7",
+              "start": 25.647,
+              "startFraction": 0.5
+            },
+            {
+              "bar": 15,
+              "confidence": 0.98,
+              "end": 28.491,
+              "label": "G",
+              "start": 26.587,
+              "startFraction": 0
+            },
+            {
+              "bar": 16,
+              "confidence": 0.98,
+              "end": 30.395,
+              "label": "D",
+              "start": 28.491,
+              "startFraction": 0
+            },
+            {
+              "bar": 17,
+              "confidence": 0.98,
+              "end": 32.8,
+              "label": "G",
+              "start": 30.395,
+              "startFraction": 0
+            }
+          ]
+        }
+      },
+      "reference": {
+        "metricsLabel": "hand-authored expected chord timeline",
+        "segments": [
+          {
+            "end": 1.9,
+            "label": "N",
+            "start": 0.0
+          },
+          {
+            "end": 3.8,
+            "label": "G:maj",
+            "start": 1.9
+          },
+          {
+            "end": 5.7,
+            "label": "G:maj",
+            "start": 3.8
+          },
+          {
+            "end": 7.6,
+            "label": "G:maj",
+            "start": 5.7
+          },
+          {
+            "end": 9.5,
+            "label": "G:maj",
+            "start": 7.6
+          },
+          {
+            "end": 11.4,
+            "label": "D:7",
+            "start": 9.5
+          },
+          {
+            "end": 13.3,
+            "label": "G:maj",
+            "start": 11.4
+          },
+          {
+            "end": 15.2,
+            "label": "G:maj",
+            "start": 13.3
+          },
+          {
+            "end": 17.1,
+            "label": "D:7",
+            "start": 15.2
+          },
+          {
+            "end": 18.05,
+            "label": "G:maj",
+            "start": 17.1
+          },
+          {
+            "end": 19.0,
+            "label": "C:maj",
+            "start": 18.05
+          },
+          {
+            "end": 20.9,
+            "label": "C:maj",
+            "start": 19.0
+          },
+          {
+            "end": 22.8,
+            "label": "G:maj",
+            "start": 20.9
+          },
+          {
+            "end": 24.7,
+            "label": "D:7",
+            "start": 22.8
+          },
+          {
+            "end": 26.6,
+            "label": "G:maj",
+            "start": 24.7
+          },
+          {
+            "end": 28.5,
+            "label": "G:maj",
+            "start": 26.6
+          },
+          {
+            "end": 30.4,
+            "label": "D:7",
+            "start": 28.5
+          },
+          {
+            "end": 32.8,
+            "label": "G:maj",
+            "start": 30.4
+          }
+        ],
+        "source": "hand-authored Steel Guitar RAG lesson timeline"
+      },
+      "summary": {
+        "barCount": 16,
+        "hybridCorrectBars": 16,
+        "studentCorrectBars": 16,
+        "v2CorrectBars": 14
+      },
+      "track": {
+        "audioSha256": "7aedadbc7ceec2f3e50faa19dba3209454daaae5a68ee79c40e6b2ccc96625ac",
+        "audioUrl": "/ui/assets/song-practice/oh-susanna-preview.mp3",
+        "compositionStatus": "public_domain_composition_us_preview_reviewed",
+        "durationSeconds": 32.8,
+        "id": "oh-susanna-preview-v1",
+        "key": "G",
+        "license": "App-owned deterministic master",
+        "licenseUrl": null,
+        "meter": "2/4",
+        "modifications": "Original app-owned melody-and-accompaniment master rendered from reviewed public-domain score data by scripts/build_song_practice_tracks.py",
+        "performer": "Steel Guitar RAG deterministic melody-and-accompaniment renderer; no sampled performances",
+        "recordingCredit": "Steel Guitar RAG deterministic melody-and-accompaniment renderer; no sampled performances",
+        "recordingType": "app-owned deterministic performance",
+        "rightsUrl": null,
+        "tempo": null,
+        "title": "Oh! Susanna"
+      }
+    }
+  ]
 }

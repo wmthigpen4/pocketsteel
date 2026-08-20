@@ -6,15 +6,16 @@ Improve the Play Along chord reader with measured gains on held-out public audio
 
 ## System design
 
-The development system has three readers:
+The development system has four reported readers:
 
 1. `play-along-v2` is the exact current browser analyzer, invoked through `scripts/chord_reader_v2.js`.
 2. `btc-ismir19-hf-baseline` is the 170-class pretrained BTC challenger. Its Hugging Face commit and every imported source/weight file are pinned by SHA-256. The historical checkpoint is loaded with PyTorch's weights-only unpickler.
 3. `chord-student-v1` is the browser production candidate. It consumes the same 4096-point spectral chroma that its JavaScript worker computes, uses a small temporal convolution network, and emits 49 classes: no-chord plus major, minor, dominant seventh, and minor seventh for all roots.
+4. `hybrid-v1` is a conservative product layer over v2 and the raw student. It preserves every raw-student chord boundary except when v2 finds a strong leading no-chord region of at least three seconds and the student's average confidence there is at most 0.32. This narrow gate fixes count-in hallucination without bar-snapping the model output.
 
 The student is trained with full-chord, root, major/minor, and joint root-plus-major/minor losses. Pitch-class rolling supplies transposition augmentation. Composition-level splits keep different players and comp/solo recordings of the same progression together.
 
-The browser runs v2 and the student in separate workers when the `pocketSteel.chordReaderEngine=ml-v3` feature flag is set. Student boundaries snap to v2's beat grid. If ONNX or the model fails, the client returns v2 and records `chordReaderEngine: "v2-fallback"` plus a diagnostic reason.
+The browser runs v2 and the student in separate workers when the `pocketSteel.chordReaderEngine=ml-v3` feature flag is set, then applies the same deterministic hybrid gate used by the Python benchmark. If ONNX or the model fails, the client returns v2 and records `chordReaderEngine: "v2-fallback"` plus a diagnostic reason.
 
 ## Data policy
 
@@ -68,6 +69,10 @@ python scripts/chord_reader.py export-student "$RUNS/student" \
 python scripts/chord_reader.py benchmark "$DATA/guitarset/manifest.json" \
   --engine student --model ui/models/chord-student-v1.onnx --split test \
   --output-root "$RUNS/student-test" --report "$RUNS/student-test/report.json"
+python scripts/chord_reader.py benchmark-hybrid "$DATA/guitarset/manifest.json" \
+  --v2-predictions "$RUNS/baseline/predictions/v2" \
+  --student-predictions "$RUNS/student-test/predictions/student" \
+  --split test --output-root "$RUNS/hybrid-test" --report "$RUNS/hybrid-test/report.json"
 ```
 
 Run one model directly or build a local chart reference without committing source material:
@@ -93,11 +98,13 @@ The tracked GuitarSet test reports contain 36 recordings from three composition-
 
 The projected student runtime for four minutes of audio is 0.25 seconds on the benchmark machine. The frozen public promotion report passes every currently applicable automated gate. This is evidence of a material improvement on public guitar recordings, not a claim that the model is ready for steel-guitar production: the broader steel set and Travis review remain required.
 
-## Visual proof on a real song
+## Visual proof suite on real songs
 
-Serve the repository locally and open `/ui/chord-reader-proof/` to inspect the CC BY “Amazing Grace” lesson recording against its hand-authored 16-bar chart. The synchronized player shows the expected chord, current v2 output, and revised-model output for every bar and lets a reviewer click any bar to hear it.
+Serve the repository locally and open `/ui/chord-reader-proof/` to inspect three public-domain songs against 49 hand-authored bars. The synchronized player switches among a licensed human performance of “Amazing Grace” and app-owned deterministic performances of “When the Saints Go Marching In” and “Oh! Susanna.” It shows the chart, current v2 output, raw-student output, and hardened-hybrid output for every bar; any bar can be clicked to hear the underlying audio.
 
-On this clarinet, pipe-organ, and piano recording, the revised model identifies 15 of 16 musical bars versus 13 of 16 for v2. It catches both C-major changes that v2 misses; both readers miss the Em bar. The page also discloses that the revised model hallucinates chords during the two-bar count-in, which leaves its raw whole-track major/minor WCSR at 77.8% versus 80.0% for v2. That weakness is intentionally visible and is the next post-processing target.
+Across the suite, the hybrid identifies 47 of 49 musical bars versus 43 of 49 for v2. Duration-weighted major/minor WCSR is 88.7% for the hybrid versus 85.9% for v2. The gain is concentrated in the human “Amazing Grace” performance: the hybrid reaches 88.8% versus 80.0% for v2 by preserving its count-in as no-chord. On the two deterministic recordings, hybrid WCSR trails v2 by 0.3 and 1.5 percentage points even though it ties or beats v2 on dominant bar labels. Those regressions are displayed per song in the player.
+
+The first attempted post-processor forced one student label per v2 bar. It raised the single-song proof score but reduced held-out GuitarSet major/minor WCSR from 52.1% to 44.5%, so it was rejected. The committed hybrid instead exactly matches the raw student on all 36 frozen GuitarSet test recordings: 52.1% major/minor WCSR, 58.4% root WCSR, 47.3% detailed WCSR, and 50.1% boundary F1. This is a zero-regression safety result on that held-out set, not evidence that the gate is universally safe.
 
 Regenerate all proof JSON from the tracked model, audio, authored timeline, and frozen GuitarSet reports:
 
