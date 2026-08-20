@@ -93,6 +93,18 @@ The tracked GuitarSet test reports contain 36 recordings from three composition-
 
 The projected student runtime for four minutes of audio is 0.25 seconds on the benchmark machine. The frozen public promotion report passes every currently applicable automated gate. This is evidence of a material improvement on public guitar recordings, not a claim that the model is ready for steel-guitar production: the broader steel set and Travis review remain required.
 
+## Visual proof on a real song
+
+Serve the repository locally and open `/ui/chord-reader-proof/` to inspect the CC BY “Amazing Grace” lesson recording against its hand-authored 16-bar chart. The synchronized player shows the expected chord, current v2 output, and revised-model output for every bar and lets a reviewer click any bar to hear it.
+
+On this clarinet, pipe-organ, and piano recording, the revised model identifies 15 of 16 musical bars versus 13 of 16 for v2. It catches both C-major changes that v2 misses; both readers miss the Em bar. The page also discloses that the revised model hallucinates chords during the two-bar count-in, which leaves its raw whole-track major/minor WCSR at 77.8% versus 80.0% for v2. That weakness is intentionally visible and is the next post-processing target.
+
+Regenerate all proof JSON from the tracked model, audio, authored timeline, and frozen GuitarSet reports:
+
+```bash
+python scripts/build_chord_reader_proof.py
+```
+
 ## Promotion contract
 
 Against frozen v2, the challenger must achieve all of the following:

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chord Reader Proof · Amazing Grace</title>
+  <link rel="stylesheet" href="./proof.css">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Chord Reader ML v3 · visual proof</p>
+        <h1>Hear the song. Watch both readers.</h1>
+        <p class="lede">This is a real, licensed recording with a hand-authored chord chart. Press play and inspect every bar—green means the reader matches the expected root and major/minor quality; coral means it does not.</p>
+      </div>
+      <div class="hero-badge"><span id="student-bars">—</span><small>revised bars correct</small></div>
+    </header>
+
+    <section class="player-card" aria-labelledby="song-title">
+      <div class="song-head">
+        <div>
+          <p class="eyebrow">Public-domain composition · CC BY recording</p>
+          <h2 id="song-title">Loading proof…</h2>
+          <p id="song-credit" class="muted"></p>
+        </div>
+        <div class="song-meta" id="song-meta"></div>
+      </div>
+
+      <audio id="audio" controls preload="metadata"></audio>
+
+      <div class="now-playing" aria-live="polite">
+        <div class="bar-marker"><span>BAR</span><strong id="current-bar">Count-in</strong></div>
+        <div class="current-chord expected"><span>Hand-authored</span><strong id="current-expected">N.C.</strong></div>
+        <div class="current-chord v2"><span>Current v2</span><strong id="current-v2">N.C.</strong></div>
+        <div class="current-chord student"><span>Revised model</span><strong id="current-student">N.C.</strong></div>
+      </div>
+
+      <div class="legend" aria-label="Result legend">
+        <span><i class="swatch correct"></i> Matches expected root + major/minor</span>
+        <span><i class="swatch wrong"></i> Different</span>
+        <span>Click any bar to seek.</span>
+      </div>
+
+      <div id="bar-grid" class="bar-grid" aria-label="Bar-by-bar chord comparison"></div>
+    </section>
+
+    <section class="results" aria-labelledby="result-heading">
+      <div class="section-heading">
+        <p class="eyebrow">What this song proves</p>
+        <h2 id="result-heading">The revised model hears both C changes that v2 misses.</h2>
+      </div>
+      <div class="score-grid">
+        <article class="score-card baseline">
+          <p>Current Play Along v2</p>
+          <strong id="v2-bar-score">—</strong>
+          <span>musical bars correct</span>
+        </article>
+        <article class="score-card challenger">
+          <p>Revised model</p>
+          <strong id="student-bar-score">—</strong>
+          <span>musical bars correct</span>
+        </article>
+        <article class="score-card delta">
+          <p>Difference</p>
+          <strong id="bar-delta">—</strong>
+          <span>additional correct bars</span>
+        </article>
+      </div>
+      <div class="honesty-note">
+        <h3>The unflattering metric is visible too.</h3>
+        <p>The revised model labels the two-bar count-in as chords and has noisier boundaries. Whole-track major/minor WCSR is therefore <strong id="student-song-wcsr">—</strong>, versus <strong id="v2-song-wcsr">—</strong> for v2—even though the revised model identifies 15 of 16 musical bars versus 13 of 16. This is the next concrete defect to fix, not something this page hides.</p>
+      </div>
+    </section>
+
+    <section class="public-proof" aria-labelledby="public-heading">
+      <div class="section-heading">
+        <p class="eyebrow">Frozen public benchmark</p>
+        <h2 id="public-heading">36 held-out GuitarSet recordings</h2>
+        <p id="public-disclosure" class="muted"></p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Reader</th><th>Major/minor WCSR</th><th>Root WCSR</th><th>Detailed WCSR</th><th>Boundary F1</th></tr></thead>
+          <tbody id="benchmark-body"></tbody>
+        </table>
+      </div>
+      <div class="data-disclosure">
+        <p><strong>GuitarSet:</strong> <span id="guitarset-status"></span> <a id="guitarset-link" target="_blank" rel="noreferrer">Open source record ↗</a></p>
+        <p><strong>AAM:</strong> <span id="aam-status"></span></p>
+        <p><strong>Lo-Fi Chords:</strong> <span id="lofi-status"></span></p>
+      </div>
+    </section>
+
+    <section class="reproduction" aria-labelledby="reproduce-heading">
+      <div>
+        <p class="eyebrow">No hand-picked output</p>
+        <h2 id="reproduce-heading">Regenerate the evidence locally</h2>
+        <p>The page reads frozen JSON emitted directly by the current v2 analyzer and the tracked ONNX model. The model and audio hashes are displayed so a changed artifact cannot masquerade as this run.</p>
+      </div>
+      <div class="code-panel">
+        <code id="reproduce-command">python scripts/build_chord_reader_proof.py</code>
+        <dl>
+          <div><dt>Model SHA-256</dt><dd id="model-hash">—</dd></div>
+          <div><dt>Audio SHA-256</dt><dd id="audio-hash">—</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <footer>
+      <p id="license-line"></p>
+      <p>Development proof only. The production reader remains v2.</p>
+    </footer>
+  </main>
+  <script src="./proof.js"></script>
+</body>
+</html>

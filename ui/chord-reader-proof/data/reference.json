@@ -1,0 +1,112 @@
+{
+  "barStartsSeconds": [
+    4.737,
+    7.105,
+    9.474,
+    11.842,
+    14.211,
+    16.579,
+    18.947,
+    21.316,
+    23.684,
+    26.053,
+    28.421,
+    30.789,
+    33.158,
+    35.526,
+    37.895,
+    40.263
+  ],
+  "durationSeconds": 42.947,
+  "id": "amazing-grace-kevin-macleod-lesson-v1",
+  "schemaVersion": "chord_reference_v1",
+  "segments": [
+    {
+      "end": 4.737,
+      "label": "N",
+      "start": 0.0
+    },
+    {
+      "end": 7.105,
+      "label": "G:maj",
+      "start": 4.737
+    },
+    {
+      "end": 9.474,
+      "label": "G:maj",
+      "start": 7.105
+    },
+    {
+      "end": 11.842,
+      "label": "C:maj",
+      "start": 9.474
+    },
+    {
+      "end": 14.211,
+      "label": "G:maj",
+      "start": 11.842
+    },
+    {
+      "end": 16.579,
+      "label": "G:maj",
+      "start": 14.211
+    },
+    {
+      "end": 18.947,
+      "label": "G:maj",
+      "start": 16.579
+    },
+    {
+      "end": 21.316,
+      "label": "D:7",
+      "start": 18.947
+    },
+    {
+      "end": 23.684,
+      "label": "D:7",
+      "start": 21.316
+    },
+    {
+      "end": 26.053,
+      "label": "G:maj",
+      "start": 23.684
+    },
+    {
+      "end": 28.421,
+      "label": "G:maj",
+      "start": 26.053
+    },
+    {
+      "end": 30.789,
+      "label": "C:maj",
+      "start": 28.421
+    },
+    {
+      "end": 33.158,
+      "label": "G:maj",
+      "start": 30.789
+    },
+    {
+      "end": 35.526,
+      "label": "E:min",
+      "start": 33.158
+    },
+    {
+      "end": 37.895,
+      "label": "D:7",
+      "start": 35.526
+    },
+    {
+      "end": 40.263,
+      "label": "G:maj",
+      "start": 37.895
+    },
+    {
+      "end": 42.947,
+      "label": "G:maj",
+      "start": 40.263
+    }
+  ],
+  "source": "hand-authored Steel Guitar RAG lesson timeline",
+  "title": "Amazing Grace"
+}

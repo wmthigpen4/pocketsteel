@@ -1,0 +1,233 @@
+{
+  "schemaVersion": "chord_prediction_v1",
+  "id": "amazing-grace-kevin-macleod-lesson-v1",
+  "engine": "play-along-v2",
+  "analysisVersion": 2,
+  "durationSeconds": 42.94739229024943,
+  "key": "G",
+  "keyMode": "major",
+  "meter": "3/4",
+  "tempo": 75,
+  "beatTimesSeconds": [
+    0,
+    0.789,
+    1.579,
+    2.345,
+    3.111,
+    3.901,
+    4.69,
+    5.48,
+    6.269,
+    7.036,
+    7.825,
+    8.615,
+    9.381,
+    10.17,
+    10.96,
+    11.749,
+    12.539,
+    13.328,
+    14.118,
+    14.907,
+    15.72,
+    16.533,
+    17.322,
+    18.135,
+    18.947,
+    19.76,
+    20.573,
+    21.386,
+    22.198,
+    23.011,
+    23.824,
+    24.636,
+    25.472,
+    26.285,
+    27.098,
+    27.91,
+    28.746,
+    29.559,
+    30.372,
+    31.184,
+    31.997,
+    32.81,
+    33.622,
+    34.435,
+    35.271,
+    36.084,
+    36.897,
+    37.709,
+    38.545,
+    39.358,
+    40.171,
+    40.983,
+    41.796,
+    42.609
+  ],
+  "barStartsSeconds": [
+    0,
+    2.345,
+    4.69,
+    7.036,
+    9.381,
+    11.749,
+    14.118,
+    16.533,
+    18.947,
+    21.386,
+    23.824,
+    26.285,
+    28.746,
+    31.184,
+    33.622,
+    36.084,
+    38.545,
+    40.983
+  ],
+  "segments": [
+    {
+      "start": 0,
+      "end": 2.345,
+      "label": "N.C.",
+      "confidence": 0.98,
+      "bar": 1,
+      "startFraction": 0
+    },
+    {
+      "start": 2.345,
+      "end": 4.69,
+      "label": "N.C.",
+      "confidence": 0.98,
+      "bar": 2,
+      "startFraction": 0
+    },
+    {
+      "start": 4.69,
+      "end": 7.036,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 3,
+      "startFraction": 0
+    },
+    {
+      "start": 7.036,
+      "end": 9.381,
+      "label": "G",
+      "confidence": 0.943,
+      "bar": 4,
+      "startFraction": 0
+    },
+    {
+      "start": 9.381,
+      "end": 11.749,
+      "label": "Am7",
+      "confidence": 0.799,
+      "bar": 5,
+      "startFraction": 0
+    },
+    {
+      "start": 11.749,
+      "end": 14.118,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 6,
+      "startFraction": 0
+    },
+    {
+      "start": 14.118,
+      "end": 16.533,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 7,
+      "startFraction": 0
+    },
+    {
+      "start": 16.533,
+      "end": 18.947,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 8,
+      "startFraction": 0
+    },
+    {
+      "start": 18.947,
+      "end": 21.386,
+      "label": "D",
+      "confidence": 0.98,
+      "bar": 9,
+      "startFraction": 0
+    },
+    {
+      "start": 21.386,
+      "end": 23.824,
+      "label": "D",
+      "confidence": 0.98,
+      "bar": 10,
+      "startFraction": 0
+    },
+    {
+      "start": 23.824,
+      "end": 26.285,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 11,
+      "startFraction": 0
+    },
+    {
+      "start": 26.285,
+      "end": 28.746,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 12,
+      "startFraction": 0
+    },
+    {
+      "start": 28.746,
+      "end": 31.184,
+      "label": "G",
+      "confidence": 0.721,
+      "bar": 13,
+      "startFraction": 0
+    },
+    {
+      "start": 31.184,
+      "end": 33.622,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 14,
+      "startFraction": 0
+    },
+    {
+      "start": 33.622,
+      "end": 36.084,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 15,
+      "startFraction": 0
+    },
+    {
+      "start": 36.084,
+      "end": 38.545,
+      "label": "D",
+      "confidence": 0.98,
+      "bar": 16,
+      "startFraction": 0
+    },
+    {
+      "start": 38.545,
+      "end": 40.983,
+      "label": "G",
+      "confidence": 0.98,
+      "bar": 17,
+      "startFraction": 0
+    },
+    {
+      "start": 40.983,
+      "end": 42.94739229024943,
+      "label": "G",
+      "confidence": 0.783,
+      "bar": 18,
+      "startFraction": 0
+    }
+  ]
+}

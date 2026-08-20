@@ -1,0 +1,536 @@
+{
+  "bars": [
+    {
+      "bar": 1,
+      "end": 7.105,
+      "expected": "G",
+      "start": 4.737,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 2,
+      "end": 9.474,
+      "expected": "G",
+      "start": 7.105,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 3,
+      "end": 11.842,
+      "expected": "C",
+      "start": 9.474,
+      "student": "C",
+      "studentCorrect": true,
+      "v2": "Am7",
+      "v2Correct": false
+    },
+    {
+      "bar": 4,
+      "end": 14.211,
+      "expected": "G",
+      "start": 11.842,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 5,
+      "end": 16.579,
+      "expected": "G",
+      "start": 14.211,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 6,
+      "end": 18.947,
+      "expected": "G",
+      "start": 16.579,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 7,
+      "end": 21.316,
+      "expected": "D7",
+      "start": 18.947,
+      "student": "D",
+      "studentCorrect": true,
+      "v2": "D",
+      "v2Correct": true
+    },
+    {
+      "bar": 8,
+      "end": 23.684,
+      "expected": "D7",
+      "start": 21.316,
+      "student": "D",
+      "studentCorrect": true,
+      "v2": "D",
+      "v2Correct": true
+    },
+    {
+      "bar": 9,
+      "end": 26.053,
+      "expected": "G",
+      "start": 23.684,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 10,
+      "end": 28.421,
+      "expected": "G",
+      "start": 26.053,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 11,
+      "end": 30.789,
+      "expected": "C",
+      "start": 28.421,
+      "student": "C",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": false
+    },
+    {
+      "bar": 12,
+      "end": 33.158,
+      "expected": "G",
+      "start": 30.789,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 13,
+      "end": 35.526,
+      "expected": "Em",
+      "start": 33.158,
+      "student": "G",
+      "studentCorrect": false,
+      "v2": "G",
+      "v2Correct": false
+    },
+    {
+      "bar": 14,
+      "end": 37.895,
+      "expected": "D7",
+      "start": 35.526,
+      "student": "D",
+      "studentCorrect": true,
+      "v2": "D",
+      "v2Correct": true
+    },
+    {
+      "bar": 15,
+      "end": 40.263,
+      "expected": "G",
+      "start": 37.895,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    },
+    {
+      "bar": 16,
+      "end": 42.947,
+      "expected": "G",
+      "start": 40.263,
+      "student": "G",
+      "studentCorrect": true,
+      "v2": "G",
+      "v2Correct": true
+    }
+  ],
+  "engines": {
+    "student": {
+      "label": "Revised chord-student-v1",
+      "metrics": {
+        "boundary": {
+          "f1": 0.30303030303030304,
+          "precision": 0.29411764705882354,
+          "recall": 0.3125
+        },
+        "detailedWeightedRecall": 0.6423033040724613,
+        "evaluatedDurationSeconds": 42.947,
+        "majorMinorWeightedRecall": 0.7784711388455537,
+        "predictedChordCount": 18,
+        "referenceChordCount": 11,
+        "rootWeightedRecall": 0.7784711388455537,
+        "sequenceEditRate": 1.0909090909090908
+      },
+      "segments": [
+        {
+          "confidence": 0.23034010082483292,
+          "end": 1.0,
+          "label": "E:maj",
+          "productLabel": "E",
+          "start": 0.0
+        },
+        {
+          "confidence": 0.17493464052677155,
+          "end": 1.2000000000000002,
+          "label": "E:min",
+          "productLabel": "Em",
+          "start": 1.0
+        },
+        {
+          "confidence": 0.2354493886232376,
+          "end": 1.8,
+          "label": "E:maj",
+          "productLabel": "E",
+          "start": 1.2000000000000002
+        },
+        {
+          "confidence": 0.2282564863562584,
+          "end": 2.0,
+          "label": "E:min",
+          "productLabel": "Em",
+          "start": 1.8
+        },
+        {
+          "confidence": 0.3058273543914159,
+          "end": 2.6,
+          "label": "E:maj",
+          "productLabel": "E",
+          "start": 2.0
+        },
+        {
+          "confidence": 0.21517032384872437,
+          "end": 2.8000000000000003,
+          "label": "E:min",
+          "productLabel": "Em",
+          "start": 2.6
+        },
+        {
+          "confidence": 0.17405070960521699,
+          "end": 3.3000000000000003,
+          "label": "E:maj",
+          "productLabel": "E",
+          "start": 2.8000000000000003
+        },
+        {
+          "confidence": 0.12371913716197014,
+          "end": 3.5,
+          "label": "E:min",
+          "productLabel": "Em",
+          "start": 3.3000000000000003
+        },
+        {
+          "confidence": 0.2912084480126699,
+          "end": 5.0,
+          "label": "D:maj",
+          "productLabel": "D",
+          "start": 3.5
+        },
+        {
+          "confidence": 0.6191933705754902,
+          "end": 9.600000000000001,
+          "label": "G:maj",
+          "productLabel": "G",
+          "start": 5.0
+        },
+        {
+          "confidence": 0.32594918324188754,
+          "end": 11.8,
+          "label": "C:maj",
+          "productLabel": "C",
+          "start": 9.600000000000001
+        },
+        {
+          "confidence": 0.6971760811940045,
+          "end": 18.900000000000002,
+          "label": "G:maj",
+          "productLabel": "G",
+          "start": 11.8
+        },
+        {
+          "confidence": 0.5003817220951648,
+          "end": 23.6,
+          "label": "D:maj",
+          "productLabel": "D",
+          "start": 18.900000000000002
+        },
+        {
+          "confidence": 0.7791722210086122,
+          "end": 28.5,
+          "label": "G:maj",
+          "productLabel": "G",
+          "start": 23.6
+        },
+        {
+          "confidence": 0.44346334487199784,
+          "end": 30.5,
+          "label": "C:maj",
+          "productLabel": "C",
+          "start": 28.5
+        },
+        {
+          "confidence": 0.5317452184615596,
+          "end": 36.7,
+          "label": "G:maj",
+          "productLabel": "G",
+          "start": 30.5
+        },
+        {
+          "confidence": 0.4459649046262105,
+          "end": 38.2,
+          "label": "D:maj",
+          "productLabel": "D",
+          "start": 36.7
+        },
+        {
+          "confidence": 0.5663109887391329,
+          "end": 42.94730158730159,
+          "label": "G:maj",
+          "productLabel": "G",
+          "start": 38.2
+        }
+      ]
+    },
+    "v2": {
+      "label": "Current Play Along v2",
+      "metrics": {
+        "boundary": {
+          "f1": 0.6060606060606061,
+          "precision": 0.5882352941176471,
+          "recall": 0.625
+        },
+        "detailedWeightedRecall": 0.6474724660628215,
+        "evaluatedDurationSeconds": 42.947,
+        "majorMinorWeightedRecall": 0.7999394602649776,
+        "predictedChordCount": 8,
+        "referenceChordCount": 11,
+        "rootWeightedRecall": 0.7999394602649776,
+        "sequenceEditRate": 0.5454545454545454
+      },
+      "segments": [
+        {
+          "bar": 1,
+          "confidence": 0.98,
+          "end": 2.345,
+          "label": "N.C.",
+          "start": 0,
+          "startFraction": 0
+        },
+        {
+          "bar": 2,
+          "confidence": 0.98,
+          "end": 4.69,
+          "label": "N.C.",
+          "start": 2.345,
+          "startFraction": 0
+        },
+        {
+          "bar": 3,
+          "confidence": 0.98,
+          "end": 7.036,
+          "label": "G",
+          "start": 4.69,
+          "startFraction": 0
+        },
+        {
+          "bar": 4,
+          "confidence": 0.943,
+          "end": 9.381,
+          "label": "G",
+          "start": 7.036,
+          "startFraction": 0
+        },
+        {
+          "bar": 5,
+          "confidence": 0.799,
+          "end": 11.749,
+          "label": "Am7",
+          "start": 9.381,
+          "startFraction": 0
+        },
+        {
+          "bar": 6,
+          "confidence": 0.98,
+          "end": 14.118,
+          "label": "G",
+          "start": 11.749,
+          "startFraction": 0
+        },
+        {
+          "bar": 7,
+          "confidence": 0.98,
+          "end": 16.533,
+          "label": "G",
+          "start": 14.118,
+          "startFraction": 0
+        },
+        {
+          "bar": 8,
+          "confidence": 0.98,
+          "end": 18.947,
+          "label": "G",
+          "start": 16.533,
+          "startFraction": 0
+        },
+        {
+          "bar": 9,
+          "confidence": 0.98,
+          "end": 21.386,
+          "label": "D",
+          "start": 18.947,
+          "startFraction": 0
+        },
+        {
+          "bar": 10,
+          "confidence": 0.98,
+          "end": 23.824,
+          "label": "D",
+          "start": 21.386,
+          "startFraction": 0
+        },
+        {
+          "bar": 11,
+          "confidence": 0.98,
+          "end": 26.285,
+          "label": "G",
+          "start": 23.824,
+          "startFraction": 0
+        },
+        {
+          "bar": 12,
+          "confidence": 0.98,
+          "end": 28.746,
+          "label": "G",
+          "start": 26.285,
+          "startFraction": 0
+        },
+        {
+          "bar": 13,
+          "confidence": 0.721,
+          "end": 31.184,
+          "label": "G",
+          "start": 28.746,
+          "startFraction": 0
+        },
+        {
+          "bar": 14,
+          "confidence": 0.98,
+          "end": 33.622,
+          "label": "G",
+          "start": 31.184,
+          "startFraction": 0
+        },
+        {
+          "bar": 15,
+          "confidence": 0.98,
+          "end": 36.084,
+          "label": "G",
+          "start": 33.622,
+          "startFraction": 0
+        },
+        {
+          "bar": 16,
+          "confidence": 0.98,
+          "end": 38.545,
+          "label": "D",
+          "start": 36.084,
+          "startFraction": 0
+        },
+        {
+          "bar": 17,
+          "confidence": 0.98,
+          "end": 40.983,
+          "label": "G",
+          "start": 38.545,
+          "startFraction": 0
+        },
+        {
+          "bar": 18,
+          "confidence": 0.783,
+          "end": 42.94739229024943,
+          "label": "G",
+          "start": 40.983,
+          "startFraction": 0
+        }
+      ]
+    }
+  },
+  "publicBenchmark": {
+    "aamDisclosure": "AAM annotation import is implemented and tested, but AAM audio was not downloaded or used in this model run.",
+    "audioSeconds": 1291.9673469387756,
+    "dataset": "GuitarSet",
+    "engines": {
+      "btc": {
+        "boundaryF1": 0.4056784166879311,
+        "detailedWcsr": 0.37519074772951466,
+        "majorMinorWcsr": 0.43252724070049864,
+        "rootWcsr": 0.4539079533322353
+      },
+      "student": {
+        "boundaryF1": 0.5013375729248429,
+        "detailedWcsr": 0.4725751905937081,
+        "majorMinorWcsr": 0.5214142525343602,
+        "rootWcsr": 0.5835486285867362
+      },
+      "v2": {
+        "boundaryF1": 0.3558430561438227,
+        "detailedWcsr": 0.3304485634774888,
+        "majorMinorWcsr": 0.39282951405545896,
+        "rootWcsr": 0.4061718361852814
+      }
+    },
+    "lofiDisclosure": "Lo-Fi Chords was rejected for supervised use because its public metadata archive contains no chord progression ground truth.",
+    "sourceUrl": "https://zenodo.org/records/3371780",
+    "split": "composition-grouped held-out test",
+    "trackCount": 36,
+    "trainingDisclosure": "The student trained on 264 GuitarSet recordings, selected on 60 development recordings, and was scored once on these 36 held-out recordings."
+  },
+  "reference": {
+    "metricsLabel": "hand-authored expected chord timeline",
+    "source": "hand-authored Steel Guitar RAG lesson timeline"
+  },
+  "reproduce": {
+    "audioSha256": "c0126a24458b913168ee5f3f58a0a54f75a32a6dfcd8fa1e23d80ffe8a91e417",
+    "command": "python scripts/build_chord_reader_proof.py",
+    "modelSha256": "9035a36c8ae25fb33265911c9c452b09cc8f5187357fd3f392f218b8789ba30a"
+  },
+  "schemaVersion": "chord_reader_visual_proof_v1",
+  "summary": {
+    "barCount": 16,
+    "majorMinorWcsrGain": -0.021468321419423897,
+    "rootWcsrGain": -0.021468321419423897,
+    "studentCorrectBars": 15,
+    "v2CorrectBars": 13
+  },
+  "track": {
+    "audioUrl": "/ui/assets/song-practice/amazing-grace-2011-guide.mp3",
+    "durationSeconds": 42.947,
+    "id": "amazing-grace-kevin-macleod-lesson-v1",
+    "key": "G",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "meter": "3/4",
+    "modifications": "First 16-bar verse extracted, transposed from C to G, slowed from 79 to 76 BPM, two-bar count-in added, and lesson chord/beat/lyric timeline hand-authored. No endorsement by Kevin MacLeod is implied.",
+    "performer": "Kevin MacLeod \u00b7 Steel Guitar RAG lesson edit",
+    "recordingCredit": "\u201cAmazing Grace 2011\u201d Kevin MacLeod (incompetech.com), licensed under CC BY 3.0",
+    "rightsUrl": "https://commons.wikimedia.org/wiki/File:Amazing_Grace_2011_(ISRC_USUAN1100820).mp3",
+    "tempo": 76,
+    "title": "Amazing Grace"
+  }
+}
