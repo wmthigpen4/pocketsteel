@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "chord_dataset_catalog_v1",
+  "datasets": [
+    {
+      "id": "aam",
+      "title": "Artificial Audio Multitracks Dataset",
+      "sourceUrl": "https://zenodo.org/records/5794629",
+      "downloadMode": "official_archive",
+      "annotationFormat": "midi_and_structured_chords",
+      "labelSource": "synthetic_ground_truth",
+      "developmentRole": "train_development_test",
+      "selection": "full_mixes_and_annotations_only",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "id": "guitarset",
+      "title": "GuitarSet",
+      "sourceUrl": "https://zenodo.org/records/3371780",
+      "downloadMode": "official_archive",
+      "annotationFormat": "jams",
+      "labelSource": "ground_truth",
+      "developmentRole": "train_development_test",
+      "selection": "audio_and_time_aligned_annotations",
+      "license": "see-source-record"
+    },
+    {
+      "id": "lofi_chords",
+      "title": "Lo-Fi Chords Dataset",
+      "sourceUrl": "https://zenodo.org/records/17819350",
+      "downloadMode": "official_archive",
+      "annotationFormat": "tempo_instrument_metadata_without_chord_labels",
+      "labelSource": "unlabeled",
+      "developmentRole": "unlabeled_robustness_evaluation_only",
+      "selection": "not_admitted_to_supervised_training_without_chord_ground_truth",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "id": "sgf_steel_reference",
+      "title": "Curated Steel Guitar Forum Audio and Chart References",
+      "sourceUrl": "https://bb.steelguitarforum.com/viewforum.php?f=8",
+      "downloadMode": "explicit_local_assets",
+      "annotationFormat": "bar_chart_aligned_to_author_recording",
+      "labelSource": "weak_chart_alignment",
+      "developmentRole": "evaluation_then_weak_training",
+      "selection": "explicit_post_manifest_only_no_crawler",
+      "license": "evaluation-reference"
+    }
+  ],
+  "steelReferenceCandidates": [
+    {
+      "id": "sgf-heartaches-by-the-number",
+      "title": "Heartaches By The Number",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=133019"
+    },
+    {
+      "id": "sgf-tennessee-waltz",
+      "title": "Tennessee Waltz",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?p=1342952"
+    },
+    {
+      "id": "sgf-crazy",
+      "title": "Crazy",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=171556"
+    },
+    {
+      "id": "sgf-autumn-leaves",
+      "title": "Autumn Leaves",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=200332"
+    },
+    {
+      "id": "sgf-red-wing",
+      "title": "Red Wing",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=147014"
+    },
+    {
+      "id": "sgf-city-lights",
+      "title": "City Lights",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=148492"
+    },
+    {
+      "id": "sgf-truck-driving-man",
+      "title": "Truck Drivin' Man",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=131108"
+    },
+    {
+      "id": "sgf-ghost-riders",
+      "title": "Ghost Riders In The Sky",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=148913"
+    },
+    {
+      "id": "sgf-it-is-no-secret",
+      "title": "It Is No Secret",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=137856"
+    },
+    {
+      "id": "sgf-your-cheatin-heart",
+      "title": "Your Cheatin' Heart",
+      "url": "https://bb.steelguitarforum.com/viewtopic.php?t=134024"
+    }
+  ]
+}

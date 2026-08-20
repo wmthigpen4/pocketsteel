@@ -12,6 +12,8 @@ LEGACY_EXPLORER_LIMIT = 75 * MIB
 EXPLORER_CHUNK_DIR = Path("ui/explorer-data-v1")
 EXPLORER_CHUNK_LIMIT = 64 * 1024
 EXPLORER_TOTAL_LIMIT = 2 * MIB
+ML_RUNTIME_FILE = Path("ui/vendor/onnxruntime-web/ort-wasm-simd-threaded.wasm")
+ML_RUNTIME_LIMIT = 12 * MIB
 
 
 def tracked_files() -> list[Path]:
@@ -25,7 +27,12 @@ def main() -> int:
         if not path.is_file():
             continue
         size = path.stat().st_size
-        limit = LEGACY_EXPLORER_LIMIT if path == LEGACY_EXPLORER_FILE else DEFAULT_TRACKED_FILE_LIMIT
+        if path == LEGACY_EXPLORER_FILE:
+            limit = LEGACY_EXPLORER_LIMIT
+        elif path == ML_RUNTIME_FILE:
+            limit = ML_RUNTIME_LIMIT
+        else:
+            limit = DEFAULT_TRACKED_FILE_LIMIT
         if size > limit:
             failures.append(f"{path}: {size} bytes exceeds {limit}")
 

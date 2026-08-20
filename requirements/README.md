@@ -7,7 +7,7 @@ Regenerate all locks with the pinned compiler:
 
 ```bash
 python -m pip install pip-tools==7.5.3
-for target in runtime rag training test deployment; do
+for target in runtime rag training test deployment chord-reader; do
   python -m piptools compile \
     --generate-hashes \
     --strip-extras \

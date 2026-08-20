@@ -1,0 +1,824 @@
+{
+  "aggregate": {
+    "boundaryF1Macro": 0.4056784166879311,
+    "detailedWeightedRecall": 0.37519074772951466,
+    "elapsedSeconds": 3.57965045562014,
+    "evaluatedDurationSeconds": 1291.9679399999984,
+    "majorMinorWeightedRecall": 0.43252724070049864,
+    "rootWeightedRecall": 0.4539079533322353,
+    "sequenceEditRateMacro": 0.7983630952380952,
+    "trackCount": 36
+  },
+  "engine": "btc",
+  "gitRevision": "038d392d6ddaaeac3e7383cd4119f13a3278309d",
+  "peakResidentMemoryBytes": 419479552,
+  "schemaVersion": "chord_benchmark_report_v1",
+  "sourceReportSha256": "0d72871953399b705b93b2226f42cf8fec2576799ed9e4b1ea7815b6fefb5eea",
+  "split": "test",
+  "strata": {
+    "guitarset": {
+      "boundaryF1Macro": 0.4056784166879311,
+      "detailedWeightedRecall": 0.37519074772951466,
+      "elapsedSeconds": 3.57965045562014,
+      "evaluatedDurationSeconds": 1291.9679399999984,
+      "majorMinorWeightedRecall": 0.43252724070049864,
+      "rootWeightedRecall": 0.4539079533322353,
+      "sequenceEditRateMacro": 0.7983630952380952,
+      "trackCount": 36
+    }
+  },
+  "tracks": [
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.806527457665652,
+      "id": "guitarset-00_BN2-131-B_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.5142857142857142,
+          "precision": 0.4090909090909091,
+          "recall": 0.6923076923076923
+        },
+        "detailedWeightedRecall": 0.6031929351886279,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.7887091480225074,
+        "predictedChordCount": 22,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.8076659661504281,
+        "sequenceEditRate": 0.6428571428571429
+      },
+      "predictionFile": "predictions/btc/guitarset-00_BN2-131-B_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06492208270356059,
+      "id": "guitarset-00_BN2-131-B_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.3571428571428571,
+          "precision": 0.3333333333333333,
+          "recall": 0.38461538461538464
+        },
+        "detailedWeightedRecall": 0.0,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.1099060484478657,
+        "predictedChordCount": 16,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.1099060484478657,
+        "sequenceEditRate": 1.0714285714285714
+      },
+      "predictionFile": "predictions/btc/guitarset-00_BN2-131-B_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08692516712471843,
+      "id": "guitarset-00_Funk3-98-A_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.5714285714285715,
+          "precision": 0.5,
+          "recall": 0.6666666666666666
+        },
+        "detailedWeightedRecall": 0.7592572034480138,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.8493735929239528,
+        "predictedChordCount": 21,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.8493735929239528,
+        "sequenceEditRate": 0.4375
+      },
+      "predictionFile": "predictions/btc/guitarset-00_Funk3-98-A_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08554104063659906,
+      "id": "guitarset-00_Funk3-98-A_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.2448979591836735,
+          "precision": 0.17647058823529413,
+          "recall": 0.4
+        },
+        "detailedWeightedRecall": 0.24518004374710567,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.24518004374710567,
+        "predictedChordCount": 35,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.24518004374710567,
+        "sequenceEditRate": 1.5625
+      },
+      "predictionFile": "predictions/btc/guitarset-00_Funk3-98-A_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08641070825979114,
+      "id": "guitarset-00_SS3-98-C_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.8666666666666667,
+          "precision": 0.8666666666666667,
+          "recall": 0.8666666666666667
+        },
+        "detailedWeightedRecall": 0.9467044317803692,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.9467044317803692,
+        "predictedChordCount": 16,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.9467044317803692,
+        "sequenceEditRate": 0.0
+      },
+      "predictionFile": "predictions/btc/guitarset-00_SS3-98-C_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08557058311998844,
+      "id": "guitarset-00_SS3-98-C_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.25,
+          "precision": 0.2,
+          "recall": 0.3333333333333333
+        },
+        "detailedWeightedRecall": 0.16852018053078707,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.16852018053078707,
+        "predictedChordCount": 25,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.16852018053078707,
+        "sequenceEditRate": 1.125
+      },
+      "predictionFile": "predictions/btc/guitarset-00_SS3-98-C_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06461849994957447,
+      "id": "guitarset-01_BN2-131-B_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.8571428571428571,
+          "precision": 0.8,
+          "recall": 0.9230769230769231
+        },
+        "detailedWeightedRecall": 0.7243786614903029,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.9579621965348367,
+        "predictedChordCount": 16,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.9579621965348367,
+        "sequenceEditRate": 0.21428571428571427
+      },
+      "predictionFile": "predictions/btc/guitarset-01_BN2-131-B_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06555291591212153,
+      "id": "guitarset-01_BN2-131-B_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.2941176470588235,
+          "precision": 0.23809523809523808,
+          "recall": 0.38461538461538464
+        },
+        "detailedWeightedRecall": 0.03381352392710255,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.03381352392710255,
+        "predictedChordCount": 22,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.03381352392710255,
+        "sequenceEditRate": 1.2142857142857142
+      },
+      "predictionFile": "predictions/btc/guitarset-01_BN2-131-B_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08610312500968575,
+      "id": "guitarset-01_Funk3-98-A_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.9333333333333333,
+          "precision": 0.9333333333333333,
+          "recall": 0.9333333333333333
+        },
+        "detailedWeightedRecall": 0.9623795433515376,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.9623795433515376,
+        "predictedChordCount": 16,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.9623795433515376,
+        "sequenceEditRate": 0.0
+      },
+      "predictionFile": "predictions/btc/guitarset-01_Funk3-98-A_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08535645809024572,
+      "id": "guitarset-01_Funk3-98-A_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.07692307692307691,
+          "precision": 0.09090909090909091,
+          "recall": 0.06666666666666667
+        },
+        "detailedWeightedRecall": 0.07591608164598818,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.07591608164598818,
+        "predictedChordCount": 12,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.07591608164598818,
+        "sequenceEditRate": 0.625
+      },
+      "predictionFile": "predictions/btc/guitarset-01_Funk3-98-A_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08566199988126755,
+      "id": "guitarset-01_SS3-98-C_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.9333333333333333,
+          "precision": 0.9333333333333333,
+          "recall": 0.9333333333333333
+        },
+        "detailedWeightedRecall": 0.956784758958562,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.956784758958562,
+        "predictedChordCount": 16,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.956784758958562,
+        "sequenceEditRate": 0.0
+      },
+      "predictionFile": "predictions/btc/guitarset-01_SS3-98-C_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08618091745302081,
+      "id": "guitarset-01_SS3-98-C_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.3076923076923077,
+          "precision": 0.25,
+          "recall": 0.4
+        },
+        "detailedWeightedRecall": 0.10012820552889598,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.14990291761287813,
+        "predictedChordCount": 25,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.14990291761287813,
+        "sequenceEditRate": 1.25
+      },
+      "predictionFile": "predictions/btc/guitarset-01_SS3-98-C_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06471179192885756,
+      "id": "guitarset-02_BN2-131-B_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.962962962962963,
+          "precision": 0.9285714285714286,
+          "recall": 1.0
+        },
+        "detailedWeightedRecall": 0.4709293904222757,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.8222332285709639,
+        "predictedChordCount": 15,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.947036707066628,
+        "sequenceEditRate": 0.42857142857142855
+      },
+      "predictionFile": "predictions/btc/guitarset-02_BN2-131-B_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06485083373263478,
+      "id": "guitarset-02_BN2-131-B_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.3783783783783784,
+          "precision": 0.2916666666666667,
+          "recall": 0.5384615384615384
+        },
+        "detailedWeightedRecall": 0.11352373239736416,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.2198361858985603,
+        "predictedChordCount": 25,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.26406871603404775,
+        "sequenceEditRate": 1.5714285714285714
+      },
+      "predictionFile": "predictions/btc/guitarset-02_BN2-131-B_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08590408274903893,
+      "id": "guitarset-02_Funk3-98-A_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.7222222222222222,
+          "precision": 0.6190476190476191,
+          "recall": 0.8666666666666667
+        },
+        "detailedWeightedRecall": 0.6047241370437126,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.6047241370437126,
+        "predictedChordCount": 22,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.8271186926790702,
+        "sequenceEditRate": 0.625
+      },
+      "predictionFile": "predictions/btc/guitarset-02_Funk3-98-A_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08546133385971189,
+      "id": "guitarset-02_Funk3-98-A_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.18181818181818182,
+          "precision": 0.13793103448275862,
+          "recall": 0.26666666666666666
+        },
+        "detailedWeightedRecall": 0.07181644414940792,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.07181644414940792,
+        "predictedChordCount": 30,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.07181644414940792,
+        "sequenceEditRate": 1.4375
+      },
+      "predictionFile": "predictions/btc/guitarset-02_Funk3-98-A_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08600133284926414,
+      "id": "guitarset-02_SS3-98-C_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.625,
+          "precision": 0.5882352941176471,
+          "recall": 0.6666666666666666
+        },
+        "detailedWeightedRecall": 0.7993095156835129,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.7993095156835129,
+        "predictedChordCount": 18,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.9217205994162189,
+        "sequenceEditRate": 0.1875
+      },
+      "predictionFile": "predictions/btc/guitarset-02_SS3-98-C_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08535395795479417,
+      "id": "guitarset-02_SS3-98-C_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.1923076923076923,
+          "precision": 0.13513513513513514,
+          "recall": 0.3333333333333333
+        },
+        "detailedWeightedRecall": 0.11995127571074993,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.11995127571074993,
+        "predictedChordCount": 38,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.11995127571074993,
+        "sequenceEditRate": 1.9375
+      },
+      "predictionFile": "predictions/btc/guitarset-02_SS3-98-C_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06507775001227856,
+      "id": "guitarset-03_BN2-131-B_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.5294117647058824,
+          "precision": 0.42857142857142855,
+          "recall": 0.6923076923076923
+        },
+        "detailedWeightedRecall": 0.7024312924203244,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.8881403878880624,
+        "predictedChordCount": 21,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.8881403878880624,
+        "sequenceEditRate": 0.5714285714285714
+      },
+      "predictionFile": "predictions/btc/guitarset-03_BN2-131-B_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06449679238721728,
+      "id": "guitarset-03_BN2-131-B_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.0,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.0,
+        "predictedChordCount": 1,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.0,
+        "sequenceEditRate": 1.0
+      },
+      "predictionFile": "predictions/btc/guitarset-03_BN2-131-B_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08583983313292265,
+      "id": "guitarset-03_Funk3-98-A_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.5789473684210527,
+          "precision": 0.4782608695652174,
+          "recall": 0.7333333333333333
+        },
+        "detailedWeightedRecall": 0.5306890820587489,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.7451457498984763,
+        "predictedChordCount": 24,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.7451457498984763,
+        "sequenceEditRate": 0.75
+      },
+      "predictionFile": "predictions/btc/guitarset-03_Funk3-98-A_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.0849367082118988,
+      "id": "guitarset-03_Funk3-98-A_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.011816645736980255,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.011816645736980255,
+        "predictedChordCount": 3,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.011816645736980255,
+        "sequenceEditRate": 0.9375
+      },
+      "predictionFile": "predictions/btc/guitarset-03_Funk3-98-A_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08593354187905788,
+      "id": "guitarset-03_SS3-98-C_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.7333333333333333,
+          "precision": 0.7333333333333333,
+          "recall": 0.7333333333333333
+        },
+        "detailedWeightedRecall": 0.9419777428567678,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.9419777428567678,
+        "predictedChordCount": 16,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.9419777428567678,
+        "sequenceEditRate": 0.0
+      },
+      "predictionFile": "predictions/btc/guitarset-03_SS3-98-C_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08587287506088614,
+      "id": "guitarset-03_SS3-98-C_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.01654333466058173,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.01654333466058173,
+        "predictedChordCount": 4,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.01654333466058173,
+        "sequenceEditRate": 0.875
+      },
+      "predictionFile": "predictions/btc/guitarset-03_SS3-98-C_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06495491601526737,
+      "id": "guitarset-04_BN2-131-B_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.4444444444444444,
+          "precision": 0.34782608695652173,
+          "recall": 0.6153846153846154
+        },
+        "detailedWeightedRecall": 0.5162955709472726,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.7024388485441018,
+        "predictedChordCount": 21,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.8177880411008799,
+        "sequenceEditRate": 0.7142857142857143
+      },
+      "predictionFile": "predictions/btc/guitarset-04_BN2-131-B_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06435804208740592,
+      "id": "guitarset-04_BN2-131-B_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.0,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.0,
+        "predictedChordCount": 1,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.0,
+        "sequenceEditRate": 1.0
+      },
+      "predictionFile": "predictions/btc/guitarset-04_BN2-131-B_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08637520810589194,
+      "id": "guitarset-04_Funk3-98-A_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.6222222222222223,
+          "precision": 0.4666666666666667,
+          "recall": 0.9333333333333333
+        },
+        "detailedWeightedRecall": 0.1404495397656754,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.42296062395677014,
+        "predictedChordCount": 31,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.47934302610137036,
+        "sequenceEditRate": 1.3125
+      },
+      "predictionFile": "predictions/btc/guitarset-04_Funk3-98-A_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08588670799508691,
+      "id": "guitarset-04_Funk3-98-A_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.00945335232319522,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.00945335232319522,
+        "predictedChordCount": 3,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.00945335232319522,
+        "sequenceEditRate": 0.9375
+      },
+      "predictionFile": "predictions/btc/guitarset-04_Funk3-98-A_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08502920810133219,
+      "id": "guitarset-04_SS3-98-C_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "detailedWeightedRecall": 0.9591480778963549,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.9591480778963549,
+        "predictedChordCount": 16,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.9591480778963549,
+        "sequenceEditRate": 0.0
+      },
+      "predictionFile": "predictions/btc/guitarset-04_SS3-98-C_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08563358336687088,
+      "id": "guitarset-04_SS3-98-C_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.0,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.0,
+        "predictedChordCount": 1,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.0,
+        "sequenceEditRate": 1.0
+      },
+      "predictionFile": "predictions/btc/guitarset-04_SS3-98-C_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.0651847911067307,
+      "id": "guitarset-05_BN2-131-B_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.5405405405405406,
+          "precision": 0.4166666666666667,
+          "recall": 0.7692307692307693
+        },
+        "detailedWeightedRecall": 0.30386354657873865,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.5444172316354334,
+        "predictedChordCount": 24,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.6473049520654802,
+        "sequenceEditRate": 1.0
+      },
+      "predictionFile": "predictions/btc/guitarset-05_BN2-131-B_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 29.30639455782313,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.06422779196873307,
+      "id": "guitarset-05_BN2-131-B_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.0,
+        "evaluatedDurationSeconds": 29.306395,
+        "majorMinorWeightedRecall": 0.0,
+        "predictedChordCount": 1,
+        "referenceChordCount": 14,
+        "rootWeightedRecall": 0.0,
+        "sequenceEditRate": 1.0
+      },
+      "predictionFile": "predictions/btc/guitarset-05_BN2-131-B_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08617504220455885,
+      "id": "guitarset-05_Funk3-98-A_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.26086956521739135,
+          "precision": 0.1935483870967742,
+          "recall": 0.4
+        },
+        "detailedWeightedRecall": 0.4330409511349629,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.49082206213981094,
+        "predictedChordCount": 32,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.49082206213981094,
+        "sequenceEditRate": 1.25
+      },
+      "predictionFile": "predictions/btc/guitarset-05_Funk3-98-A_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08614212507382035,
+      "id": "guitarset-05_Funk3-98-A_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.0,
+        "evaluatedDurationSeconds": 39.17879999999991,
+        "majorMinorWeightedRecall": 0.0,
+        "predictedChordCount": 1,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.0,
+        "sequenceEditRate": 1.0
+      },
+      "predictionFile": "predictions/btc/guitarset-05_Funk3-98-A_solo.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08565812511369586,
+      "id": "guitarset-05_SS3-98-C_comp",
+      "metrics": {
+        "boundary": {
+          "f1": 0.625,
+          "precision": 0.5882352941176471,
+          "recall": 0.6666666666666666
+        },
+        "detailedWeightedRecall": 0.9241321373720854,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.9241321373720854,
+        "predictedChordCount": 18,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.9241321373720854,
+        "sequenceEditRate": 0.125
+      },
+      "predictionFile": "predictions/btc/guitarset-05_SS3-98-C_comp.json",
+      "split": "test"
+    },
+    {
+      "audioDurationSeconds": 39.178820861678005,
+      "datasetId": "guitarset",
+      "elapsedSeconds": 0.08621312491595745,
+      "id": "guitarset-05_SS3-98-C_solo",
+      "metrics": {
+        "boundary": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "detailedWeightedRecall": 0.0,
+        "evaluatedDurationSeconds": 39.17879999999997,
+        "majorMinorWeightedRecall": 0.0,
+        "predictedChordCount": 3,
+        "referenceChordCount": 16,
+        "rootWeightedRecall": 0.0,
+        "sequenceEditRate": 0.9375
+      },
+      "predictionFile": "predictions/btc/guitarset-05_SS3-98-C_solo.json",
+      "split": "test"
+    }
+  ]
+}

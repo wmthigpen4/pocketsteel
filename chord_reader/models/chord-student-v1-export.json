@@ -1,0 +1,8 @@
+{
+  "bytes": 359340,
+  "maximumAbsoluteError": 1.9073486328125e-05,
+  "modelFile": "chord-student-v1.onnx",
+  "opset": 17,
+  "schemaVersion": "chord_onnx_export_v1",
+  "sha256": "9035a36c8ae25fb33265911c9c452b09cc8f5187357fd3f392f218b8789ba30a"
+}

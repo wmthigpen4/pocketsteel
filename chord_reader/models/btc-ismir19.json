@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "chord_model_source_v1",
+  "id": "btc-ismir19-hf-baseline",
+  "purpose": "Pinned pretrained challenger and transfer-learning initialization",
+  "upstream": {
+    "modelId": "puar-playground/btc-chord",
+    "revision": "d436f2f664f5107cd987774279b8ce171846e376",
+    "originalRepository": "https://github.com/jayg996/BTC-ISMIR19",
+    "license": "MIT"
+  },
+  "vocabulary": "large-170",
+  "sampleRate": 22050,
+  "files": {
+    "btc_model_large_voca.pt": "1673d23f8f9a55ae7f9e8b80a51da616debb22675b8d8b67ea6ce0ef37b0ab51",
+    "btc_src/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "btc_src/btc_model.py": "a0bed1c9c2686cb34bec846b352e0ac6f00dcf31f895e7da1ffc0e0451d88893",
+    "btc_src/features.py": "640767000d7cffc315b11b7da82915e937904ad90e553a08a0adc2bfa7e5dbfd",
+    "btc_src/transformer_modules.py": "c4b588ef4bd5becd18ad45eab4dbf57b8e321b862d664748e71bfd3d51427c2b"
+  }
+}

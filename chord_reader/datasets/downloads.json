@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "chord_dataset_downloads_v1",
+  "files": [
+    {
+      "datasetId": "guitarset",
+      "name": "annotation.zip",
+      "url": "https://zenodo.org/api/records/3371780/files/annotation.zip/content",
+      "sha256": "8daa02e6417ccca1685feb44b135e95928ad7037e5032ecb326b5791856fda99"
+    },
+    {
+      "datasetId": "guitarset",
+      "name": "audio_mono-pickup_mix.zip",
+      "url": "https://zenodo.org/api/records/3371780/files/audio_mono-pickup_mix.zip/content",
+      "sha256": "8cd6af47282b15e51d82fc9657adb3d585defb55ebc473958c145ccec3907336"
+    },
+    {
+      "datasetId": "aam",
+      "name": "0001-1000-annotations-v1.1.0.zip",
+      "url": "https://zenodo.org/api/records/5794629/files/0001-1000-annotations-v1.1.0.zip/content",
+      "sha256": "b1e00952078cc724a233eff22e6e0c4deb3aaee78eed7016f4579e82b3ecdded"
+    },
+    {
+      "datasetId": "lofi_chords",
+      "name": "lofi_chords_dataset_json.tar.gz",
+      "url": "https://zenodo.org/records/17819350/files/lofi_chords_dataset_json.tar.gz?download=1",
+      "sha256": "b69f28ea094ad73b91f64d6a5c0a6b44202cbe30522cb5e42fb0f410fc22020f",
+      "admission": "unlabeled_not_for_supervised_training"
+    }
+  ]
+}

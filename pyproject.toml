@@ -48,6 +48,7 @@ travis-companion-analysis = [
 [tool.setuptools]
 packages = [
   "steel_guitar_rag",
+  "steel_guitar_rag.chord_reader",
   "steel_guitar_rag.travis_companion_analysis",
   "partner_companions",
   "partner_companions.travis_tutorials",

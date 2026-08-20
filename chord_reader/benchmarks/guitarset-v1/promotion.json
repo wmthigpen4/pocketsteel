@@ -1,0 +1,46 @@
+{
+  "baselineEngine": "v2",
+  "challengerEngine": "student",
+  "gates": [
+    {
+      "actual": 0.12858473847890128,
+      "name": "pooled-major-minor-wcsr",
+      "passed": true,
+      "required": ">= +0.08"
+    },
+    {
+      "actual": 0.17737679240145476,
+      "name": "pooled-root-wcsr",
+      "passed": true,
+      "required": ">= +0.05"
+    },
+    {
+      "actual": 0.1454945167810202,
+      "name": "boundary-f1",
+      "passed": true,
+      "required": ">= -0.02"
+    },
+    {
+      "actual": 0.2501876537906499,
+      "name": "four-minute-runtime",
+      "passed": true,
+      "required": "<= 15.0 seconds"
+    },
+    {
+      "actual": 339738624,
+      "name": "resident-memory",
+      "passed": true,
+      "required": "<= 1288490188 bytes"
+    },
+    {
+      "actual": {
+        "guitarset": 0.12858473847890128
+      },
+      "name": "no-stratum-regression",
+      "passed": true,
+      "required": "every stratum >= -0.03"
+    }
+  ],
+  "passed": true,
+  "schemaVersion": "chord_promotion_report_v1"
+}

@@ -12,6 +12,7 @@ EXPECTED_LOCKS = (
     "training.lock",
     "test.lock",
     "deployment.lock",
+    "chord-reader.lock",
 )
 PIN_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+==[^\s\\;]+")
 

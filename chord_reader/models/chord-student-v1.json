@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "chord_student_model_card_v1",
+  "model": {
+    "path": "ui/models/chord-student-v1.onnx",
+    "sha256": "9035a36c8ae25fb33265911c9c452b09cc8f5187357fd3f392f218b8789ba30a",
+    "bytes": 359340,
+    "opset": 17,
+    "input": "float32[batch,frames,13]",
+    "output": "float32[batch,frames,49]"
+  },
+  "architecture": "64-channel four-block dilated temporal convolution network",
+  "features": {
+    "sampleRate": 11025,
+    "frameSeconds": 0.1,
+    "fftSize": 4096,
+    "values": "12 normalized worker-compatible chroma bins plus RMS energy"
+  },
+  "vocabulary": {
+    "classCount": 49,
+    "qualities": ["maj", "min", "7", "min7"],
+    "noChord": true,
+    "learnerDisplay": "major/minor/dominant-7/minor-7 with conservative simplification"
+  },
+  "training": {
+    "dataset": "GuitarSet mono pickup mix",
+    "tracks": {"train": 264, "development": 60, "test": 36},
+    "seconds": {"train": 7961.8481632653065, "development": 1714.610068027211, "test": 1291.9673469387756},
+    "splitUnit": "musical progression across every player and comp/solo rendition",
+    "manifestSha256": "02928016a26e41cd87c348c8c669620abbc7caf49a48ee8596811e6c6e411d88",
+    "featureManifestSha256": "52608b24b54a69e0dca3fa0854bdb68103953977e5a87923d5104899b30fd5eb",
+    "configurationSha256": "f705246609fca0bdb830872bb1f984dfef3f43c4520494864e3d9c7c360299ec",
+    "seed": 20260820,
+    "epochs": 80,
+    "augmentation": "random pitch-class roll from -5 to +5 semitones",
+    "losses": ["49-class chord", "13-class root", "3-class major/minor", "25-class joint root-major/minor"]
+  },
+  "development": {
+    "rootAccuracy": 0.6128957169459963,
+    "majorMinorWcsrProxy": 0.5729748603351955,
+    "selectionScore": 0.5829550744878957
+  },
+  "limitations": [
+    "The supervised training corpus is guitar-only; broader instrumentation still requires AAM or another labeled corpus.",
+    "The production vocabulary simplifies extensions outside major, minor, dominant seventh, and minor seventh.",
+    "The Steel Guitar Forum and sealed Travis gates are not satisfied by the public GuitarSet result alone.",
+    "The feature flag must remain off until the steel and Travis gates pass."
+  ]
+}
