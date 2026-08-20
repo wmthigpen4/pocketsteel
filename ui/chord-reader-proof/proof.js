@@ -7,8 +7,8 @@
   const engineLabels = {
     v2: "Current v2",
     btc: "Pretrained BTC",
-    student: "Raw model",
-    hybrid: "Hardened hybrid",
+    student: "Candidate ensemble",
+    hybrid: "Safe candidate",
   };
   let proof = null;
   let selected = null;
@@ -70,8 +70,8 @@
         number,
         measureRow("Chart", bar.expected),
         measureRow("v2", bar.v2, bar.v2Correct ? "correct" : "wrong"),
-        measureRow("Raw", bar.student, bar.studentCorrect ? "correct" : "wrong"),
-        measureRow("Hybrid", bar.hybrid, bar.hybridCorrect ? "correct" : "wrong"),
+        measureRow("Candidate", bar.student, bar.studentCorrect ? "correct" : "wrong"),
+        measureRow("Safe", bar.hybrid, bar.hybridCorrect ? "correct" : "wrong"),
       );
       button.addEventListener("click", () => {
         seekAndPlay(bar.start).catch(() => {});
@@ -191,25 +191,22 @@
 
   function renderBenchmark() {
     const benchmark = proof.publicBenchmark;
-    byId("public-heading").textContent = `${benchmark.trackCount} held-out ${benchmark.dataset} recordings`;
-    byId("public-disclosure").textContent = `${(benchmark.audioSeconds / 60).toFixed(1)} minutes of audio · ${benchmark.split}.`;
+    const trackCount = benchmark.datasets.reduce((total, item) => total + item.trackCount, 0);
+    const audioSeconds = benchmark.datasets.reduce((total, item) => total + item.evaluatedDurationSeconds, 0);
+    byId("public-heading").textContent = `${trackCount} held-out recordings across ${benchmark.datasets.length} corpora`;
+    byId("public-disclosure").textContent = `${(audioSeconds / 60).toFixed(1)} evaluated minutes · composition-grouped sealed tests.`;
     const body = byId("benchmark-body");
     body.replaceChildren();
-    ["v2", "btc", "student", "hybrid"].forEach((name) => {
-      const metrics = benchmark.engines[name];
+    benchmark.datasets.forEach((dataset) => {
       const row = document.createElement("tr");
-      if (name === "hybrid") row.className = "is-hybrid";
-      [engineLabels[name], percent(metrics.majorMinorWcsr), percent(metrics.rootWcsr), percent(metrics.detailedWcsr), percent(metrics.boundaryF1)].forEach((value) => {
+      [dataset.title, dataset.recordingType, dataset.trackCount, percent(dataset.majorMinorWeightedRecall), percent(dataset.rootWeightedRecall), percent(dataset.boundaryF1Macro)].forEach((value) => {
         const cell = document.createElement("td");
         cell.textContent = value;
         row.append(cell);
       });
       body.append(row);
     });
-    byId("guitarset-status").textContent = `${benchmark.trainingDisclosure} The hardened hybrid exactly matches all 36 frozen raw-model outputs: zero held-out regression.`;
-    byId("guitarset-link").href = benchmark.sourceUrl;
-    byId("aam-status").textContent = benchmark.aamDisclosure;
-    byId("lofi-status").textContent = benchmark.lofiDisclosure;
+    byId("benchmark-status").textContent = benchmark.disclosure;
   }
 
   function render() {

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib
 import hashlib
+import contextlib
+import io
 import json
 import math
 from pathlib import Path
@@ -17,8 +19,14 @@ STUDENT_SCHEMA = "chord_student_model_v1"
 STUDENT_SAMPLE_RATE = 11025
 STUDENT_FRAME_SECONDS = 0.1
 STUDENT_FEATURES = 13
+STUDENT_FEATURE_KINDS = {
+    "worker_chroma_v1": 13,
+    "multiband_chroma_v2": 61,
+    "basic_pitch_v1": 177,
+}
 STUDENT_QUALITIES = ("maj", "min", "7", "min7")
 STUDENT_CLASSES = 1 + 12 * len(STUDENT_QUALITIES)
+STUDENT_ARCHITECTURES = ("tcn", "bigru", "transformer")
 
 
 def student_index(symbol: str | None) -> int:
@@ -66,9 +74,7 @@ def _worker_downsample(samples: Any, source_rate: int, numpy: Any) -> tuple[Any,
     return output.astype(numpy.float32), STUDENT_SAMPLE_RATE
 
 
-def worker_compatible_features(audio: Path) -> tuple[Any, float]:
-    """Match the browser worker's 4096-bin spectral chroma calculation."""
-
+def _spectral_frames(audio: Path) -> tuple[Any, Any, Any, Any, float]:
     numpy = importlib.import_module("numpy")
     librosa = importlib.import_module("librosa")
     samples, source_rate = librosa.load(str(audio), sr=None, mono=True)
@@ -89,20 +95,81 @@ def worker_compatible_features(audio: Path) -> tuple[Any, float]:
     window = 0.5 - 0.5 * numpy.cos(2 * numpy.pi * numpy.arange(size) / (size - 1))
     spectrum = numpy.fft.rfft(frames * window[None, :], axis=1)
     frequencies = numpy.fft.rfftfreq(size, 1 / sample_rate)
-    selected = (frequencies >= 55) & (frequencies <= 1760)
+    return numpy, spectrum, frequencies, energy, duration
+
+
+def _spectral_chroma(numpy: Any, spectrum: Any, frequencies: Any, low: float, high: float) -> Any:
+    selected = (frequencies >= low) & (frequencies <= high)
     frequency = frequencies[selected]
     midi = 69 + 12 * numpy.log2(frequency / 440)
     lower = numpy.floor(midi).astype(int)
     fraction = midi - lower
     magnitude = numpy.sqrt(numpy.abs(spectrum[:, selected]))
     magnitude *= numpy.clip(220 / frequency, 0.22, 3)[None, :]
-    chroma = numpy.zeros((frame_count, 12), dtype=numpy.float64)
+    chroma = numpy.zeros((len(spectrum), 12), dtype=numpy.float64)
     for bin_index in range(len(frequency)):
         chroma[:, lower[bin_index] % 12] += magnitude[:, bin_index] * (1 - fraction[bin_index])
         chroma[:, (lower[bin_index] + 1) % 12] += magnitude[:, bin_index] * fraction[bin_index]
     chroma /= numpy.maximum(1e-12, chroma.sum(axis=1, keepdims=True))
+    return chroma
+
+
+def worker_compatible_features(audio: Path) -> tuple[Any, float]:
+    """Match the browser worker's 4096-bin spectral chroma calculation."""
+
+    numpy, spectrum, frequencies, energy, duration = _spectral_frames(audio)
+    chroma = _spectral_chroma(numpy, spectrum, frequencies, 55, 1760)
     features = numpy.concatenate((chroma, energy[:, None]), axis=1).astype(numpy.float32)
     return features, duration
+
+
+def multiband_harmonic_features(audio: Path) -> tuple[Any, float]:
+    """Expose bass and register-specific harmony without increasing FFT cost."""
+
+    numpy, spectrum, frequencies, energy, duration = _spectral_frames(audio)
+    full = _spectral_chroma(numpy, spectrum, frequencies, 55, 3520)
+    bass = _spectral_chroma(numpy, spectrum, frequencies, 55, 220)
+    middle = _spectral_chroma(numpy, spectrum, frequencies, 220, 880)
+    high = _spectral_chroma(numpy, spectrum, frequencies, 880, 3520)
+    delta = numpy.concatenate((numpy.zeros((1, 12)), numpy.diff(full, axis=0)), axis=0)
+    features = numpy.concatenate((full, bass, middle, high, delta, energy[:, None]), axis=1)
+    return features.astype(numpy.float32), duration
+
+
+_BASIC_PITCH_MODEL: Any | None = None
+
+
+def basic_pitch_features(audio: Path) -> tuple[Any, float]:
+    """Use pretrained note and onset activations as a transcription front end."""
+
+    global _BASIC_PITCH_MODEL
+    numpy = importlib.import_module("numpy")
+    librosa = importlib.import_module("librosa")
+    basic_pitch = importlib.import_module("basic_pitch")
+    inference = importlib.import_module("basic_pitch.inference")
+    if _BASIC_PITCH_MODEL is None:
+        _BASIC_PITCH_MODEL = inference.Model(basic_pitch.ICASSP_2022_MODEL_PATH)
+    with contextlib.redirect_stdout(io.StringIO()):
+        output, _midi, _notes = inference.predict(str(audio), _BASIC_PITCH_MODEL)
+    duration = float(librosa.get_duration(path=str(audio)))
+    frame_count = max(1, math.ceil(duration / STUDENT_FRAME_SECONDS))
+    source_times = numpy.linspace(0, duration, len(output["note"]), endpoint=False)
+    target_times = numpy.arange(frame_count) * STUDENT_FRAME_SECONDS
+    indices = numpy.clip(numpy.searchsorted(source_times, target_times), 0, len(source_times) - 1)
+    note = output["note"][indices]
+    onset = output["onset"][indices]
+    activity = note.mean(axis=1, keepdims=True)
+    return numpy.concatenate((note, onset, activity), axis=1).astype(numpy.float32), duration
+
+
+def extract_student_features(audio: Path, feature_kind: str) -> tuple[Any, float]:
+    if feature_kind == "worker_chroma_v1":
+        return worker_compatible_features(audio)
+    if feature_kind == "multiband_chroma_v2":
+        return multiband_harmonic_features(audio)
+    if feature_kind == "basic_pitch_v1":
+        return basic_pitch_features(audio)
+    raise ValueError(f"Unknown student feature kind {feature_kind!r}.")
 
 
 def frame_labels(segments: Iterable[Mapping[str, Any]], frame_count: int) -> list[int]:
@@ -120,12 +187,27 @@ def frame_labels(segments: Iterable[Mapping[str, Any]], frame_count: int) -> lis
     return labels
 
 
+def frame_label_mask(segments: Iterable[Mapping[str, Any]], frame_count: int) -> list[bool]:
+    """Mark frames covered by an annotation, preserving explicit N segments."""
+
+    values = sorted(segments, key=lambda item: float(item["start"]))
+    mask: list[bool] = []
+    index = 0
+    for frame in range(frame_count):
+        center = frame * STUDENT_FRAME_SECONDS
+        while index + 1 < len(values) and float(values[index]["end"]) <= center:
+            index += 1
+        mask.append(bool(values and float(values[index]["start"]) <= center < float(values[index]["end"])))
+    return mask
+
+
 def cache_student_features(
     manifest: Mapping[str, Any],
     output_root: Path,
     *,
     splits: set[str] | None = None,
     limit: int | None = None,
+    feature_kind: str = "worker_chroma_v1",
 ) -> dict[str, Any]:
     numpy = importlib.import_module("numpy")
     tracks = [track for track in manifest["tracks"] if splits is None or track["split"] in splits]
@@ -133,15 +215,17 @@ def cache_student_features(
         tracks = tracks[:limit]
     cached: list[dict[str, Any]] = []
     for track in tracks:
-        features, duration = worker_compatible_features(Path(track["audioPath"]))
+        features, duration = extract_student_features(Path(track["audioPath"]), feature_kind)
         reference = json.loads(Path(track["referencePath"]).read_text(encoding="utf-8"))
         labels = numpy.asarray(frame_labels(reference["segments"], len(features)), dtype=numpy.int64)
+        label_valid = numpy.asarray(frame_label_mask(reference["segments"], len(features)), dtype=numpy.bool_)
         path = output_root / track["split"] / f"{track['id']}.npz"
         path.parent.mkdir(parents=True, exist_ok=True)
         numpy.savez_compressed(
             path,
             features=features.astype(numpy.float16),
             labels=labels,
+            label_valid=label_valid,
             training_weight=numpy.asarray(float(track.get("trainingWeight", 1)), dtype=numpy.float32),
         )
         cached.append(
@@ -158,8 +242,40 @@ def cache_student_features(
         "schemaVersion": "chord_feature_cache_v1",
         "sampleRate": STUDENT_SAMPLE_RATE,
         "frameSeconds": STUDENT_FRAME_SECONDS,
-        "featureCount": STUDENT_FEATURES,
+        "featureKind": feature_kind,
+        "featureCount": STUDENT_FEATURE_KINDS[feature_kind],
         "tracks": cached,
+    }
+
+
+def merge_feature_caches(manifests: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
+    """Combine compatible caches without changing their frozen splits."""
+
+    values = list(manifests)
+    if not values:
+        raise ValueError("At least one feature cache is required.")
+    contract = {
+        key: values[0][key]
+        for key in ("schemaVersion", "sampleRate", "frameSeconds", "featureCount")
+    }
+    contract["featureKind"] = values[0].get("featureKind", "worker_chroma_v1")
+    tracks: list[dict[str, Any]] = []
+    identifiers: set[str] = set()
+    for value in values:
+        candidate = dict(value)
+        candidate.setdefault("featureKind", "worker_chroma_v1")
+        if any(candidate.get(key) != expected for key, expected in contract.items()):
+            raise ValueError("Feature cache contracts do not match.")
+        for track in value.get("tracks", []):
+            identifier = str(track["id"])
+            if identifier in identifiers:
+                raise ValueError(f"Duplicate cached track {identifier!r}.")
+            identifiers.add(identifier)
+            tracks.append(dict(track))
+    return {
+        **contract,
+        "datasets": sorted({str(track["datasetId"]) for track in tracks}),
+        "tracks": tracks,
     }
 
 
@@ -197,8 +313,11 @@ def _hierarchical_logits(logits: Any, torch: Any) -> tuple[Any, Any, Any]:
     return root_logits, major_minor_logits, torch.cat(joint, dim=-1)
 
 
-def build_student_model() -> Any:
+def build_student_model(architecture: str = "tcn", feature_count: int = STUDENT_FEATURES) -> Any:
     torch, nn, _functional = _torch_modules()
+
+    if architecture not in STUDENT_ARCHITECTURES:
+        raise ValueError(f"Unknown student architecture {architecture!r}.")
 
     class ResidualBlock(nn.Module):
         def __init__(self, channels: int, dilation: int) -> None:
@@ -212,7 +331,7 @@ def build_student_model() -> Any:
     class TemporalChordNet(nn.Module):
         def __init__(self) -> None:
             super().__init__()
-            self.input = nn.Conv1d(STUDENT_FEATURES, 64, 1)
+            self.input = nn.Conv1d(feature_count, 64, 1)
             self.blocks = nn.Sequential(*(ResidualBlock(64, dilation) for dilation in (1, 2, 4, 8)))
             self.output = nn.Conv1d(64, STUDENT_CLASSES, 1)
 
@@ -220,7 +339,43 @@ def build_student_model() -> Any:
             hidden = torch.nn.functional.gelu(self.input(inputs.transpose(1, 2)))
             return self.output(self.blocks(hidden)).transpose(1, 2)
 
-    return TemporalChordNet()
+    class BidirectionalGruChordNet(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.input = nn.Linear(feature_count, 96)
+            self.gru = nn.GRU(96, 96, num_layers=2, batch_first=True, dropout=0.15, bidirectional=True)
+            self.output = nn.Linear(192, STUDENT_CLASSES)
+
+        def forward(self, inputs: Any) -> Any:
+            hidden = torch.nn.functional.gelu(self.input(inputs))
+            hidden, _state = self.gru(hidden)
+            return self.output(hidden)
+
+    class TransformerChordNet(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.input = nn.Conv1d(feature_count, 96, 5, padding=2)
+            layer = nn.TransformerEncoderLayer(
+                d_model=96,
+                nhead=4,
+                dim_feedforward=256,
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+                norm_first=False,
+            )
+            self.encoder = nn.TransformerEncoder(layer, num_layers=3)
+            self.output = nn.Linear(96, STUDENT_CLASSES)
+
+        def forward(self, inputs: Any) -> Any:
+            hidden = torch.nn.functional.gelu(self.input(inputs.transpose(1, 2))).transpose(1, 2)
+            return self.output(self.encoder(hidden))
+
+    return {
+        "tcn": TemporalChordNet,
+        "bigru": BidirectionalGruChordNet,
+        "transformer": TransformerChordNet,
+    }[architecture]()
 
 
 def _cache_windows(paths: list[Path], window_frames: int, numpy: Any) -> list[tuple[Any, Any, Any, float]]:
@@ -229,11 +384,16 @@ def _cache_windows(paths: list[Path], window_frames: int, numpy: Any) -> list[tu
         with numpy.load(path) as value:
             features = value["features"].astype(numpy.float32)
             labels = value["labels"].astype(numpy.int64)
+            label_valid = value["label_valid"].astype(numpy.float32) if "label_valid" in value else None
             weight = float(value["training_weight"])
         for start in range(0, len(features), window_frames):
             chunk_features = features[start : start + window_frames]
             chunk_labels = labels[start : start + window_frames]
-            valid = numpy.ones(len(chunk_features), dtype=numpy.float32)
+            valid = (
+                label_valid[start : start + window_frames]
+                if label_valid is not None
+                else numpy.ones(len(chunk_features), dtype=numpy.float32)
+            )
             if len(chunk_features) < window_frames:
                 padding = window_frames - len(chunk_features)
                 chunk_features = numpy.pad(chunk_features, ((0, padding), (0, 0)))
@@ -252,6 +412,7 @@ def train_student(
     learning_rate: float = 3e-4,
     device: str = "cpu",
     seed: int = 20260820,
+    architecture: str = "tcn",
 ) -> dict[str, Any]:
     numpy = importlib.import_module("numpy")
     torch, _nn, functional = _torch_modules()
@@ -265,7 +426,11 @@ def train_student(
     if not paths["train"] or not paths["development"]:
         raise ValueError("Training requires non-empty train and development feature caches.")
     windows = {split: _cache_windows(value, 256, numpy) for split, value in paths.items()}
-    model = build_student_model().to(device)
+    feature_count = int(cache_manifest.get("featureCount", STUDENT_FEATURES))
+    feature_kind = str(cache_manifest.get("featureKind", "worker_chroma_v1"))
+    if STUDENT_FEATURE_KINDS.get(feature_kind) != feature_count:
+        raise ValueError("Feature kind and feature count do not match.")
+    model = build_student_model(architecture, feature_count).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     best_score = -1.0
     best_root_accuracy = 0.0
@@ -284,7 +449,20 @@ def train_student(
             valid_values = numpy.stack([item[2] for item in batch])
             weights = numpy.asarray([item[3] for item in batch], dtype=numpy.float32)
             if augment:
-                feature_values[:, :, :12] = numpy.roll(feature_values[:, :, :12], augment, axis=2)
+                if feature_kind == "basic_pitch_v1":
+                    for start in (0, 88):
+                        original = feature_values[:, :, start : start + 88].copy()
+                        feature_values[:, :, start : start + 88] = 0
+                        if augment > 0:
+                            feature_values[:, :, start + augment : start + 88] = original[:, :, : 88 - augment]
+                        else:
+                            feature_values[:, :, start : start + 88 + augment] = original[:, :, -augment:]
+                else:
+                    chroma_features = 60 if feature_kind == "multiband_chroma_v2" else 12
+                    for start in range(0, chroma_features, 12):
+                        feature_values[:, :, start : start + 12] = numpy.roll(
+                            feature_values[:, :, start : start + 12], augment, axis=2
+                        )
                 label_values = numpy.vectorize(
                     lambda value: transpose_student_index(int(value), augment),
                     otypes=[numpy.int64],
@@ -377,9 +555,11 @@ def train_student(
         "schemaVersion": STUDENT_SCHEMA,
         "sampleRate": STUDENT_SAMPLE_RATE,
         "frameSeconds": STUDENT_FRAME_SECONDS,
-        "featureCount": STUDENT_FEATURES,
+        "featureKind": feature_kind,
+        "featureCount": feature_count,
         "classCount": STUDENT_CLASSES,
         "qualities": list(STUDENT_QUALITIES),
+        "architecture": architecture,
         "seed": seed,
         "epochs": epochs,
         "bestDevelopmentRootAccuracy": best_root_accuracy,
@@ -395,21 +575,44 @@ def train_student(
 def export_student_onnx(model_root: Path, output: Path) -> dict[str, Any]:
     torch, _nn, _functional = _torch_modules()
     safetensors = importlib.import_module("safetensors.torch")
-    model = build_student_model()
+    config = json.loads((model_root / "config.json").read_text(encoding="utf-8"))
+    architecture = str(config.get("architecture") or "tcn")
+    feature_count = int(config.get("featureCount", STUDENT_FEATURES))
+    feature_kind = str(config.get("featureKind", "worker_chroma_v1"))
+    model = build_student_model(architecture, feature_count)
     model.load_state_dict(safetensors.load_file(str(model_root / "chord-student-v1.safetensors")))
     model.eval()
-    example = torch.zeros((1, 256, STUDENT_FEATURES), dtype=torch.float32)
+    example = torch.zeros((1, 256, feature_count), dtype=torch.float32)
     output.parent.mkdir(parents=True, exist_ok=True)
+    window_frames = 256 if architecture == "transformer" else None
+    dynamic_axes = (
+        {"features": {0: "batch"}, "logits": {0: "batch"}}
+        if window_frames
+        else {"features": {0: "batch", 1: "frames"}, "logits": {0: "batch", 1: "frames"}}
+    )
     torch.onnx.export(
         model,
         example,
         str(output),
         input_names=["features"],
         output_names=["logits"],
-        dynamic_axes={"features": {0: "batch", 1: "frames"}, "logits": {0: "batch", 1: "frames"}},
+        dynamic_axes=dynamic_axes,
         opset_version=17,
         dynamo=False,
     )
+    onnx = importlib.import_module("onnx")
+    model_proto = onnx.load(str(output))
+    metadata = {
+        "chordReaderArchitecture": architecture,
+        "chordReaderFeatureKind": feature_kind,
+    }
+    if window_frames:
+        metadata["chordReaderWindowFrames"] = str(window_frames)
+    for key, value in metadata.items():
+        entry = model_proto.metadata_props.add()
+        entry.key = key
+        entry.value = value
+    onnx.save(model_proto, str(output))
     runtime = importlib.import_module("onnxruntime")
     session = runtime.InferenceSession(str(output), providers=["CPUExecutionProvider"])
     expected = model(example).detach().numpy()
@@ -425,6 +628,10 @@ def export_student_onnx(model_root: Path, output: Path) -> dict[str, Any]:
         "bytes": output.stat().st_size,
         "opset": 17,
         "maximumAbsoluteError": maximum_error,
+        "architecture": architecture,
+        "featureKind": feature_kind,
+        "featureCount": feature_count,
+        "windowFrames": window_frames,
     }
 
 
@@ -459,10 +666,26 @@ class StudentRecognizer:
         self.numpy = importlib.import_module("numpy")
         self.session = runtime.InferenceSession(str(model), providers=["CPUExecutionProvider"])
         self.model = model
+        metadata = self.session.get_modelmeta().custom_metadata_map
+        self.window_frames = int(metadata["chordReaderWindowFrames"]) if metadata.get("chordReaderWindowFrames") else None
+        self.feature_kind = metadata.get("chordReaderFeatureKind", "worker_chroma_v1")
+
+    def _logits(self, features: Any) -> Any:
+        if not self.window_frames:
+            return self.session.run(None, {"features": features[None].astype(self.numpy.float32)})[0][0]
+        chunks: list[Any] = []
+        for start in range(0, len(features), self.window_frames):
+            values = features[start : start + self.window_frames]
+            valid = len(values)
+            if valid < self.window_frames:
+                values = self.numpy.pad(values, ((0, self.window_frames - valid), (0, 0)))
+            logits = self.session.run(None, {"features": values[None].astype(self.numpy.float32)})[0][0]
+            chunks.append(logits[:valid])
+        return self.numpy.concatenate(chunks, axis=0)
 
     def predict(self, audio: Path, *, prediction_id: str | None = None) -> dict[str, Any]:
-        features, duration = worker_compatible_features(audio)
-        logits = self.session.run(None, {"features": features[None].astype(self.numpy.float32)})[0][0]
+        features, duration = extract_student_features(audio, self.feature_kind)
+        logits = self._logits(features)
         probabilities = self.numpy.exp(logits - logits.max(axis=1, keepdims=True))
         probabilities /= probabilities.sum(axis=1, keepdims=True)
         indices = _viterbi_student(logits, self.numpy)
@@ -491,8 +714,29 @@ class StudentRecognizer:
             "id": prediction_id or audio.name,
             "engine": "chord-student-v1",
             "model": self.model.name,
+            "featureKind": self.feature_kind,
             "durationSeconds": duration,
             "sampleRate": STUDENT_SAMPLE_RATE,
             "frameSeconds": STUDENT_FRAME_SECONDS,
             "segments": segments,
         }
+
+
+class StudentEnsembleRecognizer(StudentRecognizer):
+    """Average calibrated frame logits from compatible student architectures."""
+
+    def __init__(self, models: Iterable[Path]) -> None:
+        members = [StudentRecognizer(model) for model in models]
+        if len(members) < 2:
+            raise ValueError("A student ensemble requires at least two models.")
+        feature_kinds = {member.feature_kind for member in members}
+        if len(feature_kinds) != 1:
+            raise ValueError("Student ensemble models must use the same feature kind.")
+        self.members = members
+        self.numpy = members[0].numpy
+        self.feature_kind = members[0].feature_kind
+        self.model = Path("student-ensemble")
+
+    def _logits(self, features: Any) -> Any:
+        values = [member._logits(features) for member in self.members]
+        return self.numpy.mean(self.numpy.stack(values), axis=0)

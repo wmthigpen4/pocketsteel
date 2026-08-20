@@ -20,6 +20,18 @@
       "sha256": "b1e00952078cc724a233eff22e6e0c4deb3aaee78eed7016f4579e82b3ecdded"
     },
     {
+      "datasetId": "winterreise",
+      "name": "Schubert_Winterreise_Dataset_v2-1.zip",
+      "url": "https://zenodo.org/api/records/10839767/files/Schubert_Winterreise_Dataset_v2-1.zip/content",
+      "sha256": "774b9b874a82af042ee76f38260acab16bf6ef275c6d67363f96ce63167b99f5"
+    },
+    {
+      "datasetId": "idmt_guitar",
+      "name": "IDMT-SMT-GUITAR_V2.zip",
+      "url": "https://zenodo.org/api/records/7544110/files/IDMT-SMT-GUITAR_V2.zip/content",
+      "sha256": "02816258252538603c051054219cb4bba1c0ae8c9d0a3ca5418dfc951eae997a"
+    },
+    {
       "datasetId": "lofi_chords",
       "name": "lofi_chords_dataset_json.tar.gz",
       "url": "https://zenodo.org/records/17819350/files/lofi_chords_dataset_json.tar.gz?download=1",

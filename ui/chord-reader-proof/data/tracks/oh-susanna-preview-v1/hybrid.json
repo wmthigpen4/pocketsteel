@@ -22,25 +22,25 @@
   "bars": [
     {
       "bar": 1,
-      "confidence": 0.10230635479092598,
+      "confidence": 0.10711238905787468,
       "coverage": 1.0,
       "end": 0.163,
-      "label": "D#:maj",
-      "productLabel": "D#",
+      "label": "D:maj",
+      "productLabel": "D",
       "start": 0.0
     },
     {
       "bar": 2,
-      "confidence": 0.10230635479092597,
-      "coverage": 0.6661281637049005,
+      "confidence": 0.16297111553805216,
+      "coverage": 0.37695207323640284,
       "end": 2.02,
-      "label": "D#:maj",
-      "productLabel": "D#",
+      "label": "C:maj",
+      "productLabel": "C",
       "start": 0.163
     },
     {
       "bar": 3,
-      "confidence": 0.628326138412511,
+      "confidence": 0.7444919840067248,
       "coverage": 1.0,
       "end": 3.808,
       "label": "G:maj",
@@ -49,7 +49,7 @@
     },
     {
       "bar": 4,
-      "confidence": 0.628326138412511,
+      "confidence": 0.7444919840067248,
       "coverage": 1.0,
       "end": 5.642,
       "label": "G:maj",
@@ -58,7 +58,7 @@
     },
     {
       "bar": 5,
-      "confidence": 0.628326138412511,
+      "confidence": 0.7444919840067248,
       "coverage": 1.0,
       "end": 7.57,
       "label": "G:maj",
@@ -67,7 +67,7 @@
     },
     {
       "bar": 6,
-      "confidence": 0.628326138412511,
+      "confidence": 0.7444919840067248,
       "coverage": 1.0,
       "end": 9.474,
       "label": "G:maj",
@@ -76,8 +76,8 @@
     },
     {
       "bar": 7,
-      "confidence": 0.5951610025432374,
-      "coverage": 0.9453781512605046,
+      "confidence": 0.5226809925892774,
+      "coverage": 0.8928571428571435,
       "end": 11.378,
       "label": "D:maj",
       "productLabel": "D",
@@ -85,7 +85,7 @@
     },
     {
       "bar": 8,
-      "confidence": 0.6125947156300148,
+      "confidence": 0.7760828211903572,
       "coverage": 1.0,
       "end": 13.282,
       "label": "G:maj",
@@ -94,8 +94,8 @@
     },
     {
       "bar": 9,
-      "confidence": 0.6125947156300148,
-      "coverage": 1.0,
+      "confidence": 0.7760828211903572,
+      "coverage": 0.9953295277633635,
       "end": 15.209,
       "label": "G:maj",
       "productLabel": "G",
@@ -103,8 +103,8 @@
     },
     {
       "bar": 10,
-      "confidence": 0.27601496428251265,
-      "coverage": 0.5263157894736833,
+      "confidence": 0.44969336274597377,
+      "coverage": 0.952153110047847,
       "end": 17.09,
       "label": "D:maj",
       "productLabel": "D",
@@ -112,8 +112,8 @@
     },
     {
       "bar": 11,
-      "confidence": 0.7387031977996229,
-      "coverage": 0.5693779904306209,
+      "confidence": 0.7519290714428343,
+      "coverage": 0.5162147793726741,
       "end": 18.971,
       "label": "C:maj",
       "productLabel": "C",
@@ -121,7 +121,7 @@
     },
     {
       "bar": 12,
-      "confidence": 0.7387031977996229,
+      "confidence": 0.7519290714428343,
       "coverage": 1.0,
       "end": 20.875,
       "label": "C:maj",
@@ -130,8 +130,8 @@
     },
     {
       "bar": 13,
-      "confidence": 0.6704080104827881,
-      "coverage": 0.8818277310924362,
+      "confidence": 0.7653431475162507,
+      "coverage": 0.9868697478991585,
       "end": 22.779,
       "label": "G:maj",
       "productLabel": "G",
@@ -139,8 +139,8 @@
     },
     {
       "bar": 14,
-      "confidence": 0.5688267963774064,
-      "coverage": 0.8822003113648156,
+      "confidence": 0.5408755503594875,
+      "coverage": 0.8303061754021787,
       "end": 24.706,
       "label": "D:maj",
       "productLabel": "D",
@@ -148,7 +148,7 @@
     },
     {
       "bar": 15,
-      "confidence": 0.6252171695232391,
+      "confidence": 0.762021754682064,
       "coverage": 1.0,
       "end": 26.587,
       "label": "G:maj",
@@ -157,7 +157,7 @@
     },
     {
       "bar": 16,
-      "confidence": 0.6252171695232391,
+      "confidence": 0.762021754682064,
       "coverage": 1.0,
       "end": 28.491,
       "label": "G:maj",
@@ -166,8 +166,8 @@
     },
     {
       "bar": 17,
-      "confidence": 0.38083047247849977,
-      "coverage": 0.5751050420168061,
+      "confidence": 0.5002492713300806,
+      "coverage": 0.9952731092436973,
       "end": 30.395,
       "label": "D:maj",
       "productLabel": "D",
@@ -175,8 +175,8 @@
     },
     {
       "bar": 18,
-      "confidence": 0.5020663311535661,
-      "coverage": 0.9147609147609139,
+      "confidence": 0.6475296740730604,
+      "coverage": 0.9979209979209969,
       "end": 32.8,
       "label": "G:maj",
       "productLabel": "G",
@@ -263,100 +263,124 @@
   "schemaVersion": "chord_prediction_v1",
   "segments": [
     {
-      "confidence": 0.10230635479092598,
-      "end": 1.4000000000000001,
-      "label": "D#:maj",
-      "productLabel": "D#",
+      "confidence": 0.10711238905787468,
+      "end": 0.4,
+      "label": "D:maj",
+      "productLabel": "D",
       "source": "student",
       "start": 0.0
     },
     {
-      "confidence": 0.628326138412511,
+      "confidence": 0.09663641080260277,
+      "end": 0.6000000000000001,
+      "label": "N",
+      "productLabel": "N.C.",
+      "source": "student",
+      "start": 0.4
+    },
+    {
+      "confidence": 0.24696039656798047,
+      "end": 0.9,
+      "label": "D:maj",
+      "productLabel": "D",
+      "source": "student",
+      "start": 0.6000000000000001
+    },
+    {
+      "confidence": 0.16297111553805216,
+      "end": 1.6,
+      "label": "C:maj",
+      "productLabel": "C",
+      "source": "student",
+      "start": 0.9
+    },
+    {
+      "confidence": 0.7444919840067248,
       "end": 9.5,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
-      "start": 1.4000000000000001
+      "start": 1.6
     },
     {
-      "confidence": 0.5951610025432374,
-      "end": 11.3,
+      "confidence": 0.5226809925892774,
+      "end": 11.200000000000001,
       "label": "D:maj",
       "productLabel": "D",
       "source": "student",
       "start": 9.5
     },
     {
-      "confidence": 0.6125947156300148,
-      "end": 16.1,
+      "confidence": 0.7760828211903572,
+      "end": 15.200000000000001,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
-      "start": 11.3
+      "start": 11.200000000000001
     },
     {
-      "confidence": 0.27601496428251265,
-      "end": 17.1,
+      "confidence": 0.44969336274597377,
+      "end": 17.0,
       "label": "D:maj",
       "productLabel": "D",
       "source": "student",
-      "start": 16.1
+      "start": 15.200000000000001
     },
     {
-      "confidence": 0.28473176807165146,
-      "end": 17.900000000000002,
+      "confidence": 0.5239383831620217,
+      "end": 18.0,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
-      "start": 17.1
+      "start": 17.0
     },
     {
-      "confidence": 0.7387031977996229,
-      "end": 21.1,
+      "confidence": 0.7519290714428343,
+      "end": 20.900000000000002,
       "label": "C:maj",
       "productLabel": "C",
       "source": "student",
-      "start": 17.900000000000002
+      "start": 18.0
     },
     {
-      "confidence": 0.6704080104827881,
+      "confidence": 0.7653431475162507,
       "end": 22.900000000000002,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
-      "start": 21.1
+      "start": 20.900000000000002
     },
     {
-      "confidence": 0.5688267963774064,
-      "end": 24.6,
+      "confidence": 0.5408755503594875,
+      "end": 24.5,
       "label": "D:maj",
       "productLabel": "D",
       "source": "student",
       "start": 22.900000000000002
     },
     {
-      "confidence": 0.6252171695232391,
-      "end": 29.3,
+      "confidence": 0.762021754682064,
+      "end": 28.5,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
-      "start": 24.6
+      "start": 24.5
     },
     {
-      "confidence": 0.38083047247849977,
-      "end": 30.6,
+      "confidence": 0.5002492713300806,
+      "end": 30.400000000000002,
       "label": "D:maj",
       "productLabel": "D",
       "source": "student",
-      "start": 29.3
+      "start": 28.5
     },
     {
-      "confidence": 0.5020663311535661,
+      "confidence": 0.6475296740730604,
       "end": 32.8,
       "label": "G:maj",
       "productLabel": "G",
       "source": "student",
-      "start": 30.6
+      "start": 30.400000000000002
     }
   ],
   "tempo": 127

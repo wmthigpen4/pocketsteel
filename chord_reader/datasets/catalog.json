@@ -24,6 +24,28 @@
       "license": "see-source-record"
     },
     {
+      "id": "winterreise",
+      "title": "Schubert Winterreise Dataset",
+      "sourceUrl": "https://zenodo.org/records/10839767",
+      "downloadMode": "official_archive",
+      "annotationFormat": "audio_aligned_semicolon_chord_tables",
+      "labelSource": "ground_truth",
+      "developmentRole": "train_development_test",
+      "selection": "two included human performances grouped by composition",
+      "license": "CC-BY-3.0 with recording-specific conditions"
+    },
+    {
+      "id": "idmt_guitar",
+      "title": "IDMT-SMT-GUITAR Dataset 4",
+      "sourceUrl": "https://zenodo.org/records/7544110",
+      "downloadMode": "official_archive",
+      "annotationFormat": "beat_aligned_chord_csv",
+      "labelSource": "ground_truth",
+      "developmentRole": "train_development_test",
+      "selection": "dataset_4_pieces_grouped_across_guitars_and_tempi",
+      "license": "CC-BY-NC-ND-4.0"
+    },
+    {
       "id": "lofi_chords",
       "title": "Lo-Fi Chords Dataset",
       "sourceUrl": "https://zenodo.org/records/17819350",

@@ -12,7 +12,7 @@
       <div>
         <p class="eyebrow">Chord Reader ML v3 · visual proof</p>
         <h1>Hear every claim.</h1>
-        <p class="lede">Three public-domain songs, 49 hand-authored bars, and every mistake exposed. Choose a song, press play, and compare v2, the raw model, and the hardened hybrid in time with the music.</p>
+        <p class="lede">Three real public-domain songs, 49 hand-authored bars, and every mistake exposed. Press play to compare the production reader with the new multiband TCN + Transformer ensemble in time with the music.</p>
       </div>
       <div class="hero-badge"><span id="suite-bars">—</span><small>hybrid bars correct across suite</small></div>
     </header>
@@ -35,8 +35,8 @@
         <div class="bar-marker"><span>BAR</span><strong id="current-bar">Count-in</strong></div>
         <div class="current-chord expected"><span>Hand-authored</span><strong id="current-expected">N.C.</strong></div>
         <div class="current-chord v2"><span>Current v2</span><strong id="current-v2">N.C.</strong></div>
-        <div class="current-chord student"><span>Raw model</span><strong id="current-student">N.C.</strong></div>
-        <div class="current-chord hybrid"><span>Hardened hybrid</span><strong id="current-hybrid">N.C.</strong></div>
+        <div class="current-chord student"><span>Candidate ensemble</span><strong id="current-student">N.C.</strong></div>
+        <div class="current-chord hybrid"><span>Safe candidate</span><strong id="current-hybrid">N.C.</strong></div>
       </div>
 
       <div class="legend" aria-label="Result legend">
@@ -60,12 +60,12 @@
           <span>musical bars correct</span>
         </article>
         <article class="score-card challenger">
-          <p>Raw model</p>
+          <p>Candidate ensemble</p>
           <strong id="student-bar-score">—</strong>
           <span>musical bars correct</span>
         </article>
         <article class="score-card hybrid">
-          <p>Hardened hybrid</p>
+          <p>Safe candidate</p>
           <strong id="hybrid-bar-score">—</strong>
           <span>musical bars correct</span>
         </article>
@@ -98,33 +98,29 @@
 
     <section class="public-proof" aria-labelledby="public-heading">
       <div class="section-heading">
-        <p class="eyebrow">Frozen public benchmark</p>
-        <h2 id="public-heading">36 held-out GuitarSet recordings</h2>
+        <p class="eyebrow">Frozen multi-corpus benchmark</p>
+        <h2 id="public-heading">124 held-out recordings across four corpora</h2>
         <p id="public-disclosure" class="muted"></p>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Reader</th><th>Major/minor WCSR</th><th>Root WCSR</th><th>Detailed WCSR</th><th>Boundary F1</th></tr></thead>
+          <thead><tr><th>Sealed corpus</th><th>Recording type</th><th>Tracks</th><th>Major/minor WCSR</th><th>Root WCSR</th><th>Boundary F1</th></tr></thead>
           <tbody id="benchmark-body"></tbody>
         </table>
       </div>
-      <div class="data-disclosure">
-        <p><strong>GuitarSet:</strong> <span id="guitarset-status"></span> <a id="guitarset-link" target="_blank" rel="noreferrer">Open source record ↗</a></p>
-        <p><strong>AAM:</strong> <span id="aam-status"></span></p>
-        <p><strong>Lo-Fi Chords:</strong> <span id="lofi-status"></span></p>
-      </div>
+      <div class="data-disclosure"><p id="benchmark-status"></p></div>
     </section>
 
     <section class="reproduction" aria-labelledby="reproduce-heading">
       <div>
         <p class="eyebrow">No hand-picked output</p>
         <h2 id="reproduce-heading">Regenerate the evidence locally</h2>
-        <p>The page reads frozen JSON emitted directly by v2, the tracked ONNX model, and the conservative no-chord overlay. The model and selected-audio hashes are displayed so changed artifacts cannot masquerade as this run.</p>
+        <p>The page reads frozen JSON emitted directly by v2, two tracked ONNX models, and the conservative no-chord overlay. Model and audio hashes are displayed so changed artifacts cannot masquerade as this run.</p>
       </div>
       <div class="code-panel">
         <code id="reproduce-command">python scripts/build_chord_reader_proof.py</code>
         <dl>
-          <div><dt>Model SHA-256</dt><dd id="model-hash">—</dd></div>
+          <div><dt>Model SHA-256 hashes</dt><dd id="model-hash">—</dd></div>
           <div><dt>Audio SHA-256</dt><dd id="audio-hash">—</dd></div>
         </dl>
       </div>

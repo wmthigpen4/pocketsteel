@@ -19,7 +19,7 @@ if str(REPO_ROOT) not in sys.path:
 from steel_guitar_rag.chord_reader.hybrid import hybridize_predictions
 from steel_guitar_rag.chord_reader.labels import normalize_chord
 from steel_guitar_rag.chord_reader.metrics import score_segments
-from steel_guitar_rag.chord_reader.student import StudentRecognizer
+from steel_guitar_rag.chord_reader.student import StudentEnsembleRecognizer, StudentRecognizer
 
 
 TRACK_MANIFEST = REPO_ROOT / "steel_guitar_rag/resources/song_practice_tracks/manifest.json"
@@ -30,15 +30,8 @@ TRACK_IDS = (
 )
 DEFAULT_TRACK_ID = TRACK_IDS[0]
 MODEL = REPO_ROOT / "ui/models/chord-student-v1.onnx"
+SEALED_SUMMARY = REPO_ROOT / "chord_reader/benchmarks/multiband-ensemble-v1/sealed-summary.json"
 DEFAULT_OUTPUT = REPO_ROOT / "ui/chord-reader-proof/data"
-PUBLIC_REPORTS = {
-    "v2": REPO_ROOT / "chord_reader/benchmarks/guitarset-v1/v2.json",
-    "btc": REPO_ROOT / "chord_reader/benchmarks/guitarset-v1/btc.json",
-    "student": REPO_ROOT / "chord_reader/benchmarks/guitarset-v1/student.json",
-    "hybrid": REPO_ROOT / "chord_reader/benchmarks/guitarset-v1/hybrid.json",
-}
-
-
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -253,13 +246,18 @@ def _build_track(
     return proof
 
 
-def build(output_root: Path) -> dict[str, Any]:
+def build(output_root: Path, models: Sequence[Path] | None = None) -> dict[str, Any]:
     output_root.mkdir(parents=True, exist_ok=True)
-    recognizer = StudentRecognizer(MODEL)
+    model_paths = [path if path.is_absolute() else (REPO_ROOT / path).resolve() for path in (models or [MODEL])]
+    recognizer = (
+        StudentEnsembleRecognizer(model_paths)
+        if len(model_paths) > 1
+        else StudentRecognizer(model_paths[0])
+    )
     track_proofs = [_build_track(track, output_root, recognizer) for track in _tracks()]
-    public_reports = {name: _read_json(path) for name, path in PUBLIC_REPORTS.items()}
     proof = {
         "schemaVersion": "chord_reader_visual_proof_v2",
+        "candidateLabel": "Multiband TCN + Transformer ensemble" if len(model_paths) > 1 else "Raw chord model",
         "defaultTrackId": DEFAULT_TRACK_ID,
         "tracks": track_proofs,
         "suite": {
@@ -272,28 +270,11 @@ def build(output_root: Path) -> dict[str, Any]:
             },
             "barCount": sum(int(track["summary"]["barCount"]) for track in track_proofs),
         },
-        "publicBenchmark": {
-            "dataset": "GuitarSet",
-            "sourceUrl": "https://zenodo.org/records/3371780",
-            "split": "composition-grouped held-out test",
-            "trackCount": public_reports["student"]["aggregate"]["trackCount"],
-            "audioSeconds": public_reports["student"]["aggregate"]["evaluatedDurationSeconds"],
-            "engines": {
-                name: {
-                    "majorMinorWcsr": report["aggregate"]["majorMinorWeightedRecall"],
-                    "rootWcsr": report["aggregate"]["rootWeightedRecall"],
-                    "detailedWcsr": report["aggregate"]["detailedWeightedRecall"],
-                    "boundaryF1": report["aggregate"]["boundaryF1Macro"],
-                }
-                for name, report in public_reports.items()
-            },
-            "trainingDisclosure": "The student trained on 264 GuitarSet recordings, selected on 60 development recordings, and was scored once on these 36 held-out recordings.",
-            "aamDisclosure": "AAM annotation import is implemented and tested, but AAM audio was not downloaded or used in this model run.",
-            "lofiDisclosure": "Lo-Fi Chords was rejected for supervised use because its public metadata archive contains no chord progression ground truth.",
-        },
+        "publicBenchmark": _read_json(SEALED_SUMMARY),
         "reproduce": {
-            "command": "python scripts/build_chord_reader_proof.py",
-            "modelSha256": hashlib.sha256(MODEL.read_bytes()).hexdigest(),
+            "command": "python scripts/build_chord_reader_proof.py "
+            + " ".join(f"--model {path.relative_to(REPO_ROOT)}" for path in model_paths),
+            "modelSha256": " / ".join(hashlib.sha256(path.read_bytes()).hexdigest() for path in model_paths),
             "audioSha256": {track["track"]["id"]: track["track"]["audioSha256"] for track in track_proofs},
         },
     }
@@ -304,8 +285,9 @@ def build(output_root: Path) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--model", type=Path, action="append", dest="models")
     args = parser.parse_args()
-    proof = build(args.output_root)
+    proof = build(args.output_root, args.models)
     print(json.dumps(proof["suite"], indent=2, sort_keys=True))
     return 0
 

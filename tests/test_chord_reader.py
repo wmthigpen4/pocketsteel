@@ -14,7 +14,12 @@ from steel_guitar_rag.chord_reader.labels import normalize_chord, transpose_chor
 from steel_guitar_rag.chord_reader.btc import load_model_registry, verify_model_snapshot
 from steel_guitar_rag.chord_reader.chart_reference import build_chart_reference
 from steel_guitar_rag.chord_reader.hybrid import hybridize_predictions
-from steel_guitar_rag.chord_reader.datasets import parse_aam_beatinfo, parse_guitarset_jams
+from steel_guitar_rag.chord_reader.datasets import (
+    parse_aam_beatinfo,
+    parse_guitarset_jams,
+    parse_idmt_chords,
+    parse_winterreise_chords,
+)
 from steel_guitar_rag.chord_reader.manifests import (
     WeakLabelDiagnostics,
     admit_weak_label,
@@ -26,6 +31,8 @@ from steel_guitar_rag.chord_reader.metrics import score_segments
 from steel_guitar_rag.chord_reader.student import (
     STUDENT_CLASSES,
     frame_labels,
+    frame_label_mask,
+    merge_feature_caches,
     student_index,
     student_label,
     transpose_student_index,
@@ -162,9 +169,11 @@ def test_catalog_is_valid_and_has_ten_steel_candidates() -> None:
     validate_catalog(value)
     assert {item["id"] for item in value["datasets"]} == {
         "aam",
-        "guitarset",
+            "guitarset",
+            "idmt_guitar",
         "lofi_chords",
         "sgf_steel_reference",
+        "winterreise",
     }
     assert len(value["steelReferenceCandidates"]) == 10
 
@@ -327,6 +336,22 @@ def test_aam_adapter_collapses_beat_labels_to_chord_segments(tmp_path: Path) -> 
     assert metadata["tempo"] == 120
 
 
+def test_aam_adapter_reads_official_files_without_data_marker(tmp_path: Path) -> None:
+    path = tmp_path / "0001_beatinfo.arff"
+    path.write_text(
+        "@RELATION official\n@ATTRIBUTE time NUMERIC\n@ATTRIBUTE bar NUMERIC\n"
+        "@ATTRIBUTE beat NUMERIC\n@ATTRIBUTE chord STRING\n\n"
+        "0.0,1,1,'Fmaj'\n0.5,1,2,'Fmaj'\n1.0,1,3,'C7'\n",
+        encoding="utf-8",
+    )
+    segments, metadata = parse_aam_beatinfo(path, end_seconds=1.5)
+    assert segments == [
+        {"start": 0.0, "end": 1.0, "label": "F:maj"},
+        {"start": 1.0, "end": 1.5, "label": "C:7"},
+    ]
+    assert metadata["tempo"] == 120
+
+
 def test_guitarset_adapter_reads_chord_namespace(tmp_path: Path) -> None:
     path = tmp_path / "track.jams"
     path.write_text(
@@ -352,6 +377,20 @@ def test_guitarset_adapter_reads_chord_namespace(tmp_path: Path) -> None:
     assert metadata["tempo"] == 100
 
 
+def test_winterreise_adapter_reads_audio_aligned_chords(tmp_path: Path) -> None:
+    path = tmp_path / "song.csv"
+    path.write_text(
+        "start;end;shorthand;extended;majmin;majmin_inv\n"
+        '0.24;1.5;"C:min";"C:(b3,5)";"C:min";"C:min"\n'
+        '1.5;2.0;"G:7/B";"G:(3,5,b7)/B";"G:maj";"G:maj/B"\n',
+        encoding="utf-8",
+    )
+    assert parse_winterreise_chords(path) == [
+        {"start": 0.24, "end": 1.5, "label": "C:min"},
+        {"start": 1.5, "end": 2.0, "label": "G:7/B"},
+    ]
+
+
 def test_student_vocabulary_preserves_product_qualities_and_transposes() -> None:
     assert STUDENT_CLASSES == 49
     assert student_label(student_index("Bb:maj7")) == "A#:maj"
@@ -360,12 +399,68 @@ def test_student_vocabulary_preserves_product_qualities_and_transposes() -> None
     assert student_label(student_index("N")) == "N"
 
 
+def test_idmt_parser_expands_changes_and_normalizes_dataset_notation(tmp_path: Path) -> None:
+    path = tmp_path / "jazz_1_120BPM.csv"
+    path.write_text(
+        "8.0,1.1:Bb7913/Ab\n8.5,1.2\n9.0,1.3:Emin75b\n9.5,1.4:NC\n1,1\n4,4\n4,4\n",
+        encoding="utf-8",
+    )
+    segments, metadata = parse_idmt_chords(path, end_seconds=10.0)
+    assert segments == [
+        {"start": 8.0, "end": 9.0, "label": "Bb:13/Ab"},
+        {"start": 9.0, "end": 9.5, "label": "E:hdim7"},
+        {"start": 9.5, "end": 10.0, "label": "N"},
+    ]
+    assert metadata == {"tempo": 120.0, "meter": "4/4"}
+
+
 def test_student_frame_labels_use_time_aligned_reference() -> None:
     labels = frame_labels(
         [{"start": 0, "end": 0.2, "label": "C"}, {"start": 0.2, "end": 0.4, "label": "F:min"}],
         5,
     )
     assert [student_label(value) for value in labels] == ["C:maj", "C:maj", "F:min", "F:min", "N"]
+    assert frame_label_mask(
+        [{"start": 0.1, "end": 0.3, "label": "C"}, {"start": 0.4, "end": 0.5, "label": "N"}],
+        6,
+    ) == [False, True, True, False, True, False]
+
+
+def test_feature_caches_merge_without_changing_splits() -> None:
+    base = {
+        "schemaVersion": "chord_feature_cache_v1",
+        "sampleRate": 11025,
+        "frameSeconds": 0.1,
+        "featureCount": 13,
+    }
+    merged = merge_feature_caches(
+        [
+            {**base, "tracks": [{"id": "guitar", "datasetId": "guitarset", "split": "train"}]},
+            {**base, "tracks": [{"id": "song", "datasetId": "winterreise", "split": "test"}]},
+        ]
+    )
+    assert merged["datasets"] == ["guitarset", "winterreise"]
+    assert merged["featureKind"] == "worker_chroma_v1"
+    assert [(track["id"], track["split"]) for track in merged["tracks"]] == [
+        ("guitar", "train"),
+        ("song", "test"),
+    ]
+
+
+def test_feature_caches_reject_different_harmonic_front_ends() -> None:
+    base = {
+        "schemaVersion": "chord_feature_cache_v1",
+        "sampleRate": 11025,
+        "frameSeconds": 0.1,
+        "tracks": [],
+    }
+    with pytest.raises(ValueError, match="contracts do not match"):
+        merge_feature_caches(
+            [
+                {**base, "featureKind": "worker_chroma_v1", "featureCount": 13},
+                {**base, "featureKind": "multiband_chroma_v2", "featureCount": 61},
+            ]
+        )
 
 
 def test_promotion_gate_requires_material_gain_and_runtime() -> None:

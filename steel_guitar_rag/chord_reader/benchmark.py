@@ -13,7 +13,7 @@ from typing import Any, Iterable, Mapping
 from .btc import BTCRecognizer
 from .hybrid import hybridize_predictions
 from .metrics import score_segments
-from .student import StudentRecognizer
+from .student import StudentEnsembleRecognizer, StudentRecognizer
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -82,6 +82,7 @@ def run_benchmark(
     device: str = "cpu",
     local_files_only: bool = False,
     model: Path | None = None,
+    ensemble_models: Iterable[Path] | None = None,
 ) -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[2]
     tracks = [track for track in manifest["tracks"] if split == "all" or track["split"] == split]
@@ -92,9 +93,13 @@ def run_benchmark(
     if engine == "btc":
         recognizer: Any = BTCRecognizer(device=device, local_files_only=local_files_only)
     elif engine == "student":
-        if model is None:
+        ensemble = list(ensemble_models or [])
+        if ensemble:
+            recognizer = StudentEnsembleRecognizer(ensemble)
+        elif model is None:
             raise ValueError("The student benchmark requires --model.")
-        recognizer = StudentRecognizer(model)
+        else:
+            recognizer = StudentRecognizer(model)
     else:
         recognizer = None
     rows: list[dict[str, Any]] = []

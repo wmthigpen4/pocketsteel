@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "chord_multicorpus_benchmark_v1",
+  "candidate": "multiband TCN + Transformer logit ensemble",
+  "selectionRule": "architecture and features selected on composition-held-out development splits",
+  "datasets": [
+    {
+      "id": "guitarset",
+      "title": "GuitarSet",
+      "recordingType": "guitar performances",
+      "sourceUrl": "https://zenodo.org/records/3371780",
+      "trackCount": 36,
+      "evaluatedDurationSeconds": 1291.9673469387756,
+      "majorMinorWeightedRecall": 0.5527264933461941,
+      "rootWeightedRecall": 0.5831276050250571,
+      "detailedWeightedRecall": 0.5126578071658212,
+      "boundaryF1Macro": 0.4735068834935705
+    },
+    {
+      "id": "aam",
+      "title": "Tiny AAM",
+      "recordingType": "synthetic full mixes",
+      "sourceUrl": "https://zenodo.org/records/6771120",
+      "trackCount": 5,
+      "evaluatedDurationSeconds": 678.0016972,
+      "majorMinorWeightedRecall": 0.8231045870603165,
+      "rootWeightedRecall": 0.828691689593605,
+      "detailedWeightedRecall": 0.8231045870603165,
+      "boundaryF1Macro": 0.8104279223705303
+    },
+    {
+      "id": "winterreise",
+      "title": "Winterreise",
+      "recordingType": "human classical performances",
+      "sourceUrl": "https://zenodo.org/records/10839767",
+      "trackCount": 4,
+      "evaluatedDurationSeconds": 741.0873469387756,
+      "majorMinorWeightedRecall": 0.7271036931943353,
+      "rootWeightedRecall": 0.7537942042139953,
+      "detailedWeightedRecall": 0.4003136042792057,
+      "boundaryF1Macro": 0.4114473251049896
+    },
+    {
+      "id": "idmt_guitar",
+      "title": "IDMT Guitar",
+      "recordingType": "multi-guitar short pieces",
+      "sourceUrl": "https://zenodo.org/records/7544110",
+      "trackCount": 79,
+      "evaluatedDurationSeconds": 2280.3187528719864,
+      "majorMinorWeightedRecall": 0.46171716634409177,
+      "rootWeightedRecall": 0.511837262833697,
+      "detailedWeightedRecall": 0.22511527382907273,
+      "boundaryF1Macro": 0.3486286429041264
+    }
+  ],
+  "disclosure": "All scores are frozen, duration-weighted, and composition-held-out. The 98% objective has not been met; the weakest corpus is shown rather than averaged away. Travis songs were not used."
+}

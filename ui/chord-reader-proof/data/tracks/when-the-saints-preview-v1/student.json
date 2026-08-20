@@ -1,67 +1,82 @@
 {
   "durationSeconds": 36.49995464852608,
   "engine": "chord-student-v1",
+  "featureKind": "multiband_chroma_v2",
   "frameSeconds": 0.1,
   "id": "when-the-saints-preview-v1",
-  "model": "chord-student-v1.onnx",
+  "model": "student-ensemble",
   "sampleRate": 11025,
   "schemaVersion": "chord_prediction_v1",
   "segments": [
     {
-      "confidence": 0.13200638029310438,
-      "end": 1.8,
-      "label": "D#:maj",
-      "productLabel": "D#",
+      "confidence": 0.1151183999397538,
+      "end": 1.1,
+      "label": "D:maj",
+      "productLabel": "D",
       "start": 0.0
     },
     {
-      "confidence": 0.696195733713937,
+      "confidence": 0.15239295363426208,
+      "end": 1.2000000000000002,
+      "label": "D:7",
+      "productLabel": "D7",
+      "start": 1.1
+    },
+    {
+      "confidence": 0.1419367790222168,
+      "end": 1.8,
+      "label": "D:maj",
+      "productLabel": "D",
+      "start": 1.2000000000000002
+    },
+    {
+      "confidence": 0.7903694901224616,
       "end": 16.1,
       "label": "G:maj",
       "productLabel": "G",
       "start": 1.8
     },
     {
-      "confidence": 0.510949664008923,
+      "confidence": 0.5338321931851215,
       "end": 20.0,
       "label": "D:maj",
       "productLabel": "D",
       "start": 16.1
     },
     {
-      "confidence": 0.6936864133288221,
+      "confidence": 0.7919617811354195,
       "end": 24.1,
       "label": "G:maj",
       "productLabel": "G",
       "start": 20.0
     },
     {
-      "confidence": 0.6590968132019043,
-      "end": 28.1,
+      "confidence": 0.7527289237731543,
+      "end": 28.0,
       "label": "C:maj",
       "productLabel": "C",
       "start": 24.1
     },
     {
-      "confidence": 0.6602132834237198,
-      "end": 31.0,
+      "confidence": 0.7177246767899086,
+      "end": 30.900000000000002,
       "label": "G:maj",
       "productLabel": "G",
-      "start": 28.1
+      "start": 28.0
     },
     {
-      "confidence": 0.4399355351924896,
-      "end": 32.1,
+      "confidence": 0.2673026293516159,
+      "end": 31.900000000000002,
       "label": "D:maj",
       "productLabel": "D",
-      "start": 31.0
+      "start": 30.900000000000002
     },
     {
-      "confidence": 0.7151278541846708,
+      "confidence": 0.7134185170997744,
       "end": 36.49995464852608,
       "label": "G:maj",
       "productLabel": "G",
-      "start": 32.1
+      "start": 31.900000000000002
     }
   ]
 }

@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import statistics
 from typing import Any, Iterable
+import wave
 
 from .labels import normalize_chord
 from .manifests import assign_group_splits
@@ -36,11 +37,17 @@ def _merge_frames(frames: Iterable[tuple[float, str]], end_seconds: float | None
 
 def _arff_rows(path: Path) -> list[list[str]]:
     lines = path.read_text(encoding="utf-8").splitlines()
-    try:
-        start = next(index for index, line in enumerate(lines) if line.strip().lower() == "@data") + 1
-    except StopIteration as error:
-        raise ValueError(f"No @DATA section in {path}.") from error
-    return [row for row in csv.reader(lines[start:], quotechar="'", skipinitialspace=True) if row]
+    data_markers = [index for index, line in enumerate(lines) if line.strip().lower() == "@data"]
+    start = data_markers[0] + 1 if data_markers else 0
+    data_lines = [
+        line
+        for line in lines[start:]
+        if line.strip() and not line.lstrip().startswith(("@", "%"))
+    ]
+    rows = [row for row in csv.reader(data_lines, quotechar="'", skipinitialspace=True) if row]
+    if not rows:
+        raise ValueError(f"No ARFF data rows in {path}.")
+    return rows
 
 
 def parse_aam_beatinfo(path: Path, end_seconds: float | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -91,6 +98,89 @@ def parse_guitarset_jams(path: Path) -> tuple[list[dict[str, Any]], dict[str, An
         "meter": meter,
         "key": key,
         "durationSeconds": explicit_end,
+    }
+
+
+def parse_winterreise_chords(path: Path) -> list[dict[str, Any]]:
+    """Read the dataset's audio-aligned semicolon chord tables."""
+
+    with path.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle, delimiter=";"))
+    segments = [
+        {
+            "start": float(row["start"]),
+            "end": float(row["end"]),
+            "label": normalize_chord(row["shorthand"]).detailed_symbol,
+        }
+        for row in rows
+        if row.get("start") and row.get("end") and row.get("shorthand")
+    ]
+    if not segments:
+        raise ValueError(f"No chord rows in {path}.")
+    return segments
+
+
+def _idmt_chord_symbol(symbol: str) -> str:
+    value = symbol.strip()
+    if value.upper() == "NC":
+        return "N"
+    if value == "GB5":
+        value = "Gb5"
+    chord, slash, bass = value.partition("/")
+    if slash and bass.startswith("7"):
+        chord += "7"
+        bass = bass[1:]
+    match = re.match(r"^([A-G](?:b|#)?)(.*)$", chord)
+    if not match:
+        raise ValueError(f"Unsupported IDMT chord {symbol!r}.")
+    root, quality = match.groups()
+    quality_aliases = {
+        "79": "9",
+        "79b": "7b9",
+        "713": "13",
+        "713b": "13",
+        "7913": "13",
+        "913": "13",
+        "1113": "13",
+        "75b": "7b5",
+        "min75b": "hdim7",
+        "min79": "min9",
+        "minmaj79": "minmaj7",
+        "maj79": "maj9",
+        "sus9": "sus2",
+    }
+    quality = quality_aliases.get(quality, quality)
+    normalized = f"{root}:{quality or 'maj'}"
+    if slash:
+        normalized += f"/{bass}"
+    return normalize_chord(normalized).detailed_symbol
+
+
+def parse_idmt_chords(path: Path, end_seconds: float | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Read beat-aligned IDMT dataset-4 chord changes and footer metadata."""
+
+    frames: list[tuple[float, str]] = []
+    footer: list[str] = []
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        value = line.strip()
+        if not value:
+            continue
+        if ":" in value:
+            position, beat = value.split(",", 1)
+            frames.append((float(position), _idmt_chord_symbol(beat.split(":", 1)[1])))
+        else:
+            footer.append(value)
+    if not frames:
+        raise ValueError(f"No IDMT chord rows in {path}.")
+    meter = None
+    if footer:
+        numerator, separator, denominator = footer[-1].partition(",")
+        if separator:
+            meter = f"{int(numerator)}/{int(denominator)}"
+    tempo_match = re.search(r"_(\d+)BPM$", path.stem, flags=re.IGNORECASE)
+    return _merge_frames(frames, end_seconds=end_seconds), {
+        "tempo": float(tempo_match.group(1)) if tempo_match else None,
+        "meter": meter,
     }
 
 
@@ -194,6 +284,97 @@ def prepare_aam(
                 "trainingWeight": 1.0,
                 "tempo": metadata["tempo"],
                 "meter": metadata["meter"],
+            }
+        )
+    frozen = assign_group_splits(tracks, seed=seed)
+    for track in frozen:
+        if track["split"] == "test":
+            track["trainingWeight"] = 0.0
+    return {"schemaVersion": "chord_track_manifest_v1", "splitSeed": seed, "tracks": frozen}
+
+
+def prepare_winterreise(
+    annotations_root: Path,
+    audio_root: Path,
+    output_root: Path,
+    *,
+    seed: str = "chord-reader-v3-split-1",
+    max_tracks: int | None = None,
+) -> dict[str, Any]:
+    tracks: list[dict[str, Any]] = []
+    for audio_path in sorted(audio_root.glob("Schubert_D911-*.wav")):
+        if max_tracks is not None and len(tracks) >= max_tracks:
+            break
+        annotation = annotations_root / f"{audio_path.stem}.csv"
+        if not annotation.is_file():
+            continue
+        segments = parse_winterreise_chords(annotation)
+        identifier = f"winterreise-{audio_path.stem.lower()}"
+        reference = output_root / "references" / f"{identifier}.json"
+        _write_reference(reference, identifier, segments)
+        composition = audio_path.stem.rsplit("_", 1)[0]
+        performance = audio_path.stem.rsplit("_", 1)[1]
+        tracks.append(
+            {
+                "id": identifier,
+                "datasetId": "winterreise",
+                "groupId": performance,
+                "compositionId": composition,
+                "audioPath": str(audio_path.resolve()),
+                "referencePath": str(reference.resolve()),
+                "labelSource": "ground_truth",
+                "trainingWeight": 1.0,
+            }
+        )
+    frozen = assign_group_splits(tracks, seed=seed)
+    for track in frozen:
+        if track["split"] == "test":
+            track["trainingWeight"] = 0.0
+    return {"schemaVersion": "chord_track_manifest_v1", "splitSeed": seed, "tracks": frozen}
+
+
+def prepare_idmt_guitar(
+    annotations_root: Path,
+    audio_root: Path,
+    output_root: Path,
+    *,
+    seed: str = "chord-reader-v3-split-1",
+    max_tracks: int | None = None,
+) -> dict[str, Any]:
+    """Normalize IDMT dataset 4 while grouping all renditions of one piece."""
+
+    tracks: list[dict[str, Any]] = []
+    for annotation in sorted(annotations_root.glob("**/annotation/chords/*.csv")):
+        if max_tracks is not None and len(tracks) >= max_tracks:
+            break
+        relative = annotation.relative_to(annotations_root)
+        setup, speed, genre = relative.parts[:3]
+        audio_path = audio_root / setup / speed / genre / "audio" / f"{annotation.stem}.wav"
+        if not audio_path.is_file():
+            continue
+        with wave.open(str(audio_path), "rb") as handle:
+            duration = handle.getnframes() / handle.getframerate()
+        segments, metadata = parse_idmt_chords(annotation, end_seconds=duration)
+        slug = re.sub(r"[^a-z0-9]+", "-", f"{setup}-{speed}-{annotation.stem}".lower()).strip("-")
+        identifier = f"idmt-guitar-{slug}"
+        reference = output_root / "references" / f"{identifier}.json"
+        _write_reference(reference, identifier, segments)
+        composition = re.sub(r"_\d+BPM$", "", annotation.stem, flags=re.IGNORECASE)
+        tracks.append(
+            {
+                "id": identifier,
+                "datasetId": "idmt_guitar",
+                "groupId": setup,
+                "compositionId": composition,
+                "audioPath": str(audio_path.resolve()),
+                "referencePath": str(reference.resolve()),
+                "labelSource": "ground_truth",
+                "trainingWeight": 1.0,
+                "durationSeconds": duration,
+                "tempo": metadata["tempo"],
+                "meter": metadata["meter"],
+                "genre": genre,
+                "performanceSpeed": speed,
             }
         )
     frozen = assign_group_splits(tracks, seed=seed)

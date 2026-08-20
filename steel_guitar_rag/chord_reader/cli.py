@@ -12,7 +12,7 @@ from typing import Any
 from .btc import predict_btc
 from .benchmark import run_benchmark, run_hybrid_benchmark
 from .chart_reference import build_chart_reference
-from .datasets import prepare_aam, prepare_guitarset
+from .datasets import prepare_aam, prepare_guitarset, prepare_idmt_guitar, prepare_winterreise
 from .labels import normalize_chord, transpose_chord
 from .manifests import (
     WeakLabelDiagnostics,
@@ -24,7 +24,15 @@ from .manifests import (
 from .metrics import score_segments
 from .promotion import evaluate_promotion
 from .review import build_travis_packet, score_travis_review
-from .student import StudentRecognizer, cache_student_features, export_student_onnx, train_student
+from .student import (
+    STUDENT_ARCHITECTURES,
+    STUDENT_FEATURE_KINDS,
+    StudentRecognizer,
+    cache_student_features,
+    export_student_onnx,
+    merge_feature_caches,
+    train_student,
+)
 
 
 def _read_json(path: Path) -> Any:
@@ -102,6 +110,8 @@ def build_parser() -> argparse.ArgumentParser:
     for name, help_text in (
         ("prepare-guitarset", "Normalize GuitarSet JAMS and audio into a split manifest"),
         ("prepare-aam", "Normalize AAM beat annotations and mixes into a split manifest"),
+        ("prepare-winterreise", "Normalize Winterreise audio-aligned chord tables"),
+        ("prepare-idmt-guitar", "Normalize IDMT dataset-4 guitar chord annotations"),
     ):
         prepare = commands.add_parser(name, help=help_text)
         prepare.add_argument("--annotations-root", type=Path, required=True)
@@ -121,6 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run.add_argument("--device", default="cpu")
     benchmark_run.add_argument("--local-files-only", action="store_true")
     benchmark_run.add_argument("--model", type=Path)
+    benchmark_run.add_argument("--ensemble-model", type=Path, action="append", default=[])
 
     hybrid_benchmark = commands.add_parser(
         "benchmark-hybrid", help="Freeze the conservative hybrid from existing v2 and student predictions"
@@ -138,6 +149,13 @@ def build_parser() -> argparse.ArgumentParser:
     feature_cache.add_argument("--cache-manifest", type=Path, required=True)
     feature_cache.add_argument("--split", action="append", choices=("train", "development", "test", "steel_test"))
     feature_cache.add_argument("--limit", type=int)
+    feature_cache.add_argument(
+        "--feature-kind", choices=tuple(STUDENT_FEATURE_KINDS), default="worker_chroma_v1"
+    )
+
+    merge_cache = commands.add_parser("merge-feature-caches", help="Combine compatible frozen feature caches")
+    merge_cache.add_argument("cache_manifest", type=Path, nargs="+")
+    merge_cache.add_argument("--output", type=Path, required=True)
 
     train = commands.add_parser("train-student", help="Train the browser-sized supervised temporal model")
     train.add_argument("cache_manifest", type=Path)
@@ -147,6 +165,7 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("--learning-rate", type=float, default=3e-4)
     train.add_argument("--device", default="cpu")
     train.add_argument("--seed", type=int, default=20260820)
+    train.add_argument("--architecture", choices=STUDENT_ARCHITECTURES, default="tcn")
 
     export = commands.add_parser("export-student", help="Export and verify a trained student as ONNX")
     export.add_argument("model_root", type=Path)
@@ -254,8 +273,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         _write_json(reference, args.output)
         _write_json(report, args.report)
-    elif args.command in {"prepare-guitarset", "prepare-aam"}:
-        prepare = prepare_guitarset if args.command == "prepare-guitarset" else prepare_aam
+    elif args.command in {"prepare-guitarset", "prepare-aam", "prepare-winterreise", "prepare-idmt-guitar"}:
+        prepare = {
+            "prepare-guitarset": prepare_guitarset,
+            "prepare-aam": prepare_aam,
+            "prepare-winterreise": prepare_winterreise,
+            "prepare-idmt-guitar": prepare_idmt_guitar,
+        }[args.command]
         result = prepare(
             args.annotations_root,
             args.audio_root,
@@ -274,6 +298,7 @@ def main(argv: list[str] | None = None) -> int:
             device=args.device,
             local_files_only=args.local_files_only,
             model=args.model,
+            ensemble_models=args.ensemble_model,
         )
         _write_json(result, args.report)
     elif args.command == "benchmark-hybrid":
@@ -291,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
             args.output_root,
             splits=set(args.split) if args.split else None,
             limit=args.limit,
+            feature_kind=args.feature_kind,
         )
         _write_json(result, args.cache_manifest)
     elif args.command == "train-student":
@@ -302,8 +328,12 @@ def main(argv: list[str] | None = None) -> int:
             learning_rate=args.learning_rate,
             device=args.device,
             seed=args.seed,
+            architecture=args.architecture,
         )
         _write_json(result, None)
+    elif args.command == "merge-feature-caches":
+        result = merge_feature_caches(_read_json(path) for path in args.cache_manifest)
+        _write_json(result, args.output)
     elif args.command == "export-student":
         result = export_student_onnx(args.model_root, args.output)
         _write_json(result, args.report)
