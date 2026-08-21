@@ -15,6 +15,11 @@ import tempfile
 import time
 from typing import Any, Iterable, Mapping
 
+from .audio_lineage import (
+    AUDIO_LINEAGE_PROJECTION_SCHEMA,
+    project_development_audio_lineage,
+    validate_development_audio_lineage,
+)
 from .artifact_integrity import validate_factorized_artifact_manifest
 from .bar_product import aggregate_bar_product_confidence, score_bar_product_confidence
 from .bar_promotion import (
@@ -54,6 +59,11 @@ MIXED_JOINT_DEVELOPMENT_EXPERIMENT_SCHEMA = (
 )
 UNCERTAINTY_DEVELOPMENT_EXPERIMENT_SCHEMA = (
     "chord_factorized_uncertainty_development_experiment_v1"
+)
+AUDIO_LINEAGE_BENCHMARK_BINDING_SCHEMA = "chord_benchmark_audio_lineage_v1"
+AUDIO_LINEAGE_VERIFICATION_MODE = "full-files-and-reextraction-v1"
+AUDIO_LINEAGE_ARRAY_VERIFICATION = (
+    "loaded-cache-contiguous-little-endian-float16-sha256-v1"
 )
 
 
@@ -435,6 +445,126 @@ def _required_sha256(value: Any, name: str) -> str:
     ):
         raise ValueError(f"{name} must be a lowercase SHA-256 hex digest.")
     return value
+
+
+def _canonical_duration_milliseconds(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{name} must be a finite positive duration.")
+    duration = float(value)
+    if not math.isfinite(duration) or duration <= 0:
+        raise ValueError(f"{name} must be a finite positive duration.")
+    return int(math.floor(duration * 1000.0 + 0.5))
+
+
+def _factorized_audio_lineage_binding(
+    cache_manifest: Mapping[str, Any],
+    tracks: list[Mapping[str, Any]],
+    audio_lineage: Mapping[str, Any],
+    *,
+    verify_files: bool,
+) -> tuple[dict[str, Any], dict[str, Mapping[str, Any]]]:
+    """Validate and project exact source-audio/cache lineage for one run."""
+
+    if not isinstance(verify_files, bool):
+        raise ValueError("verify_audio_lineage_files must be a boolean.")
+    validate_development_audio_lineage(audio_lineage, verify_files=verify_files)
+    extractor_contract = audio_lineage.get("extractorContract")
+    if not isinstance(extractor_contract, Mapping) or extractor_contract.get("entrypoint") != (
+        "steel_guitar_rag.chord_reader.student.extract_student_features"
+    ):
+        raise ValueError("The benchmark requires production multiband audio-lineage extraction.")
+    feature_contract = audio_lineage.get("featureContract")
+    if not isinstance(feature_contract, Mapping) or feature_contract.get("featureSpecSha256") != (
+        cache_manifest.get("featureSpecSha256")
+    ):
+        raise ValueError("Audio lineage and factorized cache feature specifications differ.")
+    manifest_bindings = audio_lineage.get("manifestBindings")
+    winner_binding = (
+        manifest_bindings.get("winnerCacheManifest")
+        if isinstance(manifest_bindings, Mapping)
+        else None
+    )
+    if not isinstance(winner_binding, Mapping) or winner_binding.get("canonicalSha256") != canonical_sha256(
+        cache_manifest
+    ):
+        raise ValueError("Audio lineage does not bind the exact benchmark cache manifest.")
+
+    selected_ids = [str(track.get("id")) for track in tracks]
+    projection = project_development_audio_lineage(audio_lineage, selected_ids)
+    if projection.get("schemaVersion") != AUDIO_LINEAGE_PROJECTION_SCHEMA:
+        raise ValueError("Audio lineage projection uses an unsupported schema.")
+    projected_rows = {
+        str(row["trackId"]): row
+        for row in projection.get("tracks", [])
+        if isinstance(row, Mapping)
+    }
+    if set(projected_rows) != set(selected_ids) or len(projected_rows) != len(selected_ids):
+        raise ValueError("Audio lineage projection does not match the exact benchmark track set.")
+    for track in tracks:
+        identifier = str(track["id"])
+        if projected_rows[identifier].get("datasetId") != track.get("datasetId"):
+            raise ValueError(f"Audio lineage dataset differs for track {identifier!r}.")
+
+    payload = {
+        "schemaVersion": AUDIO_LINEAGE_BENCHMARK_BINDING_SCHEMA,
+        "verificationMode": (
+            AUDIO_LINEAGE_VERIFICATION_MODE if verify_files else "metadata-only-test-fixture-v1"
+        ),
+        "sourceArtifactSha256": _required_sha256(
+            audio_lineage.get("artifactSha256"), "audio lineage artifactSha256"
+        ),
+        "projection": projection,
+        "projectionSha256": _required_sha256(
+            projection.get("projectionSha256"), "audio lineage projectionSha256"
+        ),
+        "featureArrayVerification": AUDIO_LINEAGE_ARRAY_VERIFICATION,
+    }
+    return {**payload, "bindingSha256": canonical_sha256(payload)}, projected_rows
+
+
+def _factorized_lineage_feature_metadata(
+    raw_features: Any,
+    duration: float,
+    lineage_row: Mapping[str, Any],
+    *,
+    numpy: Any,
+) -> dict[str, Any]:
+    """Bind the exact cached array used for inference to its fresh-audio attestation."""
+
+    array = numpy.asarray(raw_features)
+    if (
+        array.ndim != 2
+        or not numpy.issubdtype(array.dtype, numpy.number)
+        or numpy.issubdtype(array.dtype, numpy.complexfloating)
+        or not numpy.isfinite(array).all()
+    ):
+        raise ValueError("Factorized cache contains an invalid lineage feature array.")
+    canonical = numpy.ascontiguousarray(array, dtype=numpy.dtype("<f2"))
+    if canonical.dtype.str != "<f2" or not numpy.isfinite(canonical).all():
+        raise ValueError("Factorized cache cannot be represented as exact finite little-endian float16.")
+    cached_sha256 = hashlib.sha256(canonical.tobytes(order="C")).hexdigest()
+    expected_cached = _required_sha256(
+        lineage_row.get("cachedArraySha256"), "audio lineage cachedArraySha256"
+    )
+    expected_fresh = _required_sha256(
+        lineage_row.get("freshArraySha256"), "audio lineage freshArraySha256"
+    )
+    if cached_sha256 != expected_cached or expected_cached != expected_fresh:
+        raise ValueError("The inference feature array differs from its source-audio lineage.")
+    canonical_milliseconds = _canonical_duration_milliseconds(duration, "factorized cache duration")
+    if canonical_milliseconds != lineage_row.get("canonicalDurationMilliseconds"):
+        raise ValueError("The inference duration differs from its source-audio lineage.")
+    return {
+        "sourceAudioSha256": _required_sha256(
+            lineage_row.get("sourceAudioSha256"), "audio lineage sourceAudioSha256"
+        ),
+        "cachedFeatureArraySha256": cached_sha256,
+        "freshFeatureArraySha256": expected_fresh,
+        "canonicalDurationMilliseconds": canonical_milliseconds,
+        "audioLineageRowSha256": _required_sha256(
+            lineage_row.get("rowSha256"), "audio lineage rowSha256"
+        ),
+    }
 
 
 def _factorized_uncertainty_expected_members(recognizer: Any) -> list[dict[str, Any]]:
@@ -869,6 +999,8 @@ def run_factorized_cache_benchmark(
     joint_product_blend: float = 0.0,
     allow_mixed_joint_members: bool = False,
     emit_uncertainty: bool = False,
+    audio_lineage: Mapping[str, Any] | None = None,
+    verify_audio_lineage_files: bool = True,
 ) -> dict[str, Any]:
     """Decode a frozen feature cache without charging extraction to model runtime."""
 
@@ -876,12 +1008,18 @@ def run_factorized_cache_benchmark(
         raise ValueError("allow_mixed_joint_members must be a boolean opt-in.")
     if not isinstance(emit_uncertainty, bool):
         raise ValueError("emit_uncertainty must be a boolean opt-in.")
+    if audio_lineage is not None and not emit_uncertainty:
+        raise ValueError("Source-audio lineage is supported only with uncertainty emission.")
+    if not isinstance(verify_audio_lineage_files, bool):
+        raise ValueError("verify_audio_lineage_files must be a boolean.")
     if emit_uncertainty and split not in {"dev", "development"}:
         raise ValueError(
             "Uncertainty emission is development-only; split must be dev or development."
         )
     if emit_uncertainty and beat_grid_source != "none":
         raise ValueError("Uncertainty emission requires beat_grid_source='none'.")
+    if emit_uncertainty and audio_lineage is None:
+        raise ValueError("Uncertainty emission requires exact source-audio lineage.")
     if allow_mixed_joint_members and split not in {"dev", "development"}:
         raise ValueError(
             "Mixed joint ensemble benchmarking is development-only; split must be dev or development."
@@ -993,6 +1131,15 @@ def run_factorized_cache_benchmark(
         raise ValueError(f"No cached tracks selected for split {split!r}.")
     artifact_manifest = {**cache_manifest, "tracks": tracks}
     validate_factorized_artifact_manifest(artifact_manifest, verify_files=True)
+    audio_lineage_binding: dict[str, Any] | None = None
+    audio_lineage_rows: dict[str, Mapping[str, Any]] = {}
+    if audio_lineage is not None:
+        audio_lineage_binding, audio_lineage_rows = _factorized_audio_lineage_binding(
+            cache_manifest,
+            tracks,
+            audio_lineage,
+            verify_files=verify_audio_lineage_files,
+        )
 
     rows: list[dict[str, Any]] = []
     uncertainty_summaries: list[dict[str, Any]] = []
@@ -1004,11 +1151,22 @@ def run_factorized_cache_benchmark(
         if str(source.get("datasetId")) != str(item.get("datasetId")):
             raise ValueError(f"Cache and timing metadata disagree for {identifier!r}.")
         with numpy.load(Path(item["path"]), allow_pickle=False) as cached:
-            features = cached["features"].astype(numpy.float32)
+            raw_features = cached["features"].copy()
+        features = raw_features.astype(numpy.float32)
         duration = float(
             item.get("durationSeconds")
             or source.get("durationSeconds")
             or len(features) * float(cache_manifest["frameSeconds"])
+        )
+        lineage_metadata = (
+            _factorized_lineage_feature_metadata(
+                raw_features,
+                duration,
+                audio_lineage_rows[identifier],
+                numpy=numpy,
+            )
+            if audio_lineage_binding is not None
+            else {}
         )
         started = time.perf_counter()
         beat_grid = (
@@ -1085,6 +1243,7 @@ def run_factorized_cache_benchmark(
                 "referenceSha256": reference_sha256,
                 "predictionSha256": prediction_sha256,
                 "timingSha256": timing_sha256,
+                **lineage_metadata,
                 **uncertainty_metadata,
                 **_prediction_metadata(prediction),
                 "beatAware": bool(prediction.get("beatAware")),
@@ -1201,6 +1360,7 @@ def run_factorized_cache_benchmark(
                             key=lambda value: value["id"],
                         )
                     ),
+                    "audioLineage": audio_lineage_binding,
                 },
             }
         )

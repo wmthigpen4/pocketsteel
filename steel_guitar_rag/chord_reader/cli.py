@@ -277,6 +277,14 @@ def build_parser() -> argparse.ArgumentParser:
             "Emit reference-free development-only uncertainty telemetry with each prediction"
         ),
     )
+    factorized_cache_benchmark.add_argument(
+        "--audio-lineage-manifest",
+        type=Path,
+        help=(
+            "Required with --emit-uncertainty; fully reverify exact development "
+            "audio bytes against the frozen feature cache"
+        ),
+    )
 
     merge_reports = commands.add_parser(
         "merge-benchmark-reports",
@@ -646,6 +654,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.emit_uncertainty and args.beat_grid_source != "none":
             raise ValueError("Uncertainty emission requires beat_grid_source='none'.")
+        if args.emit_uncertainty and args.audio_lineage_manifest is None:
+            raise ValueError("--emit-uncertainty requires --audio-lineage-manifest.")
+        if not args.emit_uncertainty and args.audio_lineage_manifest is not None:
+            raise ValueError("--audio-lineage-manifest requires --emit-uncertainty.")
         cache_manifest = _read_json(args.cache_manifest)
         if "splitProtocol" in cache_manifest:
             validate_split_protocol_manifest(cache_manifest)
@@ -662,6 +674,11 @@ def main(argv: list[str] | None = None) -> int:
             joint_product_blend=args.joint_product_blend,
             allow_mixed_joint_members=args.allow_mixed_joint_members,
             **({"emit_uncertainty": True} if args.emit_uncertainty else {}),
+            **(
+                {"audio_lineage": _read_json(args.audio_lineage_manifest)}
+                if args.audio_lineage_manifest is not None
+                else {}
+            ),
         )
         _write_json(result, args.report)
     elif args.command == "merge-benchmark-reports":

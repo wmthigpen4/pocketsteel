@@ -101,6 +101,58 @@ def _fixture(
     return cache, timing, model, reference_path
 
 
+def _audio_lineage_fixture(cache: dict[str, Any]) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for track in cache["tracks"]:
+        with np.load(track["path"], allow_pickle=False) as archive:
+            features = np.ascontiguousarray(archive["features"], dtype=np.dtype("<f2"))
+        array_sha256 = hashlib.sha256(features.tobytes(order="C")).hexdigest()
+        row_payload = {
+            "trackId": track["id"],
+            "datasetId": track["datasetId"],
+            "sourceAudioSha256": hashlib.sha256(str(track["id"]).encode()).hexdigest(),
+            "cachedArraySha256": array_sha256,
+            "freshArraySha256": array_sha256,
+            "canonicalDurationMilliseconds": 400,
+        }
+        rows.append({**row_payload, "rowSha256": canonical_sha256(row_payload)})
+    return {
+        "artifactSha256": hashlib.sha256(b"audio-lineage-artifact").hexdigest(),
+        "extractorContract": {
+            "entrypoint": "steel_guitar_rag.chord_reader.student.extract_student_features"
+        },
+        "featureContract": {
+            "featureSpecSha256": cache["featureSpecSha256"],
+            "contractSha256": hashlib.sha256(b"audio-lineage-feature-contract").hexdigest(),
+        },
+        "manifestBindings": {
+            "winnerCacheManifest": {"canonicalSha256": canonical_sha256(cache)},
+            "bindingsSha256": hashlib.sha256(b"audio-lineage-bindings").hexdigest(),
+        },
+        "tracks": rows,
+    }
+
+
+def _project_audio_lineage_fixture(
+    artifact: dict[str, Any],
+    track_ids: list[str],
+) -> dict[str, Any]:
+    selected = [row for row in artifact["tracks"] if row["trackId"] in set(track_ids)]
+    payload = {
+        "schemaVersion": benchmark.AUDIO_LINEAGE_PROJECTION_SCHEMA,
+        "split": "development",
+        "developmentOnly": True,
+        "promotionEligible": False,
+        "sourceAudioLineageSha256": artifact["artifactSha256"],
+        "manifestBindingsSha256": artifact["manifestBindings"]["bindingsSha256"],
+        "featureContractSha256": artifact["featureContract"]["contractSha256"],
+        "trackCount": len(selected),
+        "tracks": selected,
+        "trackSetSha256": canonical_sha256(selected),
+    }
+    return {**payload, "projectionSha256": canonical_sha256(payload)}
+
+
 def _prediction_core(identifier: str, duration: float) -> dict[str, Any]:
     return {
         "schemaVersion": "chord_prediction_v1",
@@ -297,6 +349,16 @@ def _patch_runtime(
         "validate_factorized_artifact_manifest",
         lambda unused, *, verify_files: None,
     )
+    monkeypatch.setattr(
+        benchmark,
+        "validate_development_audio_lineage",
+        lambda unused, *, verify_files: None,
+    )
+    monkeypatch.setattr(
+        benchmark,
+        "project_development_audio_lineage",
+        _project_audio_lineage_fixture,
+    )
 
 
 @pytest.mark.parametrize(
@@ -418,6 +480,8 @@ def test_emit_uncertainty_is_atomic_and_reference_free_until_prediction_exists(
         output_root=output_root,
         split="development",
         emit_uncertainty=True,
+        audio_lineage=_audio_lineage_fixture(cache),
+        verify_audio_lineage_files=False,
     )
 
     assert events == ["reference"]
@@ -457,6 +521,65 @@ def test_emit_uncertainty_is_atomic_and_reference_free_until_prediction_exists(
     assert experiment["memberBindingSha256"] == canonical_sha256(experiment["memberBinding"])
     assert experiment["bindingSha256"] == canonical_sha256(experiment["binding"])
     assert experiment["trackCount"] == 1
+    lineage_binding = experiment["audioLineage"]
+    assert lineage_binding["schemaVersion"] == benchmark.AUDIO_LINEAGE_BENCHMARK_BINDING_SCHEMA
+    assert lineage_binding["verificationMode"] == "metadata-only-test-fixture-v1"
+    assert lineage_binding["projectionSha256"] == lineage_binding["projection"]["projectionSha256"]
+    assert lineage_binding["bindingSha256"] == canonical_sha256(
+        {key: value for key, value in lineage_binding.items() if key != "bindingSha256"}
+    )
+    assert track["sourceAudioSha256"] == lineage_binding["projection"]["tracks"][0]["sourceAudioSha256"]
+    assert track["cachedFeatureArraySha256"] == track["freshFeatureArraySha256"]
+    assert track["canonicalDurationMilliseconds"] == 400
+    assert track["audioLineageRowSha256"] == lineage_binding["projection"]["tracks"][0]["rowSha256"]
+
+
+@pytest.mark.parametrize(
+    ("tamper", "message"),
+    (
+        ("cache-manifest", "exact benchmark cache manifest"),
+        ("array", "feature array differs"),
+        ("duration", "duration differs"),
+    ),
+)
+def test_emit_uncertainty_rejects_audio_lineage_splice_before_reference(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tamper: str,
+    message: str,
+) -> None:
+    cache, timing, model, reference_path = _fixture(tmp_path)
+    lineage = _audio_lineage_fixture(cache)
+    if tamper == "cache-manifest":
+        lineage["manifestBindings"]["winnerCacheManifest"]["canonicalSha256"] = "0" * 64
+    elif tamper == "array":
+        lineage["tracks"][0]["cachedArraySha256"] = "0" * 64
+        lineage["tracks"][0]["freshArraySha256"] = "0" * 64
+    elif tamper == "duration":
+        lineage["tracks"][0]["canonicalDurationMilliseconds"] = 401
+    else:  # pragma: no cover - parameter table is frozen above
+        raise AssertionError(tamper)
+
+    _patch_runtime(monkeypatch)
+    original_read_bytes = Path.read_bytes
+
+    def protected_reference_read(path: Path) -> bytes:
+        if path == reference_path:
+            raise AssertionError("reference must remain unopened after audio-lineage rejection")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", protected_reference_read)
+    with pytest.raises(ValueError, match=message):
+        benchmark.run_factorized_cache_benchmark(
+            cache,
+            [{"tracks": [timing]}],
+            model=model,
+            output_root=tmp_path / "output",
+            split="development",
+            emit_uncertainty=True,
+            audio_lineage=lineage,
+            verify_audio_lineage_files=False,
+        )
 
 
 def test_emit_uncertainty_rejects_tampered_payload_before_reference_access(
@@ -488,6 +611,8 @@ def test_emit_uncertainty_rejects_tampered_payload_before_reference_access(
             output_root=tmp_path / "output",
             split="development",
             emit_uncertainty=True,
+            audio_lineage=_audio_lineage_fixture(cache),
+            verify_audio_lineage_files=False,
         )
 
 
@@ -580,6 +705,8 @@ def test_emit_uncertainty_rejects_binding_timebase_or_frame_group_tamper(
             output_root=tmp_path / "output",
             split="development",
             emit_uncertainty=True,
+            audio_lineage=_audio_lineage_fixture(cache),
+            verify_audio_lineage_files=False,
         )
 
     assert not prediction_path.exists()
@@ -625,6 +752,8 @@ def test_emit_uncertainty_rejects_cross_track_binding_or_contract_drift(
             output_root=tmp_path / "output",
             split="development",
             emit_uncertainty=True,
+            audio_lineage=_audio_lineage_fixture(first_cache),
+            verify_audio_lineage_files=False,
         )
 
 
@@ -682,8 +811,10 @@ def test_cli_dispatches_emit_uncertainty_only_when_requested(
 ) -> None:
     cache_path = tmp_path / "cache.json"
     tracks_path = tmp_path / "tracks.json"
+    lineage_path = tmp_path / "lineage.json"
     cache_path.write_text('{"tracks": []}\n', encoding="utf-8")
     tracks_path.write_text('{"tracks": []}\n', encoding="utf-8")
+    lineage_path.write_text('{"fixture": true}\n', encoding="utf-8")
     calls: list[dict[str, Any]] = []
 
     def capture(*_args: object, **kwargs: Any) -> dict[str, Any]:
@@ -706,5 +837,18 @@ def test_cli_dispatches_emit_uncertainty_only_when_requested(
 
     assert chord_reader_cli.main(common) == 0
     assert "emit_uncertainty" not in calls[-1]
-    assert chord_reader_cli.main([*common, "--emit-uncertainty"]) == 0
+    with pytest.raises(ValueError, match="audio-lineage-manifest"):
+        chord_reader_cli.main([*common, "--emit-uncertainty"])
+    assert (
+        chord_reader_cli.main(
+            [
+                *common,
+                "--emit-uncertainty",
+                "--audio-lineage-manifest",
+                str(lineage_path),
+            ]
+        )
+        == 0
+    )
     assert calls[-1]["emit_uncertainty"] is True
+    assert calls[-1]["audio_lineage"] == {"fixture": True}
