@@ -25,6 +25,8 @@ from steel_guitar_rag.chord_reader.bar_selector import (
     LABEL_DETERMINACY_DATASET_IDS,
     OUTER_FOLD_COUNT,
     OOF_DENOMINATOR,
+    REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA,
+    REFERENCE_ENDPOINT_RECONCILIATION_POLICY,
     SELECTOR_ESTIMAND,
     BarSelectorError,
     apply_bar_selector,
@@ -147,6 +149,7 @@ def _example(group: str, correct: bool, ordinal: int, bindings: dict) -> dict:
         "memberOrderSha256": bindings["memberOrderSha256"],
         **_lineage_fields(ordinal),
         "audioLineageProjectionSha256": summary["audioLineageProjectionSha256"],
+        "referenceEndpointReconciliationRowSha256": None,
         "legacyProductConfidenceMissing": ordinal == 1,
         "outcome": {"correct": correct},
     }
@@ -225,6 +228,31 @@ def _examples_artifact() -> dict:
         **audio_group_payload,
         "auditSha256": canonical_sha256(audio_group_payload),
     }
+    endpoint_dataset_counts = [
+        {
+            "datasetId": dataset_id,
+            "sourceTrackCount": sum(row["datasetId"] == dataset_id for row in projection_rows),
+            "reconciledTrackCount": 0,
+        }
+        for dataset_id in LABEL_DETERMINACY_DATASET_IDS
+    ]
+    endpoint_audit_payload = {
+        "schemaVersion": REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA,
+        "policy": REFERENCE_ENDPOINT_RECONCILIATION_POLICY,
+        "sourceTrackCount": len(projection_rows),
+        "reconciledTrackCount": 0,
+        "unreconciledTrackCount": len(projection_rows),
+        "datasetCounts": endpoint_dataset_counts,
+        "datasetCountSetSha256": canonical_sha256(endpoint_dataset_counts),
+        "totalReconciledSeconds": 0.0,
+        "maximumReconciledSeconds": 0.0,
+        "rows": [],
+        "rowSetSha256": canonical_sha256([]),
+    }
+    endpoint_audit = {
+        **endpoint_audit_payload,
+        "auditSha256": canonical_sha256(endpoint_audit_payload),
+    }
     label_audit_payload = {
         "schemaVersion": "chord_bar_selector_label_determinacy_audit_v1",
         "estimand": SELECTOR_ESTIMAND,
@@ -300,6 +328,8 @@ def _examples_artifact() -> dict:
         "featureArrayVerification": FEATURE_ARRAY_VERIFICATION,
         "audioGroupAudit": audio_group_audit,
         "audioGroupAuditSha256": audio_group_audit["auditSha256"],
+        "referenceEndpointReconciliationAudit": endpoint_audit,
+        "referenceEndpointReconciliationAuditSha256": endpoint_audit["auditSha256"],
         "labelDeterminacyAudit": label_audit,
         "labelDeterminacyAuditSha256": label_audit["auditSha256"],
         "datasetLabelDeterminacyAudit": dataset_audit,
@@ -365,6 +395,47 @@ def _reseal_dataset_label_audit(audit: dict) -> None:
     audit["auditSha256"] = canonical_sha256({key: value for key, value in audit.items() if key != "auditSha256"})
 
 
+def _reseal_endpoint_audit(audit: dict) -> None:
+    for row in audit["rows"]:
+        row["rowSha256"] = canonical_sha256({key: value for key, value in row.items() if key != "rowSha256"})
+    audit["datasetCountSetSha256"] = canonical_sha256(audit["datasetCounts"])
+    audit["rowSetSha256"] = canonical_sha256(audit["rows"])
+    audit["auditSha256"] = canonical_sha256({key: value for key, value in audit.items() if key != "auditSha256"})
+
+
+def _add_endpoint_reconciliation(source: dict) -> tuple[dict, dict]:
+    example = source["examples"][0]
+    projection = next(
+        row for row in source["sourceAudioLineageProjection"]["tracks"] if row["trackId"] == example["trackId"]
+    )
+    row_payload = {
+        "trackId": example["trackId"],
+        "datasetId": projection["datasetId"],
+        "referenceSha256": _digest(f"reference:{example['trackId']}"),
+        "originalEnd": 8.00045,
+        "predictionDuration": 8.0004,
+        "reconciledEnd": 8.0004,
+        "reconciledSeconds": 8.00045 - 8.0004,
+        "canonicalMs": 8000,
+    }
+    row = {**row_payload, "rowSha256": canonical_sha256(row_payload)}
+    audit = source["referenceEndpointReconciliationAudit"]
+    audit["rows"] = [row]
+    audit["reconciledTrackCount"] = 1
+    audit["unreconciledTrackCount"] -= 1
+    next(item for item in audit["datasetCounts"] if item["datasetId"] == projection["datasetId"])[
+        "reconciledTrackCount"
+    ] = 1
+    audit["totalReconciledSeconds"] = row["reconciledSeconds"]
+    audit["maximumReconciledSeconds"] = row["reconciledSeconds"]
+    _reseal_endpoint_audit(audit)
+    source["referenceEndpointReconciliationAuditSha256"] = audit["auditSha256"]
+    example["referenceEndpointReconciliationRowSha256"] = row["rowSha256"]
+    _reseal_example(example)
+    _reseal_source(source)
+    return example, row
+
+
 def _reseal_artifact(artifact: dict) -> None:
     artifact["artifactSha256"] = canonical_sha256(
         {key: value for key, value in artifact.items() if key != "artifactSha256"}
@@ -394,6 +465,13 @@ def test_nested_grouped_training_is_deterministic_and_sealed(trained: tuple[dict
     assert artifact["training"]["sourceAudioLineageSha256"] == source["sourceAudioLineageSha256"]
     assert artifact["training"]["sourceAudioLineageProjectionSha256"] == source["sourceAudioLineageProjectionSha256"]
     assert artifact["training"]["sourceAudioGroupAuditSha256"] == source["audioGroupAuditSha256"]
+    assert (
+        artifact["training"]["sourceReferenceEndpointReconciliationAuditSha256"]
+        == source["referenceEndpointReconciliationAuditSha256"]
+    )
+    assert (
+        artifact["training"]["referenceEndpointReconciliationAudit"] == source["referenceEndpointReconciliationAudit"]
+    )
     assert artifact["training"]["sourceLabelDeterminacyAuditSha256"] == source["labelDeterminacyAuditSha256"]
     assert (
         artifact["training"]["sourceDatasetLabelDeterminacyAuditSha256"] == source["datasetLabelDeterminacyAuditSha256"]
@@ -408,6 +486,8 @@ def test_nested_grouped_training_is_deterministic_and_sealed(trained: tuple[dict
         == source["labelDeterminacyAudit"]["predictionConfidenceMissingBarCount"]
     )
     assert all("datasetId" in row for row in artifact["training"]["oofAuditRows"])
+    assert "referenceEndpointReconciliationRowSha256" not in BAR_FEATURE_NAMES
+    assert all("referenceEndpointReconciliationRowSha256" not in row for row in artifact["training"]["oofAuditRows"])
     assert artifact["artifactSha256"] == canonical_sha256(
         {key: value for key, value in artifact.items() if key != "artifactSha256"}
     )
@@ -472,6 +552,61 @@ def test_selector_artifact_rejects_resealed_propagated_dataset_audit_tamper(
     artifact["training"]["sourceDatasetLabelDeterminacyAuditSha256"] = audit["auditSha256"]
     _reseal_artifact(artifact)
     with pytest.raises(BarSelectorError, match="do not sum to the aggregate"):
+        validate_bar_selector_artifact(artifact)
+
+
+def test_reference_endpoint_reconciliation_row_is_exact_audit_metadata_only() -> None:
+    source = _examples_artifact()
+    example, row = _add_endpoint_reconciliation(source)
+    artifact = train_bar_selector(source)
+    assert example["referenceEndpointReconciliationRowSha256"] == row["rowSha256"]
+    assert (
+        artifact["training"]["sourceReferenceEndpointReconciliationAuditSha256"]
+        == source["referenceEndpointReconciliationAuditSha256"]
+    )
+    assert "referenceEndpointReconciliationRowSha256" not in BAR_FEATURE_NAMES
+    assert all(
+        "referenceEndpointReconciliationRowSha256" not in oof_row for oof_row in artifact["training"]["oofAuditRows"]
+    )
+
+
+def test_rejects_fully_resealed_reference_endpoint_reconciliation_audit_tamper() -> None:
+    source = _examples_artifact()
+    example, row = _add_endpoint_reconciliation(source)
+    row["reconciledSeconds"] += 0.00001
+    audit = source["referenceEndpointReconciliationAudit"]
+    audit["totalReconciledSeconds"] = row["reconciledSeconds"]
+    audit["maximumReconciledSeconds"] = row["reconciledSeconds"]
+    _reseal_endpoint_audit(audit)
+    source["referenceEndpointReconciliationAuditSha256"] = audit["auditSha256"]
+    example["referenceEndpointReconciliationRowSha256"] = row["rowSha256"]
+    _reseal_example(example)
+    _reseal_source(source)
+    with pytest.raises(BarSelectorError, match="violates the exact clip policy"):
+        train_bar_selector(source)
+
+
+def test_rejects_resealed_example_to_reference_reconciliation_row_splice() -> None:
+    source = _examples_artifact()
+    example, _row = _add_endpoint_reconciliation(source)
+    example["referenceEndpointReconciliationRowSha256"] = None
+    _reseal_example(example)
+    _reseal_source(source)
+    with pytest.raises(BarSelectorError, match="row binding disagrees"):
+        train_bar_selector(source)
+
+
+def test_selector_artifact_rejects_fully_resealed_propagated_endpoint_audit_tamper(
+    trained: tuple[dict, dict],
+) -> None:
+    _source, original = trained
+    artifact = deepcopy(original)
+    audit = artifact["training"]["referenceEndpointReconciliationAudit"]
+    audit["maximumReconciledSeconds"] = 0.0001
+    _reseal_endpoint_audit(audit)
+    artifact["training"]["sourceReferenceEndpointReconciliationAuditSha256"] = audit["auditSha256"]
+    _reseal_artifact(artifact)
+    with pytest.raises(BarSelectorError, match="sum or maximum is stale"):
         validate_bar_selector_artifact(artifact)
 
 

@@ -123,11 +123,33 @@ def _fixture() -> tuple[dict, dict, dict]:
                 }
                 track = {**track_payload, "trackMetadataSha256": canonical_sha256(track_payload)}
                 group_tracks.append(track)
-                projection_tracks.append({"trackId": track_id, "datasetId": dataset_id})
+                projection_tracks.append(
+                    {
+                        "trackId": track_id,
+                        "datasetId": dataset_id,
+                        "canonicalDurationMilliseconds": 1000,
+                    }
+                )
                 members.append(track)
             dataset_groups.append(members)
         selected_tracks.append(dataset_groups[0][0])
         selected_tracks.append(dataset_groups[1][6] if dataset_id == "guitarset" else dataset_groups[1][0])
+
+    reconciliation_target = selected_tracks[0]
+    reconciliation_row_payload = {
+        "trackId": reconciliation_target["trackId"],
+        "datasetId": reconciliation_target["datasetId"],
+        "referenceSha256": reconciliation_target["referenceSha256"],
+        "originalEnd": 1.00045,
+        "predictionDuration": 1.0004,
+        "reconciledEnd": 1.0004,
+        "reconciledSeconds": 1.00045 - 1.0004,
+        "canonicalMs": 1000,
+    }
+    reconciliation_row = {
+        **reconciliation_row_payload,
+        "rowSha256": canonical_sha256(reconciliation_row_payload),
+    }
 
     for track_index, track in enumerate(selected_tracks):
         track_id = track["trackId"]
@@ -159,6 +181,9 @@ def _fixture() -> tuple[dict, dict, dict]:
                 "modelOrEnsembleSha256": _digest("model"),
                 "decoderContractSha256": _digest("decoder"),
                 "memberOrderSha256": _digest("members"),
+                "referenceEndpointReconciliationRowSha256": (
+                    reconciliation_row["rowSha256"] if track_id == reconciliation_target["trackId"] else None
+                ),
                 "legacyProductConfidenceMissing": not correct,
                 "outcome": {"correct": correct},
                 "exampleSha256": _digest(f"example:{track_id}:{bar_index}"),
@@ -190,6 +215,31 @@ def _fixture() -> tuple[dict, dict, dict]:
     }
     groups = {**group_payload, "manifestSha256": canonical_sha256(group_payload)}
     aggregate, dataset_audit = _label_audits()
+    reconciliation_dataset_counts = [
+        {
+            "datasetId": dataset_id,
+            "sourceTrackCount": sum(track["datasetId"] == dataset_id for track in group_tracks),
+            "reconciledTrackCount": int(dataset_id == reconciliation_target["datasetId"]),
+        }
+        for dataset_id in LABEL_DETERMINACY_DATASET_IDS
+    ]
+    reconciliation_audit_payload = {
+        "schemaVersion": readiness.REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA,
+        "policy": readiness.REFERENCE_ENDPOINT_RECONCILIATION_POLICY,
+        "sourceTrackCount": len(group_tracks),
+        "reconciledTrackCount": 1,
+        "unreconciledTrackCount": len(group_tracks) - 1,
+        "datasetCounts": reconciliation_dataset_counts,
+        "datasetCountSetSha256": canonical_sha256(reconciliation_dataset_counts),
+        "totalReconciledSeconds": reconciliation_row["reconciledSeconds"],
+        "maximumReconciledSeconds": reconciliation_row["reconciledSeconds"],
+        "rows": [reconciliation_row],
+        "rowSetSha256": canonical_sha256([reconciliation_row]),
+    }
+    reconciliation_audit = {
+        **reconciliation_audit_payload,
+        "auditSha256": canonical_sha256(reconciliation_audit_payload),
+    }
     examples_payload = {
         "schemaVersion": "chord_bar_selector_examples_v1",
         "split": "development",
@@ -203,6 +253,8 @@ def _fixture() -> tuple[dict, dict, dict]:
         "sourceAudioLineageProjectionSha256": _digest("projection"),
         "sourceBenchmarkAudioLineageBindingSha256": _digest("benchmark-lineage-binding"),
         "audioGroupAuditSha256": _digest("audio-group-audit"),
+        "referenceEndpointReconciliationAudit": reconciliation_audit,
+        "referenceEndpointReconciliationAuditSha256": reconciliation_audit["auditSha256"],
         "labelDeterminacyAudit": aggregate,
         "labelDeterminacyAuditSha256": aggregate["auditSha256"],
         "datasetLabelDeterminacyAudit": dataset_audit,
@@ -231,6 +283,9 @@ def _fixture() -> tuple[dict, dict, dict]:
         "sourceAudioLineageProjectionSha256": examples_artifact["sourceAudioLineageProjectionSha256"],
         "sourceBenchmarkAudioLineageBindingSha256": examples_artifact["sourceBenchmarkAudioLineageBindingSha256"],
         "sourceAudioGroupAuditSha256": examples_artifact["audioGroupAuditSha256"],
+        "sourceReferenceEndpointReconciliationAuditSha256": examples_artifact[
+            "referenceEndpointReconciliationAuditSha256"
+        ],
         "sourceLabelDeterminacyAuditSha256": examples_artifact["labelDeterminacyAuditSha256"],
         "sourceDatasetLabelDeterminacyAuditSha256": examples_artifact["datasetLabelDeterminacyAuditSha256"],
     }
@@ -238,6 +293,7 @@ def _fixture() -> tuple[dict, dict, dict]:
         "split": "development",
         **source_fields,
         **{field: aggregate[field] for field in aggregate if field.endswith("Count")},
+        "referenceEndpointReconciliationAudit": reconciliation_audit,
         "datasetLabelDeterminacyAudit": dataset_audit,
         "oofAuditRows": oof_rows,
     }
@@ -270,6 +326,14 @@ def _reseal_selector(selector: dict) -> None:
     selector["artifactSha256"] = canonical_sha256(
         {key: value for key, value in selector.items() if key != "artifactSha256"}
     )
+
+
+def _reseal_reconciliation_audit(audit: dict) -> None:
+    for row in audit["rows"]:
+        row["rowSha256"] = canonical_sha256({key: value for key, value in row.items() if key != "rowSha256"})
+    audit["datasetCountSetSha256"] = canonical_sha256(audit["datasetCounts"])
+    audit["rowSetSha256"] = canonical_sha256(audit["rows"])
+    audit["auditSha256"] = canonical_sha256({key: value for key, value in audit.items() if key != "auditSha256"})
 
 
 def _reseal_groups(groups: dict) -> None:
@@ -350,6 +414,19 @@ def test_readiness_passes_fixed_rubric_and_uses_exact_guitar_denominator(
     assert all(
         row["endToEndCoverageAvailable"] is True for row in artifact["diagnostics"]["acceptedSlices"]["byDataset"]
     )
+    endpoint_diagnostic = artifact["diagnostics"]["referenceEndpointReconciliation"]
+    assert endpoint_diagnostic["reconciledTrackCount"] == 1
+    assert endpoint_diagnostic["totalReconciledSeconds"] == 1.00045 - 1.0004
+    assert endpoint_diagnostic["maximumReconciledSeconds"] == 1.00045 - 1.0004
+    assert endpoint_diagnostic["labelSideAuditOnly"] is True
+    assert endpoint_diagnostic["estimatorFeature"] is False
+    assert endpoint_diagnostic["oofMetricInput"] is False
+    assert endpoint_diagnostic["countIdentityInput"] is False
+    assert endpoint_diagnostic["readinessGate"] is False
+    assert (
+        artifact["inputBindings"]["referenceEndpointReconciliationAudit"]["examplesAuditSha256"]
+        == examples["referenceEndpointReconciliationAuditSha256"]
+    )
     assert artifact["artifactSha256"] == canonical_sha256(
         {key: value for key, value in artifact.items() if key != "artifactSha256"}
     )
@@ -410,11 +487,40 @@ def test_source_group_manifest_hash_mismatch_fails_without_output(
     selector["training"]["sourceGroupManifestSha256"] = examples["sourceGroupManifestSha256"]
     _reseal_examples(examples)
     selector["training"]["sourceExamplesArtifactSha256"] = examples["artifactSha256"]
+    selector["training"]["sourceExampleSetSha256"] = examples["exampleSetSha256"]
     _reseal_selector(selector)
     paths = _paths(tmp_path, examples, selector, groups)
     _patch_training(monkeypatch, selector)
 
     with pytest.raises(readiness.SelectorReadinessError, match="sourceGroupManifestSha256"):
+        readiness.evaluate_development_selector_readiness(*paths)
+
+    assert not paths[-1].exists()
+
+
+def test_readiness_rejects_fully_resealed_reference_endpoint_audit_tamper(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    examples, selector, groups = _fixture()
+    audit = examples["referenceEndpointReconciliationAudit"]
+    row = audit["rows"][0]
+    row["referenceSha256"] = _digest("foreign-reference")
+    _reseal_reconciliation_audit(audit)
+    examples["referenceEndpointReconciliationAuditSha256"] = audit["auditSha256"]
+    for example in examples["examples"]:
+        if example["trackId"] == row["trackId"]:
+            example["referenceEndpointReconciliationRowSha256"] = row["rowSha256"]
+    _reseal_examples(examples)
+    selector["training"]["sourceExamplesArtifactSha256"] = examples["artifactSha256"]
+    selector["training"]["sourceExampleSetSha256"] = examples["exampleSetSha256"]
+    selector["training"]["sourceReferenceEndpointReconciliationAuditSha256"] = audit["auditSha256"]
+    selector["training"]["referenceEndpointReconciliationAudit"] = deepcopy(audit)
+    _reseal_selector(selector)
+    paths = _paths(tmp_path, examples, selector, groups)
+    _patch_training(monkeypatch, selector)
+
+    with pytest.raises(readiness.SelectorReadinessError, match="violates its exact source join"):
         readiness.evaluate_development_selector_readiness(*paths)
 
     assert not paths[-1].exists()

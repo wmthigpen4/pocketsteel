@@ -32,6 +32,8 @@ from .bar_selector import (
     OUTER_FOLD_COUNT,
     PRECISION_COVERAGE_TARGETS,
     PROBABILITY_FLOOR,
+    REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA,
+    REFERENCE_ENDPOINT_RECONCILIATION_POLICY,
     train_bar_selector,
     validate_bar_selector_artifact,
 )
@@ -129,6 +131,9 @@ READINESS_RUBRIC: dict[str, Any] = {
             "disclosure-only with no numeric drift cutoff"
         ),
         "legacyConfidenceMissing": "support, rate, OOF performance, and same-cutoff performance",
+        "referenceEndpointReconciliation": (
+            "label-side exact row/count/sum/maximum disclosure; never an estimator feature or readiness gate"
+        ),
     },
     "diagnosticCompletenessGates": {
         "outerFolds": list(range(OUTER_FOLD_COUNT)),
@@ -201,6 +206,42 @@ _DATASET_AUDIT_FIELDS = frozenset(
     }
 )
 _DATASET_AUDIT_ROW_FIELDS = frozenset({"datasetId", *_LABEL_COUNT_FIELDS, "rowSha256"})
+_REFERENCE_ENDPOINT_RECONCILIATION_ROW_FIELDS = frozenset(
+    {
+        "trackId",
+        "datasetId",
+        "referenceSha256",
+        "originalEnd",
+        "predictionDuration",
+        "reconciledEnd",
+        "reconciledSeconds",
+        "canonicalMs",
+        "rowSha256",
+    }
+)
+_REFERENCE_ENDPOINT_RECONCILIATION_DATASET_COUNT_FIELDS = frozenset(
+    {
+        "datasetId",
+        "sourceTrackCount",
+        "reconciledTrackCount",
+    }
+)
+_REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_FIELDS = frozenset(
+    {
+        "schemaVersion",
+        "policy",
+        "sourceTrackCount",
+        "reconciledTrackCount",
+        "unreconciledTrackCount",
+        "datasetCounts",
+        "datasetCountSetSha256",
+        "totalReconciledSeconds",
+        "maximumReconciledSeconds",
+        "rows",
+        "rowSetSha256",
+        "auditSha256",
+    }
+)
 
 
 class SelectorReadinessError(ValueError):
@@ -462,6 +503,7 @@ def _validate_source_bindings(
         "sourceAudioLineageProjectionSha256": examples.get("sourceAudioLineageProjectionSha256"),
         "sourceBenchmarkAudioLineageBindingSha256": examples.get("sourceBenchmarkAudioLineageBindingSha256"),
         "sourceAudioGroupAuditSha256": examples.get("audioGroupAuditSha256"),
+        "sourceReferenceEndpointReconciliationAuditSha256": examples.get("referenceEndpointReconciliationAuditSha256"),
         "sourceLabelDeterminacyAuditSha256": examples.get("labelDeterminacyAuditSha256"),
         "sourceDatasetLabelDeterminacyAuditSha256": examples.get("datasetLabelDeterminacyAuditSha256"),
     }
@@ -587,6 +629,172 @@ def _validate_label_audits(
         if training.get(field) != value:
             raise SelectorReadinessError(f"selector.training.{field} disagrees with the sealed aggregate audit.")
     return counts, by_dataset
+
+
+def _validate_reference_endpoint_reconciliation_audit(
+    examples: Mapping[str, Any],
+    selector: Mapping[str, Any],
+    group_tracks: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    name = "examples.referenceEndpointReconciliationAudit"
+    audit = _mapping(examples.get("referenceEndpointReconciliationAudit"), name)
+    _exact_fields(audit, _REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_FIELDS, name)
+    if (
+        audit.get("schemaVersion") != REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA
+        or audit.get("policy") != REFERENCE_ENDPOINT_RECONCILIATION_POLICY
+    ):
+        raise SelectorReadinessError("Reference endpoint reconciliation policy changed.")
+    audit_sha256 = _sha256(audit.get("auditSha256"), f"{name}.auditSha256")
+    if canonical_sha256(_unsigned(audit, "auditSha256")) != audit_sha256:
+        raise SelectorReadinessError("Reference endpoint reconciliation auditSha256 is stale.")
+    if examples.get("referenceEndpointReconciliationAuditSha256") != audit_sha256:
+        raise SelectorReadinessError("Examples reference endpoint reconciliation audit binding is stale.")
+
+    source_track_count = _integer(audit.get("sourceTrackCount"), f"{name}.sourceTrackCount")
+    reconciled_track_count = _integer(audit.get("reconciledTrackCount"), f"{name}.reconciledTrackCount")
+    unreconciled_track_count = _integer(audit.get("unreconciledTrackCount"), f"{name}.unreconciledTrackCount")
+    if (
+        source_track_count != len(group_tracks)
+        or reconciled_track_count + unreconciled_track_count != source_track_count
+    ):
+        raise SelectorReadinessError("Reference endpoint reconciliation track counts do not reconcile.")
+
+    source_by_dataset = {
+        dataset_id: sum(track["datasetId"] == dataset_id for track in group_tracks.values())
+        for dataset_id in LABEL_DETERMINACY_DATASET_IDS
+    }
+    dataset_counts = list(_sequence(audit.get("datasetCounts"), f"{name}.datasetCounts"))
+    if len(dataset_counts) != len(LABEL_DETERMINACY_DATASET_IDS):
+        raise SelectorReadinessError("Readiness requires exactly five reference reconciliation dataset counts.")
+    normalized_dataset_counts: list[dict[str, Any]] = []
+    reconciled_by_dataset: dict[str, int] = {}
+    for index, (dataset_id, raw_row) in enumerate(zip(LABEL_DETERMINACY_DATASET_IDS, dataset_counts, strict=True)):
+        row_name = f"{name}.datasetCounts[{index}]"
+        row = _mapping(raw_row, row_name)
+        _exact_fields(row, _REFERENCE_ENDPOINT_RECONCILIATION_DATASET_COUNT_FIELDS, row_name)
+        reconciled_count = _integer(row.get("reconciledTrackCount"), f"{row_name}.reconciledTrackCount")
+        if (
+            row.get("datasetId") != dataset_id
+            or row.get("sourceTrackCount") != source_by_dataset[dataset_id]
+            or reconciled_count > source_by_dataset[dataset_id]
+        ):
+            raise SelectorReadinessError("Reference endpoint reconciliation dataset counts changed.")
+        reconciled_by_dataset[dataset_id] = reconciled_count
+        normalized_dataset_counts.append(dict(row))
+    if sum(reconciled_by_dataset.values()) != reconciled_track_count or audit.get(
+        "datasetCountSetSha256"
+    ) != canonical_sha256(normalized_dataset_counts):
+        raise SelectorReadinessError("Reference endpoint reconciliation dataset count set is stale.")
+
+    projection = _mapping(
+        examples.get("sourceAudioLineageProjection"),
+        "examples.sourceAudioLineageProjection",
+    )
+    projection_rows = {
+        str(row["trackId"]): _mapping(row, "source audio-lineage projection row")
+        for row in _sequence(projection.get("tracks"), "sourceAudioLineageProjection.tracks")
+    }
+    rows = list(_sequence(audit.get("rows"), f"{name}.rows"))
+    normalized_rows: list[dict[str, Any]] = []
+    row_sha256_by_track: dict[str, str] = {}
+    observed_track_ids: list[str] = []
+    row_dataset_counts = {dataset_id: 0 for dataset_id in LABEL_DETERMINACY_DATASET_IDS}
+    reconciled_values: list[float] = []
+    for index, raw_row in enumerate(rows):
+        row_name = f"{name}.rows[{index}]"
+        row = _mapping(raw_row, row_name)
+        _exact_fields(row, _REFERENCE_ENDPOINT_RECONCILIATION_ROW_FIELDS, row_name)
+        track_id = str(row.get("trackId"))
+        group_track = group_tracks.get(track_id)
+        projection_row = projection_rows.get(track_id)
+        row_sha256 = _sha256(row.get("rowSha256"), f"{row_name}.rowSha256")
+        if canonical_sha256(_unsigned(row, "rowSha256")) != row_sha256:
+            raise SelectorReadinessError("A reference endpoint reconciliation row hash is stale.")
+        original_end = _finite(row.get("originalEnd"), f"{row_name}.originalEnd")
+        prediction_duration = _finite(row.get("predictionDuration"), f"{row_name}.predictionDuration")
+        reconciled_end = _finite(row.get("reconciledEnd"), f"{row_name}.reconciledEnd")
+        reconciled_seconds = _finite(row.get("reconciledSeconds"), f"{row_name}.reconciledSeconds")
+        canonical_milliseconds = _integer(
+            row.get("canonicalMs"),
+            f"{row_name}.canonicalMs",
+            minimum=1,
+        )
+        if (
+            group_track is None
+            or projection_row is None
+            or group_track.get("datasetId") != row.get("datasetId")
+            or projection_row.get("datasetId") != row.get("datasetId")
+            or group_track.get("referenceSha256") != row.get("referenceSha256")
+            or projection_row.get("canonicalDurationMilliseconds") != canonical_milliseconds
+            or track_id in row_sha256_by_track
+            or original_end <= prediction_duration
+            or prediction_duration <= 0
+            or reconciled_end != prediction_duration
+            or reconciled_seconds != original_end - prediction_duration
+            or reconciled_seconds <= 0
+            or math.floor(original_end * 1000 + 0.5) != canonical_milliseconds
+            or math.floor(prediction_duration * 1000 + 0.5) != canonical_milliseconds
+        ):
+            raise SelectorReadinessError("A reference endpoint reconciliation row violates its exact source join.")
+        dataset_id = str(row["datasetId"])
+        row_dataset_counts[dataset_id] += 1
+        observed_track_ids.append(track_id)
+        row_sha256_by_track[track_id] = row_sha256
+        reconciled_values.append(reconciled_seconds)
+        normalized_rows.append(dict(row))
+    if (
+        observed_track_ids != sorted(observed_track_ids)
+        or len(rows) != reconciled_track_count
+        or row_dataset_counts != reconciled_by_dataset
+        or audit.get("rowSetSha256") != canonical_sha256(normalized_rows)
+        or audit.get("totalReconciledSeconds") != math.fsum(reconciled_values)
+        or audit.get("maximumReconciledSeconds") != max(reconciled_values, default=0.0)
+    ):
+        raise SelectorReadinessError("Reference endpoint reconciliation rows, counts, sum, or maximum are stale.")
+
+    for raw_example in _sequence(examples.get("examples"), "examples.examples"):
+        example = _mapping(raw_example, "examples example")
+        track_id = str(example.get("trackId"))
+        if example.get("referenceEndpointReconciliationRowSha256") != row_sha256_by_track.get(track_id):
+            raise SelectorReadinessError(
+                "An example reference endpoint reconciliation row binding disagrees with its track audit."
+            )
+    training = _mapping(selector.get("training"), "selector.training")
+    if (
+        training.get("sourceReferenceEndpointReconciliationAuditSha256") != audit_sha256
+        or training.get("referenceEndpointReconciliationAudit") != audit
+    ):
+        raise SelectorReadinessError("Selector did not retain the exact reference endpoint reconciliation audit.")
+    forbidden_feature_names = {
+        "referenceEndpointReconciliationRowSha256",
+        "referenceEndpointReconciliationAuditSha256",
+        "reconciledSeconds",
+        "originalEnd",
+        "reconciledEnd",
+    }
+    if forbidden_feature_names.intersection(BAR_FEATURE_NAMES) or any(
+        any(key.startswith("referenceEndpointReconciliation") for key in row)
+        for row in _sequence(training.get("oofAuditRows"), "selector.training.oofAuditRows")
+        if isinstance(row, Mapping)
+    ):
+        raise SelectorReadinessError("Reference endpoint reconciliation leaked into estimator or OOF inputs.")
+    disclosure_payload = {
+        "schemaVersion": REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA,
+        "policy": REFERENCE_ENDPOINT_RECONCILIATION_POLICY,
+        "sourceAuditSha256": audit_sha256,
+        "sourceTrackCount": source_track_count,
+        "reconciledTrackCount": reconciled_track_count,
+        "unreconciledTrackCount": unreconciled_track_count,
+        "datasetCounts": deepcopy(normalized_dataset_counts),
+        "totalReconciledSeconds": float(audit["totalReconciledSeconds"]),
+        "maximumReconciledSeconds": float(audit["maximumReconciledSeconds"]),
+        "labelSideAuditOnly": True,
+        "estimatorFeature": False,
+        "oofMetricInput": False,
+        "countIdentityInput": False,
+        "readinessGate": False,
+    }
+    return {**disclosure_payload, "disclosureSha256": canonical_sha256(disclosure_payload)}
 
 
 def _example_key(example: Mapping[str, Any]) -> str:
@@ -1190,6 +1398,7 @@ def _build_diagnostics(
     rows: Sequence[dict[str, Any]],
     selector: Mapping[str, Any],
     dataset_counts: Mapping[str, Mapping[str, int]],
+    reference_endpoint_reconciliation: Mapping[str, Any],
 ) -> dict[str, Any]:
     folds = [
         _slice_metrics(
@@ -1245,6 +1454,7 @@ def _build_diagnostics(
         "acceptedGroupConcentration": _group_concentration(rows),
         "features": _feature_diagnostics(rows, selector),
         "missingLegacyConfidence": _missing_confidence_diagnostic(rows),
+        "referenceEndpointReconciliation": deepcopy(dict(reference_endpoint_reconciliation)),
     }
 
 
@@ -1460,6 +1670,11 @@ def evaluate_development_selector_readiness(
     _validate_reproduction(examples, selector, selector_raw)
     _validate_source_bindings(examples, selector, groups)
     counts, dataset_counts = _validate_label_audits(examples, selector)
+    reference_endpoint_reconciliation = _validate_reference_endpoint_reconciliation_audit(
+        examples,
+        selector,
+        group_tracks,
+    )
     rows, public_rows, diagnostic_reasons = _join_oof_rows(examples, selector, group_tracks)
     if len(rows) != counts["emittedExampleCount"]:
         raise SelectorReadinessError("E does not equal the exact joined OOF row count.")
@@ -1544,7 +1759,12 @@ def evaluate_development_selector_readiness(
     if not any(not row["correct"] for row in rows):
         diagnostic_reasons.append("diagnostics.incorrect-probability-quantiles-missing")
 
-    diagnostics = _build_diagnostics(rows, selector, dataset_counts)
+    diagnostics = _build_diagnostics(
+        rows,
+        selector,
+        dataset_counts,
+        reference_endpoint_reconciliation,
+    )
     diagnostics_sha256 = canonical_sha256(diagnostics)
     failure_reasons = sorted(set(gate_failure_reasons + diagnostic_reasons))
     passed = not failure_reasons
@@ -1554,6 +1774,11 @@ def evaluate_development_selector_readiness(
         "examples": _source_binding(examples_path, examples_raw, examples, "artifactSha256"),
         "selector": _source_binding(selector_path, selector_raw, selector, "artifactSha256"),
         "groupManifest": _source_binding(group_manifest_path, groups_raw, groups, "manifestSha256"),
+        "referenceEndpointReconciliationAudit": {
+            "examplesAuditSha256": examples["referenceEndpointReconciliationAuditSha256"],
+            "selectorSourceAuditSha256": selector["training"]["sourceReferenceEndpointReconciliationAuditSha256"],
+            "exactMatch": True,
+        },
     }
     input_bindings = {
         **input_bindings_payload,

@@ -21,6 +21,8 @@ from steel_guitar_rag.chord_reader.bar_examples import (
     FEATURE_ARRAY_VERIFICATION,
     GROUP_MANIFEST_SCHEMA,
     LABEL_DETERMINACY_DATASET_IDS,
+    REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA,
+    REFERENCE_ENDPOINT_RECONCILIATION_POLICY,
     build_bar_selector_group_manifest,
     build_bar_selector_examples,
     summary_artifact_filename,
@@ -561,6 +563,12 @@ def _fixture(
             definition["reference"],
             mixed_last=bool(definition.get("mixedLast")),
         )
+        if definition.get("referenceDurationDeclared") is False:
+            reference.pop("durationSeconds")
+        if "referenceTerminalEnd" in definition:
+            reference["segments"][-1]["end"] = float(definition["referenceTerminalEnd"])
+        if "referenceSegments" in definition:
+            reference["segments"] = deepcopy(definition["referenceSegments"])
         reference_file = Path("references") / f"{track_id}.json"
         reference_bytes = _write_json(group_root / reference_file, reference)
         reference_paths.append((group_root / reference_file).resolve())
@@ -930,6 +938,13 @@ def test_builds_exact_compact_selector_artifact_and_preserves_explicit_groups(tm
     assert result["audioGroupAudit"]["schemaVersion"] == AUDIO_GROUP_AUDIT_SCHEMA
     assert result["audioGroupAudit"]["trackCount"] == len(report["tracks"])
     assert result["audioGroupAuditSha256"] == result["audioGroupAudit"]["auditSha256"]
+    endpoint_audit = result["referenceEndpointReconciliationAudit"]
+    assert endpoint_audit["schemaVersion"] == REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA
+    assert endpoint_audit["policy"] == REFERENCE_ENDPOINT_RECONCILIATION_POLICY
+    assert endpoint_audit["reconciledTrackCount"] == 0
+    assert endpoint_audit["totalReconciledSeconds"] == 0.0
+    assert endpoint_audit["maximumReconciledSeconds"] == 0.0
+    assert result["referenceEndpointReconciliationAuditSha256"] == endpoint_audit["auditSha256"]
     assert result["labelDeterminacyAudit"]["emittedExampleCount"] == len(result["examples"])
     assert result["labelDeterminacyAudit"]["excludedReferenceIndeterminateBarCount"] == 0
     assert result["labelDeterminacyAudit"]["excludedPredictionNoneligibleBarCount"] == 0
@@ -958,6 +973,7 @@ def test_builds_exact_compact_selector_artifact_and_preserves_explicit_groups(tm
         )
         assert set(example["outcome"]) == {"correct"}
         assert isinstance(example["legacyProductConfidenceMissing"], bool)
+        assert example["referenceEndpointReconciliationRowSha256"] is None
         assert not (
             {
                 "datasetId",
@@ -1483,6 +1499,154 @@ def test_exact_player_millisecond_join_scores_full_precision_final_bar(tmp_path:
     assert example["barSummary"]["end"] == 0.4004
     assert example["outcome"] == {"correct": True}
     assert runtime["tracks"][0]["durationSeconds"] == 0.4
+
+
+def test_same_canonical_millisecond_unique_terminal_reference_end_is_clipped_and_audited(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_end = 0.400445
+    prediction_duration = 0.4004
+    report, runtime, groups, audio_lineage, reference_paths = _fixture(
+        tmp_path,
+        definitions=[
+            {
+                "id": "same-ms-terminal-end",
+                "datasetId": "guitarset",
+                "role": "comp",
+                "group": "duration-group",
+                "prediction": ["C"],
+                "reference": ["C"],
+                "predictionDuration": prediction_duration,
+                "referenceDurationDeclared": False,
+                "referenceTerminalEnd": original_end,
+            }
+        ],
+    )
+    scorer = bar_examples.score_bar_product_confidence
+    observed_reference_ends: list[float] = []
+
+    def recording(reference: dict[str, Any], prediction: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+        observed_reference_ends.append(float(reference["segments"][-1]["end"]))
+        return scorer(reference, prediction, **kwargs)
+
+    monkeypatch.setattr(bar_examples, "score_bar_product_confidence", recording)
+    result = _build(tmp_path, report, runtime, groups, audio_lineage)
+
+    assert observed_reference_ends == [prediction_duration]
+    original_reference = json.loads(reference_paths[0].read_text(encoding="utf-8"))
+    assert "durationSeconds" not in original_reference
+    assert original_reference["segments"][-1]["end"] == original_end
+    audit = result["referenceEndpointReconciliationAudit"]
+    assert audit["reconciledTrackCount"] == 1
+    assert audit["unreconciledTrackCount"] == 0
+    assert audit["totalReconciledSeconds"] == original_end - prediction_duration
+    assert audit["maximumReconciledSeconds"] == original_end - prediction_duration
+    row = audit["rows"][0]
+    assert row == {
+        "trackId": "same-ms-terminal-end",
+        "datasetId": "guitarset",
+        "referenceSha256": groups["tracks"][0]["referenceSha256"],
+        "originalEnd": original_end,
+        "predictionDuration": prediction_duration,
+        "reconciledEnd": prediction_duration,
+        "reconciledSeconds": original_end - prediction_duration,
+        "canonicalMs": 400,
+        "rowSha256": row["rowSha256"],
+    }
+    assert row["rowSha256"] == canonical_sha256({key: value for key, value in row.items() if key != "rowSha256"})
+    assert result["examples"][0]["referenceEndpointReconciliationRowSha256"] == row["rowSha256"]
+    assert sum(item["reconciledTrackCount"] for item in audit["datasetCounts"]) == 1
+    assert json.loads(_json_bytes(result)) == result
+
+
+def test_reference_endpoint_reconciliation_rejects_adjacent_canonical_millisecond(
+    tmp_path: Path,
+) -> None:
+    report, runtime, groups, audio_lineage, _references = _fixture(
+        tmp_path,
+        definitions=[
+            {
+                "id": "adjacent-ms-terminal-end",
+                "datasetId": "fixture",
+                "role": "comp",
+                "group": "duration-group",
+                "prediction": ["C"],
+                "reference": ["C"],
+                "predictionDuration": 0.4004,
+                "referenceDurationDeclared": False,
+                "referenceTerminalEnd": 0.4006,
+            }
+        ],
+    )
+    with pytest.raises(ValueError, match="same player-canonical millisecond"):
+        _build(tmp_path, report, runtime, groups, audio_lineage)
+
+
+def test_reference_endpoint_reconciliation_never_clips_declared_duration(
+    tmp_path: Path,
+) -> None:
+    report, runtime, groups, audio_lineage, _references = _fixture(
+        tmp_path,
+        definitions=[
+            {
+                "id": "declared-duration-terminal-end",
+                "datasetId": "fixture",
+                "role": "comp",
+                "group": "duration-group",
+                "prediction": ["C"],
+                "reference": ["C"],
+                "predictionDuration": 0.4004,
+                "referenceTerminalEnd": 0.400445,
+            }
+        ],
+    )
+    with pytest.raises(ValueError, match="reference duration ends before"):
+        _build(tmp_path, report, runtime, groups, audio_lineage)
+
+
+def test_reference_endpoint_reconciliation_rejects_interior_overhanging_suffix() -> None:
+    prediction = _prediction("interior-overhang", 0.4004, ["C"])
+    timing = _timing(0.4, [0.0])
+    summary = _fake_summary(prediction, timing)
+    reference = {
+        "segments": [
+            {"start": 0.0, "end": 0.40042, "label": "C:maj"},
+            {"start": 0.40042, "end": 0.40044, "label": "C:maj"},
+        ]
+    }
+    with pytest.raises(ValueError, match="Only one unique terminal"):
+        bar_examples._frozen_bar_score_inputs(reference, prediction, timing, summary)
+
+
+def test_reference_endpoint_reconciliation_never_extends_same_ms_underhang() -> None:
+    prediction = _prediction("underhang", 0.4004, ["C"])
+    timing = _timing(0.4, [0.0])
+    summary = _fake_summary(prediction, timing)
+    reference = {"segments": [{"start": 0.0, "end": 0.40035, "label": "C:maj"}]}
+    scoring_reference, _scoring_timing, reconciliation = bar_examples._frozen_bar_score_inputs(
+        reference,
+        prediction,
+        timing,
+        summary,
+    )
+    assert reconciliation is None
+    assert scoring_reference["segments"] == reference["segments"]
+    assert scoring_reference["segments"][-1]["end"] == 0.40035
+
+
+def test_reference_endpoint_reconciliation_rejects_structurally_invalid_segments() -> None:
+    prediction = _prediction("overlapping-reference", 0.4004, ["C"])
+    timing = _timing(0.4, [0.0])
+    summary = _fake_summary(prediction, timing)
+    reference = {
+        "segments": [
+            {"start": 0.0, "end": 0.3, "label": "C:maj"},
+            {"start": 0.2, "end": 0.40044, "label": "C:maj"},
+        ]
+    }
+    with pytest.raises(ValueError, match="chronologically ordered and nonoverlapping"):
+        bar_examples._frozen_bar_score_inputs(reference, prediction, timing, summary)
 
 
 def test_duration_join_rejects_nearby_but_noncanonical_runtime_value() -> None:

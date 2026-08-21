@@ -55,6 +55,10 @@ BENCHMARK_AUDIO_LINEAGE_SCHEMA = "chord_benchmark_audio_lineage_v1"
 AUDIO_GROUP_AUDIT_SCHEMA = "chord_bar_selector_audio_group_audit_v1"
 LABEL_DETERMINACY_AUDIT_SCHEMA = "chord_bar_selector_label_determinacy_audit_v1"
 DATASET_LABEL_DETERMINACY_AUDIT_SCHEMA = "chord_bar_selector_dataset_label_determinacy_audit_v1"
+REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA = "chord_bar_selector_reference_endpoint_reconciliation_audit_v1"
+REFERENCE_ENDPOINT_RECONCILIATION_POLICY = (
+    "undeclared-duration-unique-terminal-end-same-player-canonical-millisecond-clip-v1"
+)
 LABEL_DETERMINACY_DATASET_IDS = (
     "aam",
     "guitarset",
@@ -87,6 +91,7 @@ BAR_OUTCOME_ELIGIBILITY_CONTRACT = {
     ),
     "legacyProductConfidenceAvailability": "audit-only; never label eligibility or an estimator feature",
     "barEndDurationRule": ("full-precision-prediction-after-exact-player-canonical-millisecond-runtime-join"),
+    "referenceEndpointReconciliationPolicy": REFERENCE_ENDPOINT_RECONCILIATION_POLICY,
     "inclusionRule": (
         "reference label determinate and frozen prediction structural eligibility passes; "
         "legacy product-confidence availability is ignored"
@@ -171,6 +176,7 @@ _EXAMPLE_KEYS = frozenset(
         "canonicalDurationMilliseconds",
         "audioLineageRowSha256",
         "audioLineageProjectionSha256",
+        "referenceEndpointReconciliationRowSha256",
         "legacyProductConfidenceMissing",
         "outcome",
         "exampleSha256",
@@ -216,6 +222,8 @@ _OUTPUT_KEYS = frozenset(
         "featureArrayVerification",
         "audioGroupAudit",
         "audioGroupAuditSha256",
+        "referenceEndpointReconciliationAudit",
+        "referenceEndpointReconciliationAuditSha256",
         "labelDeterminacyAudit",
         "labelDeterminacyAuditSha256",
         "datasetLabelDeterminacyAudit",
@@ -255,6 +263,42 @@ _DATASET_LABEL_AUDIT_KEYS = frozenset(
         "requiredDatasetIds",
         "datasetIds",
         "aggregateLabelDeterminacyAuditSha256",
+        "rows",
+        "rowSetSha256",
+        "auditSha256",
+    }
+)
+_REFERENCE_ENDPOINT_RECONCILIATION_ROW_KEYS = frozenset(
+    {
+        "trackId",
+        "datasetId",
+        "referenceSha256",
+        "originalEnd",
+        "predictionDuration",
+        "reconciledEnd",
+        "reconciledSeconds",
+        "canonicalMs",
+        "rowSha256",
+    }
+)
+_REFERENCE_ENDPOINT_RECONCILIATION_DATASET_COUNT_KEYS = frozenset(
+    {
+        "datasetId",
+        "sourceTrackCount",
+        "reconciledTrackCount",
+    }
+)
+_REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_KEYS = frozenset(
+    {
+        "schemaVersion",
+        "policy",
+        "sourceTrackCount",
+        "reconciledTrackCount",
+        "unreconciledTrackCount",
+        "datasetCounts",
+        "datasetCountSetSha256",
+        "totalReconciledSeconds",
+        "maximumReconciledSeconds",
         "rows",
         "rowSetSha256",
         "auditSha256",
@@ -875,6 +919,74 @@ def _dataset_label_determinacy_audit(
     return audit
 
 
+def _reference_endpoint_reconciliation_audit(
+    reconciliation_rows: Sequence[Mapping[str, Any]],
+    projection_tracks: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    rows = sorted((dict(row) for row in reconciliation_rows), key=lambda row: str(row["trackId"]))
+    if len({str(row["trackId"]) for row in rows}) != len(rows):
+        raise RuntimeError("Reference endpoint reconciliation audit repeats a track id.")
+    for row in rows:
+        _exact_keys(row, _REFERENCE_ENDPOINT_RECONCILIATION_ROW_KEYS, "reference endpoint reconciliation row")
+        if canonical_sha256({key: value for key, value in row.items() if key != "rowSha256"}) != row["rowSha256"]:
+            raise RuntimeError("Reference endpoint reconciliation row hash is stale.")
+
+    source_by_dataset: dict[str, int] = {}
+    for track in projection_tracks.values():
+        dataset_id = _required_dataset_id(track.get("datasetId"), "audio-lineage projection datasetId")
+        source_by_dataset[dataset_id] = source_by_dataset.get(dataset_id, 0) + 1
+    reconciled_by_dataset: dict[str, int] = {}
+    for row in rows:
+        dataset_id = _required_dataset_id(row.get("datasetId"), "reference reconciliation datasetId")
+        reconciled_by_dataset[dataset_id] = reconciled_by_dataset.get(dataset_id, 0) + 1
+    custom_ids = sorted(set(source_by_dataset) - set(LABEL_DETERMINACY_DATASET_IDS))
+    dataset_ids = [*LABEL_DETERMINACY_DATASET_IDS, *custom_ids]
+    dataset_counts = [
+        {
+            "datasetId": dataset_id,
+            "sourceTrackCount": source_by_dataset.get(dataset_id, 0),
+            "reconciledTrackCount": reconciled_by_dataset.get(dataset_id, 0),
+        }
+        for dataset_id in dataset_ids
+    ]
+    for row in dataset_counts:
+        _exact_keys(
+            row,
+            _REFERENCE_ENDPOINT_RECONCILIATION_DATASET_COUNT_KEYS,
+            "reference endpoint reconciliation dataset count",
+        )
+        if row["reconciledTrackCount"] > row["sourceTrackCount"]:
+            raise RuntimeError("Reference endpoint reconciliation dataset count exceeds its source tracks.")
+    source_track_count = len(projection_tracks)
+    reconciled_track_count = len(rows)
+    if (
+        sum(int(row["sourceTrackCount"]) for row in dataset_counts) != source_track_count
+        or sum(int(row["reconciledTrackCount"]) for row in dataset_counts) != reconciled_track_count
+    ):
+        raise RuntimeError("Reference endpoint reconciliation dataset counts do not sum to their aggregates.")
+    reconciled_values = [float(row["reconciledSeconds"]) for row in rows]
+    payload = {
+        "schemaVersion": REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA,
+        "policy": REFERENCE_ENDPOINT_RECONCILIATION_POLICY,
+        "sourceTrackCount": source_track_count,
+        "reconciledTrackCount": reconciled_track_count,
+        "unreconciledTrackCount": source_track_count - reconciled_track_count,
+        "datasetCounts": dataset_counts,
+        "datasetCountSetSha256": canonical_sha256(dataset_counts),
+        "totalReconciledSeconds": math.fsum(reconciled_values),
+        "maximumReconciledSeconds": max(reconciled_values, default=0.0),
+        "rows": rows,
+        "rowSetSha256": canonical_sha256(rows),
+    }
+    audit = {**payload, "auditSha256": canonical_sha256(payload)}
+    _exact_keys(
+        audit,
+        _REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_KEYS,
+        "reference endpoint reconciliation audit",
+    )
+    return audit
+
+
 def build_bar_selector_group_manifest(
     track_descriptors: Sequence[Mapping[str, Any]],
     *,
@@ -1197,8 +1309,8 @@ def _frozen_bar_score_inputs(
     prediction: Mapping[str, Any],
     timing: Mapping[str, Any],
     summary: Mapping[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Align only the final bar end after proving the exact player-ms join."""
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
+    """Align one undeclared unique terminal reference end after the exact player-ms join."""
 
     prediction_duration = _finite(
         prediction.get("durationSeconds"),
@@ -1214,7 +1326,8 @@ def _frozen_bar_score_inputs(
     )
     if prediction_duration <= 0 or runtime_duration <= 0:
         raise ValueError("Bar scoring durations must be positive.")
-    canonical_prediction_duration = math.floor(prediction_duration * 1000 + 0.5) / 1000
+    canonical_prediction_milliseconds = math.floor(prediction_duration * 1000 + 0.5)
+    canonical_prediction_duration = canonical_prediction_milliseconds / 1000
     if runtime_duration != canonical_prediction_duration:
         raise ValueError(
             "Runtime bar scoring duration must exactly equal the player-canonical "
@@ -1231,7 +1344,26 @@ def _frozen_bar_score_inputs(
     ):
         raise ValueError("Bar summary timing does not retain the exact frozen duration join.")
 
+    raw_segments = list(_sequence(reference.get("segments"), "reference segments for bar scoring"))
+    scoring_segments: list[dict[str, Any]] = []
+    segment_endpoints: list[tuple[float, float]] = []
+    previous_start: float | None = None
+    previous_end: float | None = None
+    for index, raw_segment in enumerate(raw_segments):
+        segment = _mapping(raw_segment, f"reference segments for bar scoring[{index}]")
+        start = _finite(segment.get("start"), f"reference segment {index} start")
+        end = _finite(segment.get("end"), f"reference segment {index} end")
+        if start < 0 or end <= start:
+            raise ValueError("Reference segment endpoints must be nonnegative and strictly increasing.")
+        if previous_start is not None and (start < previous_start or start < float(previous_end)):
+            raise ValueError("Reference segments must already be chronologically ordered and nonoverlapping.")
+        previous_start = start
+        previous_end = end
+        scoring_segments.append(dict(segment))
+        segment_endpoints.append((start, end))
+
     scoring_reference = dict(reference)
+    reconciliation: dict[str, Any] | None = None
     declared_reference_duration = reference.get("durationSeconds")
     if declared_reference_duration is not None:
         reference_duration = _finite(
@@ -1243,6 +1375,34 @@ def _frozen_bar_score_inputs(
                 "Reference duration must exactly equal either the full-precision prediction "
                 "duration or its player-canonical millisecond duration."
             )
+    elif segment_endpoints:
+        original_end = max(end for _start, end in segment_endpoints)
+        if original_end > prediction_duration:
+            terminal_index = len(segment_endpoints) - 1
+            overhanging_indices = [
+                index for index, (_start, end) in enumerate(segment_endpoints) if end > prediction_duration
+            ]
+            maximum_indices = [index for index, (_start, end) in enumerate(segment_endpoints) if end == original_end]
+            terminal_start = segment_endpoints[terminal_index][0]
+            if overhanging_indices != [terminal_index] or maximum_indices != [terminal_index]:
+                raise ValueError("Only one unique terminal reference segment end may exceed prediction duration.")
+            if terminal_start >= prediction_duration:
+                raise ValueError("The reconciled terminal reference segment must start before prediction duration.")
+            canonical_reference_milliseconds = math.floor(original_end * 1000 + 0.5)
+            if canonical_reference_milliseconds != canonical_prediction_milliseconds:
+                raise ValueError(
+                    "An undeclared reference endpoint may exceed prediction duration only inside the same "
+                    "player-canonical millisecond."
+                )
+            scoring_segments[terminal_index]["end"] = prediction_duration
+            reconciliation = {
+                "originalEnd": original_end,
+                "predictionDuration": prediction_duration,
+                "reconciledEnd": prediction_duration,
+                "reconciledSeconds": original_end - prediction_duration,
+                "canonicalMs": canonical_prediction_milliseconds,
+            }
+    scoring_reference["segments"] = scoring_segments
     scoring_reference["durationSeconds"] = prediction_duration
     scoring_timing: dict[str, Any] = {
         "durationSeconds": prediction_duration,
@@ -1251,7 +1411,7 @@ def _frozen_bar_score_inputs(
     }
     if "prefixExcludedSeconds" in timing:
         scoring_timing["prefixExcludedSeconds"] = timing["prefixExcludedSeconds"]
-    return scoring_reference, scoring_timing
+    return scoring_reference, scoring_timing, reconciliation
 
 
 def _validate_frozen_bar_score(score: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -1546,6 +1706,7 @@ def build_bar_selector_examples(
     # Reference phase. At this point all tracks, not merely the current track,
     # have complete and hash-stable prediction-only bar features in memory.
     examples: list[dict[str, Any]] = []
+    reference_endpoint_reconciliation_rows: list[dict[str, Any]] = []
     score_counts = _empty_label_counts()
     score_counts_by_dataset = {dataset_id: _empty_label_counts() for dataset_id in LABEL_DETERMINACY_DATASET_IDS}
     emitted_by_dataset = {dataset_id: 0 for dataset_id in LABEL_DETERMINACY_DATASET_IDS}
@@ -1575,12 +1736,45 @@ def build_bar_selector_examples(
             raise ValueError(f"Reference file hash mismatch for track {track_id!r}.")
         if reference_sha256 != report_tracks[track_id]["referenceSha256"]:
             raise ValueError(f"Reference hash disagrees with the benchmark row for track {track_id!r}.")
-        scoring_reference, scoring_timing = _frozen_bar_score_inputs(
+        scoring_reference, scoring_timing, endpoint_reconciliation = _frozen_bar_score_inputs(
             reference,
             record["prediction"],
             record["timing"],
             record["summary"],
         )
+        reference_endpoint_reconciliation_row_sha256: str | None = None
+        if endpoint_reconciliation is not None:
+            canonical_milliseconds = _strict_integer(
+                endpoint_reconciliation.get("canonicalMs"),
+                "reference endpoint reconciliation canonicalMs",
+                minimum=1,
+            )
+            audio_lineage_canonical_milliseconds = _strict_integer(
+                _mapping(record["audioLineageRow"], "audio-lineage row").get("canonicalDurationMilliseconds"),
+                "audio-lineage canonicalDurationMilliseconds",
+                minimum=1,
+            )
+            if canonical_milliseconds != audio_lineage_canonical_milliseconds:
+                raise ValueError(
+                    "Reference endpoint reconciliation disagrees with the exact audio-lineage canonical millisecond."
+                )
+            reconciliation_payload = {
+                "trackId": track_id,
+                "datasetId": dataset_id,
+                "referenceSha256": reference_sha256,
+                **endpoint_reconciliation,
+            }
+            reconciliation_row = {
+                **reconciliation_payload,
+                "rowSha256": canonical_sha256(reconciliation_payload),
+            }
+            _exact_keys(
+                reconciliation_row,
+                _REFERENCE_ENDPOINT_RECONCILIATION_ROW_KEYS,
+                "reference endpoint reconciliation row",
+            )
+            reference_endpoint_reconciliation_rows.append(reconciliation_row)
+            reference_endpoint_reconciliation_row_sha256 = reconciliation_row["rowSha256"]
         score = score_bar_product_confidence(
             scoring_reference,
             record["prediction"],
@@ -1691,6 +1885,7 @@ def build_bar_selector_examples(
                 "canonicalDurationMilliseconds": compact_bar["canonicalDurationMilliseconds"],
                 "audioLineageRowSha256": compact_bar["audioLineageRowSha256"],
                 "audioLineageProjectionSha256": compact_bar["audioLineageProjectionSha256"],
+                "referenceEndpointReconciliationRowSha256": (reference_endpoint_reconciliation_row_sha256),
                 "legacyProductConfidenceMissing": legacy_product_confidence_missing,
                 "outcome": {"correct": correct},
             }
@@ -1723,6 +1918,10 @@ def build_bar_selector_examples(
         aggregate_counts=complete_score_counts,
         aggregate_audit_sha256=label_determinacy_audit["auditSha256"],
     )
+    reference_endpoint_reconciliation_audit = _reference_endpoint_reconciliation_audit(
+        reference_endpoint_reconciliation_rows,
+        projection_tracks,
+    )
     example_set_sha256 = canonical_sha256(examples)
     output_payload: dict[str, Any] = {
         "schemaVersion": EXAMPLES_SCHEMA,
@@ -1742,6 +1941,8 @@ def build_bar_selector_examples(
         "featureArrayVerification": FEATURE_ARRAY_VERIFICATION,
         "audioGroupAudit": audio_group_audit,
         "audioGroupAuditSha256": audio_group_audit["auditSha256"],
+        "referenceEndpointReconciliationAudit": reference_endpoint_reconciliation_audit,
+        "referenceEndpointReconciliationAuditSha256": reference_endpoint_reconciliation_audit["auditSha256"],
         "labelDeterminacyAudit": label_determinacy_audit,
         "labelDeterminacyAuditSha256": label_determinacy_audit["auditSha256"],
         "datasetLabelDeterminacyAudit": dataset_label_determinacy_audit,
@@ -1769,6 +1970,8 @@ __all__ = [
     "LABEL_DETERMINACY_AUDIT_SCHEMA",
     "LABEL_DETERMINACY_DATASET_IDS",
     "OOF_DENOMINATOR",
+    "REFERENCE_ENDPOINT_RECONCILIATION_AUDIT_SCHEMA",
+    "REFERENCE_ENDPOINT_RECONCILIATION_POLICY",
     "SELECTOR_ESTIMAND",
     "build_bar_selector_group_manifest",
     "build_bar_selector_examples",
