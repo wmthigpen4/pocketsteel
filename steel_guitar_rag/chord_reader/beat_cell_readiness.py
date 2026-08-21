@@ -37,6 +37,17 @@ from .beat_cell_selector import (
     validate_beat_cell_selector_artifact,
 )
 from .beat_cell_stage1 import make_funnel, validate_beat_cell_stage1_artifact
+from .beat_cell_readiness_recovery_contract import (
+    READINESS_RECOVERY_AUTHORITY_CANONICAL_SHA256,
+    READINESS_RECOVERY_AUTHORITY_FILE_SHA256,
+    READINESS_RECOVERY_AUTHORITY_SCHEMA,
+    READINESS_RECOVERY_AUTHORIZATION_SCHEMA,
+    READINESS_RECOVERY_ID,
+    load_readiness_recovery_authorization,
+    load_readiness_recovery_authority,
+    recovery_authorization_path,
+    recovery_authority_path,
+)
 from .beat_cell_stage2_contract import (
     BEAT_CELL_FEATURE_SET_PUBLICATION_MODE,
     BEAT_CELL_ONE_SHOT_PROJECTION_SHA256,
@@ -51,15 +62,18 @@ from .beat_cell_stage2_contract import (
 
 
 DEVELOPMENT_SPLIT = "development"
-BEAT_CELL_READINESS_SCHEMA = "chord_runtime_beat_cell_selector_development_readiness_v1"
+BEAT_CELL_READINESS_SCHEMA = "chord_runtime_beat_cell_selector_development_readiness_v2"
 BEAT_CELL_READINESS_RUBRIC_SCHEMA = "chord_runtime_beat_cell_selector_development_readiness_rubric_v1"
-BEAT_CELL_READINESS_INPUT_BINDINGS_SCHEMA = "chord_runtime_beat_cell_selector_readiness_input_bindings_v1"
-BEAT_CELL_READINESS_JOINED_ROW_SCHEMA = "chord_runtime_beat_cell_selector_readiness_joined_oof_row_v1"
+BEAT_CELL_READINESS_INPUT_BINDINGS_SCHEMA = "chord_runtime_beat_cell_selector_readiness_input_bindings_v2"
+BEAT_CELL_READINESS_JOINED_ROW_SCHEMA = "chord_runtime_beat_cell_selector_readiness_joined_oof_row_v2"
 
 AUTHORITY_FILE_SHA256 = BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256
 AUTHORITY_CANONICAL_SHA256 = BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256
 READINESS_PROJECTION_SHA256 = BEAT_CELL_READINESS_PROJECTION_SHA256
 ONE_SHOT_PROJECTION_SHA256 = BEAT_CELL_ONE_SHOT_PROJECTION_SHA256
+RECOVERY_AUTHORITY_FILE_SHA256 = READINESS_RECOVERY_AUTHORITY_FILE_SHA256
+RECOVERY_AUTHORITY_CANONICAL_SHA256 = READINESS_RECOVERY_AUTHORITY_CANONICAL_SHA256
+RECOVERY_IMPLEMENTATION_AUTHORIZATION_PATH = recovery_authorization_path()
 IMPLEMENTATION_AUTHORITY_HEAD = "0933007489656500ec17fec1f64628031564214f"
 
 FIXED_TARGET_COVERAGE = 0.50
@@ -68,6 +82,17 @@ RELIABILITY_BIN_COUNT = 10
 PROBABILITY_FLOOR = 1e-12
 PROBABILITY_QUANTILES = (0.0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0)
 ABSOLUTE_Z_QUANTILES = (0.0, 0.5, 0.9, 0.95, 0.99, 1.0)
+INTEGER_COUNT_FEATURE_NAMES = frozenset({"predictionTransitionCount"})
+INTEGER_FLAG_FEATURE_NAMES = frozenset(
+    {
+        "productFamilyNone",
+        "productFamilyMajor",
+        "productFamilyMinor",
+        "productFamilyDominant",
+        "productFamilyMinorSeventh",
+    }
+)
+INTEGER_FEATURE_NAMES = INTEGER_COUNT_FEATURE_NAMES | INTEGER_FLAG_FEATURE_NAMES
 DATASET_IDS = ("aam", "guitarset", "idmt_guitar", "nrgcp", "winterreise")
 GUITARSET_ROLES = ("comp", "solo")
 OUTER_FOLD_COUNT = 5
@@ -209,6 +234,21 @@ BEAT_CELL_READINESS_RUBRIC_SHA256 = canonical_sha256(BEAT_CELL_READINESS_RUBRIC)
 
 _HEX = frozenset("0123456789abcdef")
 _FUNNEL_FIELDS = ("T", "U", "R", "N", "E", "C", "I")
+_RECOVERY_NEW_CYCLE_COUNTS = {
+    "featureSetBuildCount": 0,
+    "examplesBuildCount": 0,
+    "selectorCandidateCount": 0,
+    "readinessEvaluationCount": 1,
+    "readinessReproductionRefitCount": 1,
+    "sameCycleRetryAllowed": False,
+}
+_RECOVERY_CUMULATIVE_COUNTS = {
+    "featureSetBuildCount": 1,
+    "examplesBuildCount": 1,
+    "selectorCandidateCount": 1,
+    "readinessEvaluationCount": 2,
+    "readinessReproductionRefitCount": 2,
+}
 
 
 class BeatCellReadinessError(ValueError):
@@ -317,6 +357,114 @@ def _authority_contract() -> dict[str, Any]:
     ):
         raise BeatCellReadinessError("The committed readiness/one-shot mechanics drifted.")
     return authority
+
+
+def _recovery_contract() -> dict[str, Any]:
+    """Load the distinct R5 authority and require its final execution receipt."""
+
+    try:
+        recovery = dict(load_readiness_recovery_authority())
+    except Exception as error:  # pragma: no cover - normalized at public boundary
+        raise BeatCellReadinessError("The committed readiness recovery authority failed validation.") from error
+    if canonical_sha256(recovery) != RECOVERY_AUTHORITY_CANONICAL_SHA256:
+        raise BeatCellReadinessError("The readiness recovery authority canonical hash drifted.")
+    if (
+        recovery.get("schemaVersion") != READINESS_RECOVERY_AUTHORITY_SCHEMA
+        or recovery.get("split") != DEVELOPMENT_SPLIT
+        or recovery.get("developmentOnly") is not True
+        or recovery.get("promotionEligible") is not False
+        or recovery.get("recoveryId") != READINESS_RECOVERY_ID
+    ):
+        raise BeatCellReadinessError("The readiness recovery authority envelope is not exact.")
+
+    source_cycle = _mapping(recovery.get("sourceCycle"), "recovery.sourceCycle")
+    if (
+        source_cycle.get("authorityFileSha256") != AUTHORITY_FILE_SHA256
+        or source_cycle.get("authorityCanonicalSha256") != AUTHORITY_CANONICAL_SHA256
+        or _mapping(source_cycle.get("projectionSha256"), "recovery.sourceCycle.projectionSha256").get("readiness")
+        != READINESS_PROJECTION_SHA256
+        or source_cycle["projectionSha256"].get("oneShot") != ONE_SHOT_PROJECTION_SHA256
+    ):
+        raise BeatCellReadinessError("The recovery authority does not bind the exact R4 source authority.")
+
+    output = _mapping(recovery.get("output"), "recovery.output")
+    _exact_fields(
+        output,
+        {"readinessReport", "publicationMode", "mustBeNew", "callerPathOverrideAllowed"},
+        "recovery.output",
+    )
+    if (
+        output.get("publicationMode") != PUBLICATION_MODE
+        or output.get("mustBeNew") is not True
+        or output.get("callerPathOverrideAllowed") is not False
+    ):
+        raise BeatCellReadinessError("The recovery publication policy is not exact.")
+    output_path = _string(output.get("readinessReport"), "recovery.output.readinessReport")
+    immutable = _mapping(recovery.get("immutableInputs"), "recovery.immutableInputs")
+    input_paths = {
+        _string(_mapping(immutable.get(name), f"recovery.immutableInputs.{name}").get("path"), f"{name} path")
+        for name in ("stage1", "examples", "selector")
+    }
+    if output_path in input_paths:
+        raise BeatCellReadinessError("The recovery output overlaps an immutable R4 input.")
+
+    frozen = _mapping(recovery.get("frozenPolicy"), "recovery.frozenPolicy")
+    if (
+        frozen.get("readinessProjectionSha256") != READINESS_PROJECTION_SHA256
+        or frozen.get("oneShotProjectionSha256") != ONE_SHOT_PROJECTION_SHA256
+        or frozen.get("readinessRubricSha256") != BEAT_CELL_READINESS_RUBRIC_SHA256
+        or frozen.get("fixedTargetCoverage") != FIXED_TARGET_COVERAGE
+        or frozen.get("gateCount") != 15
+        or frozen.get("featureFoldWeightDatasetSelectorChangeAllowed") is not False
+        or frozen.get("thresholdSelectionAllowed") is not False
+        or frozen.get("calibrationAccessDuringRecoveryAllowed") is not False
+    ):
+        raise BeatCellReadinessError("The recovery authority changed the frozen R4 readiness policy.")
+
+    one_shot = _mapping(recovery.get("oneShot"), "recovery.oneShot")
+    if (
+        dict(_mapping(one_shot.get("newCycle"), "recovery.oneShot.newCycle")) != _RECOVERY_NEW_CYCLE_COUNTS
+        or dict(
+            _mapping(
+                one_shot.get("cumulativeIncludingConsumedR4"),
+                "recovery.oneShot.cumulativeIncludingConsumedR4",
+            )
+        )
+        != _RECOVERY_CUMULATIVE_COUNTS
+        or one_shot.get("immutableR4ArtifactsMustBeReused") is not True
+        or one_shot.get("featureExamplesSelectorRegenerationAllowed") is not False
+        or one_shot.get("stopAfterReadinessForIndependentAudit") is not True
+    ):
+        raise BeatCellReadinessError("The recovery one-shot counts or immutable-reuse policy changed.")
+
+    forbidden = _mapping(recovery.get("forbiddenAccess"), "recovery.forbiddenAccess")
+    if not forbidden or any(value is not False for value in forbidden.values()):
+        raise BeatCellReadinessError("The recovery authority opened a forbidden surface.")
+    implementation = _mapping(recovery.get("implementation"), "recovery.implementation")
+    if implementation.get("executionAuthorized") is not False or any(
+        implementation.get(field) is not None
+        for field in (
+            "finalReadinessModuleFileSha256",
+            "finalRecoveryContractFileSha256",
+            "finalReadinessTestFileSha256",
+            "finalImplementationCommit",
+        )
+    ):
+        raise BeatCellReadinessError("The preregistration must remain non-executable and receipt-neutral.")
+    return recovery
+
+
+def _implementation_authorization_receipt() -> Mapping[str, Any]:
+    """Load the separate fixed-path R5 implementation receipt or fail closed."""
+
+    try:
+        return dict(load_readiness_recovery_authorization())
+    except Exception as error:  # pragma: no cover - exact causes belong to the contract loader
+        raise BeatCellReadinessError(
+            "The R5 readiness implementation authorization receipt is not installed or is invalid at its "
+            f"fixed path {RECOVERY_IMPLEMENTATION_AUTHORIZATION_PATH}; execution remains closed."
+            f" Required schema: {READINESS_RECOVERY_AUTHORIZATION_SCHEMA}."
+        ) from error
 
 
 def _sealed_preflight(stage1: Mapping[str, Any], examples: Mapping[str, Any], selector: Mapping[str, Any]) -> None:
@@ -765,19 +913,45 @@ def _validate_selector_and_reproduce(examples: Mapping[str, Any], selector: Mapp
     return {**payload, "reproductionSha256": canonical_sha256(payload)}
 
 
-def _feature_vector(example: Mapping[str, Any], feature_names: Sequence[str], example_key: str) -> list[float | None]:
+def _feature_vector(
+    example: Mapping[str, Any], feature_names: Sequence[str], example_key: str
+) -> list[int | float | None]:
     values = _mapping(example.get("featureValues"), f"example {example_key} featureValues")
     if set(values) != set(feature_names) or len(values) != len(feature_names):
         raise BeatCellReadinessError("Example featureValues changed the exact feature-name key set.")
     if canonical_sha256(values) != example.get("featureValuesSha256"):
         raise BeatCellReadinessError("Example featureValuesSha256 is stale.")
-    output: list[float | None] = []
+    _validate_feature_value_types(values, feature_names, f"example {example_key}")
+    output: list[int | float | None] = []
     # JSON object rendering is canonically key-sorted.  Estimator order comes
     # only from the separately sealed featureNames array.
     for name in feature_names:
         raw = values[name]
-        output.append(None if raw is None else _finite(raw, f"example {example_key} feature {name}"))
+        if raw is not None:
+            _finite(raw, f"example {example_key} feature {name}")
+        output.append(raw)
     return output
+
+
+def _validate_feature_value_types(
+    values: Mapping[str, Any],
+    feature_names: Sequence[str],
+    name: str,
+) -> None:
+    """Preserve the exact sealed JSON numeric wire types, not only numeric values."""
+
+    if not INTEGER_FEATURE_NAMES.issubset(feature_names):
+        raise BeatCellReadinessError("The exact integer-valued feature inventory changed.")
+    for feature_name in feature_names:
+        value = values[feature_name]
+        if feature_name in INTEGER_COUNT_FEATURE_NAMES:
+            if type(value) is not int or value < 0:
+                raise BeatCellReadinessError(f"{name} feature {feature_name} must remain a nonnegative JSON integer.")
+        elif feature_name in INTEGER_FLAG_FEATURE_NAMES:
+            if type(value) is not int or value not in (0, 1):
+                raise BeatCellReadinessError(f"{name} feature {feature_name} must remain a JSON integer flag.")
+        elif value is not None and type(value) is not float:
+            raise BeatCellReadinessError(f"{name} feature {feature_name} must remain a JSON float or null.")
 
 
 def _join_oof_rows(
@@ -1693,30 +1867,138 @@ def _source_object_binding(path: str, value: Mapping[str, Any], artifact_field: 
     return {**payload, "bindingSha256": canonical_sha256(payload)}
 
 
+def _validate_recovery_input_receipts(
+    recovery: Mapping[str, Any],
+    stage1: Mapping[str, Any],
+    examples: Mapping[str, Any],
+    selector: Mapping[str, Any],
+) -> None:
+    immutable = _mapping(recovery.get("immutableInputs"), "recovery.immutableInputs")
+    for name, value in (("stage1", stage1), ("examples", examples), ("selector", selector)):
+        expected = _mapping(immutable.get(name), f"recovery.immutableInputs.{name}")
+        if (
+            _sha256_bytes(_render_json(value)) != expected.get("fileSha256")
+            or canonical_sha256(value) != expected.get("canonicalSha256")
+            or value.get("artifactSha256") != expected.get("artifactSha256")
+        ):
+            raise BeatCellReadinessError(f"The immutable R4 {name} receipt changed in recovery.")
+
+    example_rows = list(_sequence(examples.get("examples"), "examples.examples"))
+    example_duration = sum(
+        _integer(_mapping(row, "example").get("durationMilliseconds"), "example.durationMilliseconds", minimum=1)
+        for row in example_rows
+    )
+    expected_examples = _mapping(immutable.get("examples"), "recovery.immutableInputs.examples")
+    if len(example_rows) != expected_examples.get("exampleCount") or example_duration != expected_examples.get(
+        "exampleDurationMilliseconds"
+    ):
+        raise BeatCellReadinessError("The immutable R4 example denominators changed in recovery.")
+
+    feature = _mapping(immutable.get("featureSet"), "recovery.immutableInputs.featureSet")
+    expected_feature_receipts = {
+        "sourceFeatureSetFileSha256": feature.get("manifestFileSha256"),
+        "sourceFeatureSetArtifactSha256": feature.get("artifactSha256"),
+        "sourceFeatureSummarySetSha256": feature.get("summarySetSha256"),
+        "sourceFeatureRowSetSha256": feature.get("featureRowSetSha256"),
+    }
+    if any(examples.get(field) != expected for field, expected in expected_feature_receipts.items()):
+        raise BeatCellReadinessError("The examples artifact changed an immutable R4 feature-set receipt.")
+
+
+def _build_source_authority_binding(authority: Mapping[str, Any]) -> dict[str, Any]:
+    payload = {
+        "schemaVersion": _string(authority.get("schemaVersion"), "authority.schemaVersion"),
+        "path": str(authority_path()),
+        "pathSha256": canonical_sha256(str(authority_path())),
+        "fileSha256": AUTHORITY_FILE_SHA256,
+        "canonicalSha256": AUTHORITY_CANONICAL_SHA256,
+        "readinessProjection": deepcopy(authority["readiness"]),
+        "readinessProjectionSha256": READINESS_PROJECTION_SHA256,
+        "oneShotProjection": deepcopy(authority["oneShot"]),
+        "oneShotProjectionSha256": ONE_SHOT_PROJECTION_SHA256,
+    }
+    return {**payload, "bindingSha256": canonical_sha256(payload)}
+
+
+def _build_recovery_authority_binding(recovery: Mapping[str, Any]) -> dict[str, Any]:
+    output = deepcopy(dict(_mapping(recovery.get("output"), "recovery.output")))
+    frozen = deepcopy(dict(_mapping(recovery.get("frozenPolicy"), "recovery.frozenPolicy")))
+    implementation = deepcopy(dict(_mapping(recovery.get("implementation"), "recovery.implementation")))
+    one_shot = deepcopy(dict(_mapping(recovery.get("oneShot"), "recovery.oneShot")))
+    payload = {
+        "schemaVersion": _string(recovery.get("schemaVersion"), "recovery.schemaVersion"),
+        "recoveryId": _string(recovery.get("recoveryId"), "recovery.recoveryId"),
+        "path": str(recovery_authority_path()),
+        "pathSha256": canonical_sha256(str(recovery_authority_path())),
+        "fileSha256": RECOVERY_AUTHORITY_FILE_SHA256,
+        "canonicalSha256": RECOVERY_AUTHORITY_CANONICAL_SHA256,
+        "sourceCycleSha256": canonical_sha256(recovery["sourceCycle"]),
+        "consumedFailureSha256": canonical_sha256(recovery["consumedFailure"]),
+        "immutableInputsSha256": canonical_sha256(recovery["immutableInputs"]),
+        "output": output,
+        "outputSha256": canonical_sha256(output),
+        "frozenPolicy": frozen,
+        "frozenPolicySha256": canonical_sha256(frozen),
+        "implementation": implementation,
+        "implementationSha256": canonical_sha256(implementation),
+        "oneShotProjection": one_shot,
+        "oneShotProjectionSha256": canonical_sha256(one_shot),
+        "forbiddenAccessSha256": canonical_sha256(recovery["forbiddenAccess"]),
+    }
+    return {**payload, "bindingSha256": canonical_sha256(payload)}
+
+
+def _build_implementation_authorization_binding(receipt: Mapping[str, Any]) -> dict[str, Any]:
+    implementation = _mapping(receipt.get("implementation"), "authorization.implementation")
+    files = list(_sequence(implementation.get("files"), "authorization.implementation.files"))
+    payload = {
+        "schemaVersion": _string(receipt.get("schemaVersion"), "authorization.schemaVersion"),
+        "recoveryId": _string(receipt.get("recoveryId"), "authorization.recoveryId"),
+        "path": str(RECOVERY_IMPLEMENTATION_AUTHORIZATION_PATH),
+        "pathSha256": canonical_sha256(str(RECOVERY_IMPLEMENTATION_AUTHORIZATION_PATH)),
+        "payloadSha256": _sha256(receipt.get("payloadSha256"), "authorization.payloadSha256"),
+        "implementationCommit": _string(
+            implementation.get("implementationCommit"),
+            "authorization.implementation.implementationCommit",
+        ),
+        "implementationFileInventorySha256": canonical_sha256(files),
+        "handoffFileSha256": _sha256(
+            implementation.get("handoffFileSha256"),
+            "authorization.implementation.handoffFileSha256",
+        ),
+        "scopeSha256": canonical_sha256(receipt["scope"]),
+        "forbiddenAccessSha256": canonical_sha256(receipt["forbiddenAccess"]),
+        "independentAuditSha256": canonical_sha256(receipt["independentAudit"]),
+        "userAuthorizationSha256": canonical_sha256(receipt["userAuthorization"]),
+    }
+    return {**payload, "bindingSha256": canonical_sha256(payload)}
+
+
 def _build_input_bindings(
-    authority: Mapping[str, Any],
+    recovery: Mapping[str, Any],
+    source_authority_binding: Mapping[str, Any],
+    recovery_authority_binding: Mapping[str, Any],
+    implementation_authorization_binding: Mapping[str, Any],
     stage1: Mapping[str, Any],
     examples: Mapping[str, Any],
     selector: Mapping[str, Any],
 ) -> dict[str, Any]:
-    source_inputs = _mapping(authority.get("sourceInputs"), "authority.sourceInputs")
-    output_paths = _mapping(authority.get("outputPaths"), "authority.outputPaths")
-    stage1_path = _string(
-        _mapping(source_inputs.get("stage1Report"), "authority stage1 report").get("path"),
-        "authority stage1 report path",
-    )
-    examples_path = _string(output_paths.get("examplesArtifact"), "authority examples path")
-    selector_path = _string(output_paths.get("selectorArtifact"), "authority selector path")
+    immutable = _mapping(recovery.get("immutableInputs"), "recovery.immutableInputs")
+    stage1_path = _string(_mapping(immutable.get("stage1"), "immutable stage1").get("path"), "stage1 path")
+    examples_path = _string(_mapping(immutable.get("examples"), "immutable examples").get("path"), "examples path")
+    selector_path = _string(_mapping(immutable.get("selector"), "immutable selector").get("path"), "selector path")
     payload = {
         "schemaVersion": BEAT_CELL_READINESS_INPUT_BINDINGS_SCHEMA,
-        "authority": {
-            "path": str(authority_path()),
-            "pathSha256": canonical_sha256(str(authority_path())),
-            "fileSha256": AUTHORITY_FILE_SHA256,
-            "canonicalSha256": AUTHORITY_CANONICAL_SHA256,
-            "readinessProjectionSha256": READINESS_PROJECTION_SHA256,
-            "oneShotProjectionSha256": ONE_SHOT_PROJECTION_SHA256,
-        },
+        "sourceAuthorityBindingSha256": _sha256(
+            source_authority_binding.get("bindingSha256"), "source authority binding"
+        ),
+        "recoveryAuthorityBindingSha256": _sha256(
+            recovery_authority_binding.get("bindingSha256"), "recovery authority binding"
+        ),
+        "implementationAuthorizationBindingSha256": _sha256(
+            implementation_authorization_binding.get("bindingSha256"),
+            "implementation authorization binding",
+        ),
         "stage1": _source_object_binding(stage1_path, stage1, "artifactSha256"),
         "examples": _source_object_binding(examples_path, examples, "artifactSha256"),
         "selector": _source_object_binding(selector_path, selector, "artifactSha256"),
@@ -1820,6 +2102,10 @@ def evaluate_beat_cell_readiness(
     """
 
     authority = _authority_contract()
+    recovery = _recovery_contract()
+    implementation_authorization = dict(_implementation_authorization_receipt())
+    if recovery["output"]["readinessReport"] == authority["outputPaths"]["readinessReport"]:
+        raise BeatCellReadinessError("The R5 recovery output may not reuse the consumed R4 readiness path.")
     stage1 = dict(_mapping(stage1_artifact, "Stage-1 artifact"))
     examples = dict(_mapping(examples_artifact, "examples artifact"))
     selector = dict(_mapping(selector_artifact, "selector artifact"))
@@ -1827,6 +2113,7 @@ def evaluate_beat_cell_readiness(
     stage1_admission = _validate_stage1_admission(stage1, authority)
     examples, feature_names = _validate_examples_admission(examples, authority, stage1_admission)
     _crosscheck_examples_stage1(examples, stage1, stage1_admission)
+    _validate_recovery_input_receipts(recovery, stage1, examples, selector)
     reproduction = _validate_selector_and_reproduce(examples, selector)
     rows, public_rows, diagnostic_reasons = _join_oof_rows(examples, selector, feature_names)
     _crosscheck_joined_stage1(rows, stage1_admission)
@@ -1905,31 +2192,27 @@ def evaluate_beat_cell_readiness(
         **duration_audit_payload,
         "auditSha256": canonical_sha256(duration_audit_payload),
     }
-    input_bindings = _build_input_bindings(authority, stage1, examples, selector)
+    source_authority_binding = _build_source_authority_binding(authority)
+    recovery_authority_binding = _build_recovery_authority_binding(recovery)
+    implementation_authorization_binding = _build_implementation_authorization_binding(implementation_authorization)
+    input_bindings = _build_input_bindings(
+        recovery,
+        source_authority_binding,
+        recovery_authority_binding,
+        implementation_authorization_binding,
+        stage1,
+        examples,
+        selector,
+    )
     publication_path = _string(
-        _mapping(authority.get("outputPaths"), "authority.outputPaths").get("readinessReport"),
-        "authority.outputPaths.readinessReport",
+        _mapping(recovery.get("output"), "recovery.output").get("readinessReport"),
+        "recovery.output.readinessReport",
     )
     publication = {
-        "mode": _authority_publication_policy(authority)["singleJson"],
+        "mode": recovery["output"]["publicationMode"],
         "outputPath": publication_path,
         "outputPathSha256": canonical_sha256(publication_path),
         "callerPathOverrideAllowed": False,
-    }
-    authority_binding_payload = {
-        "schemaVersion": _string(authority.get("schemaVersion"), "authority.schemaVersion"),
-        "path": str(authority_path()),
-        "pathSha256": canonical_sha256(str(authority_path())),
-        "fileSha256": AUTHORITY_FILE_SHA256,
-        "canonicalSha256": AUTHORITY_CANONICAL_SHA256,
-        "readinessProjection": deepcopy(authority["readiness"]),
-        "readinessProjectionSha256": READINESS_PROJECTION_SHA256,
-        "oneShotProjection": deepcopy(authority["oneShot"]),
-        "oneShotProjectionSha256": ONE_SHOT_PROJECTION_SHA256,
-    }
-    authority_binding = {
-        **authority_binding_payload,
-        "bindingSha256": canonical_sha256(authority_binding_payload),
     }
     metric_recomputation_payload = {
         "selectorValidatorPassed": True,
@@ -1962,19 +2245,19 @@ def evaluate_beat_cell_readiness(
     }
     decision = {**decision_payload, "decisionSha256": canonical_sha256(decision_payload)}
     one_shot_payload = {
-        "policy": deepcopy(authority["oneShot"]),
-        "policySha256": ONE_SHOT_PROJECTION_SHA256,
-        "featureSetCount": 1,
-        "examplesArtifactCount": 1,
-        "selectorCandidateCount": 1,
-        "readinessEvaluationCount": 1,
-        "readinessReproductionRefitCount": 1,
+        "policy": deepcopy(recovery["oneShot"]),
+        "policySha256": canonical_sha256(recovery["oneShot"]),
+        "newCycle": deepcopy(_RECOVERY_NEW_CYCLE_COUNTS),
+        "cumulativeIncludingConsumedR4": deepcopy(_RECOVERY_CUMULATIVE_COUNTS),
+        "sourceR4SameCycleRetryPerformed": False,
+        "immutableR4ArtifactsReused": True,
         "sameCycleRetryAllowed": False,
         "stopAfterReadinessForIndependentAudit": True,
     }
     one_shot = {**one_shot_payload, "auditSha256": canonical_sha256(one_shot_payload)}
     artifact_payload: dict[str, Any] = {
         "schemaVersion": BEAT_CELL_READINESS_SCHEMA,
+        "recoveryId": recovery["recoveryId"],
         "split": DEVELOPMENT_SPLIT,
         "developmentOnly": True,
         "promotionEligible": False,
@@ -1982,7 +2265,9 @@ def evaluate_beat_cell_readiness(
         "operatingThreshold": None,
         "purpose": READINESS_PURPOSE,
         "publication": publication,
-        "authorityBinding": authority_binding,
+        "sourceAuthorityBinding": source_authority_binding,
+        "recoveryAuthorityBinding": recovery_authority_binding,
+        "implementationAuthorizationBinding": implementation_authorization_binding,
         "inputBindings": input_bindings,
         "rubric": deepcopy(BEAT_CELL_READINESS_RUBRIC),
         "rubricSha256": BEAT_CELL_READINESS_RUBRIC_SHA256,
@@ -2026,6 +2311,7 @@ def evaluate_beat_cell_readiness(
 _READINESS_ARTIFACT_FIELDS = frozenset(
     {
         "schemaVersion",
+        "recoveryId",
         "split",
         "developmentOnly",
         "promotionEligible",
@@ -2033,7 +2319,9 @@ _READINESS_ARTIFACT_FIELDS = frozenset(
         "operatingThreshold",
         "purpose",
         "publication",
-        "authorityBinding",
+        "sourceAuthorityBinding",
+        "recoveryAuthorityBinding",
+        "implementationAuthorizationBinding",
         "inputBindings",
         "rubric",
         "rubricSha256",
@@ -2153,10 +2441,13 @@ def _validate_public_rows(
         raw_features = list(_sequence(row.get("orderedFeatureValues"), f"joined row {index}.orderedFeatureValues"))
         if len(raw_features) != len(feature_names):
             raise BeatCellReadinessError("A joined row changed the exact ordered feature dimension.")
-        features = [
-            None if item is None else _finite(item, f"joined row {index}.orderedFeatureValues") for item in raw_features
-        ]
+        features: list[int | float | None] = []
+        for item in raw_features:
+            if item is not None:
+                _finite(item, f"joined row {index}.orderedFeatureValues")
+            features.append(item)
         feature_mapping = {feature_name: features[position] for position, feature_name in enumerate(feature_names)}
+        _validate_feature_value_types(feature_mapping, feature_names, f"joined row {index}")
         if canonical_sha256(feature_mapping) != row.get("featureValuesSha256"):
             raise BeatCellReadinessError("A joined row ordered feature vector disagrees with featureValuesSha256.")
         observed_keys.append(key)
@@ -2347,6 +2638,8 @@ def validate_beat_cell_readiness_artifact(artifact: Mapping[str, Any]) -> dict[s
     """Fail closed on a standalone beat-cell readiness report and return a copy."""
 
     authority = _authority_contract()
+    recovery = _recovery_contract()
+    implementation_authorization = dict(_implementation_authorization_receipt())
     value = dict(_mapping(artifact, "beat-cell readiness artifact"))
     _exact_fields(value, _READINESS_ARTIFACT_FIELDS, "beat-cell readiness artifact")
     claimed = _sha256(value.get("artifactSha256"), "readiness.artifactSha256")
@@ -2354,6 +2647,7 @@ def validate_beat_cell_readiness_artifact(artifact: Mapping[str, Any]) -> dict[s
         raise BeatCellReadinessError("Readiness artifactSha256 is stale.")
     if (
         value.get("schemaVersion") != BEAT_CELL_READINESS_SCHEMA
+        or value.get("recoveryId") != recovery.get("recoveryId")
         or value.get("split") != DEVELOPMENT_SPLIT
         or value.get("developmentOnly") is not True
         or value.get("promotionEligible") is not False
@@ -2371,7 +2665,7 @@ def validate_beat_cell_readiness_artifact(artifact: Mapping[str, Any]) -> dict[s
     if feature_names != list(authority["featureMath"]["featureNames"]):
         raise BeatCellReadinessError("Readiness featureNames changed the exact authority projection.")
     publication = _mapping(value.get("publication"), "readiness.publication")
-    exact_output = authority["outputPaths"]["readinessReport"]
+    exact_output = recovery["output"]["readinessReport"]
     _exact_fields(
         publication,
         {"mode", "outputPath", "outputPathSha256", "callerPathOverrideAllowed"},
@@ -2379,49 +2673,53 @@ def validate_beat_cell_readiness_artifact(artifact: Mapping[str, Any]) -> dict[s
     )
     if (
         publication.get("mode") != PUBLICATION_MODE
-        or publication.get("mode") != _authority_publication_policy(authority)["singleJson"]
+        or publication.get("mode") != recovery["output"]["publicationMode"]
         or publication.get("outputPath") != exact_output
         or publication.get("outputPathSha256") != canonical_sha256(exact_output)
         or publication.get("callerPathOverrideAllowed") is not False
     ):
-        raise BeatCellReadinessError("Readiness publication is not bound to the exact authority path.")
-    authority_binding = _mapping(value.get("authorityBinding"), "readiness.authorityBinding")
-    authority_unsigned = _unsigned(authority_binding, "bindingSha256")
-    expected_authority = {
-        "schemaVersion": authority["schemaVersion"],
-        "path": str(authority_path()),
-        "pathSha256": canonical_sha256(str(authority_path())),
-        "fileSha256": AUTHORITY_FILE_SHA256,
-        "canonicalSha256": AUTHORITY_CANONICAL_SHA256,
-        "readinessProjection": authority["readiness"],
-        "readinessProjectionSha256": READINESS_PROJECTION_SHA256,
-        "oneShotProjection": authority["oneShot"],
-        "oneShotProjectionSha256": ONE_SHOT_PROJECTION_SHA256,
-    }
-    if authority_unsigned != expected_authority or authority_binding.get("bindingSha256") != canonical_sha256(
-        authority_unsigned
+        raise BeatCellReadinessError("Readiness publication is not bound to the exact R5 recovery path.")
+    source_authority_binding = _mapping(value.get("sourceAuthorityBinding"), "readiness.sourceAuthorityBinding")
+    recovery_authority_binding = _mapping(value.get("recoveryAuthorityBinding"), "readiness.recoveryAuthorityBinding")
+    implementation_authorization_binding = _mapping(
+        value.get("implementationAuthorizationBinding"),
+        "readiness.implementationAuthorizationBinding",
+    )
+    if dict(source_authority_binding) != _build_source_authority_binding(authority):
+        raise BeatCellReadinessError("Readiness sourceAuthorityBinding is not the exact R4 authority.")
+    if dict(recovery_authority_binding) != _build_recovery_authority_binding(recovery):
+        raise BeatCellReadinessError("Readiness recoveryAuthorityBinding is not the exact R5 authority.")
+    if dict(implementation_authorization_binding) != _build_implementation_authorization_binding(
+        implementation_authorization
     ):
-        raise BeatCellReadinessError("Readiness authority binding is not exact.")
+        raise BeatCellReadinessError("Readiness implementationAuthorizationBinding is not the exact execution receipt.")
     bindings = _mapping(value.get("inputBindings"), "readiness.inputBindings")
     _exact_fields(
         bindings,
-        {"schemaVersion", "authority", "stage1", "examples", "selector", "bindingsSha256"},
+        {
+            "schemaVersion",
+            "sourceAuthorityBindingSha256",
+            "recoveryAuthorityBindingSha256",
+            "implementationAuthorizationBindingSha256",
+            "stage1",
+            "examples",
+            "selector",
+            "bindingsSha256",
+        },
         "readiness.inputBindings",
     )
     if bindings.get("schemaVersion") != BEAT_CELL_READINESS_INPUT_BINDINGS_SCHEMA:
         raise BeatCellReadinessError("Readiness input bindings use an unsupported schemaVersion.")
     if bindings.get("bindingsSha256") != canonical_sha256(_unsigned(bindings, "bindingsSha256")):
         raise BeatCellReadinessError("Readiness input bindings self-hash is stale.")
-    expected_input_authority = {
-        "path": str(authority_path()),
-        "pathSha256": canonical_sha256(str(authority_path())),
-        "fileSha256": AUTHORITY_FILE_SHA256,
-        "canonicalSha256": AUTHORITY_CANONICAL_SHA256,
-        "readinessProjectionSha256": READINESS_PROJECTION_SHA256,
-        "oneShotProjectionSha256": ONE_SHOT_PROJECTION_SHA256,
-    }
-    if bindings.get("authority") != expected_input_authority:
-        raise BeatCellReadinessError("Readiness input authority receipt is not exact.")
+    if bindings.get("sourceAuthorityBindingSha256") != source_authority_binding.get("bindingSha256") or bindings.get(
+        "recoveryAuthorityBindingSha256"
+    ) != recovery_authority_binding.get("bindingSha256"):
+        raise BeatCellReadinessError("Readiness input bindings do not link both exact authorities.")
+    if bindings.get("implementationAuthorizationBindingSha256") != implementation_authorization_binding.get(
+        "bindingSha256"
+    ):
+        raise BeatCellReadinessError("Readiness input bindings do not link the exact implementation authorization.")
     for name in ("stage1", "examples", "selector"):
         binding = _mapping(bindings.get(name), f"readiness.inputBindings.{name}")
         _exact_fields(
@@ -2442,15 +2740,15 @@ def validate_beat_cell_readiness_artifact(artifact: Mapping[str, Any]) -> dict[s
             _sha256(binding.get(field), f"readiness input {name}.{field}")
         if binding.get("pathSha256") != canonical_sha256(binding.get("path")):
             raise BeatCellReadinessError(f"Readiness {name} source path hash is stale.")
-    if (
-        bindings["stage1"].get("path") != authority["sourceInputs"]["stage1Report"]["path"]
-        or bindings["examples"].get("path") != authority["outputPaths"]["examplesArtifact"]
-        or bindings["selector"].get("path") != authority["outputPaths"]["selectorArtifact"]
-        or bindings["stage1"].get("fileSha256") != authority["sourceInputs"]["stage1Report"]["fileSha256"]
-        or bindings["stage1"].get("canonicalSha256") != authority["sourceInputs"]["stage1Report"]["canonicalSha256"]
-        or bindings["stage1"].get("artifactSha256") != authority["sourceInputs"]["stage1Report"]["artifactSha256"]
-    ):
-        raise BeatCellReadinessError("Readiness source bindings changed exact authority paths or Stage-1 receipts.")
+    immutable = _mapping(recovery.get("immutableInputs"), "recovery.immutableInputs")
+    for name in ("stage1", "examples", "selector"):
+        binding = bindings[name]
+        expected = _mapping(immutable.get(name), f"recovery.immutableInputs.{name}")
+        if any(
+            binding.get(field) != expected.get(field)
+            for field in ("path", "fileSha256", "canonicalSha256", "artifactSha256")
+        ):
+            raise BeatCellReadinessError(f"Readiness {name} binding changed an immutable R4 receipt.")
 
     admission = _mapping(value.get("stage1Admission"), "readiness.stage1Admission")
     _exact_fields(
@@ -2758,13 +3056,12 @@ def validate_beat_cell_readiness_artifact(artifact: Mapping[str, Any]) -> dict[s
         raise BeatCellReadinessError("Readiness reproduction proof is stale or is not exactly one refit.")
     one_shot = _mapping(value.get("oneShot"), "readiness.oneShot")
     expected_one_shot_payload = {
-        "policy": authority["oneShot"],
-        "policySha256": ONE_SHOT_PROJECTION_SHA256,
-        "featureSetCount": 1,
-        "examplesArtifactCount": 1,
-        "selectorCandidateCount": 1,
-        "readinessEvaluationCount": 1,
-        "readinessReproductionRefitCount": 1,
+        "policy": recovery["oneShot"],
+        "policySha256": canonical_sha256(recovery["oneShot"]),
+        "newCycle": deepcopy(_RECOVERY_NEW_CYCLE_COUNTS),
+        "cumulativeIncludingConsumedR4": deepcopy(_RECOVERY_CUMULATIVE_COUNTS),
+        "sourceR4SameCycleRetryPerformed": False,
+        "immutableR4ArtifactsReused": True,
         "sameCycleRetryAllowed": False,
         "stopAfterReadinessForIndependentAudit": True,
     }
@@ -3092,17 +3389,35 @@ def _publish_new_json(path: Path, value: Mapping[str, Any], *, precommit_check: 
 
 
 def run_beat_cell_readiness() -> dict[str, Any]:
-    """Read and publish only the exact authority paths; no path override exists."""
+    """Read immutable R4 inputs and publish only the exact R5 recovery path."""
 
     authority = _authority_contract()
-    stage1_path = Path(authority["sourceInputs"]["stage1Report"]["path"])
-    examples_path = Path(authority["outputPaths"]["examplesArtifact"])
-    selector_path = Path(authority["outputPaths"]["selectorArtifact"])
-    output_path = Path(authority["outputPaths"]["readinessReport"])
+    recovery = _recovery_contract()
+    implementation_authorization = dict(_implementation_authorization_receipt())
+    authorization_path = Path(RECOVERY_IMPLEMENTATION_AUTHORIZATION_PATH)
+    authorization_on_disk, authorization_raw, authorization_stat = _read_json(
+        authorization_path,
+        "exact R5 implementation authorization",
+    )
+    if authorization_on_disk != implementation_authorization:
+        raise BeatCellReadinessError("The exact R5 implementation authorization changed during admission.")
+    _canonical_file(
+        authorization_on_disk,
+        authorization_raw,
+        "exact R5 implementation authorization",
+    )
+    immutable = recovery["immutableInputs"]
+    stage1_path = Path(immutable["stage1"]["path"])
+    examples_path = Path(immutable["examples"]["path"])
+    selector_path = Path(immutable["selector"]["path"])
+    output_path = Path(recovery["output"]["readinessReport"])
+    consumed_r4_output = _absolute(Path(authority["outputPaths"]["readinessReport"]))
     inputs = [_absolute(stage1_path), _absolute(examples_path), _absolute(selector_path)]
     output = _absolute(output_path)
-    if len(set(inputs)) != 3 or output in set(inputs):
-        raise BeatCellReadinessError("Exact readiness sources and destination must be mutually disjoint.")
+    if len(set(inputs)) != 3 or output in set(inputs) or output == consumed_r4_output:
+        raise BeatCellReadinessError("Immutable R4 sources and the R5 destination must be mutually disjoint.")
+    if consumed_r4_output.exists() or consumed_r4_output.is_symlink():
+        raise BeatCellReadinessError("The consumed R4 readiness path must remain unpublished and untouched.")
     _reject_symlink_components(output.parent, "readiness output parent")
     if output.exists() or output.is_symlink():
         raise BeatCellReadinessError("Readiness output must be a new, non-symlink path.")
@@ -3117,10 +3432,24 @@ def run_beat_cell_readiness() -> dict[str, Any]:
         (selector, selector_raw, "exact selector artifact"),
     ):
         _canonical_file(value, raw, name)
-    if _sha256_bytes(stage1_raw) != authority["sourceInputs"]["stage1Report"]["fileSha256"]:
-        raise BeatCellReadinessError("The exact Stage-1 raw-file receipt drifted.")
+    for name, value, raw in (
+        ("stage1", stage1, stage1_raw),
+        ("examples", examples, examples_raw),
+        ("selector", selector, selector_raw),
+    ):
+        expected = immutable[name]
+        if (
+            _sha256_bytes(raw) != expected["fileSha256"]
+            or canonical_sha256(value) != expected["canonicalSha256"]
+            or value.get("artifactSha256") != expected["artifactSha256"]
+        ):
+            raise BeatCellReadinessError(f"The exact immutable R4 {name} receipt drifted.")
 
     artifact = evaluate_beat_cell_readiness(stage1, examples, selector)
+    if artifact["implementationAuthorizationBinding"] != _build_implementation_authorization_binding(
+        implementation_authorization
+    ):
+        raise BeatCellReadinessError("The implementation authorization changed during readiness evaluation.")
     for name, raw in (
         ("stage1", stage1_raw),
         ("examples", examples_raw),
@@ -3130,6 +3459,16 @@ def run_beat_cell_readiness() -> dict[str, Any]:
             raise BeatCellReadinessError(f"Readiness {name} raw-file binding drifted before publication.")
 
     def verify_inputs_at_commit() -> None:
+        if consumed_r4_output.exists() or consumed_r4_output.is_symlink():
+            raise BeatCellReadinessError("The consumed R4 readiness path changed before R5 publication.")
+        if dict(_implementation_authorization_receipt()) != implementation_authorization:
+            raise BeatCellReadinessError("The implementation authorization changed before R5 publication.")
+        _verify_input_unchanged(
+            authorization_path,
+            authorization_stat,
+            authorization_raw,
+            "exact R5 implementation authorization",
+        )
         _verify_input_unchanged(stage1_path, stage1_stat, stage1_raw, "exact Stage-1 artifact")
         _verify_input_unchanged(examples_path, examples_stat, examples_raw, "exact examples artifact")
         _verify_input_unchanged(selector_path, selector_stat, selector_raw, "exact selector artifact")
@@ -3141,7 +3480,7 @@ def run_beat_cell_readiness() -> dict[str, Any]:
 def _parser() -> argparse.ArgumentParser:
     return argparse.ArgumentParser(
         description=(
-            "Run the one frozen beat-cell development readiness evaluation at exact committed paths. "
+            "Run the one preregistered beat-cell R5 readiness-only recovery at exact committed paths. "
             "No input, output, cutoff, gate, fold, feature, dataset, or retry override is accepted."
         )
     )

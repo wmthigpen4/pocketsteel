@@ -8,7 +8,11 @@ from pathlib import Path
 import pytest
 
 from steel_guitar_rag.chord_reader import beat_cell_readiness as readiness
+from steel_guitar_rag.chord_reader import beat_cell_readiness_recovery_contract as recovery_contract
 from steel_guitar_rag.chord_reader.bar_promotion import canonical_sha256
+from steel_guitar_rag.chord_reader.beat_cell_readiness_recovery_contract import (
+    load_readiness_recovery_authority,
+)
 from steel_guitar_rag.chord_reader.beat_cell_stage2_contract import (
     load_beat_cell_stage2_authority,
 )
@@ -40,8 +44,9 @@ def _funnel(rows: list[dict]) -> dict:
     return readiness.make_funnel(count, duration)
 
 
-def _synthetic_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[dict, dict, dict, dict]:
+def _synthetic_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[dict, dict, dict, dict, dict]:
     authority = deepcopy(load_beat_cell_stage2_authority())
+    recovery = deepcopy(load_readiness_recovery_authority())
     feature_names = list(authority["featureMath"]["featureNames"])
     dataset_roles = [
         ("aam", "aam:mix:0", None),
@@ -90,6 +95,16 @@ def _synthetic_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple
             name: float(index) + feature_index / 100.0
             for feature_index, name in sorted(enumerate(feature_names), key=lambda item: item[1])
         }
+        feature_values.update(
+            {
+                "predictionTransitionCount": index % 3,
+                "productFamilyNone": 0,
+                "productFamilyMajor": 1,
+                "productFamilyMinor": 0,
+                "productFamilyDominant": 0,
+                "productFamilyMinorSeventh": 0,
+            }
+        )
         example_payload = {
             "schemaVersion": "synthetic-example",
             "exampleKey": f"{index:064x}",
@@ -178,6 +193,10 @@ def _synthetic_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple
         "labelAuditsSha256": label_audits["auditSha256"],
         "referenceEndpointReconciliationAudit": reference_audit,
         "referenceEndpointReconciliationAuditSha256": reference_audit["auditSha256"],
+        "sourceFeatureSetFileSha256": _digest("feature-set-file"),
+        "sourceFeatureSetArtifactSha256": _digest("feature-set"),
+        "sourceFeatureSummarySetSha256": _digest("feature-summary-set"),
+        "sourceFeatureRowSetSha256": _digest("feature-row-set"),
         "artifactSha256": _digest("examples-artifact"),
     }
     probabilities = [0.99, 0.98, 0.97, 0.96, 0.50, 0.50, 0.40, 0.30, 0.20, 0.10]
@@ -323,8 +342,68 @@ def _synthetic_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple
     }
     authority["outputPaths"]["examplesArtifact"] = str(tmp_path / "examples.json")
     authority["outputPaths"]["selectorArtifact"] = str(tmp_path / "selector.json")
-    authority["outputPaths"]["readinessReport"] = str(tmp_path / "readiness.json")
+    authority["outputPaths"]["readinessReport"] = str(tmp_path / "r4-readiness.json")
+    recovery["immutableInputs"] = {
+        "stage1": {
+            "path": str(tmp_path / "stage1.json"),
+            "fileSha256": readiness._sha256_bytes(readiness._render_json(stage1)),
+            "canonicalSha256": canonical_sha256(stage1),
+            "artifactSha256": stage1["artifactSha256"],
+        },
+        "featureSet": {
+            "manifestPath": str(tmp_path / "feature-set" / "manifest.json"),
+            "manifestFileSha256": examples["sourceFeatureSetFileSha256"],
+            "manifestCanonicalSha256": _digest("feature-set-canonical"),
+            "artifactSha256": examples["sourceFeatureSetArtifactSha256"],
+            "summarySetSha256": examples["sourceFeatureSummarySetSha256"],
+            "featureRowSetSha256": examples["sourceFeatureRowSetSha256"],
+        },
+        "examples": {
+            "path": str(tmp_path / "examples.json"),
+            "fileSha256": readiness._sha256_bytes(readiness._render_json(examples)),
+            "canonicalSha256": canonical_sha256(examples),
+            "artifactSha256": examples["artifactSha256"],
+            "exampleCount": len(examples_rows),
+            "exampleDurationMilliseconds": sum(durations),
+        },
+        "selector": {
+            "path": str(tmp_path / "selector.json"),
+            "fileSha256": readiness._sha256_bytes(readiness._render_json(selector)),
+            "canonicalSha256": canonical_sha256(selector),
+            "artifactSha256": selector["artifactSha256"],
+        },
+    }
+    recovery["output"]["readinessReport"] = str(tmp_path / "r5-readiness.json")
+    authorization_payload = {
+        "schemaVersion": readiness.READINESS_RECOVERY_AUTHORIZATION_SCHEMA,
+        "recoveryId": recovery["recoveryId"],
+        "implementation": {
+            "implementationCommit": "a" * 40,
+            "files": [],
+            "handoffFileSha256": _digest("synthetic implementation handoff"),
+        },
+        "scope": {"synthetic": True},
+        "forbiddenAccess": {"synthetic": False},
+        "independentAudit": {"synthetic": "GO"},
+        "userAuthorization": {"synthetic": True},
+    }
+    authorization = {
+        **authorization_payload,
+        "payloadSha256": canonical_sha256(authorization_payload),
+    }
+    authorization_path = tmp_path / "implementation-authorization.json"
+    authorization_path.write_bytes(readiness._render_json(authorization))
     monkeypatch.setattr(readiness, "_authority_contract", lambda: deepcopy(authority))
+    monkeypatch.setattr(readiness, "_recovery_contract", lambda: deepcopy(recovery))
+    monkeypatch.setattr(
+        readiness,
+        "_implementation_authorization_receipt",
+        lambda: deepcopy(authorization),
+    )
+    monkeypatch.setattr(readiness, "RECOVERY_IMPLEMENTATION_AUTHORIZATION_PATH", authorization_path)
+    monkeypatch.setattr(readiness, "RECOVERY_AUTHORITY_CANONICAL_SHA256", canonical_sha256(recovery))
+    monkeypatch.setattr(readiness, "RECOVERY_AUTHORITY_FILE_SHA256", _digest("synthetic recovery authority file"))
+    monkeypatch.setattr(readiness, "recovery_authority_path", lambda: tmp_path / "recovery-authority.json")
     monkeypatch.setattr(
         readiness,
         "_validate_stage1_admission",
@@ -336,17 +415,111 @@ def _synthetic_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple
         lambda source, _authority, _admission: (deepcopy(dict(source)), list(feature_names)),
     )
     monkeypatch.setattr(readiness, "validate_beat_cell_selector_artifact", lambda *_args: {})
-    return stage1, examples, selector, authority
+    return stage1, examples, selector, authority, recovery
 
 
 def _synthetic_readiness_artifact(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
-    stage1, examples, selector, _authority = _synthetic_fixture(tmp_path, monkeypatch)
+    stage1, examples, selector, _authority, _recovery = _synthetic_fixture(tmp_path, monkeypatch)
     monkeypatch.setattr(readiness, "train_beat_cell_selector", lambda _source: deepcopy(selector))
     return readiness.evaluate_beat_cell_readiness(stage1, examples, selector)
 
 
 def _reseal(value: dict, field: str) -> None:
     value[field] = canonical_sha256({key: item for key, item in value.items() if key != field})
+
+
+def _write_synthetic_sources(tmp_path: Path, stage1: dict, examples: dict, selector: dict) -> None:
+    (tmp_path / "stage1.json").write_bytes(readiness._render_json(stage1))
+    (tmp_path / "examples.json").write_bytes(readiness._render_json(examples))
+    (tmp_path / "selector.json").write_bytes(readiness._render_json(selector))
+
+
+def _synthetic_execution_authorization(monkeypatch: pytest.MonkeyPatch) -> dict:
+    file_bytes = {path: f"synthetic:{path}".encode() for path in recovery_contract._AUTHORIZATION_FILE_PATHS}
+    handoff_bytes = b"synthetic readiness recovery handoff"
+
+    def sealed(path: Path, _name: str) -> bytes:
+        relative = str(path.relative_to(recovery_contract._repo_root()))
+        if relative == str(recovery_contract.READINESS_RECOVERY_IMPLEMENTATION_HANDOFF_RELATIVE_PATH):
+            return handoff_bytes
+        return file_bytes[relative]
+
+    monkeypatch.setattr(recovery_contract, "_sealed_read", sealed)
+    payload = {
+        "schemaVersion": recovery_contract.READINESS_RECOVERY_AUTHORIZATION_SCHEMA,
+        "recoveryId": recovery_contract.READINESS_RECOVERY_ID,
+        "split": "development",
+        "executionAuthorized": True,
+        "baseAuthority": {
+            "path": str(recovery_contract.READINESS_RECOVERY_AUTHORITY_RELATIVE_PATH),
+            "fileSha256": recovery_contract.READINESS_RECOVERY_AUTHORITY_FILE_SHA256,
+            "canonicalSha256": recovery_contract.READINESS_RECOVERY_AUTHORITY_CANONICAL_SHA256,
+        },
+        "consumedFailure": {
+            "path": str(recovery_contract.READINESS_RECOVERY_FAILURE_RECEIPT_RELATIVE_PATH),
+            "fileSha256": recovery_contract.READINESS_RECOVERY_FAILURE_RECEIPT_FILE_SHA256,
+        },
+        "implementation": {
+            "implementationCommit": "a" * 40,
+            "files": [
+                {"path": path, "fileSha256": readiness._sha256_bytes(file_bytes[path])}
+                for path in recovery_contract._AUTHORIZATION_FILE_PATHS
+            ],
+            "handoffPath": str(recovery_contract.READINESS_RECOVERY_IMPLEMENTATION_HANDOFF_RELATIVE_PATH),
+            "handoffFileSha256": readiness._sha256_bytes(handoff_bytes),
+        },
+        "scope": {
+            "outputPath": str(recovery_contract.READINESS_RECOVERY_OUTPUT),
+            "publicationMode": readiness.PUBLICATION_MODE,
+            "newCycle": {
+                key: value
+                for key, value in readiness._RECOVERY_NEW_CYCLE_COUNTS.items()
+                if key != "sameCycleRetryAllowed"
+            },
+            "cumulativeIncludingConsumedR4": deepcopy(readiness._RECOVERY_CUMULATIVE_COUNTS),
+            "sameCycleRetryAllowed": False,
+            "stopAfterReadinessForIndependentAudit": True,
+        },
+        "forbiddenAccess": {field: False for field in recovery_contract._FORBIDDEN_FIELDS},
+        "independentAudit": {"verdict": "GO", "noP0P1": True, "qaPassed": True, "auditorCount": 2},
+        "userAuthorization": {
+            "explicitlyApproved": True,
+            "approvalScope": "one-r5-readiness-only-evaluation-and-one-reproduction-refit-no-retry",
+            "approvalRecordedAt": "2026-08-21T13:30:00-05:00",
+        },
+    }
+    return {**payload, "payloadSha256": canonical_sha256(payload)}
+
+
+def _mixed_feature_readiness_artifact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[dict, dict[str, int | float]]:
+    stage1, examples, selector, authority, recovery = _synthetic_fixture(tmp_path, monkeypatch)
+    feature_names = list(authority["featureMath"]["featureNames"])
+    feature_values: dict[str, int | float] = {name: index + 0.125 for index, name in enumerate(feature_names)}
+    feature_values.update(
+        {
+            "predictionTransitionCount": 2,
+            "productFamilyNone": 0,
+            "productFamilyMajor": 1,
+            "productFamilyMinor": 0,
+            "productFamilyDominant": 0,
+            "productFamilyMinorSeventh": 0,
+        }
+    )
+    example = examples["examples"][0]
+    example["featureValues"] = feature_values
+    example["featureValuesSha256"] = canonical_sha256(feature_values)
+    _reseal(example, "exampleSha256")
+    recovery["immutableInputs"]["examples"].update(
+        {
+            "fileSha256": readiness._sha256_bytes(readiness._render_json(examples)),
+            "canonicalSha256": canonical_sha256(examples),
+        }
+    )
+    monkeypatch.setattr(readiness, "RECOVERY_AUTHORITY_CANONICAL_SHA256", canonical_sha256(recovery))
+    monkeypatch.setattr(readiness, "train_beat_cell_selector", lambda _source: deepcopy(selector))
+    return readiness.evaluate_beat_cell_readiness(stage1, examples, selector), feature_values
 
 
 def test_fixed_half_coverage_includes_complete_exact_tie_block() -> None:
@@ -397,7 +570,7 @@ def test_duration_gates_are_exact_and_independent_of_passing_count_gates() -> No
 def test_mapping_evaluation_refits_once_preserves_canonical_feature_projection_and_validates(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    stage1, examples, selector, _authority = _synthetic_fixture(tmp_path, monkeypatch)
+    stage1, examples, selector, _authority, _recovery = _synthetic_fixture(tmp_path, monkeypatch)
     calls = 0
 
     def reproduce(source: dict) -> dict:
@@ -409,6 +582,24 @@ def test_mapping_evaluation_refits_once_preserves_canonical_feature_projection_a
     monkeypatch.setattr(readiness, "train_beat_cell_selector", reproduce)
     artifact = readiness.evaluate_beat_cell_readiness(stage1, examples, selector)
     assert calls == 1
+    assert artifact["schemaVersion"].endswith("_v2")
+    assert artifact["recoveryId"] == "beat-cell-stage2-r5-readiness-only"
+    assert artifact["publication"]["outputPath"].endswith("/r5-readiness.json")
+    assert artifact["sourceAuthorityBinding"]["fileSha256"] == readiness.AUTHORITY_FILE_SHA256
+    assert artifact["recoveryAuthorityBinding"]["fileSha256"] == readiness.RECOVERY_AUTHORITY_FILE_SHA256
+    assert artifact["inputBindings"]["schemaVersion"].endswith("_v2")
+    assert (
+        artifact["inputBindings"]["sourceAuthorityBindingSha256"] == artifact["sourceAuthorityBinding"]["bindingSha256"]
+    )
+    assert (
+        artifact["inputBindings"]["recoveryAuthorityBindingSha256"]
+        == artifact["recoveryAuthorityBinding"]["bindingSha256"]
+    )
+    assert artifact["joinedOofRows"][0]["schemaVersion"].endswith("_v2")
+    assert artifact["oneShot"]["newCycle"] == readiness._RECOVERY_NEW_CYCLE_COUNTS
+    assert artifact["oneShot"]["cumulativeIncludingConsumedR4"] == readiness._RECOVERY_CUMULATIVE_COUNTS
+    assert artifact["oneShot"]["sourceR4SameCycleRetryPerformed"] is False
+    assert artifact["oneShot"]["immutableR4ArtifactsReused"] is True
     assert artifact["reproduction"]["readinessReproductionRefitCount"] == 1
     assert artifact["fixedDevelopmentCutoff"]["targetCoverage"] == 0.50
     assert artifact["fixedDevelopmentCutoff"]["minimumProbabilityAtDescriptivePoint"] == 0.50
@@ -420,6 +611,70 @@ def test_mapping_evaluation_refits_once_preserves_canonical_feature_projection_a
         "guitarset-role:solo",
     ]
     assert readiness.validate_beat_cell_readiness_artifact(artifact) == artifact
+
+
+def test_synthetic_official_runner_reuses_r4_inputs_and_publishes_only_r5(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stage1, examples, selector, authority, recovery = _synthetic_fixture(tmp_path, monkeypatch)
+    _write_synthetic_sources(tmp_path, stage1, examples, selector)
+    source_bytes = {name: (tmp_path / f"{name}.json").read_bytes() for name in ("stage1", "examples", "selector")}
+    calls = 0
+
+    def reproduce(source: dict) -> dict:
+        nonlocal calls
+        calls += 1
+        assert source == examples
+        return deepcopy(selector)
+
+    monkeypatch.setattr(readiness, "train_beat_cell_selector", reproduce)
+    artifact = readiness.run_beat_cell_readiness()
+
+    assert calls == 1
+    assert Path(recovery["output"]["readinessReport"]).read_bytes() == readiness._render_json(artifact)
+    assert not Path(authority["outputPaths"]["readinessReport"]).exists()
+    assert {
+        name: (tmp_path / f"{name}.json").read_bytes() for name in ("stage1", "examples", "selector")
+    } == source_bytes
+
+
+def test_runner_rejects_immutable_receipt_drift_before_refit_or_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stage1, examples, selector, _authority, recovery = _synthetic_fixture(tmp_path, monkeypatch)
+    _write_synthetic_sources(tmp_path, stage1, examples, selector)
+    recovery["immutableInputs"]["examples"]["fileSha256"] = _digest("wrong immutable examples file")
+    called = False
+
+    def forbidden(_source: dict) -> dict:
+        nonlocal called
+        called = True
+        raise AssertionError("refit reached after immutable receipt drift")
+
+    monkeypatch.setattr(readiness, "train_beat_cell_selector", forbidden)
+    with pytest.raises(readiness.BeatCellReadinessError, match="immutable R4 examples receipt drifted"):
+        readiness.run_beat_cell_readiness()
+    assert called is False
+    assert not Path(recovery["output"]["readinessReport"]).exists()
+
+
+def test_runner_never_wires_or_overwrites_consumed_r4_readiness_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stage1, examples, selector, authority, recovery = _synthetic_fixture(tmp_path, monkeypatch)
+    _write_synthetic_sources(tmp_path, stage1, examples, selector)
+    r4_output = Path(authority["outputPaths"]["readinessReport"])
+    r4_output.write_bytes(b"foreign-r4-output")
+    monkeypatch.setattr(
+        readiness,
+        "train_beat_cell_selector",
+        lambda _source: pytest.fail("refit reached after consumed R4 output appeared"),
+    )
+
+    with pytest.raises(readiness.BeatCellReadinessError, match="consumed R4 readiness path"):
+        readiness.run_beat_cell_readiness()
+    assert r4_output.read_bytes() == b"foreign-r4-output"
+    assert not Path(recovery["output"]["readinessReport"]).exists()
 
 
 def test_exact_complete_stage1_admission_projection_receipt_is_frozen() -> None:
@@ -440,6 +695,162 @@ def test_readiness_rejects_split_publication_policy_tamper_before_artifact_acces
     monkeypatch.setattr(readiness, "AUTHORITY_CANONICAL_SHA256", canonical_sha256(authority))
     with pytest.raises(readiness.BeatCellReadinessError, match="exact frozen split policy"):
         readiness._authority_contract()
+
+
+def test_r5_preregistration_stays_fail_closed_without_separate_implementation_receipt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert readiness.READINESS_RECOVERY_AUTHORIZATION_SCHEMA == (
+        "chord_runtime_beat_cell_stage2_readiness_recovery_implementation_authorization_v1"
+    )
+    assert readiness.RECOVERY_IMPLEMENTATION_AUTHORIZATION_PATH == (
+        Path(readiness.__file__).resolve().parents[2] / "docs/handoffs/task-completions/"
+        "2026-08-21-1330-20-beat-cell-stage2-r5-readiness-only-implementation-authorization.json"
+    )
+    touched = False
+
+    def forbidden(*_args: object, **_kwargs: object) -> object:
+        nonlocal touched
+        touched = True
+        raise AssertionError("an immutable experiment input was opened before authorization")
+
+    monkeypatch.setattr(readiness, "_read_json", forbidden)
+    with pytest.raises(readiness.BeatCellReadinessError, match="authorization receipt is not installed"):
+        readiness.run_beat_cell_readiness()
+    assert touched is False
+
+
+def test_execution_authorization_rejects_boolean_one_shot_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt = _synthetic_execution_authorization(monkeypatch)
+    assert recovery_contract.validate_readiness_recovery_authorization(receipt) == receipt
+    changed = deepcopy(receipt)
+    changed["scope"]["newCycle"]["readinessEvaluationCount"] = True
+    changed["payloadSha256"] = canonical_sha256(
+        {key: value for key, value in changed.items() if key != "payloadSha256"}
+    )
+    with pytest.raises(
+        recovery_contract.BeatCellReadinessRecoveryContractError,
+        match="exact integers",
+    ):
+        recovery_contract.validate_readiness_recovery_authorization(changed)
+
+
+def test_publication_barrier_rejects_authorization_receipt_replacement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stage1, examples, selector, _authority, recovery = _synthetic_fixture(tmp_path, monkeypatch)
+    _write_synthetic_sources(tmp_path, stage1, examples, selector)
+    monkeypatch.setattr(readiness, "train_beat_cell_selector", lambda _source: deepcopy(selector))
+
+    def interposed_publish(_path: Path, _artifact: dict, *, precommit_check: object) -> None:
+        Path(readiness.RECOVERY_IMPLEMENTATION_AUTHORIZATION_PATH).write_bytes(b"foreign authorization")
+        precommit_check()
+
+    monkeypatch.setattr(readiness, "_publish_new_json", interposed_publish)
+    with pytest.raises(readiness.BeatCellReadinessError, match="implementation authorization"):
+        readiness.run_beat_cell_readiness()
+    assert not Path(recovery["output"]["readinessReport"]).exists()
+
+
+@pytest.mark.parametrize(
+    ("tamper", "message"),
+    [
+        ("source-authority", "exact R4 source authority"),
+        ("output-overlap", "overlaps an immutable R4 input"),
+        ("frozen-cutoff", "frozen R4 readiness policy"),
+        ("new-count", "one-shot counts"),
+        ("cumulative-count", "one-shot counts"),
+        ("reuse", "immutable-reuse policy"),
+        ("forbidden", "forbidden surface"),
+        ("base-execution", "receipt-neutral"),
+    ],
+)
+def test_recovery_contract_rejects_coherently_resealed_authority_tamper(
+    tamper: str, message: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recovery = deepcopy(load_readiness_recovery_authority())
+    if tamper == "source-authority":
+        recovery["sourceCycle"]["authorityFileSha256"] = _digest("wrong source authority")
+    elif tamper == "output-overlap":
+        recovery["output"]["readinessReport"] = recovery["immutableInputs"]["examples"]["path"]
+    elif tamper == "frozen-cutoff":
+        recovery["frozenPolicy"]["fixedTargetCoverage"] = 0.75
+    elif tamper == "new-count":
+        recovery["oneShot"]["newCycle"]["selectorCandidateCount"] = 1
+    elif tamper == "cumulative-count":
+        recovery["oneShot"]["cumulativeIncludingConsumedR4"]["readinessEvaluationCount"] = 1
+    elif tamper == "reuse":
+        recovery["oneShot"]["immutableR4ArtifactsMustBeReused"] = False
+    elif tamper == "forbidden":
+        recovery["forbiddenAccess"]["calibration"] = True
+    else:
+        recovery["implementation"]["executionAuthorized"] = True
+    monkeypatch.setattr(readiness, "load_readiness_recovery_authority", lambda: deepcopy(recovery))
+    monkeypatch.setattr(readiness, "RECOVERY_AUTHORITY_CANONICAL_SHA256", canonical_sha256(recovery))
+
+    with pytest.raises(readiness.BeatCellReadinessError, match=message):
+        readiness._recovery_contract()
+
+
+@pytest.mark.parametrize(
+    ("section", "field", "replacement"),
+    [
+        ("newCycle", "readinessEvaluationCount", 2),
+        ("cumulativeIncludingConsumedR4", "readinessReproductionRefitCount", 1),
+        (None, "immutableR4ArtifactsReused", False),
+        (None, "sourceR4SameCycleRetryPerformed", True),
+    ],
+)
+def test_standalone_v2_validator_rejects_resealed_recovery_count_or_reuse_tamper(
+    section: str | None,
+    field: str,
+    replacement: object,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact = _synthetic_readiness_artifact(tmp_path, monkeypatch)
+    changed = deepcopy(artifact)
+    target = changed["oneShot"] if section is None else changed["oneShot"][section]
+    target[field] = replacement
+    _reseal(changed["oneShot"], "auditSha256")
+    _reseal(changed, "artifactSha256")
+
+    with pytest.raises(readiness.BeatCellReadinessError, match="one-shot policy is stale"):
+        readiness.validate_beat_cell_readiness_artifact(changed)
+
+
+@pytest.mark.parametrize(
+    ("binding_name", "digest_field", "input_link"),
+    [
+        ("sourceAuthorityBinding", "fileSha256", "sourceAuthorityBindingSha256"),
+        ("recoveryAuthorityBinding", "fileSha256", "recoveryAuthorityBindingSha256"),
+        (
+            "implementationAuthorizationBinding",
+            "handoffFileSha256",
+            "implementationAuthorizationBindingSha256",
+        ),
+    ],
+)
+def test_standalone_v2_validator_rejects_coherently_resealed_authorization_binding_tamper(
+    binding_name: str,
+    digest_field: str,
+    input_link: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact = _synthetic_readiness_artifact(tmp_path, monkeypatch)
+    changed = deepcopy(artifact)
+    binding = changed[binding_name]
+    binding[digest_field] = _digest(f"tampered {binding_name}")
+    _reseal(binding, "bindingSha256")
+    changed["inputBindings"][input_link] = binding["bindingSha256"]
+    _reseal(changed["inputBindings"], "bindingsSha256")
+    _reseal(changed, "artifactSha256")
+
+    with pytest.raises(readiness.BeatCellReadinessError, match=binding_name):
+        readiness.validate_beat_cell_readiness_artifact(changed)
 
 
 @pytest.mark.parametrize("diagnostic", ["outer-fold-slice", "feature-missingness", "feature-z"])
@@ -524,7 +935,7 @@ def test_standalone_validator_rejects_coherently_resealed_stage1_stratum_splice(
 
 
 def test_reproduction_mismatch_fails_after_exactly_one_refit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    stage1, examples, selector, _authority = _synthetic_fixture(tmp_path, monkeypatch)
+    stage1, examples, selector, _authority, _recovery = _synthetic_fixture(tmp_path, monkeypatch)
     calls = 0
 
     def mismatch(_source: dict) -> dict:
@@ -541,7 +952,7 @@ def test_reproduction_mismatch_fails_after_exactly_one_refit(tmp_path: Path, mon
 
 
 def test_protected_split_fails_before_validators_or_refit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    stage1, examples, selector, _authority = _synthetic_fixture(tmp_path, monkeypatch)
+    stage1, examples, selector, _authority, _recovery = _synthetic_fixture(tmp_path, monkeypatch)
     stage1["split"] = "test"
     touched = False
 
@@ -558,7 +969,7 @@ def test_protected_split_fails_before_validators_or_refit(tmp_path: Path, monkey
 
 
 def test_exact_stage1_per_cell_outcome_splice_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    stage1, examples, _selector, _authority = _synthetic_fixture(tmp_path, monkeypatch)
+    stage1, examples, _selector, _authority, _recovery = _synthetic_fixture(tmp_path, monkeypatch)
     readiness._crosscheck_examples_stage1(
         examples,
         stage1,
@@ -577,7 +988,7 @@ def test_exact_stage1_per_cell_outcome_splice_is_rejected(tmp_path: Path, monkey
 def test_standalone_validator_rejects_resealed_stage1_outcome_swap(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    stage1, examples, selector, _authority = _synthetic_fixture(tmp_path, monkeypatch)
+    stage1, examples, selector, _authority, _recovery = _synthetic_fixture(tmp_path, monkeypatch)
     monkeypatch.setattr(readiness, "train_beat_cell_selector", lambda _source: deepcopy(selector))
     artifact = readiness.evaluate_beat_cell_readiness(stage1, examples, selector)
     changed = deepcopy(artifact)
@@ -603,6 +1014,16 @@ def test_canonical_disk_roundtrip_does_not_turn_object_key_order_into_feature_or
     authority = load_beat_cell_stage2_authority()
     names = list(authority["featureMath"]["featureNames"])
     values = {name: float(index) for index, name in sorted(enumerate(names), key=lambda item: item[1])}
+    values.update(
+        {
+            "predictionTransitionCount": 2,
+            "productFamilyNone": 0,
+            "productFamilyMajor": 1,
+            "productFamilyMinor": 0,
+            "productFamilyDominant": 0,
+            "productFamilyMinorSeventh": 0,
+        }
+    )
     example = {
         "featureValues": values,
         "featureValuesSha256": canonical_sha256(values),
@@ -615,6 +1036,78 @@ def test_canonical_disk_roundtrip_does_not_turn_object_key_order_into_feature_or
     assert vector == [values[name] for name in names]
     assert list(loaded["featureValues"]) == sorted(names)
     assert list(loaded["featureValues"]) != names
+
+
+def test_mixed_official_feature_types_survive_builder_and_validator_roundtrip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact, feature_values = _mixed_feature_readiness_artifact(tmp_path, monkeypatch)
+    feature_names = artifact["featureNames"]
+    row = artifact["joinedOofRows"][0]
+
+    assert row["orderedFeatureValues"] == [feature_values[name] for name in feature_names]
+    for name in (
+        "predictionTransitionCount",
+        "productFamilyNone",
+        "productFamilyMajor",
+        "productFamilyMinor",
+        "productFamilyDominant",
+        "productFamilyMinorSeventh",
+    ):
+        assert type(row["orderedFeatureValues"][feature_names.index(name)]) is int
+    assert type(row["orderedFeatureValues"][feature_names.index("predictionCoverage")]) is float
+    assert readiness.validate_beat_cell_readiness_artifact(artifact) == artifact
+
+
+def test_standalone_validator_rejects_float_normalized_hash_for_integer_features(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact, feature_values = _mixed_feature_readiness_artifact(tmp_path, monkeypatch)
+    changed = deepcopy(artifact)
+    row = changed["joinedOofRows"][0]
+    float_normalized = {name: float(value) for name, value in feature_values.items()}
+    wrong_type_hash = canonical_sha256(float_normalized)
+    assert wrong_type_hash != canonical_sha256(feature_values)
+
+    row["featureValuesSha256"] = wrong_type_hash
+    _reseal(row, "rowSha256")
+    changed["joinedOofRowSetSha256"] = canonical_sha256(changed["joinedOofRows"])
+    _reseal(changed, "artifactSha256")
+
+    with pytest.raises(readiness.BeatCellReadinessError, match="ordered feature vector disagrees"):
+        readiness.validate_beat_cell_readiness_artifact(changed)
+
+
+def test_standalone_validator_rejects_coherently_resealed_float_normalized_integer_features(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact, _feature_values = _mixed_feature_readiness_artifact(tmp_path, monkeypatch)
+    changed = deepcopy(artifact)
+    feature_names = changed["featureNames"]
+    row = changed["joinedOofRows"][0]
+    for name in readiness.INTEGER_FEATURE_NAMES:
+        position = feature_names.index(name)
+        row["orderedFeatureValues"][position] = float(row["orderedFeatureValues"][position])
+    resealed_mapping = {name: row["orderedFeatureValues"][position] for position, name in enumerate(feature_names)}
+    row["featureValuesSha256"] = canonical_sha256(resealed_mapping)
+    _reseal(row, "rowSha256")
+    changed["joinedOofRowSetSha256"] = canonical_sha256(changed["joinedOofRows"])
+    diagnostic_source = changed["diagnosticSource"]
+    diagnostic_source["joinedFeatureProjectionSetSha256"] = canonical_sha256(
+        [
+            {
+                "exampleKey": item["exampleKey"],
+                "featureValuesSha256": item["featureValuesSha256"],
+                "orderedFeatureValues": item["orderedFeatureValues"],
+            }
+            for item in changed["joinedOofRows"]
+        ]
+    )
+    _reseal(diagnostic_source, "sourceSha256")
+    _reseal(changed, "artifactSha256")
+
+    with pytest.raises(readiness.BeatCellReadinessError, match="JSON integer"):
+        readiness.validate_beat_cell_readiness_artifact(changed)
 
 
 def test_atomic_new_path_publication_cleans_up_on_precommit_fault(tmp_path: Path) -> None:
