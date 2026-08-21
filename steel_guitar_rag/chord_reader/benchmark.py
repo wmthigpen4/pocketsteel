@@ -6,10 +6,12 @@ import hashlib
 import json
 import importlib
 import math
+import os
 from pathlib import Path
 import resource
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Any, Iterable, Mapping
 
@@ -39,6 +41,10 @@ from .student import (
     StudentHeterogeneousBoundaryGuidedEnsembleRecognizer,
     StudentRecognizer,
 )
+from .uncertainty import (
+    FACTORIZED_UNCERTAINTY_SCHEMA,
+    validate_factorized_uncertainty_contract,
+)
 
 
 BENCHMARK_REPORT_SCHEMA = "chord_benchmark_report_v2"
@@ -46,11 +52,38 @@ BENCHMARK_PROVENANCE_SCHEMA = "chord_benchmark_provenance_v2"
 MIXED_JOINT_DEVELOPMENT_EXPERIMENT_SCHEMA = (
     "chord_mixed_joint_development_experiment_v1"
 )
+UNCERTAINTY_DEVELOPMENT_EXPERIMENT_SCHEMA = (
+    "chord_factorized_uncertainty_development_experiment_v1"
+)
 
 
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _write_json_atomic(path: Path, value: Any) -> None:
+    """Materialize one JSON artifact without exposing a partial destination."""
+
+    text = json.dumps(value, indent=2, sort_keys=True) + "\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink():
+        raise ValueError(f"Refusing to replace symlinked benchmark output {path}.")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+            output.write(text)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 
 def _file_sha256(path: Path) -> str:
@@ -394,6 +427,223 @@ def _prediction_metadata(prediction: Mapping[str, Any]) -> dict[str, Any]:
     return output
 
 
+def _required_sha256(value: Any, name: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{name} must be a lowercase SHA-256 hex digest.")
+    return value
+
+
+def _factorized_uncertainty_expected_members(recognizer: Any) -> list[dict[str, Any]]:
+    """Rebuild the exact emitted member bindings from frozen recognizer state."""
+
+    identities = getattr(recognizer, "uncertainty_member_identities", None)
+    head_types = getattr(recognizer, "member_head_types", None)
+    common_weights = getattr(recognizer, "uncertainty_common_weights", None)
+    if (
+        not isinstance(identities, (list, tuple))
+        or not identities
+        or any(not isinstance(identity, Mapping) for identity in identities)
+        or not isinstance(head_types, (list, tuple))
+        or not isinstance(common_weights, (list, tuple))
+        or len(identities) != len(head_types)
+        or len(identities) != len(common_weights)
+    ):
+        raise ValueError("Recognizer uncertainty member identities are incomplete.")
+    frozen_identities = [
+        json.loads(
+            json.dumps(
+                dict(identity),
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+        )
+        for identity in identities
+    ]
+    joint_indices = [
+        index
+        for index, head_type in enumerate(head_types)
+        if head_type == "joint-139"
+    ]
+    mixed_policy = getattr(recognizer, "mixed_joint_ensemble_policy", None)
+    if isinstance(mixed_policy, Mapping):
+        joint_policy = mixed_policy.get("jointRootProduct")
+        if not isinstance(joint_policy, Mapping):
+            raise ValueError("Recognizer mixed-joint uncertainty policy is incomplete.")
+        joint_weights = joint_policy.get("normalizedContributorWeights")
+        if not isinstance(joint_weights, list) or len(joint_weights) != len(
+            joint_indices
+        ):
+            raise ValueError("Recognizer mixed-joint uncertainty weights are incomplete.")
+    else:
+        joint_weights = [common_weights[index] for index in joint_indices]
+    joint_weight_by_index = {
+        index: float(weight)
+        for index, weight in zip(joint_indices, joint_weights, strict=True)
+    }
+    return [
+        {
+            **dict(identity),
+            "ordinal": ordinal,
+            "headType": str(head_types[ordinal]),
+            "commonWeight": float(common_weights[ordinal]),
+            "jointContributorWeight": joint_weight_by_index.get(ordinal),
+        }
+        for ordinal, identity in enumerate(frozen_identities)
+    ]
+
+
+def _factorized_uncertainty_metadata(
+    prediction: Mapping[str, Any],
+    *,
+    feature_kind: str,
+    feature_count: int,
+    feature_spec_sha256: str,
+    model_or_ensemble_sha256: str,
+    expected_decoder_contract_sha256: str,
+    joint_product_blend: float,
+    expected_members: list[dict[str, Any]],
+) -> tuple[dict[str, str], dict[str, Any]]:
+    """Validate a reference-free uncertainty payload and return frozen bindings."""
+
+    uncertainty = prediction.get("uncertainty")
+    if not isinstance(uncertainty, Mapping):
+        raise ValueError("Uncertainty emission requires prediction.uncertainty.")
+    if uncertainty.get("referenceFree") is not True:
+        raise ValueError("Emitted uncertainty must declare referenceFree=true.")
+    binding = validate_factorized_uncertainty_contract(uncertainty)
+    contract_sha256 = str(uncertainty["contractSha256"])
+    uncertainty_sha256 = _required_sha256(
+        prediction.get("uncertaintySha256"),
+        "prediction.uncertaintySha256",
+    )
+    if uncertainty_sha256 != canonical_sha256(uncertainty):
+        raise ValueError("prediction.uncertaintySha256 does not match uncertainty.")
+    prediction_core_sha256 = _required_sha256(
+        prediction.get("predictionCoreSha256"),
+        "prediction.predictionCoreSha256",
+    )
+    prediction_core = {
+        key: value
+        for key, value in prediction.items()
+        if key not in {"uncertainty", "uncertaintySha256", "predictionCoreSha256"}
+    }
+    if prediction_core_sha256 != canonical_sha256(prediction_core):
+        raise ValueError("prediction.predictionCoreSha256 does not match prediction core.")
+    uncertainty_prediction_core_sha256 = _required_sha256(
+        uncertainty.get("predictionCoreSha256"),
+        "prediction.uncertainty.predictionCoreSha256",
+    )
+    if uncertainty_prediction_core_sha256 != prediction_core_sha256:
+        raise ValueError(
+            "prediction.uncertainty.predictionCoreSha256 does not match prediction core."
+        )
+
+    expected_binding = {
+        "featureKind": feature_kind,
+        "featureCount": feature_count,
+        "featureSpecSha256": feature_spec_sha256,
+        "modelOrEnsembleSha256": model_or_ensemble_sha256,
+        "jointProductBlend": float(joint_product_blend),
+    }
+    for name, expected in expected_binding.items():
+        if binding.get(name) != expected:
+            raise ValueError(
+                f"prediction.uncertainty.binding.{name} is not cache/model bound."
+            )
+    decoder_contract_sha256 = _required_sha256(
+        binding.get("decoderContractSha256"),
+        "prediction.uncertainty.binding.decoderContractSha256",
+    )
+    if decoder_contract_sha256 != expected_decoder_contract_sha256:
+        raise ValueError("Uncertainty and prediction decoder contracts do not match.")
+
+    members = uncertainty["members"]
+    assert isinstance(members, list)
+    if members != expected_members:
+        raise ValueError(
+            "Uncertainty member bindings do not match recognizer identities and weights."
+        )
+
+    timebase = uncertainty.get("timebase")
+    if not isinstance(timebase, Mapping):
+        raise ValueError("prediction.uncertainty.timebase must be an object.")
+    prediction_frame_seconds = prediction.get("frameSeconds")
+    prediction_duration_seconds = prediction.get("durationSeconds")
+    for name, value in (
+        ("prediction.frameSeconds", prediction_frame_seconds),
+        ("prediction.durationSeconds", prediction_duration_seconds),
+        ("prediction.uncertainty.timebase.frameSeconds", timebase.get("frameSeconds")),
+        (
+            "prediction.uncertainty.timebase.durationSeconds",
+            timebase.get("durationSeconds"),
+        ),
+    ):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            or float(value) <= 0
+        ):
+            raise ValueError(f"{name} must be positive and finite.")
+    frame_count = timebase.get("frameCount")
+    if (
+        isinstance(frame_count, bool)
+        or not isinstance(frame_count, int)
+        or frame_count <= 0
+    ):
+        raise ValueError(
+            "prediction.uncertainty.timebase.frameCount must be a positive integer."
+        )
+    if float(timebase["frameSeconds"]) != float(prediction_frame_seconds):
+        raise ValueError("Uncertainty and prediction frameSeconds do not match.")
+    if float(timebase["durationSeconds"]) != float(prediction_duration_seconds):
+        raise ValueError("Uncertainty and prediction durationSeconds do not match.")
+    expected_frame_count = int(
+        math.ceil(
+            float(prediction_duration_seconds) / float(prediction_frame_seconds)
+        )
+    )
+    if frame_count != expected_frame_count:
+        raise ValueError("Uncertainty frameCount does not match the prediction timebase.")
+    frames = uncertainty.get("frames")
+    if not isinstance(frames, Mapping):
+        raise ValueError("prediction.uncertainty.frames must be an object.")
+    frame_sections = {"root", "product", "ensemble", "boundary", "observability"}
+    if set(frames) != frame_sections:
+        raise ValueError(
+            "prediction.uncertainty.frames must contain exactly the required sections."
+        )
+    if any(not isinstance(frames[name], Mapping) for name in frame_sections):
+        raise ValueError("prediction.uncertainty.frames is missing a required section.")
+
+    feature_binding = {
+        name: binding[name]
+        for name in ("featureKind", "featureCount", "featureSpecSha256")
+    }
+    summary = {
+        "uncertaintySchemaVersion": FACTORIZED_UNCERTAINTY_SCHEMA,
+        "contractSha256": contract_sha256,
+        "referenceFree": True,
+        "featureBinding": feature_binding,
+        "featureBindingSha256": canonical_sha256(feature_binding),
+        "memberBinding": members,
+        "memberBindingSha256": canonical_sha256(members),
+        "binding": dict(binding),
+        "bindingSha256": canonical_sha256(binding),
+    }
+    return (
+        {
+            "predictionCoreSha256": prediction_core_sha256,
+            "uncertaintySha256": uncertainty_sha256,
+        },
+        summary,
+    )
+
+
 def _manifest_tempo_beat_grid(
     track: Mapping[str, Any],
     *,
@@ -618,11 +868,20 @@ def run_factorized_cache_benchmark(
     beat_grid_source: str = "none",
     joint_product_blend: float = 0.0,
     allow_mixed_joint_members: bool = False,
+    emit_uncertainty: bool = False,
 ) -> dict[str, Any]:
     """Decode a frozen feature cache without charging extraction to model runtime."""
 
     if not isinstance(allow_mixed_joint_members, bool):
         raise ValueError("allow_mixed_joint_members must be a boolean opt-in.")
+    if not isinstance(emit_uncertainty, bool):
+        raise ValueError("emit_uncertainty must be a boolean opt-in.")
+    if emit_uncertainty and split not in {"dev", "development"}:
+        raise ValueError(
+            "Uncertainty emission is development-only; split must be dev or development."
+        )
+    if emit_uncertainty and beat_grid_source != "none":
+        raise ValueError("Uncertainty emission requires beat_grid_source='none'.")
     if allow_mixed_joint_members and split not in {"dev", "development"}:
         raise ValueError(
             "Mixed joint ensemble benchmarking is development-only; split must be dev or development."
@@ -682,6 +941,11 @@ def run_factorized_cache_benchmark(
             "sha256": recognizer.ensemble_sha256,
             "bytes": sum(int(item["bytes"]) for item in member_identities_before),
         }
+    expected_uncertainty_members = (
+        _factorized_uncertainty_expected_members(recognizer)
+        if emit_uncertainty
+        else []
+    )
     if beat_grid_source not in {"none", "manifest-tempo-oracle"}:
         raise ValueError("Unknown factorized cache beat-grid source.")
     if beat_grid_source != "none" and split not in {"dev", "development"}:
@@ -731,6 +995,7 @@ def run_factorized_cache_benchmark(
     validate_factorized_artifact_manifest(artifact_manifest, verify_files=True)
 
     rows: list[dict[str, Any]] = []
+    uncertainty_summaries: list[dict[str, Any]] = []
     for item in tracks:
         identifier = str(item["id"])
         source = sources.get(identifier)
@@ -751,25 +1016,57 @@ def run_factorized_cache_benchmark(
             if beat_grid_source == "manifest-tempo-oracle"
             else None
         )
-        reference_bytes = Path(source["referencePath"]).read_bytes()
-        reference = json.loads(reference_bytes)
-        reference_sha256 = hashlib.sha256(reference_bytes).hexdigest()
-        reference_boundaries = (
-            tuple(float(segment["start"]) for segment in reference["segments"][1:])
-            if beat_grid is not None
-            else ()
-        )
-        prediction = recognizer.predict_features(
-            features,
-            duration,
-            prediction_id=identifier,
-            beat_grid=beat_grid,
-            reference_boundaries_seconds=reference_boundaries,
-        )
-        elapsed = time.perf_counter() - started
         prediction_path = output_root / "predictions" / "factorized" / f"{identifier}.json"
-        _write_json(prediction_path, prediction)
-        prediction_sha256 = _file_sha256(prediction_path)
+        uncertainty_metadata: dict[str, str] = {}
+        if emit_uncertainty:
+            prediction = recognizer.predict_features(
+                features,
+                duration,
+                prediction_id=identifier,
+                beat_grid=beat_grid,
+                reference_boundaries_seconds=(),
+                emit_uncertainty=True,
+            )
+            elapsed = time.perf_counter() - started
+            uncertainty_metadata, uncertainty_summary = _factorized_uncertainty_metadata(
+                prediction,
+                feature_kind=str(cache_manifest["featureKind"]),
+                feature_count=int(cache_manifest["featureCount"]),
+                feature_spec_sha256=feature_spec_sha256,
+                model_or_ensemble_sha256=str(model_identity_before["sha256"]),
+                expected_decoder_contract_sha256=str(recognizer.decoder_contract_sha256),
+                joint_product_blend=joint_product_blend,
+                expected_members=expected_uncertainty_members,
+            )
+            if uncertainty_summaries and uncertainty_summary != uncertainty_summaries[0]:
+                raise RuntimeError(
+                    "All emitted uncertainty payloads must share schema and frozen bindings."
+                )
+            uncertainty_summaries.append(uncertainty_summary)
+            _write_json_atomic(prediction_path, prediction)
+            prediction_sha256 = _file_sha256(prediction_path)
+            reference_bytes = Path(source["referencePath"]).read_bytes()
+            reference = json.loads(reference_bytes)
+            reference_sha256 = hashlib.sha256(reference_bytes).hexdigest()
+        else:
+            reference_bytes = Path(source["referencePath"]).read_bytes()
+            reference = json.loads(reference_bytes)
+            reference_sha256 = hashlib.sha256(reference_bytes).hexdigest()
+            reference_boundaries = (
+                tuple(float(segment["start"]) for segment in reference["segments"][1:])
+                if beat_grid is not None
+                else ()
+            )
+            prediction = recognizer.predict_features(
+                features,
+                duration,
+                prediction_id=identifier,
+                beat_grid=beat_grid,
+                reference_boundaries_seconds=reference_boundaries,
+            )
+            elapsed = time.perf_counter() - started
+            _write_json(prediction_path, prediction)
+            prediction_sha256 = _file_sha256(prediction_path)
         timing_sha256 = canonical_sha256(_timing_identity(source))
         rows.append(
             {
@@ -788,6 +1085,7 @@ def run_factorized_cache_benchmark(
                 "referenceSha256": reference_sha256,
                 "predictionSha256": prediction_sha256,
                 "timingSha256": timing_sha256,
+                **uncertainty_metadata,
                 **_prediction_metadata(prediction),
                 "beatAware": bool(prediction.get("beatAware")),
             }
@@ -835,6 +1133,7 @@ def run_factorized_cache_benchmark(
         and source_tree_before["dirty"] is False
         and split != "all"
         and not allow_mixed_joint_members
+        and not emit_uncertainty
     )
     report = {
         "schemaVersion": BENCHMARK_REPORT_SCHEMA,
@@ -859,6 +1158,52 @@ def run_factorized_cache_benchmark(
         },
         "tracks": rows,
     }
+    if emit_uncertainty:
+        if len(uncertainty_summaries) != len(rows):
+            raise RuntimeError("Every emitted prediction must provide uncertainty metadata.")
+        uncertainty_summary = uncertainty_summaries[0]
+        if any(summary != uncertainty_summary for summary in uncertainty_summaries[1:]):
+            raise RuntimeError(
+                "All emitted uncertainty payloads must share schema and frozen bindings."
+            )
+        report.update(
+            {
+                "developmentOnlyExperiment": True,
+                "uncertaintyExperiment": {
+                    "schemaVersion": UNCERTAINTY_DEVELOPMENT_EXPERIMENT_SCHEMA,
+                    **uncertainty_summary,
+                    "allowedSplits": ["dev", "development"],
+                    "certificationPolicy": (
+                        "reference-free telemetry research only; cannot enter promotion"
+                    ),
+                    "trackCount": len(rows),
+                    "predictionCoreSetSha256": canonical_sha256(
+                        sorted(
+                            (
+                                {
+                                    "id": str(row["id"]),
+                                    "sha256": str(row["predictionCoreSha256"]),
+                                }
+                                for row in rows
+                            ),
+                            key=lambda value: value["id"],
+                        )
+                    ),
+                    "uncertaintySetSha256": canonical_sha256(
+                        sorted(
+                            (
+                                {
+                                    "id": str(row["id"]),
+                                    "sha256": str(row["uncertaintySha256"]),
+                                }
+                                for row in rows
+                            ),
+                            key=lambda value: value["id"],
+                        )
+                    ),
+                },
+            }
+        )
     if allow_mixed_joint_members:
         aggregation_policy = getattr(
             recognizer,

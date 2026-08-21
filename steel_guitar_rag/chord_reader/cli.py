@@ -270,6 +270,13 @@ def build_parser() -> argparse.ArgumentParser:
             "139-output ensemble members with head-aware weighting"
         ),
     )
+    factorized_cache_benchmark.add_argument(
+        "--emit-uncertainty",
+        action="store_true",
+        help=(
+            "Emit reference-free development-only uncertainty telemetry with each prediction"
+        ),
+    )
 
     merge_reports = commands.add_parser(
         "merge-benchmark-reports",
@@ -633,6 +640,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         _write_json(result, args.report)
     elif args.command == "benchmark-factorized-cache":
+        if args.emit_uncertainty and args.split not in {"dev", "development"}:
+            raise ValueError(
+                "Uncertainty emission is development-only; split must be dev or development."
+            )
+        if args.emit_uncertainty and args.beat_grid_source != "none":
+            raise ValueError("Uncertainty emission requires beat_grid_source='none'.")
         cache_manifest = _read_json(args.cache_manifest)
         if "splitProtocol" in cache_manifest:
             validate_split_protocol_manifest(cache_manifest)
@@ -648,6 +661,7 @@ def main(argv: list[str] | None = None) -> int:
             beat_grid_source=args.beat_grid_source,
             joint_product_blend=args.joint_product_blend,
             allow_mixed_joint_members=args.allow_mixed_joint_members,
+            **({"emit_uncertainty": True} if args.emit_uncertainty else {}),
         )
         _write_json(result, args.report)
     elif args.command == "merge-benchmark-reports":

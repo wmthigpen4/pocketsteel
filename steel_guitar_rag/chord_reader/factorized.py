@@ -41,6 +41,11 @@ from .split_protocol import (
     validate_split_protocol_manifest,
 )
 from .student import STUDENT_FEATURE_KINDS, STUDENT_FRAME_SECONDS, STUDENT_SAMPLE_RATE
+from .uncertainty import (
+    FactorizedInferenceBundle,
+    attach_uncertainty,
+    build_factorized_uncertainty,
+)
 
 
 FACTORIZED_SCHEMA = "chord_factorized_model_v2"
@@ -2459,6 +2464,29 @@ def _factorized_single_decoder_contract(
     }
 
 
+def _factorized_legacy_single_decoder_contract(
+    *,
+    bass_threshold: float,
+) -> dict[str, Any]:
+    return {
+        "schemaVersion": "chord_factorized_hierarchical_decoder_v1",
+        "frameSeconds": STUDENT_FRAME_SECONDS,
+        "root": {
+            "authority": "independent root head",
+            "changePenalty": -1.25,
+            "boundaryScale": 1.0,
+            "boundaryBias": -1.5,
+        },
+        "productConditionedOnFrozenRoot": {
+            "authority": "direct pitched product head",
+            "changePenalty": -0.75,
+            "boundaryScale": 0.8,
+            "boundaryBias": -1.5,
+        },
+        "bassThreshold": bass_threshold,
+    }
+
+
 def _normalized_ensemble_weights(
     count: int,
     weights: Sequence[float] | None,
@@ -2593,6 +2621,43 @@ def _combine_factorized_member_outputs(
     return numpy.concatenate(combined, axis=-1)
 
 
+def _frame_paths_from_prediction(
+    prediction: Mapping[str, Any],
+    frame_count: int,
+) -> tuple[list[int], list[int]]:
+    segments = prediction.get("segments")
+    if not isinstance(segments, list) or not segments:
+        raise ValueError("Uncertainty requires at least one decoded prediction segment.")
+    roots: list[int] = []
+    products: list[int] = []
+    segment_index = 0
+    for frame in range(frame_count):
+        timestamp = frame * STUDENT_FRAME_SECONDS
+        while segment_index + 1 < len(segments) and timestamp >= float(
+            segments[segment_index]["end"]
+        ) - 1e-12:
+            segment_index += 1
+        segment = segments[segment_index]
+        label = str(segment["label"])
+        components = factorized_components(label)
+        root = int(components["root"])
+        product_components = factorized_components(
+            str(segment.get("productLabel", label))
+        )
+        product = int(product_components["product"])
+        if (
+            int(product_components["root"]) != root
+            or int(components["product"]) != product
+        ):
+            raise ValueError(
+                "Uncertainty prediction segments have inconsistent detailed and "
+                "Play Along chord classes."
+            )
+        roots.append(int(root))
+        products.append(int(product))
+    return roots, products
+
+
 class FactorizedRecognizer:
     """Run an exported expanded-vocabulary model and decode timed segments."""
 
@@ -2606,11 +2671,15 @@ class FactorizedRecognizer:
     ) -> None:
         runtime = importlib.import_module("onnxruntime")
         self.numpy = importlib.import_module("numpy")
-        self.session = runtime.InferenceSession(str(model), providers=["CPUExecutionProvider"])
+        path = Path(model)
+        if not path.is_file():
+            raise ValueError(f"Factorized model is not a file: {path}.")
+        before_sha256, before_bytes = _file_sha256_and_bytes(path)
+        self.session = runtime.InferenceSession(str(path), providers=["CPUExecutionProvider"])
         metadata = self.session.get_modelmeta().custom_metadata_map
         if metadata.get("chordReaderFactorizedSchema") != FACTORIZED_SCHEMA:
             raise ValueError("The ONNX file is not a supported factorized chord model.")
-        self.model = model
+        self.model = path
         self.feature_kind = metadata["chordReaderFeatureKind"]
         self.feature_count = int(metadata["chordReaderFeatureCount"])
         self.sample_rate = int(metadata.get("chordReaderSampleRate", STUDENT_SAMPLE_RATE))
@@ -2621,8 +2690,6 @@ class FactorizedRecognizer:
         self.vocabulary_labels = factorized_vocabulary_labels()
         self.joint_root_product = _factorized_metadata_joint_root_product(metadata)
         self.output_width = _factorized_output_width(self.joint_root_product)
-        if self.joint_root_product:
-            _factorized_onnx_runtime_contract(self)
         self.joint_product_blend = _validated_joint_product_blend(
             joint_product_blend
         )
@@ -2635,9 +2702,34 @@ class FactorizedRecognizer:
                 bass_threshold=self.bass_threshold,
                 joint_product_blend=self.joint_product_blend,
             )
-            self.decoder_contract_sha256 = _factorized_canonical_sha256(
-                self.decoder_contract
+        else:
+            self.decoder_contract = _factorized_legacy_single_decoder_contract(
+                bass_threshold=self.bass_threshold,
             )
+        self.decoder_contract_sha256 = _factorized_canonical_sha256(
+            self.decoder_contract
+        )
+        self.runtime_contract = _factorized_onnx_runtime_contract(self)
+        self.runtime_contract_sha256 = _factorized_canonical_sha256(
+            self.runtime_contract
+        )
+        after_sha256, after_bytes = _file_sha256_and_bytes(path)
+        if (before_sha256, before_bytes) != (after_sha256, after_bytes):
+            raise ValueError("The factorized model changed while it was loaded.")
+        self.model_sha256 = after_sha256
+        self.model_bytes = after_bytes
+        self.member_head_types = (
+            "joint-139" if self.joint_root_product else "legacy-90",
+        )
+        self.uncertainty_common_weights = (1.0,)
+        self.uncertainty_member_identities = (
+            {
+                "fileName": path.name,
+                "modelSha256": after_sha256,
+                "bytes": after_bytes,
+                "runtimeContractSha256": self.runtime_contract_sha256,
+            },
+        )
 
     def _outputs(self, features: Any) -> Any:
         if not self.window_frames:
@@ -2651,6 +2743,33 @@ class FactorizedRecognizer:
             outputs = self.session.run(None, {"features": values[None].astype(self.numpy.float32)})[0][0]
             chunks.append(outputs[:valid])
         return self.numpy.concatenate(chunks, axis=0)
+
+    @staticmethod
+    def _reference_free_boundaries(
+        reference_boundaries_seconds: Iterable[float],
+        *,
+        emit_uncertainty: bool,
+    ) -> Iterable[float]:
+        if not emit_uncertainty:
+            return reference_boundaries_seconds
+        try:
+            boundaries = tuple(reference_boundaries_seconds)
+        except TypeError as exc:
+            raise ValueError(
+                "reference_boundaries_seconds must be an iterable."
+            ) from exc
+        if boundaries:
+            raise ValueError(
+                "Reference-free uncertainty cannot be emitted with reference boundaries."
+            )
+        return boundaries
+
+    def _inference_bundle(self, features: Any) -> FactorizedInferenceBundle:
+        outputs = self._outputs(features)
+        return FactorizedInferenceBundle(
+            combined_logits=outputs,
+            member_logits=(outputs,),
+        )
 
     def _joint_prediction_metadata(self) -> dict[str, Any]:
         if not bool(getattr(self, "joint_root_product", False)):
@@ -2673,6 +2792,95 @@ class FactorizedRecognizer:
             "decoderContract": json.loads(json.dumps(contract, allow_nan=False)),
             "decoderContractSha256": _factorized_canonical_sha256(contract),
         }
+
+    def _attach_reference_free_uncertainty(
+        self,
+        prediction: Mapping[str, Any],
+        *,
+        bundle: FactorizedInferenceBundle,
+        features: Any,
+        duration: float,
+        roots: Sequence[int] | None = None,
+        products: Sequence[int] | None = None,
+    ) -> dict[str, Any]:
+        member_head_types = tuple(
+            str(value)
+            for value in getattr(
+                self,
+                "member_head_types",
+                (
+                    "joint-139"
+                    if bool(getattr(self, "joint_root_product", False))
+                    else "legacy-90",
+                ),
+            )
+        )
+        if len(member_head_types) != len(bundle.member_logits):
+            raise ValueError("Uncertainty member logits and head types do not match.")
+        combined_heads = split_factorized_outputs(
+            bundle.combined_logits,
+            joint_root_product=bool(getattr(self, "joint_root_product", False)),
+        )
+        member_heads = tuple(
+            split_factorized_outputs(
+                logits,
+                joint_root_product=member_type == "joint-139",
+            )
+            for logits, member_type in zip(
+                bundle.member_logits,
+                member_head_types,
+                strict=True,
+            )
+        )
+        frame_count = int(bundle.combined_logits.shape[0])
+        if roots is None or products is None:
+            roots, products = _frame_paths_from_prediction(prediction, frame_count)
+        common_weights = tuple(
+            float(value)
+            for value in getattr(self, "uncertainty_common_weights", (1.0,))
+        )
+        joint_indices = tuple(
+            index
+            for index, member_type in enumerate(member_head_types)
+            if member_type == "joint-139"
+        )
+        mixed_policy = getattr(self, "mixed_joint_ensemble_policy", None)
+        if isinstance(mixed_policy, Mapping):
+            joint_weights = tuple(
+                float(value)
+                for value in mixed_policy["jointRootProduct"][
+                    "normalizedContributorWeights"
+                ]
+            )
+        else:
+            joint_weights = tuple(common_weights[index] for index in joint_indices)
+        uncertainty = build_factorized_uncertainty(
+            numpy=self.numpy,
+            features=features,
+            duration_seconds=duration,
+            frame_seconds=STUDENT_FRAME_SECONDS,
+            feature_kind=self.feature_kind,
+            feature_count=self.feature_count,
+            feature_spec_sha256=self.feature_spec_sha256,
+            sample_rate=self.sample_rate,
+            decoder_contract_sha256=self.decoder_contract_sha256,
+            model_or_ensemble_sha256=str(
+                self.ensemble_sha256
+                if hasattr(self, "ensemble_sha256")
+                else self.model_sha256
+            ),
+            combined_heads=combined_heads,
+            member_heads=member_heads,
+            member_head_types=member_head_types,
+            member_identities=self.uncertainty_member_identities,
+            common_weights=common_weights,
+            joint_contributor_indices=joint_indices,
+            joint_contributor_weights=joint_weights,
+            joint_product_blend=float(getattr(self, "joint_product_blend", 0.0)),
+            final_roots=roots,
+            final_products=products,
+        )
+        return attach_uncertainty(prediction, uncertainty)
 
     def _segmental_prediction(
         self,
@@ -2889,17 +3097,30 @@ class FactorizedRecognizer:
         prediction_id: str,
         beat_grid: Mapping[str, Any] | None = None,
         reference_boundaries_seconds: Iterable[float] = (),
+        emit_uncertainty: bool = False,
+        _bundle: FactorizedInferenceBundle | None = None,
     ) -> dict[str, Any]:
         """Decode frozen features, optionally enabling the rhythm challenger."""
 
+        if not isinstance(emit_uncertainty, bool):
+            raise ValueError("emit_uncertainty must be a boolean.")
+        if emit_uncertainty and beat_grid is not None:
+            raise ValueError(
+                "Reference-free uncertainty cannot be emitted with a beat grid."
+            )
+        reference_boundaries_seconds = self._reference_free_boundaries(
+            reference_boundaries_seconds,
+            emit_uncertainty=emit_uncertainty,
+        )
         if getattr(features, "ndim", None) != 2 or int(features.shape[1]) != self.feature_count:
             raise ValueError(
                 f"Factorized features must have shape (frames, {self.feature_count})."
             )
         joint_root_product = bool(getattr(self, "joint_root_product", False))
         joint_product_blend = float(getattr(self, "joint_product_blend", 0.0))
+        bundle = _bundle if _bundle is not None else self._inference_bundle(features)
         heads = split_factorized_outputs(
-            self._outputs(features),
+            bundle.combined_logits,
             joint_root_product=joint_root_product,
         )
         validated_beat_grid = (
@@ -2917,7 +3138,16 @@ class FactorizedRecognizer:
                 reference_boundaries_seconds=reference_boundaries_seconds,
             )
             if segmental is not None:
-                return segmental
+                return (
+                    self._attach_reference_free_uncertainty(
+                        segmental,
+                        bundle=bundle,
+                        features=features,
+                        duration=duration,
+                    )
+                    if emit_uncertainty
+                    else segmental
+                )
         boundary_probabilities = 1 / (1 + self.numpy.exp(-heads["boundary"][:, 0]))
         roots, products = _hierarchical_product_path(
             heads["root"],
@@ -3025,7 +3255,7 @@ class FactorizedRecognizer:
                     }
                 )
             start = frame
-        return {
+        prediction = {
             "schemaVersion": "chord_prediction_v1",
             "id": prediction_id,
             "engine": "chord-factorized-v9",
@@ -3044,6 +3274,16 @@ class FactorizedRecognizer:
             "segments": segments,
             **self._joint_prediction_metadata(),
         }
+        if emit_uncertainty:
+            return self._attach_reference_free_uncertainty(
+                prediction,
+                bundle=bundle,
+                features=features,
+                duration=duration,
+                roots=roots,
+                products=products,
+            )
+        return prediction
 
     def predict(
         self,
@@ -3052,7 +3292,18 @@ class FactorizedRecognizer:
         prediction_id: str | None = None,
         beat_grid: Mapping[str, Any] | None = None,
         reference_boundaries_seconds: Iterable[float] = (),
+        emit_uncertainty: bool = False,
     ) -> dict[str, Any]:
+        if not isinstance(emit_uncertainty, bool):
+            raise ValueError("emit_uncertainty must be a boolean.")
+        if emit_uncertainty and beat_grid is not None:
+            raise ValueError(
+                "Reference-free uncertainty cannot be emitted with a beat grid."
+            )
+        reference_boundaries_seconds = self._reference_free_boundaries(
+            reference_boundaries_seconds,
+            emit_uncertainty=emit_uncertainty,
+        )
         if self.feature_kind == "dasheng_base_v1":
             if self.dasheng_snapshot_root is None:
                 raise ValueError(
@@ -3074,6 +3325,7 @@ class FactorizedRecognizer:
             prediction_id=prediction_id or audio.name,
             beat_grid=beat_grid,
             reference_boundaries_seconds=reference_boundaries_seconds,
+            emit_uncertainty=emit_uncertainty,
         )
 
 
@@ -3258,7 +3510,20 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
                 json.dumps(mixed_joint_policy, allow_nan=False)
             )
 
-    def _outputs(self, features: Any) -> Any:
+        self.uncertainty_common_weights = self.weights
+        self.uncertainty_member_identities = tuple(
+            {
+                "fileName": item["fileName"],
+                "modelSha256": item["sha256"],
+                "bytes": item["bytes"],
+                "runtimeContractSha256": item["runtimeContractSha256"],
+                "architecture": item["architecture"],
+                "windowFrames": item["windowFrames"],
+            }
+            for item in provenance
+        )
+
+    def _inference_bundle(self, features: Any) -> FactorizedInferenceBundle:
         values = self.numpy.asarray(features)
         if (
             values.ndim != 2
@@ -3276,7 +3541,7 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             raise ValueError(
                 "A factorized ensemble member returned a different frame count."
             )
-        return _combine_factorized_member_outputs(
+        combined = _combine_factorized_member_outputs(
             outputs,
             self.weights,
             self.numpy,
@@ -3290,6 +3555,13 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
                 else None
             ),
         )
+        return FactorizedInferenceBundle(
+            combined_logits=combined,
+            member_logits=tuple(outputs),
+        )
+
+    def _outputs(self, features: Any) -> Any:
+        return self._inference_bundle(features).combined_logits
 
     def predict_features(
         self,
@@ -3299,7 +3571,18 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
         prediction_id: str,
         beat_grid: Mapping[str, Any] | None = None,
         reference_boundaries_seconds: Iterable[float] = (),
+        emit_uncertainty: bool = False,
     ) -> dict[str, Any]:
+        if not isinstance(emit_uncertainty, bool):
+            raise ValueError("emit_uncertainty must be a boolean.")
+        if emit_uncertainty and beat_grid is not None:
+            raise ValueError(
+                "Reference-free uncertainty cannot be emitted with a beat grid."
+            )
+        reference_boundaries_seconds = self._reference_free_boundaries(
+            reference_boundaries_seconds,
+            emit_uncertainty=emit_uncertainty,
+        )
         if (
             isinstance(duration, bool)
             or not isinstance(duration, (int, float))
@@ -3307,12 +3590,15 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             or float(duration) <= 0
         ):
             raise ValueError("Factorized ensemble duration must be a positive finite number.")
+        bundle = self._inference_bundle(features)
         prediction = super().predict_features(
             features,
             float(duration),
             prediction_id=prediction_id,
             beat_grid=beat_grid,
             reference_boundaries_seconds=reference_boundaries_seconds,
+            emit_uncertainty=False,
+            _bundle=bundle,
         )
         prediction["engine"] = "chord-factorized-logit-ensemble-v9"
         prediction["model"] = self.ensemble_id
@@ -3323,4 +3609,11 @@ class FactorizedEnsembleRecognizer(FactorizedRecognizer):
             json.dumps(self.decoder_contract, allow_nan=False)
         )
         prediction["ensembleDecoderContractSha256"] = self.decoder_contract_sha256
+        if emit_uncertainty:
+            return self._attach_reference_free_uncertainty(
+                prediction,
+                bundle=bundle,
+                features=features,
+                duration=float(duration),
+            )
         return prediction
