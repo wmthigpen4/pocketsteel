@@ -1,5 +1,44 @@
 # Sealed development bar-selector examples
 
+## 2026-08-20 audio-lineage hardening update
+
+The example-builder boundary now requires the complete
+`chord_development_audio_lineage_v1` mapping as
+`audio_lineage_manifest=...`. It revalidates the artifact with
+`verify_files=True` and the exact production
+`steel_guitar_rag.chord_reader.student.extract_student_features` entrypoint,
+and derives the exact selected-track projection itself. The benchmark's
+`chord_benchmark_audio_lineage_v1` binding must declare full file plus fresh
+re-extraction verification and must equal that derived projection byte for
+byte at the canonical-object level.
+
+Before a prediction, timing, or reference leaf is opened, the builder first
+rehashes all bound manifests/audio/cache files and freshly re-extracts every
+selected feature array through that production entrypoint. It then requires
+exact agreement among each benchmark row, projected lineage row, and runtime
+audio binding for source-audio SHA-256, cached/fresh float16 feature array
+SHA-256, lineage-row SHA-256, and canonical duration milliseconds. The runtime
+manifest is therefore validated once metadata-only, then again with the strict
+source/timing-file checks after all cross-artifact lineage checks pass.
+
+Identical source-audio bytes may appear under multiple track IDs only when all
+such tracks use the same explicit `confidenceGroupId`. The complete mapping is
+recorded in a self-hashed `chord_bar_selector_audio_group_audit_v1`; identical
+bytes assigned to different groups fail before reference access. Compact bar
+summaries and example hashes now carry source-audio, cached/fresh-array,
+canonical-millisecond, lineage-row, and projection identities. The examples
+root retains the exact compact projection, full-lineage artifact hash,
+benchmark lineage-binding hash, verification modes, and the audio-group audit.
+
+The builder also records a sealed label-determinacy audit. It discloses total
+bars, reference-mixed/uncovered exclusions, prediction-mixed/uncovered
+exclusions, audit-only missing legacy confidence, emitted examples, and the two
+aggregate excluded denominators. Missing legacy confidence is a disclosed
+subset of emitted structurally eligible examples, never an exclusion. The
+stated estimand is explicitly conditional on a determinate reference label, a
+non-null prediction product, coverage at least `0.75`, and dominance at least
+`0.75`; it is not accuracy over every runtime bar.
+
 ## Task summary
 
 Implemented the development-only join between the frozen uncertainty benchmark,
@@ -13,6 +52,7 @@ build_bar_selector_group_manifest(track_descriptors, reference_root=...)
 
 build_bar_selector_examples(
     benchmark_report,
+    audio_lineage_manifest=...,
     benchmark_root=...,
     runtime_bar_grid_manifest=...,
     runtime_bar_grid_root=...,
@@ -50,7 +90,8 @@ requires:
   whose source-contract hash matches the runtime analyzer manifest;
 - an exact `chord_bar_selector_group_manifest_v1` with an explicit
   `confidenceGroupId` for every track;
-- identical track-ID sets across all three sources;
+- identical track-ID sets across the benchmark, runtime timing,
+  confidence-group manifest, and benchmark audio-lineage projection;
 - exact report, prediction-file, prediction-core, uncertainty, timing,
   timing-contract, runtime-source-contract, reference, per-track, and manifest
   hashes. `summary_output_root` is resolved before writing and must be
@@ -77,10 +118,14 @@ It calls `score_bar_product_confidence` with every outcome/eligibility argument
 explicitly frozen: score schema `chord_bar_product_confidence_v1`, reference
 dominance `0.75`, prediction coverage `0.75`, prediction dominance `0.75`, and
 confidence thresholds `[0.0]`. The returned score schema, configuration, curve,
-and zero-threshold counts are validated. An example is included only when
-`scoreBar.eligible=true` and `scoreBar.correct` is boolean. The reference
-contributes exactly `outcome: {correct: boolean}`. Reference labels,
-eligibility, dataset, and role never enter `featureValues`.
+and zero-threshold counts are validated as a legacy consistency audit. An
+example is included only when the reference label is determinate and the
+reference-free prediction has a non-null product, coverage at least `0.75`,
+and dominance at least `0.75`. Correctness is derived exactly as
+`predictionProduct == referenceProduct`, including when legacy product
+confidence is missing. The reference contributes exactly
+`outcome: {correct: boolean}`. Reference labels, eligibility, dataset, role,
+and legacy confidence availability never enter `featureValues`.
 
 The runtime v2 duration is the player's integer-millisecond duration while the
 frozen prediction may retain more precision. The prediction-only summarizer
@@ -121,12 +166,12 @@ production, deployment, auth, UI, or model file was edited by this task.
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_examples.py`
-  - `37 passed`
+  - `53 passed`
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_examples.py tests/test_chord_reader_bar_selector.py`
-  - `82 passed`
+  - `112 passed`
 - Runtime/examples/selector/uncertainty integration with the two environment-
   dependent live Chrome launches deselected:
-  - `178 passed, 2 deselected`
+  - `211 passed, 2 deselected`
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/bar_examples.py tests/test_chord_reader_bar_examples.py`
   - passed
 - `.venv/bin/python -m py_compile steel_guitar_rag/chord_reader/bar_examples.py tests/test_chord_reader_bar_examples.py`
@@ -134,19 +179,32 @@ production, deployment, auth, UI, or model file was edited by this task.
 - `git diff --check`
   - passed
 
+The focused synthetic builder fixture replaces file re-extraction only after
+asserting that the builder requested `verify_files=True` with the exact
+production extractor. The integrated audio-lineage tests exercise the full
+temporary-file rehash and re-extraction implementation; no real corpus was
+opened.
+
 Focused coverage includes exact compact selector compatibility; canonical
 source/example/shared-binding/artifact hashes; explicit cross-corpus grouping;
 no group fallback; descriptor and envelope split rejection before path access;
 exact track-set identity; prediction, runtime timing, and reference drift;
+production-extractor enforcement; exact full-lineage/report projection binding;
+full file and fresh-re-extraction verification before protected leaf access;
+adversarial runtime-audio splicing; cached/fresh feature-array, lineage-row, and
+canonical-millisecond disagreement; identical-audio cross-group rejection and
+same-group audit acceptance;
 strict public v2 validation with real content-addressed timing files;
 nonattested-manifest and offline-proxy timing rejection even after all relevant
 hashes are resealed;
 structurally mixed-bar exclusion under the existing product semantics; complete
 and hash-stable feature materialization before the first protected reference
 open; exact frozen scoring arguments/schema/configuration/curve and
-eligible-plus-boolean inclusion; content-addressed sidecars; source/output
-root-disjointness including symlink aliases; symlink-component rejection; and
-refusal to overwrite mismatched existing content.
+exact product/coverage/dominance inclusion, product-equality labels, and
+confidence-missing audit-only inclusion; exact just-below/at-`0.75` structural
+boundaries; content-addressed sidecars; source/output root-disjointness
+including symlink aliases; symlink-component rejection; and refusal to
+overwrite mismatched existing content.
 
 ## Risks
 

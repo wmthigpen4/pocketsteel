@@ -1,5 +1,36 @@
 # Development-only grouped OOF chord-bar selector
 
+## 2026-08-20 audio-lineage and application hardening update
+
+Training now strictly consumes the lineage-enriched examples artifact. The
+selector validates the complete compact audio-lineage projection, its
+self-hash and track-set hash, every per-example source-audio/cache/fresh-array/
+canonical-millisecond/lineage-row binding, and the sealed audio-to-group audit.
+These identity fields remain audit metadata: the estimator matrix is still
+constructed exclusively from the exact ordered `BAR_FEATURE_NAMES` allowlist.
+
+Selector training provenance now retains the full-lineage artifact hash,
+projection hash, benchmark lineage-binding hash, audio-group audit hash,
+label-determinacy audit hash, and the exact verification modes. The training
+contract and OOF report explicitly state this conditional estimand:
+`P(predictionProductCorrect | referenceLabelDeterminate=true and
+predictionProduct!=null and predictionCoverage>=0.75 and
+predictionDominance>=0.75)`. They disclose total bars, emitted OOF denominator,
+reference-indeterminate exclusions, prediction-noneligible exclusions, and
+audit-only missing legacy confidence. Missing legacy confidence remains inside
+the emitted denominator when product/coverage/dominance pass. Accordingly, OOF
+precision is not presented as accuracy over every runtime bar.
+
+`apply_bar_selector` now checks only reference-free prediction structure before
+scoring. A missing `predictionProduct`, coverage below `0.75`, or dominance
+below `0.75` returns `probability: null` with a stable reason. Coverage and
+dominance exactly equal to `0.75` are eligible. The development audio-lineage
+artifact and projection remain training provenance, not an application track
+allowlist. A statically compatible compact summary for a new live,
+calibration, or confirmation track may therefore score without being relabeled
+as development. A split-appropriate sealed evaluation join remains responsible
+for exact per-input audio lineage before it calls this reference-free API.
+
 ## Task summary
 
 Implemented the next confidence-model layer as an additive, development-only
@@ -32,7 +63,12 @@ application boundary all carry and validate one explicit outcome/eligibility
 contract: score schema `chord_bar_product_confidence_v1`, reference dominance
 `0.75`, prediction coverage `0.75`, prediction dominance `0.75`, threshold list
 `[0.0]`, the exact player-millisecond to full-precision-prediction final-bar
-join, and inclusion only for eligible bars with boolean correctness.
+join, reference determinacy without weakening, and prediction structural
+eligibility defined exactly as non-null product plus coverage and dominance at
+least `0.75`. Legacy product-confidence availability and its zero-threshold
+curve are audit-only, never label eligibility or estimator input. Boolean
+correctness is derived exactly from prediction-product/reference-product
+equality.
 
 Only the ordered `featureValues` vector enters NumPy. Track IDs, composition
 groups, outcome bits, roles, datasets, references, eligibility, and hashes are
@@ -82,7 +118,10 @@ It returns a probability only when the artifact, compact summary,
 `sharedBindingsSha256`, model/decoder/member order, uncertainty, feature
 representation/profile, and runtime timing-source bindings all match. Every
 failure returns `probability: null` with a reason. There is no fallback to
-legacy `productConfidence` and no threshold decision.
+legacy `productConfidence` and no threshold decision. Application accepts both
+the lineage-enriched training/evaluation compact summary and the exact
+lineage-free core compact schema used for split-neutral live inference; in both
+cases the complete supplied summary must retain its canonical self-hash.
 
 No real corpus, generated benchmark, audio, reference, calibration, heldout,
 test, private, or Travis data was opened. Only synthetic in-memory and
@@ -101,12 +140,12 @@ deployment, UI, auth, or production file was edited by this task.
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_selector.py`
-  - `45 passed`
+  - `59 passed`
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_selector.py tests/test_chord_reader_bar_examples.py`
-  - `82 passed`
+  - `112 passed`
 - Runtime/examples/selector/uncertainty integration with the two environment-
   dependent live Chrome launches deselected:
-  - `178 passed, 2 deselected`
+  - `211 passed, 2 deselected`
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/bar_selector.py tests/test_chord_reader_bar_selector.py`
   - passed
 - `.venv/bin/ruff format --check steel_guitar_rag/chord_reader/bar_selector.py tests/test_chord_reader_bar_selector.py`
@@ -125,6 +164,12 @@ Focused coverage includes canonical example/artifact integrity hashes, exact
 compact builder compatibility, resealed compact/enclosing track mismatch,
 logical bar duplication, multi-group track assignment, each per-track source
 hash splice, source/static binding mismatch and foreign-model splice rejection,
+per-example audio/cache/fresh-array/millisecond/lineage-row splice rejection,
+audio-group audit reassignment, distinct non-training track application and
+lineage-free split-neutral core application,
+missing-product/coverage/dominance application rejection, exact `0.75`
+boundary acceptance, and legacy-confidence-missing audit-only inclusion through
+training and application,
 the frozen outcome/eligibility contract through training/artifact/application,
 split preflight, explicit group requirements, exact feature order, forbidden
 metadata/outcome feature injection, numeric range/null handling, unit group mass

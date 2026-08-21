@@ -7,6 +7,9 @@ import pytest
 
 from steel_guitar_rag.chord_reader.bar_promotion import canonical_sha256
 from steel_guitar_rag.chord_reader.bar_selector import (
+    AUDIO_GROUP_AUDIT_SCHEMA,
+    AUDIO_LINEAGE_PROJECTION_SCHEMA,
+    AUDIO_LINEAGE_VERIFICATION_MODE,
     BAR_SELECTOR_APPLICATION_SCHEMA,
     BAR_SELECTOR_ARTIFACT_SCHEMA,
     BAR_SELECTOR_BAR_SUMMARY_SCHEMA,
@@ -15,8 +18,11 @@ from steel_guitar_rag.chord_reader.bar_selector import (
     BAR_OUTCOME_ELIGIBILITY_CONTRACT,
     BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256,
     ELASTIC_NET_GRID,
+    FEATURE_ARRAY_VERIFICATION,
     INNER_FOLD_COUNT,
     OUTER_FOLD_COUNT,
+    OOF_DENOMINATOR,
+    SELECTOR_ESTIMAND,
     BarSelectorError,
     apply_bar_selector,
     train_bar_selector,
@@ -87,6 +93,16 @@ def _feature_values(correct: bool, ordinal: int) -> dict[str, float | int | None
     return values
 
 
+def _lineage_fields(ordinal: int) -> dict[str, str | int]:
+    return {
+        "sourceAudioSha256": _digest(f"audio-{ordinal}"),
+        "cachedFeatureArraySha256": _digest(f"cached-array-{ordinal}"),
+        "freshFeatureArraySha256": _digest(f"cached-array-{ordinal}"),
+        "canonicalDurationMilliseconds": 8000,
+        "audioLineageRowSha256": _digest(f"audio-lineage-row-{ordinal}"),
+    }
+
+
 def _compact_summary(correct: bool, ordinal: int, bindings: dict) -> dict:
     index = ordinal % 4
     start = float(index * 2)
@@ -97,6 +113,8 @@ def _compact_summary(correct: bool, ordinal: int, bindings: dict) -> dict:
         "predictionCoreSha256": _digest(f"prediction-{ordinal}"),
         "uncertaintySha256": _digest(f"uncertainty-{ordinal}"),
         "timingSha256": _digest(f"timing-{ordinal}"),
+        **_lineage_fields(ordinal),
+        "audioLineageProjectionSha256": _digest("audio-lineage-projection-placeholder"),
         "sharedBindingsSha256": canonical_sha256(bindings),
         "barFeatureContractSha256": BAR_FEATURE_CONTRACT_SHA256,
         "index": index,
@@ -124,6 +142,8 @@ def _example(group: str, correct: bool, ordinal: int, bindings: dict) -> dict:
         "modelOrEnsembleSha256": bindings["modelOrEnsembleSha256"],
         "decoderContractSha256": bindings["decoderContractSha256"],
         "memberOrderSha256": bindings["memberOrderSha256"],
+        **_lineage_fields(ordinal),
+        "audioLineageProjectionSha256": summary["audioLineageProjectionSha256"],
         "outcome": {"correct": correct},
     }
     value["exampleSha256"] = canonical_sha256(value)
@@ -140,6 +160,86 @@ def _examples_artifact() -> dict:
         for position in range(repeat):
             examples.append(_example(group, position % 2 == 0, ordinal, bindings))
             ordinal += 1
+    source_audio_lineage_sha256 = _digest("audio-lineage-artifact")
+    projection_rows = [
+        {
+            "trackId": example["trackId"],
+            "datasetId": "fixture",
+            "sourceAudioSha256": example["sourceAudioSha256"],
+            "cachedArraySha256": example["cachedFeatureArraySha256"],
+            "freshArraySha256": example["freshFeatureArraySha256"],
+            "canonicalDurationMilliseconds": example["canonicalDurationMilliseconds"],
+            "rowSha256": example["audioLineageRowSha256"],
+        }
+        for example in sorted(examples, key=lambda value: value["trackId"])
+    ]
+    projection_payload = {
+        "schemaVersion": AUDIO_LINEAGE_PROJECTION_SCHEMA,
+        "split": "development",
+        "developmentOnly": True,
+        "promotionEligible": False,
+        "sourceAudioLineageSha256": source_audio_lineage_sha256,
+        "manifestBindingsSha256": _digest("audio-lineage-manifest-bindings"),
+        "featureContractSha256": _digest("audio-lineage-feature-contract"),
+        "trackCount": len(projection_rows),
+        "tracks": projection_rows,
+        "trackSetSha256": canonical_sha256(projection_rows),
+    }
+    projection = {
+        **projection_payload,
+        "projectionSha256": canonical_sha256(projection_payload),
+    }
+    for example in examples:
+        example["audioLineageProjectionSha256"] = projection["projectionSha256"]
+        example["barSummary"]["audioLineageProjectionSha256"] = projection["projectionSha256"]
+        _reseal_summary(example["barSummary"])
+        _reseal_example(example)
+    group_by_track = {example["trackId"]: example["confidenceGroupId"] for example in examples}
+    audio_group_rows = sorted(
+        [
+            {
+                "sourceAudioSha256": row["sourceAudioSha256"],
+                "confidenceGroupId": group_by_track[row["trackId"]],
+                "trackIds": [row["trackId"]],
+                "trackCount": 1,
+            }
+            for row in projection_rows
+        ],
+        key=lambda value: value["sourceAudioSha256"],
+    )
+    audio_group_payload = {
+        "schemaVersion": AUDIO_GROUP_AUDIT_SCHEMA,
+        "policy": "identical-source-audio-must-share-one-confidence-group-v1",
+        "trackCount": len(projection_rows),
+        "uniqueSourceAudioCount": len(projection_rows),
+        "duplicateSourceAudioCount": 0,
+        "duplicateTrackCount": 0,
+        "rows": audio_group_rows,
+    }
+    audio_group_audit = {
+        **audio_group_payload,
+        "auditSha256": canonical_sha256(audio_group_payload),
+    }
+    label_audit_payload = {
+        "schemaVersion": "chord_bar_selector_label_determinacy_audit_v1",
+        "estimand": SELECTOR_ESTIMAND,
+        "oofDenominator": OOF_DENOMINATOR,
+        "totalBarCount": len(examples) + 5,
+        "referenceDeterminateBarCount": len(examples) + 3,
+        "referenceMixedBarCount": 1,
+        "referenceUncoveredBarCount": 1,
+        "predictionMixedBarCount": 1,
+        "predictionUncoveredBarCount": 2,
+        "predictionConfidenceMissingBarCount": 1,
+        "predictionStructurallyScorableBarCount": len(examples),
+        "excludedReferenceIndeterminateBarCount": 2,
+        "excludedPredictionNoneligibleBarCount": 3,
+        "emittedExampleCount": len(examples),
+    }
+    label_audit = {
+        **label_audit_payload,
+        "auditSha256": canonical_sha256(label_audit_payload),
+    }
     value = {
         "schemaVersion": BAR_SELECTOR_EXAMPLES_SCHEMA,
         "split": "development",
@@ -150,6 +250,16 @@ def _examples_artifact() -> dict:
         "sourceBenchmarkReportSha256": _digest("benchmark-report"),
         "sourceRuntimeBarGridManifestSha256": _digest("bar-grid-manifest"),
         "sourceGroupManifestSha256": _digest("group-manifest"),
+        "sourceAudioLineageSha256": source_audio_lineage_sha256,
+        "sourceAudioLineageProjection": projection,
+        "sourceAudioLineageProjectionSha256": projection["projectionSha256"],
+        "sourceBenchmarkAudioLineageBindingSha256": _digest("benchmark-audio-lineage-binding"),
+        "audioLineageVerificationMode": AUDIO_LINEAGE_VERIFICATION_MODE,
+        "featureArrayVerification": FEATURE_ARRAY_VERIFICATION,
+        "audioGroupAudit": audio_group_audit,
+        "audioGroupAuditSha256": audio_group_audit["auditSha256"],
+        "labelDeterminacyAudit": label_audit,
+        "labelDeterminacyAuditSha256": label_audit["auditSha256"],
         "examples": examples,
         "exampleSetSha256": canonical_sha256(examples),
     }
@@ -182,6 +292,21 @@ def _set_example_track(example: dict, track_id: str) -> None:
     _reseal_example(example)
 
 
+def _copy_example_lineage(target: dict, source: dict) -> None:
+    for field in (
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "canonicalDurationMilliseconds",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
+    ):
+        target[field] = source[field]
+        target["barSummary"][field] = source["barSummary"][field]
+    _reseal_summary(target["barSummary"])
+    _reseal_example(target)
+
+
 def _reseal_source(source: dict) -> None:
     source["exampleSetSha256"] = canonical_sha256(source["examples"])
     source["artifactSha256"] = canonical_sha256(
@@ -206,6 +331,8 @@ def test_nested_grouped_training_is_deterministic_and_sealed(trained: tuple[dict
     assert artifact["featureContractSha256"] == BAR_FEATURE_CONTRACT_SHA256
     assert artifact["barOutcomeEligibilityContract"] == BAR_OUTCOME_ELIGIBILITY_CONTRACT
     assert artifact["barOutcomeEligibilityContractSha256"] == BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256
+    assert BAR_OUTCOME_ELIGIBILITY_CONTRACT["correctnessRule"] == "predictionProduct == referenceProduct"
+    assert "audit-only" in BAR_OUTCOME_ELIGIBILITY_CONTRACT["legacyProductConfidenceAvailability"]
     assert artifact["binding"] == source["sharedBindings"]
     assert artifact["training"]["configSha256"] == BAR_SELECTOR_CONFIG_SHA256
     assert artifact["training"]["outerFoldCount"] == OUTER_FOLD_COUNT
@@ -213,6 +340,14 @@ def test_nested_grouped_training_is_deterministic_and_sealed(trained: tuple[dict
     assert artifact["training"]["sourceExamplesArtifactSha256"] == source["artifactSha256"]
     assert artifact["training"]["sourceExampleSetSha256"] == source["exampleSetSha256"]
     assert artifact["training"]["sourceSharedBindingsSha256"] == source["sharedBindingsSha256"]
+    assert artifact["training"]["sourceAudioLineageSha256"] == source["sourceAudioLineageSha256"]
+    assert artifact["training"]["sourceAudioLineageProjectionSha256"] == source["sourceAudioLineageProjectionSha256"]
+    assert artifact["training"]["sourceAudioGroupAuditSha256"] == source["audioGroupAuditSha256"]
+    assert artifact["training"]["sourceLabelDeterminacyAuditSha256"] == source["labelDeterminacyAuditSha256"]
+    assert artifact["training"]["audioLineageVerificationMode"] == AUDIO_LINEAGE_VERIFICATION_MODE
+    assert artifact["training"]["featureArrayVerification"] == FEATURE_ARRAY_VERIFICATION
+    assert artifact["training"]["estimand"] == SELECTOR_ESTIMAND
+    assert artifact["training"]["oofDenominator"] == OOF_DENOMINATOR
     assert artifact["artifactSha256"] == canonical_sha256(
         {key: value for key, value in artifact.items() if key != "artifactSha256"}
     )
@@ -297,8 +432,15 @@ def test_outer_validation_group_labels_cannot_change_its_raw_oof_probabilities(
 
 
 def test_oof_reports_threshold_free_brier_aurc_and_precision_coverage(trained: tuple[dict, dict]) -> None:
-    _source, artifact = trained
+    source, artifact = trained
     report = artifact["outOfFoldEvaluation"]
+    assert report["estimand"] == SELECTOR_ESTIMAND
+    assert report["denominator"] == OOF_DENOMINATOR
+    assert report["denominatorExampleCount"] == len(source["examples"])
+    assert report["totalBarCount"] == len(source["examples"]) + 5
+    assert report["excludedReferenceIndeterminateBarCount"] == 2
+    assert report["excludedPredictionNoneligibleBarCount"] == 3
+    assert report["predictionConfidenceMissingBarCount"] == 1
     assert 0 <= report["groupBalancedBrierScore"] <= 1
     assert 0 <= report["groupBalancedAreaUnderRiskCoverage"] <= 1
     assert report["groupBalancedLogLoss"] >= 0
@@ -333,6 +475,8 @@ def test_only_exact_ordered_bar_features_enter_estimator(monkeypatch: pytest.Mon
     assert 'row["trackId"]' not in source_text.split("matrix =", 1)[1].split("labels =", 1)[0]
     assert 'row["group"]' not in source_text.split("matrix =", 1)[1].split("labels =", 1)[0]
     assert 'row["correct"]' not in source_text.split("matrix =", 1)[1].split("labels =", 1)[0]
+    assert 'row["sourceAudioSha256"]' not in source_text.split("matrix =", 1)[1].split("labels =", 1)[0]
+    assert 'row["audioLineageRowSha256"]' not in source_text.split("matrix =", 1)[1].split("labels =", 1)[0]
 
 
 @pytest.mark.parametrize("split", ["calibration", "test", "heldout", "confirmation"])
@@ -371,6 +515,7 @@ def test_rejects_resealed_duplicate_logical_bar_with_distinct_nested_hashes() ->
     source = _examples_artifact()
     first, second = source["examples"][:2]
     _set_example_track(second, first["trackId"])
+    _copy_example_lineage(second, first)
     second["barIndex"] = first["barIndex"]
     second["barSummary"]["index"] = first["barIndex"]
     second["barSummary"]["start"] = first["barSummary"]["start"]
@@ -388,6 +533,7 @@ def test_rejects_resealed_multiple_confidence_groups_for_one_track() -> None:
     first = source["examples"][0]
     second = source["examples"][2]
     _set_example_track(second, first["trackId"])
+    _copy_example_lineage(second, first)
     for field in (
         "sourceSummarySha256",
         "predictionCoreSha256",
@@ -399,7 +545,7 @@ def test_rejects_resealed_multiple_confidence_groups_for_one_track() -> None:
     _reseal_example(second)
     _reseal_source(source)
     assert second["confidenceGroupId"] != first["confidenceGroupId"]
-    with pytest.raises(BarSelectorError, match="one confidenceGroupId"):
+    with pytest.raises(BarSelectorError, match="confidenceGroupId"):
         train_bar_selector(source)
 
 
@@ -416,6 +562,7 @@ def test_rejects_resealed_per_track_source_binding_splice(field: str) -> None:
     source = _examples_artifact()
     first, second = source["examples"][:2]
     _set_example_track(second, first["trackId"])
+    _copy_example_lineage(second, first)
     for binding_field in (
         "sourceSummarySha256",
         "predictionCoreSha256",
@@ -428,6 +575,53 @@ def test_rejects_resealed_per_track_source_binding_splice(field: str) -> None:
     _reseal_example(second)
     _reseal_source(source)
     with pytest.raises(BarSelectorError, match="one source-summary"):
+        train_bar_selector(source)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
+    ],
+)
+def test_rejects_resealed_audio_lineage_splice(field: str) -> None:
+    source = _examples_artifact()
+    example = source["examples"][0]
+    value = _digest(f"spliced-{field}")
+    example[field] = value
+    example["barSummary"][field] = value
+    _reseal_summary(example["barSummary"])
+    _reseal_example(example)
+    _reseal_source(source)
+    with pytest.raises(BarSelectorError, match="audio-lineage binding|feature-array hashes"):
+        train_bar_selector(source)
+
+
+def test_rejects_resealed_audio_group_audit_reassignment() -> None:
+    source = _examples_artifact()
+    audit = source["audioGroupAudit"]
+    target = next(row for row in audit["rows"] if row["trackIds"] == [source["examples"][0]["trackId"]])
+    target["confidenceGroupId"] = "different-composition"
+    audit["auditSha256"] = canonical_sha256({key: value for key, value in audit.items() if key != "auditSha256"})
+    source["audioGroupAuditSha256"] = audit["auditSha256"]
+    _reseal_source(source)
+    with pytest.raises(BarSelectorError, match="confidenceGroupId"):
+        train_bar_selector(source)
+
+
+def test_rejects_resealed_audio_lineage_millisecond_splice() -> None:
+    source = _examples_artifact()
+    example = source["examples"][0]
+    example["canonicalDurationMilliseconds"] += 1
+    example["barSummary"]["canonicalDurationMilliseconds"] += 1
+    _reseal_summary(example["barSummary"])
+    _reseal_example(example)
+    _reseal_source(source)
+    with pytest.raises(BarSelectorError, match="audio-lineage binding"):
         train_bar_selector(source)
 
 
@@ -514,6 +708,82 @@ def test_apply_returns_probability_without_threshold_or_fallback(trained: tuple[
     assert result["reason"] is None
     assert result["operatingThreshold"] is None
     assert "productConfidence" not in result
+
+
+def test_legacy_confidence_missing_disclosure_does_not_gate_training_or_apply(
+    trained: tuple[dict, dict],
+) -> None:
+    source, artifact = trained
+    assert source["labelDeterminacyAudit"]["predictionConfidenceMissingBarCount"] == 1
+    assert (
+        artifact["training"]["emittedExampleCount"]
+        == source["labelDeterminacyAudit"]["predictionStructurallyScorableBarCount"]
+    )
+    assert artifact["training"]["excludedPredictionNoneligibleBarCount"] == 3
+    assert artifact["training"]["predictionConfidenceMissingBarCount"] == 1
+    example = source["examples"][0]
+    result = apply_bar_selector(
+        example["barSummary"],
+        artifact,
+        bar_index=example["barIndex"],
+        shared_bindings=source["sharedBindings"],
+    )
+    assert 0 <= result["probability"] <= 1
+    assert result["reason"] is None
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        ("missing-product", "prediction-product-missing"),
+        ("low-coverage", "prediction-coverage-below-eligibility-threshold"),
+        ("low-dominance", "prediction-dominance-below-eligibility-threshold"),
+    ],
+)
+def test_apply_enforces_reference_free_structural_eligibility(
+    trained: tuple[dict, dict],
+    mutation: str,
+    reason: str,
+) -> None:
+    source, artifact = trained
+    example = source["examples"][0]
+    summary = deepcopy(example["barSummary"])
+    if mutation == "missing-product":
+        summary["predictionProduct"] = None
+    elif mutation == "low-coverage":
+        summary["predictionCoverage"] = 0.749999
+        summary["featureValues"]["predictionCoverage"] = 0.749999
+    else:
+        summary["predictionDominance"] = 0.749999
+        summary["featureValues"]["predictionDominance"] = 0.749999
+    _reseal_summary(summary)
+    result = apply_bar_selector(
+        summary,
+        artifact,
+        bar_index=example["barIndex"],
+        shared_bindings=source["sharedBindings"],
+    )
+    assert result["probability"] is None
+    assert result["reason"] == reason
+
+
+def test_apply_scores_exact_structural_eligibility_boundaries(trained: tuple[dict, dict]) -> None:
+    source, artifact = trained
+    example = source["examples"][0]
+    summary = deepcopy(example["barSummary"])
+    summary["predictionCoverage"] = 0.75
+    summary["predictionDominance"] = 0.75
+    summary["featureValues"]["predictionCoverage"] = 0.75
+    summary["featureValues"]["predictionDominance"] = 0.75
+    _reseal_summary(summary)
+    result = apply_bar_selector(
+        summary,
+        artifact,
+        bar_index=example["barIndex"],
+        shared_bindings=source["sharedBindings"],
+    )
+    assert 0 <= result["probability"] <= 1
+    assert result["reason"] is None
 
 
 @pytest.mark.parametrize(
@@ -622,6 +892,60 @@ def test_apply_fails_closed_on_bar_artifact_and_index_tampering(trained: tuple[d
     )
     assert result["probability"] is None
     assert result["reason"] == "invalid-selector-artifact"
+
+
+def test_apply_scores_new_track_outside_training_projection_when_static_binding_matches(
+    trained: tuple[dict, dict],
+) -> None:
+    source, artifact = trained
+    example = source["examples"][0]
+    summary = deepcopy(example["barSummary"])
+    summary["trackId"] = "calibration-new-song-not-in-development-projection"
+    summary["sourceAudioSha256"] = _digest("calibration-source-audio")
+    summary["cachedFeatureArraySha256"] = _digest("calibration-feature-array")
+    summary["freshFeatureArraySha256"] = summary["cachedFeatureArraySha256"]
+    summary["canonicalDurationMilliseconds"] = 12_345
+    summary["audioLineageRowSha256"] = _digest("calibration-audio-lineage-row")
+    summary["audioLineageProjectionSha256"] = _digest("calibration-audio-lineage-projection")
+    _reseal_summary(summary)
+    assert "split" not in summary
+    assert summary["trackId"] not in {row["trackId"] for row in source["sourceAudioLineageProjection"]["tracks"]}
+    assert summary["audioLineageProjectionSha256"] != artifact["training"]["sourceAudioLineageProjectionSha256"]
+    result = apply_bar_selector(
+        summary,
+        artifact,
+        bar_index=example["barIndex"],
+        shared_bindings=source["sharedBindings"],
+    )
+    assert 0 <= result["probability"] <= 1
+    assert result["reason"] is None
+
+
+def test_apply_scores_split_neutral_core_summary_without_lineage_metadata(
+    trained: tuple[dict, dict],
+) -> None:
+    source, artifact = trained
+    example = source["examples"][0]
+    summary = deepcopy(example["barSummary"])
+    summary["trackId"] = "live-new-song"
+    for field in (
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "canonicalDurationMilliseconds",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
+    ):
+        summary.pop(field)
+    _reseal_summary(summary)
+    result = apply_bar_selector(
+        summary,
+        artifact,
+        bar_index=example["barIndex"],
+        shared_bindings=source["sharedBindings"],
+    )
+    assert 0 <= result["probability"] <= 1
+    assert result["reason"] is None
 
 
 def test_apply_rejects_foreign_model_summary_even_with_selector_binding(trained: tuple[dict, dict]) -> None:

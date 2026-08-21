@@ -17,6 +17,12 @@ from pathlib import Path
 import tempfile
 from typing import Any
 
+from .audio_lineage import (
+    AUDIO_LINEAGE_PROJECTION_SCHEMA,
+    AUDIO_LINEAGE_SCHEMA,
+    project_development_audio_lineage,
+    validate_development_audio_lineage,
+)
 from .bar_product import (
     DEFAULT_PREDICTION_COVERAGE,
     DEFAULT_PREDICTION_DOMINANCE,
@@ -36,6 +42,7 @@ from .benchmark import (
     UNCERTAINTY_DEVELOPMENT_EXPERIMENT_SCHEMA,
 )
 from .runtime_bar_grid import validate_runtime_bar_grid_manifest
+from .student import extract_student_features
 from .uncertainty import FACTORIZED_UNCERTAINTY_SCHEMA
 
 
@@ -44,6 +51,21 @@ EXAMPLES_SCHEMA = "chord_bar_selector_examples_v1"
 COMPACT_BAR_SUMMARY_SCHEMA = "chord_bar_selector_bar_summary_v1"
 DEVELOPMENT_SPLIT = "development"
 BAR_SCORE_SCHEMA = "chord_bar_product_confidence_v1"
+BENCHMARK_AUDIO_LINEAGE_SCHEMA = "chord_benchmark_audio_lineage_v1"
+AUDIO_GROUP_AUDIT_SCHEMA = "chord_bar_selector_audio_group_audit_v1"
+LABEL_DETERMINACY_AUDIT_SCHEMA = "chord_bar_selector_label_determinacy_audit_v1"
+AUDIO_LINEAGE_VERIFICATION_MODE = "full-files-and-reextraction-v1"
+FEATURE_ARRAY_VERIFICATION = "loaded-cache-contiguous-little-endian-float16-sha256-v1"
+PRODUCTION_EXTRACTOR_ENTRYPOINT = f"{extract_student_features.__module__}.{extract_student_features.__qualname__}"
+SELECTOR_ESTIMAND = (
+    "P(predictionProductCorrect | referenceLabelDeterminate=true and predictionProduct!=null "
+    "and predictionCoverage>=0.75 and predictionDominance>=0.75)"
+)
+OOF_DENOMINATOR = (
+    "emitted development examples only; conditional on reference-label determinacy "
+    "and predictionProduct non-null with coverage>=0.75 and dominance>=0.75; "
+    "legacy product-confidence availability is audit-only"
+)
 BAR_OUTCOME_ELIGIBILITY_CONTRACT = {
     "schemaVersion": "chord_bar_selector_outcome_eligibility_contract_v1",
     "scoreSchemaVersion": BAR_SCORE_SCHEMA,
@@ -51,8 +73,17 @@ BAR_OUTCOME_ELIGIBILITY_CONTRACT = {
     "predictionCoverage": DEFAULT_PREDICTION_COVERAGE,
     "predictionDominance": DEFAULT_PREDICTION_DOMINANCE,
     "confidenceThresholds": [0.0],
+    "confidenceThresholdRole": "legacy scorer consistency audit only; never label eligibility",
+    "predictionStructuralEligibility": (
+        "predictionProduct is non-null and predictionCoverage>=0.75 and predictionDominance>=0.75"
+    ),
+    "legacyProductConfidenceAvailability": "audit-only; never label eligibility or an estimator feature",
     "barEndDurationRule": ("full-precision-prediction-after-exact-player-canonical-millisecond-runtime-join"),
-    "inclusionRule": "scoreBar.eligible=true and scoreBar.correct is boolean",
+    "inclusionRule": (
+        "reference label determinate and frozen prediction structural eligibility passes; "
+        "legacy product-confidence availability is ignored"
+    ),
+    "correctnessRule": "predictionProduct == referenceProduct",
 }
 BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256 = canonical_sha256(BAR_OUTCOME_ELIGIBILITY_CONTRACT)
 
@@ -98,6 +129,12 @@ _COMPACT_BAR_KEYS = (
     "predictionCoreSha256",
     "uncertaintySha256",
     "timingSha256",
+    "sourceAudioSha256",
+    "cachedFeatureArraySha256",
+    "freshFeatureArraySha256",
+    "canonicalDurationMilliseconds",
+    "audioLineageRowSha256",
+    "audioLineageProjectionSha256",
     "barFeatureContractSha256",
     "sharedBindingsSha256",
     "index",
@@ -120,6 +157,12 @@ _EXAMPLE_KEYS = frozenset(
         "modelOrEnsembleSha256",
         "decoderContractSha256",
         "memberOrderSha256",
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "canonicalDurationMilliseconds",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
         "outcome",
         "exampleSha256",
     }
@@ -156,9 +199,56 @@ _OUTPUT_KEYS = frozenset(
         "sourceBenchmarkReportSha256",
         "sourceRuntimeBarGridManifestSha256",
         "sourceGroupManifestSha256",
+        "sourceAudioLineageSha256",
+        "sourceAudioLineageProjection",
+        "sourceAudioLineageProjectionSha256",
+        "sourceBenchmarkAudioLineageBindingSha256",
+        "audioLineageVerificationMode",
+        "featureArrayVerification",
+        "audioGroupAudit",
+        "audioGroupAuditSha256",
+        "labelDeterminacyAudit",
+        "labelDeterminacyAuditSha256",
         "examples",
         "exampleSetSha256",
         "artifactSha256",
+    }
+)
+_REPORT_AUDIO_LINEAGE_KEYS = frozenset(
+    {
+        "schemaVersion",
+        "verificationMode",
+        "sourceArtifactSha256",
+        "projection",
+        "projectionSha256",
+        "featureArrayVerification",
+        "bindingSha256",
+    }
+)
+_PROJECTION_KEYS = frozenset(
+    {
+        "schemaVersion",
+        "split",
+        "developmentOnly",
+        "promotionEligible",
+        "sourceAudioLineageSha256",
+        "manifestBindingsSha256",
+        "featureContractSha256",
+        "trackCount",
+        "tracks",
+        "trackSetSha256",
+        "projectionSha256",
+    }
+)
+_PROJECTION_ROW_KEYS = frozenset(
+    {
+        "trackId",
+        "datasetId",
+        "sourceAudioSha256",
+        "cachedArraySha256",
+        "freshArraySha256",
+        "canonicalDurationMilliseconds",
+        "rowSha256",
     }
 )
 _EPSILON = 1e-9
@@ -317,16 +407,19 @@ def _validate_development_envelopes(
     report: Mapping[str, Any],
     runtime_manifest: Mapping[str, Any],
     group_manifest: Mapping[str, Any],
+    audio_lineage: Mapping[str, Any],
 ) -> None:
     """Reject every non-development declaration before path resolution/read."""
 
     _split(report.get("split"), "benchmark report split")
     _split(runtime_manifest.get("split"), "runtime bar-grid manifest split")
     _split(group_manifest.get("split"), "group manifest split")
+    _split(audio_lineage.get("split"), "audio lineage split")
     for source_name, source in (
         ("benchmark report", report),
         ("runtime bar-grid manifest", runtime_manifest),
         ("group manifest", group_manifest),
+        ("audio lineage", audio_lineage),
     ):
         tracks = _sequence(source.get("tracks"), f"{source_name}.tracks")
         if not tracks:
@@ -355,6 +448,40 @@ def _validate_report(report: Mapping[str, Any]) -> tuple[dict[str, dict[str, Any
         raise ValueError("The uncertainty experiment must allow only dev/development splits.")
     if experiment.get("uncertaintySchemaVersion") != FACTORIZED_UNCERTAINTY_SCHEMA:
         raise ValueError("The report uncertainty experiment uses the wrong telemetry schema.")
+    audio_lineage = _mapping(
+        experiment.get("audioLineage"),
+        "uncertaintyExperiment.audioLineage",
+    )
+    _exact_keys(audio_lineage, _REPORT_AUDIO_LINEAGE_KEYS, "uncertaintyExperiment.audioLineage")
+    if audio_lineage.get("schemaVersion") != BENCHMARK_AUDIO_LINEAGE_SCHEMA:
+        raise ValueError("The benchmark audio-lineage binding uses an unsupported schema.")
+    if audio_lineage.get("verificationMode") != AUDIO_LINEAGE_VERIFICATION_MODE:
+        raise ValueError("The benchmark did not use full file and fresh-extraction audio verification.")
+    if audio_lineage.get("featureArrayVerification") != FEATURE_ARRAY_VERIFICATION:
+        raise ValueError("The benchmark used the wrong cached feature-array verification mode.")
+    source_audio_lineage_sha256 = _required_sha256(
+        audio_lineage.get("sourceArtifactSha256"),
+        "uncertaintyExperiment.audioLineage.sourceArtifactSha256",
+    )
+    projection = _mapping(
+        audio_lineage.get("projection"),
+        "uncertaintyExperiment.audioLineage.projection",
+    )
+    _exact_keys(projection, _PROJECTION_KEYS, "uncertaintyExperiment.audioLineage.projection")
+    projection_sha256 = _required_sha256(
+        audio_lineage.get("projectionSha256"),
+        "uncertaintyExperiment.audioLineage.projectionSha256",
+    )
+    if projection.get("projectionSha256") != projection_sha256:
+        raise ValueError("The benchmark audio-lineage projection hash fields disagree.")
+    audio_lineage_binding_sha256 = _required_sha256(
+        audio_lineage.get("bindingSha256"),
+        "uncertaintyExperiment.audioLineage.bindingSha256",
+    )
+    if canonical_sha256({key: value for key, value in audio_lineage.items() if key != "bindingSha256"}) != (
+        audio_lineage_binding_sha256
+    ):
+        raise ValueError("The benchmark audio-lineage binding hash is stale.")
     binding = dict(_mapping(experiment.get("binding"), "uncertaintyExperiment.binding"))
     model_sha256 = _required_sha256(binding.get("modelOrEnsembleSha256"), "report model binding")
     decoder_sha256 = _required_sha256(binding.get("decoderContractSha256"), "report decoder binding")
@@ -378,8 +505,22 @@ def _validate_report(report: Mapping[str, Any]) -> tuple[dict[str, dict[str, Any
         if track_id in tracks:
             raise ValueError(f"Duplicate uncertainty-report track id {track_id!r}.")
         _required_string(track.get("predictionFile"), f"report track {track_id!r} predictionFile")
-        for field in ("predictionSha256", "predictionCoreSha256", "uncertaintySha256", "referenceSha256"):
+        for field in (
+            "predictionSha256",
+            "predictionCoreSha256",
+            "uncertaintySha256",
+            "referenceSha256",
+            "sourceAudioSha256",
+            "cachedFeatureArraySha256",
+            "freshFeatureArraySha256",
+            "audioLineageRowSha256",
+        ):
             _required_sha256(track.get(field), f"report track {track_id!r} {field}")
+        _strict_integer(
+            track.get("canonicalDurationMilliseconds"),
+            f"report track {track_id!r} canonicalDurationMilliseconds",
+            minimum=1,
+        )
         tracks[track_id] = track
     if experiment.get("trackCount") != len(tracks):
         raise ValueError("The uncertainty experiment trackCount is stale.")
@@ -403,6 +544,11 @@ def _validate_report(report: Mapping[str, Any]) -> tuple[dict[str, dict[str, Any
         "modelOrEnsembleSha256": model_sha256,
         "decoderContractSha256": decoder_sha256,
         "memberOrderSha256": member_order_sha256,
+        "audioLineage": dict(audio_lineage),
+        "sourceAudioLineageSha256": source_audio_lineage_sha256,
+        "audioLineageProjection": dict(projection),
+        "audioLineageProjectionSha256": projection_sha256,
+        "audioLineageBindingSha256": audio_lineage_binding_sha256,
     }
 
 
@@ -450,6 +596,151 @@ def _validate_group_manifest(manifest: Mapping[str, Any]) -> dict[str, dict[str,
     ):
         raise ValueError("The confidence-group manifestSha256 is stale.")
     return tracks
+
+
+def _validate_audio_lineage_preflight(
+    audio_lineage: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Reverify every bound lineage file with the production extractor."""
+
+    validated = validate_development_audio_lineage(
+        audio_lineage,
+        verify_files=True,
+        extractor=extract_student_features,
+    )
+    if validated.get("schemaVersion") != AUDIO_LINEAGE_SCHEMA:
+        raise ValueError("The audio lineage uses an unsupported schema.")
+    extractor_contract = _mapping(
+        validated.get("extractorContract"),
+        "audio lineage extractorContract",
+    )
+    if extractor_contract.get("entrypoint") != PRODUCTION_EXTRACTOR_ENTRYPOINT:
+        raise ValueError(
+            "Bar-selector examples require lineage produced by the production extract_student_features entrypoint."
+        )
+    return validated
+
+
+def _validate_report_audio_lineage_binding(
+    report_contract: Mapping[str, Any],
+    audio_lineage: Mapping[str, Any],
+    track_ids: Sequence[str],
+) -> tuple[dict[str, Any], dict[str, Mapping[str, Any]]]:
+    """Require the benchmark projection to be exactly derived from the full lineage."""
+
+    if report_contract.get("sourceAudioLineageSha256") != audio_lineage.get("artifactSha256"):
+        raise ValueError("The benchmark report binds a different full audio-lineage artifact.")
+    expected_projection = project_development_audio_lineage(audio_lineage, track_ids)
+    report_projection = _mapping(
+        report_contract.get("audioLineageProjection"),
+        "benchmark audio-lineage projection",
+    )
+    if report_projection.get("schemaVersion") != AUDIO_LINEAGE_PROJECTION_SCHEMA:
+        raise ValueError("The benchmark audio-lineage projection uses an unsupported schema.")
+    if dict(report_projection) != expected_projection:
+        raise ValueError("The benchmark report does not bind the exact requested audio-lineage projection.")
+    projection_sha256 = _required_sha256(
+        report_contract.get("audioLineageProjectionSha256"),
+        "benchmark audio-lineage projectionSha256",
+    )
+    if projection_sha256 != expected_projection["projectionSha256"]:
+        raise ValueError("The benchmark audio-lineage projectionSha256 is stale.")
+    rows: dict[str, Mapping[str, Any]] = {}
+    for index, raw_row in enumerate(_sequence(expected_projection.get("tracks"), "audio-lineage projection tracks")):
+        row = _mapping(raw_row, f"audio-lineage projection tracks[{index}]")
+        _exact_keys(row, _PROJECTION_ROW_KEYS, f"audio-lineage projection tracks[{index}]")
+        identifier = _required_string(row.get("trackId"), f"audio-lineage projection tracks[{index}].trackId")
+        rows[identifier] = row
+    return expected_projection, rows
+
+
+def _validate_cross_audio_bindings(
+    track_ids: Sequence[str],
+    report_tracks: Mapping[str, Mapping[str, Any]],
+    runtime_tracks: Mapping[str, Mapping[str, Any]],
+    projection_tracks: Mapping[str, Mapping[str, Any]],
+) -> None:
+    """Reject metadata-level audio/cache/duration splices before leaf artifacts."""
+
+    for track_id in track_ids:
+        report = report_tracks[track_id]
+        runtime = runtime_tracks[track_id]
+        projection = projection_tracks[track_id]
+        expected_report = {
+            "sourceAudioSha256": projection["sourceAudioSha256"],
+            "cachedFeatureArraySha256": projection["cachedArraySha256"],
+            "freshFeatureArraySha256": projection["freshArraySha256"],
+            "canonicalDurationMilliseconds": projection["canonicalDurationMilliseconds"],
+            "audioLineageRowSha256": projection["rowSha256"],
+        }
+        if any(report.get(field) != expected for field, expected in expected_report.items()):
+            raise ValueError(f"Benchmark row and audio lineage disagree for track {track_id!r}.")
+        if report.get("datasetId") != projection.get("datasetId"):
+            raise ValueError(f"Benchmark dataset and audio lineage disagree for track {track_id!r}.")
+        audio_binding = _mapping(runtime.get("audioBinding"), f"runtime track {track_id!r} audioBinding")
+        expected_audio_sha256 = projection["sourceAudioSha256"]
+        expected_milliseconds = projection["canonicalDurationMilliseconds"]
+        if (
+            runtime.get("audioSha256") != expected_audio_sha256
+            or audio_binding.get("sourceAudioSha256") != expected_audio_sha256
+        ):
+            raise ValueError(f"Runtime audio and audio lineage disagree for track {track_id!r}.")
+        if audio_binding.get("canonicalDurationMilliseconds") != expected_milliseconds:
+            raise ValueError(f"Runtime canonical milliseconds and audio lineage disagree for track {track_id!r}.")
+
+
+def _audio_group_audit(
+    track_ids: Sequence[str],
+    group_tracks: Mapping[str, Mapping[str, Any]],
+    projection_tracks: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Seal the invariant that identical audio bytes cannot cross CV groups."""
+
+    by_audio: dict[str, dict[str, Any]] = {}
+    for track_id in track_ids:
+        audio_sha256 = _required_sha256(
+            projection_tracks[track_id].get("sourceAudioSha256"),
+            f"audio-lineage track {track_id!r} sourceAudioSha256",
+        )
+        group_id = _required_string(
+            group_tracks[track_id].get("confidenceGroupId"),
+            f"group track {track_id!r} confidenceGroupId",
+        )
+        existing = by_audio.get(audio_sha256)
+        if existing is None:
+            by_audio[audio_sha256] = {
+                "sourceAudioSha256": audio_sha256,
+                "confidenceGroupId": group_id,
+                "trackIds": [track_id],
+            }
+        elif existing["confidenceGroupId"] != group_id:
+            raise ValueError(
+                f"Identical source audio bytes must use one confidenceGroupId; audio {audio_sha256} crosses groups."
+            )
+        else:
+            existing["trackIds"].append(track_id)
+    rows: list[dict[str, Any]] = []
+    for audio_sha256 in sorted(by_audio):
+        row = by_audio[audio_sha256]
+        track_list = sorted(str(item) for item in row["trackIds"])
+        rows.append(
+            {
+                "sourceAudioSha256": audio_sha256,
+                "confidenceGroupId": row["confidenceGroupId"],
+                "trackIds": track_list,
+                "trackCount": len(track_list),
+            }
+        )
+    payload = {
+        "schemaVersion": AUDIO_GROUP_AUDIT_SCHEMA,
+        "policy": "identical-source-audio-must-share-one-confidence-group-v1",
+        "trackCount": len(track_ids),
+        "uniqueSourceAudioCount": len(rows),
+        "duplicateSourceAudioCount": sum(row["trackCount"] > 1 for row in rows),
+        "duplicateTrackCount": len(track_ids) - len(rows),
+        "rows": rows,
+    }
+    return {**payload, "auditSha256": canonical_sha256(payload)}
 
 
 def build_bar_selector_group_manifest(
@@ -572,7 +863,8 @@ def _validate_same_track_set(*track_maps: Mapping[str, Any]) -> list[str]:
     expected = set(track_maps[0])
     if any(set(values) != expected for values in track_maps[1:]):
         raise ValueError(
-            "Benchmark, runtime timing, and confidence-group manifests must bind the exact same track ids."
+            "Benchmark, runtime timing, confidence-group, and audio-lineage artifacts "
+            "must bind the exact same track ids."
         )
     return sorted(expected)
 
@@ -697,6 +989,8 @@ def _compact_bar_summary(
     summary: Mapping[str, Any],
     bar: Mapping[str, Any],
     shared_bindings_sha256: str,
+    audio_lineage_row: Mapping[str, Any],
+    audio_lineage_projection_sha256: str,
 ) -> dict[str, Any]:
     binding = _mapping(summary.get("binding"), "bar summary binding")
     feature_values = _mapping(bar.get("featureValues"), "bar featureValues")
@@ -709,6 +1003,12 @@ def _compact_bar_summary(
         "predictionCoreSha256": binding.get("predictionCoreSha256"),
         "uncertaintySha256": binding.get("uncertaintySha256"),
         "timingSha256": binding.get("timingSha256"),
+        "sourceAudioSha256": audio_lineage_row.get("sourceAudioSha256"),
+        "cachedFeatureArraySha256": audio_lineage_row.get("cachedArraySha256"),
+        "freshFeatureArraySha256": audio_lineage_row.get("freshArraySha256"),
+        "canonicalDurationMilliseconds": audio_lineage_row.get("canonicalDurationMilliseconds"),
+        "audioLineageRowSha256": audio_lineage_row.get("rowSha256"),
+        "audioLineageProjectionSha256": audio_lineage_projection_sha256,
         "barFeatureContractSha256": binding.get("barFeatureContractSha256"),
         "sharedBindingsSha256": shared_bindings_sha256,
         "index": bar.get("index"),
@@ -728,11 +1028,21 @@ def _compact_bar_summary(
         "predictionCoreSha256",
         "uncertaintySha256",
         "timingSha256",
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
         "barFeatureContractSha256",
         "sharedBindingsSha256",
     ):
         _required_sha256(payload[name], f"barSummary.{name}")
     _required_string(payload["trackId"], "barSummary.trackId")
+    _strict_integer(
+        payload["canonicalDurationMilliseconds"],
+        "barSummary.canonicalDurationMilliseconds",
+        minimum=1,
+    )
     _strict_integer(payload["index"], "barSummary.index")
     for name in (
         "start",
@@ -909,6 +1219,7 @@ def _aligned_score_bar(summary_bar: Mapping[str, Any], score_bar: Mapping[str, A
 def build_bar_selector_examples(
     benchmark_report: Mapping[str, Any],
     *,
+    audio_lineage_manifest: Mapping[str, Any],
     benchmark_root: Path,
     runtime_bar_grid_manifest: Mapping[str, Any],
     runtime_bar_grid_root: Path,
@@ -918,7 +1229,7 @@ def build_bar_selector_examples(
 ) -> dict[str, Any]:
     """Join sealed development telemetry to one-bit bar correctness outcomes.
 
-    The three JSON envelopes are already-parsed mappings so their split gates
+    The four JSON envelopes are already-parsed mappings so their split gates
     can be checked before this function touches any nested prediction, timing,
     or reference path.
     """
@@ -926,31 +1237,57 @@ def build_bar_selector_examples(
     report = _mapping(benchmark_report, "benchmark_report")
     runtime_manifest = _mapping(runtime_bar_grid_manifest, "runtime_bar_grid_manifest")
     groups = _mapping(group_manifest, "group_manifest")
+    audio_lineage = _mapping(audio_lineage_manifest, "audio_lineage_manifest")
 
     # This is intentionally the first validation phase. Do not move path work
     # above it: protected-split tests depend on zero nested artifact access.
-    _validate_development_envelopes(report, runtime_manifest, groups)
+    _validate_development_envelopes(report, runtime_manifest, groups, audio_lineage)
+    validated_audio_lineage = _validate_audio_lineage_preflight(audio_lineage)
+    report_tracks, report_contract = _validate_report(report)
+    metadata_runtime_manifest = validate_runtime_bar_grid_manifest(
+        runtime_manifest,
+        artifact_root=None,
+        verify_sources=False,
+    )
+    runtime_tracks = {
+        str(track["trackId"]): dict(track)
+        for track in _sequence(
+            metadata_runtime_manifest.get("tracks"),
+            "validated runtime manifest tracks",
+        )
+    }
+    group_tracks = _validate_group_manifest(groups)
+    track_ids = _validate_same_track_set(report_tracks, runtime_tracks, group_tracks)
+    audio_lineage_projection, projection_tracks = _validate_report_audio_lineage_binding(
+        report_contract,
+        validated_audio_lineage,
+        track_ids,
+    )
+    _validate_same_track_set(report_tracks, projection_tracks)
+    _validate_cross_audio_bindings(
+        track_ids,
+        report_tracks,
+        runtime_tracks,
+        projection_tracks,
+    )
+    audio_group_audit = _audio_group_audit(track_ids, group_tracks, projection_tracks)
+
+    # Only after every split, lineage, cross-artifact audio/cache/duration, and
+    # duplicate-audio grouping check passes may a prediction, timing, or
+    # reference leaf be opened.
     _preflight_summary_output_root(
         summary_output_root,
         benchmark_root=benchmark_root,
         runtime_bar_grid_root=runtime_bar_grid_root,
         group_manifest_root=group_manifest_root,
     )
-    report_tracks, report_contract = _validate_report(report)
     validated_runtime_manifest = validate_runtime_bar_grid_manifest(
         runtime_manifest,
         artifact_root=runtime_bar_grid_root,
         verify_sources=True,
     )
-    runtime_tracks = {
-        str(track["trackId"]): dict(track)
-        for track in _sequence(
-            validated_runtime_manifest.get("tracks"),
-            "validated runtime manifest tracks",
-        )
-    }
-    group_tracks = _validate_group_manifest(groups)
-    track_ids = _validate_same_track_set(report_tracks, runtime_tracks, group_tracks)
+    if validated_runtime_manifest != metadata_runtime_manifest:
+        raise ValueError("Runtime manifest changed between metadata preflight and source verification.")
     runtime_analyzer_contract = _mapping(
         validated_runtime_manifest.get("analyzerContract"),
         "runtime analyzerContract",
@@ -965,6 +1302,7 @@ def build_bar_selector_examples(
     for track_id in track_ids:
         report_track = report_tracks[track_id]
         runtime_track = runtime_tracks[track_id]
+        audio_lineage_row = projection_tracks[track_id]
         prediction_path = _artifact_path(
             benchmark_root,
             report_track["predictionFile"],
@@ -1050,6 +1388,8 @@ def build_bar_selector_examples(
                 summary,
                 _mapping(bar, "bar summary row"),
                 shared_bindings_sha256,
+                audio_lineage_row,
+                str(audio_lineage_projection["projectionSha256"]),
             )
             for bar in summary_bars
         ]
@@ -1061,6 +1401,7 @@ def build_bar_selector_examples(
                 "summary": summary,
                 "summaryBars": summary_bars,
                 "compactBars": compact_bars,
+                "audioLineageRow": audio_lineage_row,
             }
         )
 
@@ -1070,6 +1411,16 @@ def build_bar_selector_examples(
     # Reference phase. At this point all tracks, not merely the current track,
     # have complete and hash-stable prediction-only bar features in memory.
     examples: list[dict[str, Any]] = []
+    score_counts = {
+        "totalBarCount": 0,
+        "referenceDeterminateBarCount": 0,
+        "referenceMixedBarCount": 0,
+        "referenceUncoveredBarCount": 0,
+        "predictionMixedBarCount": 0,
+        "predictionUncoveredBarCount": 0,
+        "predictionConfidenceMissingBarCount": 0,
+        "predictionStructurallyScorableBarCount": 0,
+    }
     for record in feature_records:
         track_id = str(record["trackId"])
         group_track = group_tracks[track_id]
@@ -1102,6 +1453,30 @@ def build_bar_selector_examples(
         if score.get("available") is not True or score.get("explicitBarGrid") is not True:
             raise ValueError(f"Reference bar scoring is unavailable for track {track_id!r}.")
         score_bars = _validate_frozen_bar_score(score)
+        score_counts["totalBarCount"] += _strict_integer(score.get("totalBarCount"), "score totalBarCount")
+        score_counts["referenceDeterminateBarCount"] += _strict_integer(
+            score.get("eligibleBarCount"),
+            "score eligibleBarCount",
+        )
+        score_counts["referenceMixedBarCount"] += _strict_integer(
+            score.get("excludedMixedBarCount"),
+            "score excludedMixedBarCount",
+        )
+        score_counts["referenceUncoveredBarCount"] += _strict_integer(
+            score.get("excludedUncoveredBarCount"),
+            "score excludedUncoveredBarCount",
+        )
+        # Validate the legacy scorer's prediction audit counts, but compute the
+        # selector denominator below from the exact application-time gates.
+        # In particular, the legacy scorer's confidence availability is not a
+        # selector label-eligibility condition.
+        for name in (
+            "predictionMixedBarCount",
+            "predictionUncoveredBarCount",
+            "confidenceMissingBarCount",
+            "scorablePredictionBarCount",
+        ):
+            _strict_integer(score.get(name), f"score {name}")
         if len(score_bars) != len(record["summaryBars"]):
             raise ValueError(f"Prediction summary and reference score bar counts disagree for {track_id!r}.")
         for summary_bar, compact_bar, raw_score_bar in zip(
@@ -1111,12 +1486,46 @@ def build_bar_selector_examples(
             strict=True,
         ):
             score_bar = _mapping(raw_score_bar, "reference score bar")
-            _aligned_score_bar(_mapping(summary_bar, "prediction summary bar"), score_bar)
-            correct = score_bar.get("correct")
-            # Under the existing bar-product contract, correct is boolean only
-            # after both reference eligibility and prediction structure pass.
-            if score_bar.get("eligible") is not True or not isinstance(correct, bool):
+            prediction_bar = _mapping(summary_bar, "prediction summary bar")
+            _aligned_score_bar(prediction_bar, score_bar)
+            if score_bar.get("eligible") is not True:
                 continue
+            prediction_product = prediction_bar.get("predictionProduct")
+            prediction_coverage = _finite(
+                prediction_bar.get("predictionCoverage"),
+                "prediction summary bar predictionCoverage",
+            )
+            prediction_dominance = _finite(
+                prediction_bar.get("predictionDominance"),
+                "prediction summary bar predictionDominance",
+            )
+            if (
+                prediction_product is None
+                or prediction_coverage < BAR_OUTCOME_ELIGIBILITY_CONTRACT["predictionCoverage"]
+            ):
+                score_counts["predictionUncoveredBarCount"] += 1
+                continue
+            if prediction_dominance < BAR_OUTCOME_ELIGIBILITY_CONTRACT["predictionDominance"]:
+                score_counts["predictionMixedBarCount"] += 1
+                continue
+            prediction_product = _required_string(
+                prediction_product,
+                "prediction summary bar predictionProduct",
+            )
+            reference_product = _required_string(
+                score_bar.get("referenceProduct"),
+                "reference score bar referenceProduct",
+            )
+            score_counts["predictionStructurallyScorableBarCount"] += 1
+            if score_bar.get("predictionExclusionReason") == "prediction-confidence-missing":
+                score_counts["predictionConfidenceMissingBarCount"] += 1
+            elif not isinstance(score_bar.get("correct"), bool):
+                raise ValueError(
+                    "A structurally eligible prediction without legacy confidence must be explicitly audited."
+                )
+            correct = prediction_product == reference_product
+            if isinstance(score_bar.get("correct"), bool) and score_bar.get("correct") is not correct:
+                raise ValueError("Reference score correctness disagrees with the frozen product equality rule.")
             example_payload: dict[str, Any] = {
                 "trackId": track_id,
                 "split": DEVELOPMENT_SPLIT,
@@ -1126,6 +1535,12 @@ def build_bar_selector_examples(
                 "modelOrEnsembleSha256": shared_bindings["modelOrEnsembleSha256"],
                 "decoderContractSha256": shared_bindings["decoderContractSha256"],
                 "memberOrderSha256": shared_bindings["memberOrderSha256"],
+                "sourceAudioSha256": compact_bar["sourceAudioSha256"],
+                "cachedFeatureArraySha256": compact_bar["cachedFeatureArraySha256"],
+                "freshFeatureArraySha256": compact_bar["freshFeatureArraySha256"],
+                "canonicalDurationMilliseconds": compact_bar["canonicalDurationMilliseconds"],
+                "audioLineageRowSha256": compact_bar["audioLineageRowSha256"],
+                "audioLineageProjectionSha256": compact_bar["audioLineageProjectionSha256"],
                 "outcome": {"correct": correct},
             }
             example = {**example_payload, "exampleSha256": canonical_sha256(example_payload)}
@@ -1133,6 +1548,27 @@ def build_bar_selector_examples(
             examples.append(example)
 
     examples.sort(key=lambda value: (str(value["trackId"]), int(value["barIndex"])))
+    if score_counts["predictionStructurallyScorableBarCount"] != len(examples):
+        raise ValueError("Emitted examples disagree with the frozen scorable-prediction denominator.")
+    excluded_reference = score_counts["totalBarCount"] - score_counts["referenceDeterminateBarCount"]
+    excluded_prediction = (
+        score_counts["referenceDeterminateBarCount"] - score_counts["predictionStructurallyScorableBarCount"]
+    )
+    if excluded_reference < 0 or excluded_prediction < 0:
+        raise ValueError("Bar label-determinacy counts are internally inconsistent.")
+    label_audit_payload = {
+        "schemaVersion": LABEL_DETERMINACY_AUDIT_SCHEMA,
+        "estimand": SELECTOR_ESTIMAND,
+        "oofDenominator": OOF_DENOMINATOR,
+        **score_counts,
+        "excludedReferenceIndeterminateBarCount": excluded_reference,
+        "excludedPredictionNoneligibleBarCount": excluded_prediction,
+        "emittedExampleCount": len(examples),
+    }
+    label_determinacy_audit = {
+        **label_audit_payload,
+        "auditSha256": canonical_sha256(label_audit_payload),
+    }
     example_set_sha256 = canonical_sha256(examples)
     output_payload: dict[str, Any] = {
         "schemaVersion": EXAMPLES_SCHEMA,
@@ -1144,6 +1580,16 @@ def build_bar_selector_examples(
         "sourceBenchmarkReportSha256": canonical_sha256(report),
         "sourceRuntimeBarGridManifestSha256": validated_runtime_manifest["manifestSha256"],
         "sourceGroupManifestSha256": groups["manifestSha256"],
+        "sourceAudioLineageSha256": validated_audio_lineage["artifactSha256"],
+        "sourceAudioLineageProjection": audio_lineage_projection,
+        "sourceAudioLineageProjectionSha256": audio_lineage_projection["projectionSha256"],
+        "sourceBenchmarkAudioLineageBindingSha256": report_contract["audioLineageBindingSha256"],
+        "audioLineageVerificationMode": AUDIO_LINEAGE_VERIFICATION_MODE,
+        "featureArrayVerification": FEATURE_ARRAY_VERIFICATION,
+        "audioGroupAudit": audio_group_audit,
+        "audioGroupAuditSha256": audio_group_audit["auditSha256"],
+        "labelDeterminacyAudit": label_determinacy_audit,
+        "labelDeterminacyAuditSha256": label_determinacy_audit["auditSha256"],
         "examples": examples,
         "exampleSetSha256": example_set_sha256,
     }
@@ -1153,12 +1599,19 @@ def build_bar_selector_examples(
 
 
 __all__ = [
+    "AUDIO_GROUP_AUDIT_SCHEMA",
+    "AUDIO_LINEAGE_VERIFICATION_MODE",
     "BAR_OUTCOME_ELIGIBILITY_CONTRACT",
     "BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256",
+    "BENCHMARK_AUDIO_LINEAGE_SCHEMA",
     "COMPACT_BAR_SUMMARY_SCHEMA",
     "DEVELOPMENT_SPLIT",
     "EXAMPLES_SCHEMA",
+    "FEATURE_ARRAY_VERIFICATION",
     "GROUP_MANIFEST_SCHEMA",
+    "LABEL_DETERMINACY_AUDIT_SCHEMA",
+    "OOF_DENOMINATOR",
+    "SELECTOR_ESTIMAND",
     "build_bar_selector_group_manifest",
     "build_bar_selector_examples",
     "summary_artifact_filename",

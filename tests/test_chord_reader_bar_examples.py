@@ -11,14 +11,21 @@ import pytest
 
 import steel_guitar_rag.chord_reader.bar_examples as bar_examples
 from steel_guitar_rag.chord_reader.bar_examples import (
+    AUDIO_GROUP_AUDIT_SCHEMA,
+    AUDIO_LINEAGE_VERIFICATION_MODE,
     BAR_OUTCOME_ELIGIBILITY_CONTRACT,
     BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256,
     COMPACT_BAR_SUMMARY_SCHEMA,
     EXAMPLES_SCHEMA,
+    FEATURE_ARRAY_VERIFICATION,
     GROUP_MANIFEST_SCHEMA,
     build_bar_selector_group_manifest,
     build_bar_selector_examples,
     summary_artifact_filename,
+)
+from steel_guitar_rag.chord_reader.audio_lineage import (
+    AUDIO_LINEAGE_SCHEMA,
+    project_development_audio_lineage,
 )
 from steel_guitar_rag.chord_reader.bar_promotion import canonical_sha256
 from steel_guitar_rag.chord_reader.bar_selector import (
@@ -52,6 +59,192 @@ FEATURE_SPEC_SHA256 = hashlib.sha256(b"bar-example-feature-spec").hexdigest()
 SOURCE_MANIFEST_SHA256 = hashlib.sha256(b"bar-example-audio-manifest").hexdigest()
 RUNTIME_ANALYZER_CONTRACT = analyzer_contract()
 TIMING_SOURCE_CONTRACT_SHA256 = RUNTIME_ANALYZER_CONTRACT["contractSha256"]
+
+
+def _sealed_file_binding(role: str, schema_version: str, path: Path) -> dict[str, Any]:
+    payload = {
+        "role": role,
+        "schemaVersion": schema_version,
+        "path": str(path.resolve()),
+        "pathSha256": canonical_sha256(str(path.resolve())),
+        "fileSha256": hashlib.sha256(f"file:{role}".encode()).hexdigest(),
+        "bytes": 123,
+        "canonicalSha256": hashlib.sha256(f"canonical:{role}".encode()).hexdigest(),
+    }
+    return payload
+
+
+def _audio_lineage(
+    tmp_path: Path,
+    report_rows: list[dict[str, Any]],
+    runtime_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    feature_payload = {
+        "schemaVersion": "chord_development_audio_feature_contract_v1",
+        "featureKind": "multiband_chroma_v2",
+        "featureCount": 61,
+        "sampleRate": 11_025,
+        "frameSeconds": 0.1,
+        "storageDtype": "<f2",
+        "featureSpecSha256": FEATURE_SPEC_SHA256,
+    }
+    feature_contract = {
+        **feature_payload,
+        "contractSha256": canonical_sha256(feature_payload),
+    }
+    dependencies = {
+        "python": "fixture",
+        "librosa": "fixture",
+        "numpy": "fixture",
+        "scipy": "fixture",
+        "soundfile": "fixture",
+    }
+    source_file = (tmp_path / "fixture-student.py").resolve()
+    lock_file = (tmp_path / "fixture-lock.txt").resolve()
+    extractor_payload = {
+        "schemaVersion": "chord_development_audio_extractor_contract_v1",
+        "entrypoint": bar_examples.PRODUCTION_EXTRACTOR_ENTRYPOINT,
+        "sourceFile": str(source_file),
+        "sourceFilePathSha256": canonical_sha256(str(source_file)),
+        "sourceFileSha256": hashlib.sha256(b"fixture-student-source").hexdigest(),
+        "sourceFileBytes": 123,
+        "functionSourceSha256": hashlib.sha256(b"fixture-extractor-function").hexdigest(),
+        "dependencyLockFile": str(lock_file),
+        "dependencyLockPathSha256": canonical_sha256(str(lock_file)),
+        "dependencyLockSha256": hashlib.sha256(b"fixture-lock").hexdigest(),
+        "dependencyLockBytes": 123,
+        "dependencies": dependencies,
+        "dependenciesSha256": canonical_sha256(dependencies),
+        "featureContractSha256": feature_contract["contractSha256"],
+    }
+    extractor_contract = {
+        **extractor_payload,
+        "contractSha256": canonical_sha256(extractor_payload),
+    }
+    manifest_payload = {
+        "schemaVersion": "chord_development_audio_manifest_bindings_v1",
+        "winnerCacheManifest": _sealed_file_binding(
+            "winnerCacheManifest",
+            "chord_factorized_cache_manifest_v1",
+            tmp_path / "winner.json",
+        ),
+        "developmentSourceManifest": _sealed_file_binding(
+            "developmentSourceManifest",
+            "chord_dataset_manifest_v1",
+            tmp_path / "development.json",
+        ),
+        "dashengCacheManifest": _sealed_file_binding(
+            "dashengCacheManifest",
+            "chord_feature_cache_v1",
+            tmp_path / "dasheng.json",
+        ),
+        "winnerCacheOutputManifestSha256": hashlib.sha256(b"winner-output").hexdigest(),
+        "winnerCacheSourceManifestSha256": hashlib.sha256(b"winner-source").hexdigest(),
+        "winnerCacheArtifactSetSha256": hashlib.sha256(b"winner-artifacts").hexdigest(),
+        "winnerCacheAudioBindingStatus": "absent_repaired_by_fresh_array_equality_v1",
+        "dashengFeatureSpecSha256": hashlib.sha256(b"dasheng-feature-spec").hexdigest(),
+    }
+    manifest_bindings = {
+        **manifest_payload,
+        "bindingsSha256": canonical_sha256(manifest_payload),
+    }
+    runtime_by_id = {row["trackId"]: row for row in runtime_rows}
+    tracks: list[dict[str, Any]] = []
+    for report in sorted(report_rows, key=lambda value: value["id"]):
+        track_id = report["id"]
+        runtime = runtime_by_id[track_id]
+        duration = float(runtime["durationSeconds"])
+        frames = max(1, math.ceil(duration / 0.1 - 1e-12))
+        array_sha256 = hashlib.sha256(f"array:{track_id}".encode()).hexdigest()
+        winner_sha256 = hashlib.sha256(f"winner:{track_id}".encode()).hexdigest()
+        artifact_sha256 = hashlib.sha256(f"artifact:{track_id}".encode()).hexdigest()
+        source_sha256 = hashlib.sha256(f"source:{track_id}".encode()).hexdigest()
+        dasheng_sha256 = hashlib.sha256(f"dasheng:{track_id}".encode()).hexdigest()
+        source_metadata_sha256 = canonical_sha256(
+            {
+                "winnerTrackSha256": winner_sha256,
+                "winnerArtifactEntrySha256": artifact_sha256,
+                "sourceDescriptorSha256": source_sha256,
+                "dashengTrackSha256": dasheng_sha256,
+            }
+        )
+        audio_path = (tmp_path / f"{track_id}.wav").resolve()
+        cache_path = (tmp_path / f"{track_id}.npz").resolve()
+        row_payload = {
+            "trackId": track_id,
+            "datasetId": report["datasetId"],
+            "split": "development",
+            "audioPath": str(audio_path),
+            "audioPathSha256": canonical_sha256(str(audio_path)),
+            "sourceAudioSha256": runtime["audioSha256"],
+            "sourceAudioBytes": 123,
+            "cachedFeaturePath": str(cache_path),
+            "cachedFeaturePathSha256": canonical_sha256(str(cache_path)),
+            "cachedFeatureArtifactSha256": hashlib.sha256(f"cache:{track_id}".encode()).hexdigest(),
+            "cachedFeatureArtifactBytes": 123,
+            "cachedArraySha256": array_sha256,
+            "freshArraySha256": array_sha256,
+            "frames": frames,
+            "featureCount": 61,
+            "elementCount": frames * 61,
+            "cachedDurationSeconds": duration,
+            "freshDurationSeconds": duration,
+            "canonicalDurationMilliseconds": runtime["audioBinding"]["canonicalDurationMilliseconds"],
+            "winnerTrackSha256": winner_sha256,
+            "winnerArtifactEntrySha256": artifact_sha256,
+            "sourceDescriptorSha256": source_sha256,
+            "dashengTrackSha256": dasheng_sha256,
+            "sourceMetadataSha256": source_metadata_sha256,
+        }
+        row = {**row_payload, "rowSha256": canonical_sha256(row_payload)}
+        tracks.append(row)
+        report.update(
+            {
+                "sourceAudioSha256": row["sourceAudioSha256"],
+                "cachedFeatureArraySha256": row["cachedArraySha256"],
+                "freshFeatureArraySha256": row["freshArraySha256"],
+                "canonicalDurationMilliseconds": row["canonicalDurationMilliseconds"],
+                "audioLineageRowSha256": row["rowSha256"],
+            }
+        )
+    payload = {
+        "schemaVersion": AUDIO_LINEAGE_SCHEMA,
+        "split": "development",
+        "developmentOnly": True,
+        "promotionEligible": False,
+        "featureContract": feature_contract,
+        "extractorContract": extractor_contract,
+        "manifestBindings": manifest_bindings,
+        "trackCount": len(tracks),
+        "tracks": tracks,
+        "trackSetSha256": canonical_sha256(
+            [{"trackId": row["trackId"], "rowSha256": row["rowSha256"]} for row in tracks]
+        ),
+        "audioSetSha256": canonical_sha256(
+            [
+                {
+                    "trackId": row["trackId"],
+                    "audioPathSha256": row["audioPathSha256"],
+                    "sourceAudioSha256": row["sourceAudioSha256"],
+                    "sourceAudioBytes": row["sourceAudioBytes"],
+                }
+                for row in tracks
+            ]
+        ),
+        "arraySetSha256": canonical_sha256(
+            [
+                {
+                    "trackId": row["trackId"],
+                    "cachedArraySha256": row["cachedArraySha256"],
+                    "freshArraySha256": row["freshArraySha256"],
+                    "frames": row["frames"],
+                    "featureCount": row["featureCount"],
+                }
+                for row in tracks
+            ]
+        ),
+    }
+    return {**payload, "artifactSha256": canonical_sha256(payload)}
 
 
 def _roots(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
@@ -153,11 +346,16 @@ def _prediction(track_id: str, duration: float, products: list[str]) -> dict[str
     }
 
 
-def _feature_values(*, coverage: float = 1.0, dominance: float = 1.0) -> dict[str, float | int]:
+def _feature_values(
+    *,
+    coverage: float = 1.0,
+    dominance: float = 1.0,
+    transitions: int = 0,
+) -> dict[str, float | int]:
     values: dict[str, float | int] = {name: 0.0 for name in BAR_FEATURE_NAMES}
     values["predictionCoverage"] = coverage
     values["predictionDominance"] = dominance
-    values["predictionTransitionCount"] = 0
+    values["predictionTransitionCount"] = transitions
     return values
 
 
@@ -167,7 +365,24 @@ def _fake_summary(prediction: dict[str, Any], timing: dict[str, Any]) -> dict[st
     segments = prediction["segments"]
     bars = []
     for index, (start, end) in enumerate(zip(starts, ends, strict=True)):
-        product = segments[index]["productLabel"]
+        overlaps: list[tuple[dict[str, Any], float]] = []
+        by_product: dict[str, float] = {}
+        covered = 0.0
+        for segment in segments:
+            overlap = min(end, float(segment["end"])) - max(start, float(segment["start"]))
+            if overlap <= 0:
+                continue
+            overlaps.append((segment, overlap))
+            product = str(segment["productLabel"])
+            by_product[product] = by_product.get(product, 0.0) + overlap
+            covered += overlap
+        product, product_duration = (
+            min(by_product.items(), key=lambda item: (-item[1], item[0])) if by_product else (None, 0.0)
+        )
+        duration = end - start
+        coverage = covered / duration
+        dominance = product_duration / covered if covered else 0.0
+        transitions = max(0, len(overlaps) - 1)
         bars.append(
             {
                 "trackId": prediction["id"],
@@ -175,11 +390,15 @@ def _fake_summary(prediction: dict[str, Any], timing: dict[str, Any]) -> dict[st
                 "start": start,
                 "end": end,
                 "predictionProduct": product,
-                "predictionProductDurationSeconds": end - start,
-                "predictionCoverage": 1.0,
-                "predictionDominance": 1.0,
-                "predictionTransitionCount": 0,
-                "featureValues": _feature_values(),
+                "predictionProductDurationSeconds": product_duration,
+                "predictionCoverage": coverage,
+                "predictionDominance": dominance,
+                "predictionTransitionCount": transitions,
+                "featureValues": _feature_values(
+                    coverage=coverage,
+                    dominance=dominance,
+                    transitions=transitions,
+                ),
             }
         )
     payload = {
@@ -247,7 +466,7 @@ def _fixture(
     tmp_path: Path,
     *,
     definitions: list[dict[str, Any]] | None = None,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[Path]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], list[Path]]:
     benchmark_root, runtime_root, group_root, _summary_root = _roots(tmp_path)
     benchmark_root.mkdir(parents=True, exist_ok=True)
     runtime_root.mkdir(parents=True, exist_ok=True)
@@ -289,6 +508,42 @@ def _fixture(
         prediction_duration = float(definition.get("predictionDuration", 0.4 * len(products)))
         runtime_duration = math.floor(prediction_duration * 1000 + 0.5) / 1000
         prediction = _prediction(track_id, prediction_duration, products)
+        coverage = float(definition.get("predictionCoverage", 1.0))
+        dominance = float(definition.get("predictionDominance", 1.0))
+        if coverage != 1.0 or dominance != 1.0:
+            bar_duration = prediction_duration / len(products)
+            segments: list[dict[str, Any]] = []
+            for index, product in enumerate(products):
+                start = index * bar_duration
+                covered_end = start + bar_duration * coverage
+                dominant_end = start + bar_duration * coverage * dominance
+                segments.append(
+                    {
+                        "start": start,
+                        "end": dominant_end,
+                        "label": f"{product}:maj",
+                        "productLabel": product,
+                        "confidence": 0.9,
+                        "productConfidence": 0.9,
+                    }
+                )
+                if dominant_end < covered_end:
+                    alternate = "G" if product != "G" else "C"
+                    segments.append(
+                        {
+                            "start": dominant_end,
+                            "end": covered_end,
+                            "label": f"{alternate}:maj",
+                            "productLabel": alternate,
+                            "confidence": 0.9,
+                            "productConfidence": 0.9,
+                        }
+                    )
+            prediction["segments"] = segments
+        if definition.get("confidenceMissing"):
+            for segment in prediction["segments"]:
+                segment.pop("productConfidence", None)
+                segment.pop("confidence", None)
         predictions.append(prediction)
         prediction_file = Path("predictions") / f"{track_id}.json"
         prediction_bytes = _write_json(benchmark_root / prediction_file, prediction)
@@ -322,7 +577,12 @@ def _fixture(
         decoded_rate = 44_100
         decoded_count = round(runtime_duration * decoded_rate)
         canonical_duration_milliseconds = round(runtime_duration * 1000)
-        audio_sha256 = hashlib.sha256(f"audio:{track_id}".encode()).hexdigest()
+        audio_sha256 = str(
+            definition.get(
+                "audioSha256",
+                hashlib.sha256(f"audio:{track_id}".encode()).hexdigest(),
+            )
+        )
         audio_binding = {
             "sourceAudioSha256": audio_sha256,
             "decodedPcmSha256": hashlib.sha256(f"decoded-pcm:{track_id}".encode()).hexdigest(),
@@ -376,6 +636,21 @@ def _fixture(
         )
 
     report_rows.sort(key=lambda value: value["id"])
+    runtime_rows.sort(key=lambda value: value["trackId"])
+    audio_lineage = _audio_lineage(tmp_path, report_rows, runtime_rows)
+    audio_lineage_projection = project_development_audio_lineage(audio_lineage)
+    audio_lineage_binding_payload = {
+        "schemaVersion": "chord_benchmark_audio_lineage_v1",
+        "verificationMode": AUDIO_LINEAGE_VERIFICATION_MODE,
+        "sourceArtifactSha256": audio_lineage["artifactSha256"],
+        "projection": audio_lineage_projection,
+        "projectionSha256": audio_lineage_projection["projectionSha256"],
+        "featureArrayVerification": FEATURE_ARRAY_VERIFICATION,
+    }
+    audio_lineage_binding = {
+        **audio_lineage_binding_payload,
+        "bindingSha256": canonical_sha256(audio_lineage_binding_payload),
+    }
     first_prediction = predictions[0]
     binding = first_prediction["uncertainty"]["binding"]
     members = first_prediction["uncertainty"]["members"]
@@ -402,6 +677,7 @@ def _fixture(
         "bindingSha256": canonical_sha256(binding),
         "allowedSplits": ["dev", "development"],
         "certificationPolicy": "development-only fixture",
+        "audioLineage": audio_lineage_binding,
         "trackCount": len(report_rows),
         "predictionCoreSetSha256": canonical_sha256(
             [{"id": row["id"], "sha256": row["predictionCoreSha256"]} for row in report_rows]
@@ -422,7 +698,6 @@ def _fixture(
         "tracks": report_rows,
     }
 
-    runtime_rows.sort(key=lambda value: value["trackId"])
     source_manifests = [{"sourceManifestSha256": SOURCE_MANIFEST_SHA256, "trackCount": len(runtime_rows)}]
     timing_artifacts = sorted(
         {
@@ -455,12 +730,31 @@ def _fixture(
     runtime = {**runtime_payload, "manifestSha256": canonical_sha256(runtime_payload)}
     _write_json(runtime_root / "manifest.json", runtime)
     groups = build_bar_selector_group_manifest(group_rows, reference_root=group_root)
-    return report, runtime, groups, reference_paths
+    return report, runtime, groups, audio_lineage, reference_paths
 
 
 @pytest.fixture(autouse=True)
 def _prediction_only_summarizer(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(bar_examples, "summarize_prediction_bars", _fake_summary)
+    metadata_validator = bar_examples.validate_development_audio_lineage
+
+    def validate_synthetic_lineage(
+        artifact: dict[str, Any],
+        *,
+        verify_files: bool = False,
+        extractor: Any = None,
+        dependency_versions: dict[str, str] | None = None,
+    ) -> Any:
+        assert verify_files is True
+        assert extractor is bar_examples.extract_student_features
+        assert dependency_versions is None
+        return metadata_validator(artifact, verify_files=False)
+
+    monkeypatch.setattr(
+        bar_examples,
+        "validate_development_audio_lineage",
+        validate_synthetic_lineage,
+    )
 
 
 def _build(
@@ -468,10 +762,12 @@ def _build(
     report: dict[str, Any],
     runtime: dict[str, Any],
     groups: dict[str, Any],
+    audio_lineage: dict[str, Any],
 ) -> dict[str, Any]:
     benchmark_root, runtime_root, group_root, summary_root = _roots(tmp_path)
     return build_bar_selector_examples(
         report,
+        audio_lineage_manifest=audio_lineage,
         benchmark_root=benchmark_root,
         runtime_bar_grid_manifest=runtime,
         runtime_bar_grid_root=runtime_root,
@@ -593,8 +889,8 @@ def test_group_manifest_builder_requires_explicit_group_before_reference_path_ac
 
 
 def test_builds_exact_compact_selector_artifact_and_preserves_explicit_groups(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
-    result = _build(tmp_path, report, runtime, groups)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
+    result = _build(tmp_path, report, runtime, groups, audio_lineage)
 
     assert result["schemaVersion"] == EXAMPLES_SCHEMA
     assert result["split"] == "development"
@@ -620,12 +916,28 @@ def test_builds_exact_compact_selector_artifact_and_preserves_explicit_groups(tm
     assert set(result["sharedBindings"]) == bar_examples._SHARED_BINDING_KEYS
     assert result["sharedBindings"]["barOutcomeEligibilityContract"] == BAR_OUTCOME_ELIGIBILITY_CONTRACT
     assert result["sharedBindings"]["barOutcomeEligibilityContractSha256"] == BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256
+    assert BAR_OUTCOME_ELIGIBILITY_CONTRACT["correctnessRule"] == "predictionProduct == referenceProduct"
+    assert "audit-only" in BAR_OUTCOME_ELIGIBILITY_CONTRACT["legacyProductConfidenceAvailability"]
+    assert "never label eligibility" in BAR_OUTCOME_ELIGIBILITY_CONTRACT["confidenceThresholdRole"]
     assert BAR_OUTCOME_ELIGIBILITY_CONTRACT == SELECTOR_OUTCOME_ELIGIBILITY_CONTRACT
     assert BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256 == SELECTOR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256
+    assert result["sourceAudioLineageSha256"] == audio_lineage["artifactSha256"]
+    assert result["sourceAudioLineageProjection"] == report["uncertaintyExperiment"]["audioLineage"]["projection"]
+    assert result["audioLineageVerificationMode"] == AUDIO_LINEAGE_VERIFICATION_MODE
+    assert result["featureArrayVerification"] == FEATURE_ARRAY_VERIFICATION
+    assert result["audioGroupAudit"]["schemaVersion"] == AUDIO_GROUP_AUDIT_SCHEMA
+    assert result["audioGroupAudit"]["trackCount"] == len(report["tracks"])
+    assert result["audioGroupAuditSha256"] == result["audioGroupAudit"]["auditSha256"]
+    assert result["labelDeterminacyAudit"]["emittedExampleCount"] == len(result["examples"])
+    assert result["labelDeterminacyAudit"]["excludedReferenceIndeterminateBarCount"] == 0
+    assert result["labelDeterminacyAudit"]["excludedPredictionNoneligibleBarCount"] == 0
     for example in result["examples"]:
         assert set(example) == bar_examples._EXAMPLE_KEYS
         assert example["barSummary"]["schemaVersion"] == COMPACT_BAR_SUMMARY_SCHEMA
         assert example["barSummary"]["trackId"] == example["trackId"]
+        assert example["sourceAudioSha256"] == example["barSummary"]["sourceAudioSha256"]
+        assert example["cachedFeatureArraySha256"] == example["barSummary"]["cachedFeatureArraySha256"]
+        assert example["audioLineageRowSha256"] == example["barSummary"]["audioLineageRowSha256"]
         assert tuple(example["barSummary"]["featureValues"]) == BAR_FEATURE_NAMES
         assert (
             canonical_sha256({key: value for key, value in example["barSummary"].items() if key != "barSummarySha256"})
@@ -641,11 +953,186 @@ def test_builds_exact_compact_selector_artifact_and_preserves_explicit_groups(tm
         _validated_example(example, selector_binding)
 
 
+def test_rejects_production_extractor_entrypoint_drift_before_leaf_access(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
+    audio_lineage = deepcopy(audio_lineage)
+    contract = audio_lineage["extractorContract"]
+    contract["entrypoint"] = "fixture.not_the_production_extractor"
+    contract["contractSha256"] = canonical_sha256(
+        {key: value for key, value in contract.items() if key != "contractSha256"}
+    )
+    audio_lineage["artifactSha256"] = canonical_sha256(
+        {key: value for key, value in audio_lineage.items() if key != "artifactSha256"}
+    )
+    touched: list[str] = []
+    monkeypatch.setattr(
+        bar_examples,
+        "_artifact_path",
+        lambda *args, **kwargs: touched.append("leaf") or Path("forbidden"),
+    )
+    with pytest.raises(ValueError, match="production extract_student_features"):
+        _build(tmp_path, report, runtime, groups, audio_lineage)
+    assert touched == []
+
+
+def test_full_production_lineage_verification_precedes_timing_and_prediction_leaves(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
+    events: list[str] = []
+    lineage_validator = bar_examples.validate_development_audio_lineage
+    runtime_validator = bar_examples.validate_runtime_bar_grid_manifest
+    artifact_path = bar_examples._artifact_path
+
+    def recording_lineage(artifact: dict[str, Any], **kwargs: Any) -> Any:
+        assert kwargs == {
+            "verify_files": True,
+            "extractor": bar_examples.extract_student_features,
+        }
+        events.append("full-lineage")
+        return lineage_validator(artifact, **kwargs)
+
+    def recording_runtime(manifest: dict[str, Any], **kwargs: Any) -> Any:
+        if kwargs.get("artifact_root") is not None:
+            assert events == ["full-lineage"]
+            events.append("timing-leaves")
+        return runtime_validator(manifest, **kwargs)
+
+    def recording_artifact_path(*args: Any, **kwargs: Any) -> Path:
+        assert events[:2] == ["full-lineage", "timing-leaves"]
+        events.append("artifact-leaf")
+        return artifact_path(*args, **kwargs)
+
+    monkeypatch.setattr(bar_examples, "validate_development_audio_lineage", recording_lineage)
+    monkeypatch.setattr(bar_examples, "validate_runtime_bar_grid_manifest", recording_runtime)
+    monkeypatch.setattr(bar_examples, "_artifact_path", recording_artifact_path)
+    _build(tmp_path, report, runtime, groups, audio_lineage)
+    assert events[0] == "full-lineage"
+    assert events[1] == "timing-leaves"
+    assert events.count("artifact-leaf") == len(report["tracks"]) * 3
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("cachedFeatureArraySha256", hashlib.sha256(b"spliced-cache").hexdigest(), "audio lineage"),
+        ("freshFeatureArraySha256", hashlib.sha256(b"spliced-fresh").hexdigest(), "audio lineage"),
+        ("canonicalDurationMilliseconds", 401, "audio lineage"),
+        ("audioLineageRowSha256", hashlib.sha256(b"spliced-row").hexdigest(), "audio lineage"),
+    ],
+)
+def test_rejects_report_lineage_cache_or_millisecond_mismatch_before_leaf_access(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    value: str | int,
+    message: str,
+) -> None:
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
+    report["tracks"][0][field] = value
+    touched: list[str] = []
+    monkeypatch.setattr(
+        bar_examples,
+        "_artifact_path",
+        lambda *args, **kwargs: touched.append("leaf") or Path("forbidden"),
+    )
+    with pytest.raises(ValueError, match=message):
+        _build(tmp_path, report, runtime, groups, audio_lineage)
+    assert touched == []
+
+
+def test_rejects_resealed_runtime_audio_splice_before_leaf_access(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
+    runtime = deepcopy(runtime)
+    row = runtime["tracks"][0]
+    spliced_sha256 = hashlib.sha256(b"different-source-audio").hexdigest()
+    row["audioSha256"] = spliced_sha256
+    row["audioBinding"]["sourceAudioSha256"] = spliced_sha256
+    row["audioBindingSha256"] = canonical_sha256(row["audioBinding"])
+    row["trackArtifactSha256"] = canonical_sha256(
+        {key: value for key, value in row.items() if key != "trackArtifactSha256"}
+    )
+    runtime["trackSetSha256"] = canonical_sha256(
+        [
+            {"trackId": track["trackId"], "trackArtifactSha256": track["trackArtifactSha256"]}
+            for track in runtime["tracks"]
+        ]
+    )
+    runtime["manifestSha256"] = canonical_sha256(
+        {key: value for key, value in runtime.items() if key != "manifestSha256"}
+    )
+    touched: list[str] = []
+    monkeypatch.setattr(
+        bar_examples,
+        "_artifact_path",
+        lambda *args, **kwargs: touched.append("leaf") or Path("forbidden"),
+    )
+    with pytest.raises(ValueError, match="Runtime audio and audio lineage disagree"):
+        _build(tmp_path, report, runtime, groups, audio_lineage)
+    assert touched == []
+
+
+def test_duplicate_audio_must_share_group_and_same_group_is_audited(tmp_path: Path) -> None:
+    shared_audio_sha256 = hashlib.sha256(b"identical-source-audio").hexdigest()
+    base = [
+        {
+            "id": "duplicate-a",
+            "datasetId": "fixture",
+            "role": "comp",
+            "group": "same-work",
+            "prediction": ["C"],
+            "reference": ["C"],
+            "audioSha256": shared_audio_sha256,
+        },
+        {
+            "id": "duplicate-b",
+            "datasetId": "fixture",
+            "role": "solo",
+            "group": "different-work",
+            "prediction": ["C"],
+            "reference": ["C"],
+            "audioSha256": shared_audio_sha256,
+        },
+    ]
+    report, runtime, groups, audio_lineage, _references = _fixture(
+        tmp_path / "rejected",
+        definitions=base,
+    )
+    with pytest.raises(ValueError, match="Identical source audio bytes"):
+        _build(tmp_path / "rejected", report, runtime, groups, audio_lineage)
+
+    allowed = deepcopy(base)
+    allowed[1]["group"] = "same-work"
+    report, runtime, groups, audio_lineage, _references = _fixture(
+        tmp_path / "allowed",
+        definitions=allowed,
+    )
+    result = _build(tmp_path / "allowed", report, runtime, groups, audio_lineage)
+    duplicate_rows = [row for row in result["audioGroupAudit"]["rows"] if row["trackCount"] == 2]
+    assert duplicate_rows == [
+        {
+            "sourceAudioSha256": shared_audio_sha256,
+            "confidenceGroupId": "same-work",
+            "trackIds": ["duplicate-a", "duplicate-b"],
+            "trackCount": 2,
+        }
+    ]
+    assert result["audioGroupAudit"]["duplicateSourceAudioCount"] == 1
+    assert result["audioGroupAudit"]["duplicateTrackCount"] == 1
+
+
 def test_delegates_runtime_trust_to_strict_public_v2_validator(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     observed: list[tuple[dict[str, Any], Path, bool]] = []
     original = bar_examples.validate_runtime_bar_grid_manifest
 
@@ -655,7 +1142,6 @@ def test_delegates_runtime_trust_to_strict_public_v2_validator(
         artifact_root: Path | None = None,
         verify_sources: bool = True,
     ) -> dict[str, Any]:
-        assert artifact_root is not None
         observed.append((manifest, artifact_root, verify_sources))
         return original(
             manifest,
@@ -664,8 +1150,11 @@ def test_delegates_runtime_trust_to_strict_public_v2_validator(
         )
 
     monkeypatch.setattr(bar_examples, "validate_runtime_bar_grid_manifest", validating)
-    _build(tmp_path, report, runtime, groups)
-    assert observed == [(runtime, _roots(tmp_path)[1], True)]
+    _build(tmp_path, report, runtime, groups, audio_lineage)
+    assert observed == [
+        (runtime, None, False),
+        (runtime, _roots(tmp_path)[1], True),
+    ]
     assert runtime["schemaVersion"] == "chord_runtime_bar_grid_manifest_v2"
     assert runtime["runtimeAttested"] is True
     assert runtime["selectorUseAllowed"] is True
@@ -675,7 +1164,7 @@ def test_all_features_and_compact_hashes_exist_before_first_reference_open(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    report, runtime, groups, reference_paths = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, reference_paths = _fixture(tmp_path)
     summaries: list[dict[str, Any]] = []
     compact: list[dict[str, Any]] = []
 
@@ -690,8 +1179,16 @@ def test_all_features_and_compact_hashes_exist_before_first_reference_open(
         summary: dict[str, Any],
         bar: dict[str, Any],
         shared_bindings_sha256: str,
+        audio_lineage_row: dict[str, Any],
+        audio_lineage_projection_sha256: str,
     ) -> dict[str, Any]:
-        result = original_compact(summary, bar, shared_bindings_sha256)
+        result = original_compact(
+            summary,
+            bar,
+            shared_bindings_sha256,
+            audio_lineage_row,
+            audio_lineage_projection_sha256,
+        )
         compact.append(result)
         return result
 
@@ -730,20 +1227,25 @@ def test_all_features_and_compact_hashes_exist_before_first_reference_open(
         return original_open(self, *args, **kwargs)
 
     monkeypatch.setattr(Path, "open", guarded_open)
-    result = _build(tmp_path, report, runtime, groups)
+    result = _build(tmp_path, report, runtime, groups, audio_lineage)
     assert len(result["examples"]) == 3
 
 
 @pytest.mark.parametrize("sealed_split", ["calibration", "test", "heldout"])
-@pytest.mark.parametrize("source", ["report", "runtime", "groups"])
+@pytest.mark.parametrize("source", ["report", "runtime", "groups", "audio-lineage"])
 def test_rejects_every_sealed_split_before_any_path_access(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     sealed_split: str,
     source: str,
 ) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
-    values = {"report": report, "runtime": runtime, "groups": groups}
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
+    values = {
+        "report": report,
+        "runtime": runtime,
+        "groups": groups,
+        "audio-lineage": audio_lineage,
+    }
     values[source]["split"] = sealed_split
     opened: list[Path] = []
     resolved: list[Path] = []
@@ -761,13 +1263,13 @@ def test_rejects_every_sealed_split_before_any_path_access(
     monkeypatch.setattr(Path, "open", observed_open)
     monkeypatch.setattr(Path, "resolve", observed_resolve)
     with pytest.raises(ValueError, match="before any artifact path is accessed"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
     assert opened == []
     assert resolved == []
 
 
 def test_requires_exact_track_set_identity(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     groups = deepcopy(groups)
     groups["tracks"] = groups["tracks"][:-1]
     groups["trackSetSha256"] = canonical_sha256(
@@ -777,11 +1279,11 @@ def test_requires_exact_track_set_identity(tmp_path: Path) -> None:
         {key: value for key, value in groups.items() if key != "manifestSha256"}
     )
     with pytest.raises(ValueError, match="exact same track ids"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
 
 
 def test_confidence_group_is_mandatory_and_never_derived_from_track_metadata(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     groups = deepcopy(groups)
     track = groups["tracks"][0]
     track["confidenceGroupId"] = ""
@@ -795,7 +1297,7 @@ def test_confidence_group_is_mandatory_and_never_derived_from_track_metadata(tmp
         {key: value for key, value in groups.items() if key != "manifestSha256"}
     )
     with pytest.raises(ValueError, match="confidenceGroupId must be a nonempty string"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
 
 
 def test_emits_only_structurally_scorable_existing_bar_product_rows(tmp_path: Path) -> None:
@@ -810,16 +1312,87 @@ def test_emits_only_structurally_scorable_existing_bar_product_rows(tmp_path: Pa
             "mixedLast": True,
         }
     ]
-    report, runtime, groups, _references = _fixture(tmp_path, definitions=definitions)
-    result = _build(tmp_path, report, runtime, groups)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path, definitions=definitions)
+    result = _build(tmp_path, report, runtime, groups, audio_lineage)
     assert [(example["barIndex"], example["outcome"]) for example in result["examples"]] == [(0, {"correct": True})]
+    audit = result["labelDeterminacyAudit"]
+    assert audit["totalBarCount"] == 2
+    assert audit["referenceDeterminateBarCount"] == 1
+    assert audit["excludedReferenceIndeterminateBarCount"] == 1
+    assert audit["excludedPredictionNoneligibleBarCount"] == 0
+
+
+def test_legacy_confidence_missing_is_audited_but_does_not_gate_boolean_label(
+    tmp_path: Path,
+) -> None:
+    definitions = [
+        {
+            "id": "confidence-missing",
+            "datasetId": "fixture",
+            "role": "comp",
+            "group": "composition",
+            "prediction": ["C"],
+            "reference": ["C"],
+            "confidenceMissing": True,
+        }
+    ]
+    report, runtime, groups, audio_lineage, _references = _fixture(
+        tmp_path,
+        definitions=definitions,
+    )
+    result = _build(tmp_path, report, runtime, groups, audio_lineage)
+    assert [example["outcome"] for example in result["examples"]] == [{"correct": True}]
+    audit = result["labelDeterminacyAudit"]
+    assert audit["predictionConfidenceMissingBarCount"] == 1
+    assert audit["predictionStructurallyScorableBarCount"] == 1
+    assert audit["excludedPredictionNoneligibleBarCount"] == 0
+    assert audit["emittedExampleCount"] == 1
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "expected_examples", "exclusion_field"),
+    [
+        ("predictionCoverage", 0.75 - 5e-10, 0, "predictionUncoveredBarCount"),
+        ("predictionCoverage", 0.75, 1, "predictionUncoveredBarCount"),
+        ("predictionDominance", 0.75 - 5e-10, 0, "predictionMixedBarCount"),
+        ("predictionDominance", 0.75, 1, "predictionMixedBarCount"),
+    ],
+)
+def test_builder_uses_exact_application_structural_boundaries(
+    tmp_path: Path,
+    field: str,
+    value: float,
+    expected_examples: int,
+    exclusion_field: str,
+) -> None:
+    definitions = [
+        {
+            "id": "structural-boundary",
+            "datasetId": "fixture",
+            "role": "comp",
+            "group": "composition",
+            "prediction": ["C"],
+            "reference": ["C"],
+            field: value,
+        }
+    ]
+    report, runtime, groups, audio_lineage, _references = _fixture(
+        tmp_path,
+        definitions=definitions,
+    )
+    result = _build(tmp_path, report, runtime, groups, audio_lineage)
+    audit = result["labelDeterminacyAudit"]
+    assert len(result["examples"]) == expected_examples
+    assert audit["predictionStructurallyScorableBarCount"] == expected_examples
+    assert audit["excludedPredictionNoneligibleBarCount"] == 1 - expected_examples
+    assert audit[exclusion_field] == 1 - expected_examples
 
 
 def test_passes_every_frozen_outcome_and_eligibility_argument_explicitly(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     original = bar_examples.score_bar_product_confidence
     observed: list[dict[str, Any]] = []
 
@@ -828,7 +1401,7 @@ def test_passes_every_frozen_outcome_and_eligibility_argument_explicitly(
         return original(reference, prediction, **kwargs)
 
     monkeypatch.setattr(bar_examples, "score_bar_product_confidence", recording)
-    _build(tmp_path, report, runtime, groups)
+    _build(tmp_path, report, runtime, groups, audio_lineage)
     assert len(observed) == len(report["tracks"])
     for kwargs in observed:
         assert kwargs["confidence_thresholds"] == (0.0,)
@@ -845,7 +1418,7 @@ def test_passes_every_frozen_outcome_and_eligibility_argument_explicitly(
 
 
 def test_exact_player_millisecond_join_scores_full_precision_final_bar(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(
+    report, runtime, groups, audio_lineage, _references = _fixture(
         tmp_path,
         definitions=[
             {
@@ -859,7 +1432,7 @@ def test_exact_player_millisecond_join_scores_full_precision_final_bar(tmp_path:
             }
         ],
     )
-    result = _build(tmp_path, report, runtime, groups)
+    result = _build(tmp_path, report, runtime, groups, audio_lineage)
     assert len(result["examples"]) == 1
     example = result["examples"][0]
     assert example["barSummary"]["end"] == 0.4004
@@ -897,7 +1470,7 @@ def test_rejects_resealed_score_contract_drift(
     mutation: str,
     message: str,
 ) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     original = bar_examples.score_bar_product_confidence
 
     def drifting(reference: dict[str, Any], prediction: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
@@ -914,40 +1487,40 @@ def test_rejects_resealed_score_contract_drift(
 
     monkeypatch.setattr(bar_examples, "score_bar_product_confidence", drifting)
     with pytest.raises(ValueError, match=message):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
 
 
 def test_rejects_reference_hash_drift_after_prediction_features_are_sealed(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     reference_file = _roots(tmp_path)[2] / groups["tracks"][0]["referenceFile"]
     reference_file.write_text("{}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Reference file hash mismatch"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
 
 
 def test_rejects_prediction_and_runtime_hash_drift(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     prediction_file = _roots(tmp_path)[0] / report["tracks"][0]["predictionFile"]
     prediction_file.write_text("{}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Prediction file hash mismatch"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
 
-    report, runtime, groups, _references = _fixture(tmp_path / "second")
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path / "second")
     timing_file = _roots(tmp_path / "second")[1] / runtime["tracks"][0]["timingFile"]
     timing = json.loads(timing_file.read_text(encoding="utf-8"))
     timing["barStartsSeconds"] = [0.01]
     _write_json(timing_file, timing)
     with pytest.raises(ValueError, match="content-addressed"):
-        _build(tmp_path / "second", report, runtime, groups)
+        _build(tmp_path / "second", report, runtime, groups, audio_lineage)
 
 
 def test_rejects_symlinked_summary_output_components(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     actual_output = tmp_path / "actual-summary-output"
     actual_output.mkdir()
     _roots(tmp_path)[3].symlink_to(actual_output, target_is_directory=True)
     with pytest.raises(ValueError, match="symlinked path component"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
     assert list(actual_output.iterdir()) == []
 
 
@@ -956,13 +1529,14 @@ def test_preflights_summary_output_disjoint_from_every_source_root(
     tmp_path: Path,
     source_index: int,
 ) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     benchmark_root, runtime_root, group_root, _summary_root = _roots(tmp_path)
     source_roots = (benchmark_root, runtime_root, group_root)
     nested_output = source_roots[source_index] / "forbidden-summary-output"
     with pytest.raises(ValueError, match="path-disjoint"):
         build_bar_selector_examples(
             report,
+            audio_lineage_manifest=audio_lineage,
             benchmark_root=benchmark_root,
             runtime_bar_grid_manifest=runtime,
             runtime_bar_grid_root=runtime_root,
@@ -974,7 +1548,7 @@ def test_preflights_summary_output_disjoint_from_every_source_root(
 
 
 def test_preflight_resolves_summary_symlink_before_disjointness_check(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     benchmark_root, runtime_root, group_root, _summary_root = _roots(tmp_path)
     alias = tmp_path / "summary-alias"
     alias.symlink_to(benchmark_root, target_is_directory=True)
@@ -982,6 +1556,7 @@ def test_preflight_resolves_summary_symlink_before_disjointness_check(tmp_path: 
     with pytest.raises(ValueError, match="path-disjoint"):
         build_bar_selector_examples(
             report,
+            audio_lineage_manifest=audio_lineage,
             benchmark_root=benchmark_root,
             runtime_bar_grid_manifest=runtime,
             runtime_bar_grid_root=runtime_root,
@@ -993,7 +1568,7 @@ def test_preflight_resolves_summary_symlink_before_disjointness_check(tmp_path: 
 
 
 def test_rejects_offline_proxy_timing_even_when_all_proxy_hashes_are_resealed(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(
+    report, runtime, groups, audio_lineage, _references = _fixture(
         tmp_path,
         definitions=[
             {
@@ -1046,11 +1621,11 @@ def test_rejects_offline_proxy_timing_even_when_all_proxy_hashes_are_resealed(tm
     )
     _write_json(runtime_root / "manifest.json", runtime)
     with pytest.raises(ValueError, match="not explicit runtime timing"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
 
 
 def test_rejects_resealed_nonattested_runtime_manifest(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     runtime = deepcopy(runtime)
     runtime["runtimeAttested"] = False
     runtime["selectorUseAllowed"] = False
@@ -1059,11 +1634,11 @@ def test_rejects_resealed_nonattested_runtime_manifest(tmp_path: Path) -> None:
     )
     _write_json(_roots(tmp_path)[1] / "manifest.json", runtime)
     with pytest.raises(ValueError, match="not attested for selector use"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
 
 
 def test_refuses_to_overwrite_existing_mismatched_content_addressed_summary(tmp_path: Path) -> None:
-    report, runtime, groups, _references = _fixture(tmp_path)
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
     row = report["tracks"][0]
     prediction = json.loads((_roots(tmp_path)[0] / row["predictionFile"]).read_text(encoding="utf-8"))
     runtime_by_id = {track["trackId"]: track for track in runtime["tracks"]}
@@ -1075,5 +1650,5 @@ def test_refuses_to_overwrite_existing_mismatched_content_addressed_summary(tmp_
     destination.write_bytes(original)
 
     with pytest.raises(ValueError, match="Refusing to overwrite mismatched summary artifact"):
-        _build(tmp_path, report, runtime, groups)
+        _build(tmp_path, report, runtime, groups, audio_lineage)
     assert destination.read_bytes() == original

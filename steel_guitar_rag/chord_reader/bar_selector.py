@@ -28,6 +28,25 @@ BAR_SELECTOR_APPLICATION_SCHEMA = "chord_bar_correctness_probability_v1"
 FACTORIZED_UNCERTAINTY_SCHEMA = "chord_factorized_uncertainty_v1"
 EXPLICIT_BAR_GRID_SCHEMA = "chord_explicit_bar_grid_v1"
 BAR_SCORE_SCHEMA = "chord_bar_product_confidence_v1"
+AUDIO_LINEAGE_PROJECTION_SCHEMA = "chord_development_audio_lineage_projection_v1"
+AUDIO_GROUP_AUDIT_SCHEMA = "chord_bar_selector_audio_group_audit_v1"
+LABEL_DETERMINACY_AUDIT_SCHEMA = "chord_bar_selector_label_determinacy_audit_v1"
+AUDIO_LINEAGE_VERIFICATION_MODE = "full-files-and-reextraction-v1"
+FEATURE_ARRAY_VERIFICATION = "loaded-cache-contiguous-little-endian-float16-sha256-v1"
+SELECTOR_ESTIMAND = (
+    "P(predictionProductCorrect | referenceLabelDeterminate=true and predictionProduct!=null "
+    "and predictionCoverage>=0.75 and predictionDominance>=0.75)"
+)
+OOF_DENOMINATOR = (
+    "emitted development examples only; conditional on reference-label determinacy "
+    "and predictionProduct non-null with coverage>=0.75 and dominance>=0.75; "
+    "legacy product-confidence availability is audit-only"
+)
+STRUCTURAL_ELIGIBILITY_INPUT = (
+    "pre-frozen predictionProduct non-null, predictionCoverage>=0.75, and "
+    "predictionDominance>=0.75; legacy product-confidence availability is audit-only; "
+    "not an estimator feature"
+)
 BAR_OUTCOME_ELIGIBILITY_CONTRACT = {
     "schemaVersion": "chord_bar_selector_outcome_eligibility_contract_v1",
     "scoreSchemaVersion": BAR_SCORE_SCHEMA,
@@ -35,8 +54,17 @@ BAR_OUTCOME_ELIGIBILITY_CONTRACT = {
     "predictionCoverage": 0.75,
     "predictionDominance": 0.75,
     "confidenceThresholds": [0.0],
+    "confidenceThresholdRole": "legacy scorer consistency audit only; never label eligibility",
+    "predictionStructuralEligibility": (
+        "predictionProduct is non-null and predictionCoverage>=0.75 and predictionDominance>=0.75"
+    ),
+    "legacyProductConfidenceAvailability": "audit-only; never label eligibility or an estimator feature",
     "barEndDurationRule": ("full-precision-prediction-after-exact-player-canonical-millisecond-runtime-join"),
-    "inclusionRule": "scoreBar.eligible=true and scoreBar.correct is boolean",
+    "inclusionRule": (
+        "reference label determinate and frozen prediction structural eligibility passes; "
+        "legacy product-confidence availability is ignored"
+    ),
+    "correctnessRule": "predictionProduct == referenceProduct",
 }
 BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256 = canonical_sha256(BAR_OUTCOME_ELIGIBILITY_CONTRACT)
 
@@ -95,6 +123,16 @@ _EXAMPLES_ARTIFACT_FIELDS = frozenset(
         "sourceBenchmarkReportSha256",
         "sourceRuntimeBarGridManifestSha256",
         "sourceGroupManifestSha256",
+        "sourceAudioLineageSha256",
+        "sourceAudioLineageProjection",
+        "sourceAudioLineageProjectionSha256",
+        "sourceBenchmarkAudioLineageBindingSha256",
+        "audioLineageVerificationMode",
+        "featureArrayVerification",
+        "audioGroupAudit",
+        "audioGroupAuditSha256",
+        "labelDeterminacyAudit",
+        "labelDeterminacyAuditSha256",
         "examples",
         "exampleSetSha256",
         "artifactSha256",
@@ -110,6 +148,12 @@ _EXAMPLE_FIELDS = frozenset(
         "modelOrEnsembleSha256",
         "decoderContractSha256",
         "memberOrderSha256",
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "canonicalDurationMilliseconds",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
         "outcome",
         "exampleSha256",
     }
@@ -129,6 +173,12 @@ _COMPACT_BAR_SUMMARY_FIELDS = frozenset(
         "predictionCoreSha256",
         "uncertaintySha256",
         "timingSha256",
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "canonicalDurationMilliseconds",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
         "sharedBindingsSha256",
         "barFeatureContractSha256",
         "index",
@@ -141,6 +191,78 @@ _COMPACT_BAR_SUMMARY_FIELDS = frozenset(
         "predictionTransitionCount",
         "featureValues",
         "barSummarySha256",
+    }
+)
+_COMPACT_BAR_AUDIO_LINEAGE_FIELDS = frozenset(
+    {
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "canonicalDurationMilliseconds",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
+    }
+)
+_APPLICATION_COMPACT_BAR_SUMMARY_FIELDS = _COMPACT_BAR_SUMMARY_FIELDS - _COMPACT_BAR_AUDIO_LINEAGE_FIELDS
+_PROJECTION_FIELDS = frozenset(
+    {
+        "schemaVersion",
+        "split",
+        "developmentOnly",
+        "promotionEligible",
+        "sourceAudioLineageSha256",
+        "manifestBindingsSha256",
+        "featureContractSha256",
+        "trackCount",
+        "tracks",
+        "trackSetSha256",
+        "projectionSha256",
+    }
+)
+_PROJECTION_ROW_FIELDS = frozenset(
+    {
+        "trackId",
+        "datasetId",
+        "sourceAudioSha256",
+        "cachedArraySha256",
+        "freshArraySha256",
+        "canonicalDurationMilliseconds",
+        "rowSha256",
+    }
+)
+_AUDIO_GROUP_AUDIT_FIELDS = frozenset(
+    {
+        "schemaVersion",
+        "policy",
+        "trackCount",
+        "uniqueSourceAudioCount",
+        "duplicateSourceAudioCount",
+        "duplicateTrackCount",
+        "rows",
+        "auditSha256",
+    }
+)
+_AUDIO_GROUP_ROW_FIELDS = frozenset({"sourceAudioSha256", "confidenceGroupId", "trackIds", "trackCount"})
+_LABEL_AUDIT_COUNT_FIELDS = (
+    "totalBarCount",
+    "referenceDeterminateBarCount",
+    "referenceMixedBarCount",
+    "referenceUncoveredBarCount",
+    "predictionMixedBarCount",
+    "predictionUncoveredBarCount",
+    "predictionConfidenceMissingBarCount",
+    "predictionStructurallyScorableBarCount",
+    "excludedReferenceIndeterminateBarCount",
+    "excludedPredictionNoneligibleBarCount",
+    "emittedExampleCount",
+)
+_LABEL_AUDIT_FIELDS = frozenset(
+    {
+        "schemaVersion",
+        "estimand",
+        "oofDenominator",
+        *_LABEL_AUDIT_COUNT_FIELDS,
+        "auditSha256",
     }
 )
 _STATIC_BINDING_FIELDS = frozenset(
@@ -173,6 +295,16 @@ _SELECTOR_CONFIG = {
     "barOutcomeEligibilityContractSha256": BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256,
     "developmentSplit": "development",
     "target": "correct:boolean",
+    "estimand": SELECTOR_ESTIMAND,
+    "oofDenominator": OOF_DENOMINATOR,
+    "applicationEligibility": (
+        "predictionProduct is non-null and predictionCoverage>=0.75 and predictionDominance>=0.75"
+    ),
+    "legacyProductConfidenceAvailability": "audit-only; never label or application eligibility",
+    "applicationAudioLineagePolicy": (
+        "development lineage is training provenance, not an application track allowlist; "
+        "split-appropriate sealed evaluation joins validate per-input lineage before apply"
+    ),
     "groupField": "confidenceGroupId",
     "groupFallback": None,
     "outerFoldCount": OUTER_FOLD_COUNT,
@@ -334,9 +466,24 @@ def _validated_shared_bindings(value: Any, name: str = "sharedBindings") -> dict
     return output
 
 
-def _validated_compact_bar_summary(value: Any) -> dict[str, Any]:
+def _validated_compact_bar_summary(
+    value: Any,
+    *,
+    require_audio_lineage: bool = True,
+) -> dict[str, Any]:
     summary = _mapping(value, "barSummary")
-    _exact_fields(summary, _COMPACT_BAR_SUMMARY_FIELDS, "barSummary")
+    actual_fields = frozenset(summary)
+    allowed_fields = {_COMPACT_BAR_SUMMARY_FIELDS}
+    if not require_audio_lineage:
+        allowed_fields.add(_APPLICATION_COMPACT_BAR_SUMMARY_FIELDS)
+    if actual_fields not in allowed_fields:
+        expected = _COMPACT_BAR_SUMMARY_FIELDS if require_audio_lineage else _APPLICATION_COMPACT_BAR_SUMMARY_FIELDS
+        missing = sorted(expected - actual_fields)
+        extra = sorted(actual_fields - _COMPACT_BAR_SUMMARY_FIELDS)
+        raise BarSelectorError(
+            f"barSummary fields do not match a frozen application schema: missing={missing}, extra={extra}."
+        )
+    has_audio_lineage = _COMPACT_BAR_AUDIO_LINEAGE_FIELDS <= actual_fields
     if summary.get("schemaVersion") != BAR_SELECTOR_BAR_SUMMARY_SCHEMA:
         raise BarSelectorError("barSummary uses an unsupported schemaVersion.")
     summary_sha256 = _sha256(summary.get("barSummarySha256"), "barSummary.barSummarySha256")
@@ -351,6 +498,23 @@ def _validated_compact_bar_summary(value: Any) -> dict[str, Any]:
         "sharedBindingsSha256",
     ):
         _sha256(summary.get(name), f"barSummary.{name}")
+    canonical_duration_milliseconds: int | None = None
+    if has_audio_lineage:
+        for name in (
+            "sourceAudioSha256",
+            "cachedFeatureArraySha256",
+            "freshFeatureArraySha256",
+            "audioLineageRowSha256",
+            "audioLineageProjectionSha256",
+        ):
+            _sha256(summary.get(name), f"barSummary.{name}")
+        canonical_duration_milliseconds = _integer(
+            summary.get("canonicalDurationMilliseconds"),
+            "barSummary.canonicalDurationMilliseconds",
+            minimum=1,
+        )
+        if summary.get("cachedFeatureArraySha256") != summary.get("freshFeatureArraySha256"):
+            raise BarSelectorError("barSummary cached and fresh feature-array hashes disagree.")
     if summary.get("barFeatureContractSha256") != BAR_FEATURE_CONTRACT_SHA256:
         raise BarSelectorError("barSummary does not use the frozen BAR_FEATURE_NAMES contract.")
     index = _integer(summary.get("index"), "barSummary.index")
@@ -390,6 +554,16 @@ def _validated_compact_bar_summary(value: Any) -> dict[str, Any]:
         "predictionCoreSha256": str(summary["predictionCoreSha256"]),
         "uncertaintySha256": str(summary["uncertaintySha256"]),
         "timingSha256": str(summary["timingSha256"]),
+        "sourceAudioSha256": str(summary["sourceAudioSha256"]) if has_audio_lineage else None,
+        "cachedFeatureArraySha256": (str(summary["cachedFeatureArraySha256"]) if has_audio_lineage else None),
+        "freshFeatureArraySha256": (str(summary["freshFeatureArraySha256"]) if has_audio_lineage else None),
+        "canonicalDurationMilliseconds": canonical_duration_milliseconds,
+        "audioLineageRowSha256": (str(summary["audioLineageRowSha256"]) if has_audio_lineage else None),
+        "audioLineageProjectionSha256": (str(summary["audioLineageProjectionSha256"]) if has_audio_lineage else None),
+        "hasAudioLineage": has_audio_lineage,
+        "predictionProduct": prediction_product,
+        "predictionCoverage": coverage,
+        "predictionDominance": dominance,
         "sharedBindingsSha256": str(summary["sharedBindingsSha256"]),
     }
 
@@ -422,6 +596,25 @@ def _validated_example(value: Any, shared_bindings: Mapping[str, Any]) -> dict[s
         raise BarSelectorError("example.barIndex does not match barSummary.index.")
     if summary["sharedBindingsSha256"] != canonical_sha256(shared_bindings):
         raise BarSelectorError("barSummary.sharedBindingsSha256 does not match examplesArtifact.sharedBindings.")
+    for name in (
+        "sourceAudioSha256",
+        "cachedFeatureArraySha256",
+        "freshFeatureArraySha256",
+        "audioLineageRowSha256",
+        "audioLineageProjectionSha256",
+    ):
+        digest = _sha256(example.get(name), f"example.{name}")
+        if digest != summary[name]:
+            raise BarSelectorError(f"example.{name} does not match barSummary.{name}.")
+    canonical_duration_milliseconds = _integer(
+        example.get("canonicalDurationMilliseconds"),
+        "example.canonicalDurationMilliseconds",
+        minimum=1,
+    )
+    if canonical_duration_milliseconds != summary["canonicalDurationMilliseconds"]:
+        raise BarSelectorError(
+            "example.canonicalDurationMilliseconds does not match barSummary.canonicalDurationMilliseconds."
+        )
     example_key = canonical_sha256(
         {
             "trackId": track_id,
@@ -431,6 +624,12 @@ def _validated_example(value: Any, shared_bindings: Mapping[str, Any]) -> dict[s
             "predictionCoreSha256": summary["predictionCoreSha256"],
             "uncertaintySha256": summary["uncertaintySha256"],
             "timingSha256": summary["timingSha256"],
+            "sourceAudioSha256": summary["sourceAudioSha256"],
+            "cachedFeatureArraySha256": summary["cachedFeatureArraySha256"],
+            "freshFeatureArraySha256": summary["freshFeatureArraySha256"],
+            "canonicalDurationMilliseconds": summary["canonicalDurationMilliseconds"],
+            "audioLineageRowSha256": summary["audioLineageRowSha256"],
+            "audioLineageProjectionSha256": summary["audioLineageProjectionSha256"],
             "modelOrEnsembleSha256": example["modelOrEnsembleSha256"],
             "decoderContractSha256": example["decoderContractSha256"],
             "memberOrderSha256": example["memberOrderSha256"],
@@ -450,6 +649,12 @@ def _validated_example(value: Any, shared_bindings: Mapping[str, Any]) -> dict[s
         "predictionCoreSha256": summary["predictionCoreSha256"],
         "uncertaintySha256": summary["uncertaintySha256"],
         "timingSha256": summary["timingSha256"],
+        "sourceAudioSha256": summary["sourceAudioSha256"],
+        "cachedFeatureArraySha256": summary["cachedFeatureArraySha256"],
+        "freshFeatureArraySha256": summary["freshFeatureArraySha256"],
+        "canonicalDurationMilliseconds": summary["canonicalDurationMilliseconds"],
+        "audioLineageRowSha256": summary["audioLineageRowSha256"],
+        "audioLineageProjectionSha256": summary["audioLineageProjectionSha256"],
     }
 
 
@@ -463,6 +668,171 @@ def _split_preflight(artifact: Mapping[str, Any], values: Sequence[Any]) -> None
             raise BarSelectorError(
                 f"example[{index}] is not development split; calibration, test, heldout, and confirmation are sealed."
             )
+
+
+def _validated_audio_lineage_projection(
+    value: Any,
+    *,
+    source_artifact_sha256: str,
+    claimed_projection_sha256: str,
+) -> tuple[dict[str, Mapping[str, Any]], dict[str, Any]]:
+    projection = _mapping(value, "examplesArtifact.sourceAudioLineageProjection")
+    _exact_fields(projection, _PROJECTION_FIELDS, "examplesArtifact.sourceAudioLineageProjection")
+    if (
+        projection.get("schemaVersion") != AUDIO_LINEAGE_PROJECTION_SCHEMA
+        or projection.get("split") != "development"
+        or projection.get("developmentOnly") is not True
+        or projection.get("promotionEligible") is not False
+    ):
+        raise BarSelectorError("The examples audio-lineage projection is not exact development evidence.")
+    if projection.get("sourceAudioLineageSha256") != source_artifact_sha256:
+        raise BarSelectorError("The examples projection binds a different full audio-lineage artifact.")
+    for name in (
+        "sourceAudioLineageSha256",
+        "manifestBindingsSha256",
+        "featureContractSha256",
+        "trackSetSha256",
+        "projectionSha256",
+    ):
+        _sha256(projection.get(name), f"sourceAudioLineageProjection.{name}")
+    if projection.get("projectionSha256") != claimed_projection_sha256:
+        raise BarSelectorError("The examples audio-lineage projection hash fields disagree.")
+    if canonical_sha256(_unsigned(projection, "projectionSha256")) != claimed_projection_sha256:
+        raise BarSelectorError("The examples audio-lineage projection hash is stale.")
+    raw_rows = _sequence(projection.get("tracks"), "sourceAudioLineageProjection.tracks")
+    rows: dict[str, Mapping[str, Any]] = {}
+    order: list[str] = []
+    for index, raw_row in enumerate(raw_rows):
+        row = _mapping(raw_row, f"sourceAudioLineageProjection.tracks[{index}]")
+        _exact_fields(row, _PROJECTION_ROW_FIELDS, f"sourceAudioLineageProjection.tracks[{index}]")
+        track_id = _nonempty_string(row.get("trackId"), f"projection tracks[{index}].trackId")
+        if track_id in rows:
+            raise BarSelectorError("The examples audio-lineage projection has duplicate track ids.")
+        _nonempty_string(row.get("datasetId"), f"projection track {track_id!r} datasetId")
+        for name in ("sourceAudioSha256", "cachedArraySha256", "freshArraySha256", "rowSha256"):
+            _sha256(row.get(name), f"projection track {track_id!r} {name}")
+        if row.get("cachedArraySha256") != row.get("freshArraySha256"):
+            raise BarSelectorError("The projection fresh and cached feature-array hashes disagree.")
+        _integer(
+            row.get("canonicalDurationMilliseconds"),
+            f"projection track {track_id!r} canonicalDurationMilliseconds",
+            minimum=1,
+        )
+        rows[track_id] = row
+        order.append(track_id)
+    track_count = _integer(projection.get("trackCount"), "sourceAudioLineageProjection.trackCount", minimum=1)
+    if not rows or order != sorted(order) or track_count != len(rows):
+        raise BarSelectorError("The examples audio-lineage projection track set is invalid.")
+    if canonical_sha256(list(raw_rows)) != projection.get("trackSetSha256"):
+        raise BarSelectorError("The examples audio-lineage projection trackSetSha256 is stale.")
+    return rows, dict(projection)
+
+
+def _validated_audio_group_audit(
+    value: Any,
+    *,
+    projection_rows: Mapping[str, Mapping[str, Any]],
+) -> tuple[dict[str, str], dict[str, Any]]:
+    audit = _mapping(value, "examplesArtifact.audioGroupAudit")
+    _exact_fields(audit, _AUDIO_GROUP_AUDIT_FIELDS, "examplesArtifact.audioGroupAudit")
+    if (
+        audit.get("schemaVersion") != AUDIO_GROUP_AUDIT_SCHEMA
+        or audit.get("policy") != "identical-source-audio-must-share-one-confidence-group-v1"
+    ):
+        raise BarSelectorError("The examples audio-group audit policy changed.")
+    audit_sha256 = _sha256(audit.get("auditSha256"), "examplesArtifact.audioGroupAudit.auditSha256")
+    if canonical_sha256(_unsigned(audit, "auditSha256")) != audit_sha256:
+        raise BarSelectorError("The examples audio-group audit hash is stale.")
+    rows = _sequence(audit.get("rows"), "examplesArtifact.audioGroupAudit.rows")
+    group_by_track: dict[str, str] = {}
+    observed_audio: list[str] = []
+    duplicate_audio_count = 0
+    duplicate_track_count = 0
+    for index, raw_row in enumerate(rows):
+        row = _mapping(raw_row, f"audioGroupAudit.rows[{index}]")
+        _exact_fields(row, _AUDIO_GROUP_ROW_FIELDS, f"audioGroupAudit.rows[{index}]")
+        audio_sha256 = _sha256(row.get("sourceAudioSha256"), f"audioGroupAudit.rows[{index}].sourceAudioSha256")
+        group = _nonempty_string(row.get("confidenceGroupId"), f"audioGroupAudit.rows[{index}].confidenceGroupId")
+        track_ids = [
+            _nonempty_string(item, f"audioGroupAudit.rows[{index}].trackIds")
+            for item in _sequence(row.get("trackIds"), f"audioGroupAudit.rows[{index}].trackIds")
+        ]
+        count = _integer(row.get("trackCount"), f"audioGroupAudit.rows[{index}].trackCount", minimum=1)
+        if (
+            not track_ids
+            or track_ids != sorted(track_ids)
+            or len(track_ids) != len(set(track_ids))
+            or count != len(track_ids)
+        ):
+            raise BarSelectorError("The examples audio-group audit track list is invalid.")
+        if audio_sha256 in observed_audio:
+            raise BarSelectorError("The examples audio-group audit repeats an audio digest.")
+        observed_audio.append(audio_sha256)
+        if count > 1:
+            duplicate_audio_count += 1
+            duplicate_track_count += count - 1
+        for track_id in track_ids:
+            if track_id in group_by_track or track_id not in projection_rows:
+                raise BarSelectorError("The examples audio-group audit has a duplicate or unknown track id.")
+            if projection_rows[track_id].get("sourceAudioSha256") != audio_sha256:
+                raise BarSelectorError("The examples audio-group audit splices a track to different audio bytes.")
+            group_by_track[track_id] = group
+    if observed_audio != sorted(observed_audio) or set(group_by_track) != set(projection_rows):
+        raise BarSelectorError("The examples audio-group audit does not exactly cover the lineage projection.")
+    audit_counts = {
+        "trackCount": _integer(audit.get("trackCount"), "audioGroupAudit.trackCount", minimum=1),
+        "uniqueSourceAudioCount": _integer(
+            audit.get("uniqueSourceAudioCount"),
+            "audioGroupAudit.uniqueSourceAudioCount",
+            minimum=1,
+        ),
+        "duplicateSourceAudioCount": _integer(
+            audit.get("duplicateSourceAudioCount"),
+            "audioGroupAudit.duplicateSourceAudioCount",
+        ),
+        "duplicateTrackCount": _integer(
+            audit.get("duplicateTrackCount"),
+            "audioGroupAudit.duplicateTrackCount",
+        ),
+    }
+    if audit_counts != {
+        "trackCount": len(projection_rows),
+        "uniqueSourceAudioCount": len(rows),
+        "duplicateSourceAudioCount": duplicate_audio_count,
+        "duplicateTrackCount": duplicate_track_count,
+    }:
+        raise BarSelectorError("The examples audio-group audit counts are stale.")
+    return group_by_track, dict(audit)
+
+
+def _validated_label_determinacy_audit(value: Any, *, example_count: int) -> dict[str, Any]:
+    audit = _mapping(value, "examplesArtifact.labelDeterminacyAudit")
+    _exact_fields(audit, _LABEL_AUDIT_FIELDS, "examplesArtifact.labelDeterminacyAudit")
+    if (
+        audit.get("schemaVersion") != LABEL_DETERMINACY_AUDIT_SCHEMA
+        or audit.get("estimand") != SELECTOR_ESTIMAND
+        or audit.get("oofDenominator") != OOF_DENOMINATOR
+    ):
+        raise BarSelectorError("The selector estimand or OOF denominator disclosure changed.")
+    audit_sha256 = _sha256(audit.get("auditSha256"), "labelDeterminacyAudit.auditSha256")
+    if canonical_sha256(_unsigned(audit, "auditSha256")) != audit_sha256:
+        raise BarSelectorError("The label-determinacy audit hash is stale.")
+    counts = {name: _integer(audit.get(name), f"labelDeterminacyAudit.{name}") for name in _LABEL_AUDIT_COUNT_FIELDS}
+    if (
+        counts["emittedExampleCount"] != example_count
+        or counts["predictionStructurallyScorableBarCount"] != example_count
+        or counts["excludedReferenceIndeterminateBarCount"]
+        != counts["totalBarCount"] - counts["referenceDeterminateBarCount"]
+        or counts["excludedPredictionNoneligibleBarCount"]
+        != counts["referenceDeterminateBarCount"] - counts["predictionStructurallyScorableBarCount"]
+        or counts["referenceMixedBarCount"] + counts["referenceUncoveredBarCount"]
+        != counts["excludedReferenceIndeterminateBarCount"]
+        or counts["predictionMixedBarCount"] + counts["predictionUncoveredBarCount"]
+        != counts["excludedPredictionNoneligibleBarCount"]
+        or counts["predictionConfidenceMissingBarCount"] > counts["predictionStructurallyScorableBarCount"]
+    ):
+        raise BarSelectorError("The label-determinacy audit counts are internally inconsistent.")
+    return dict(audit)
 
 
 def _folds(groups: Sequence[str], count: int, salt: str) -> dict[str, int]:
@@ -717,9 +1087,26 @@ def _precision_coverage(
     return output
 
 
-def _evaluation(probabilities: Any, labels: Any, weights: Any, keys: Sequence[str], np: Any) -> dict[str, Any]:
+def _evaluation(
+    probabilities: Any,
+    labels: Any,
+    weights: Any,
+    keys: Sequence[str],
+    np: Any,
+    *,
+    label_determinacy_audit: Mapping[str, Any],
+) -> dict[str, Any]:
     brier = float((weights * (probabilities - labels) ** 2).sum() / weights.sum())
     return {
+        "estimand": SELECTOR_ESTIMAND,
+        "denominator": OOF_DENOMINATOR,
+        "denominatorExampleCount": int(label_determinacy_audit["emittedExampleCount"]),
+        "totalBarCount": int(label_determinacy_audit["totalBarCount"]),
+        "excludedReferenceIndeterminateBarCount": int(
+            label_determinacy_audit["excludedReferenceIndeterminateBarCount"]
+        ),
+        "excludedPredictionNoneligibleBarCount": int(label_determinacy_audit["excludedPredictionNoneligibleBarCount"]),
+        "predictionConfidenceMissingBarCount": int(label_determinacy_audit["predictionConfidenceMissingBarCount"]),
         "groupBalancedLogLoss": _weighted_log_loss(probabilities, labels, weights, np),
         "groupBalancedBrierScore": brier,
         "groupBalancedAreaUnderRiskCoverage": _aurc(probabilities, labels, weights, keys),
@@ -756,8 +1143,34 @@ def train_bar_selector(examples_artifact: Mapping[str, Any]) -> dict[str, Any]:
         "sourceBenchmarkReportSha256",
         "sourceRuntimeBarGridManifestSha256",
         "sourceGroupManifestSha256",
+        "sourceAudioLineageSha256",
+        "sourceAudioLineageProjectionSha256",
+        "sourceBenchmarkAudioLineageBindingSha256",
+        "audioGroupAuditSha256",
+        "labelDeterminacyAuditSha256",
     ):
         _sha256(source.get(name), f"examplesArtifact.{name}")
+    if source.get("audioLineageVerificationMode") != AUDIO_LINEAGE_VERIFICATION_MODE:
+        raise BarSelectorError("examplesArtifact does not retain full audio-lineage verification.")
+    if source.get("featureArrayVerification") != FEATURE_ARRAY_VERIFICATION:
+        raise BarSelectorError("examplesArtifact does not retain exact cached feature-array verification.")
+    projection_rows, audio_lineage_projection = _validated_audio_lineage_projection(
+        source.get("sourceAudioLineageProjection"),
+        source_artifact_sha256=str(source["sourceAudioLineageSha256"]),
+        claimed_projection_sha256=str(source["sourceAudioLineageProjectionSha256"]),
+    )
+    group_by_track, audio_group_audit = _validated_audio_group_audit(
+        source.get("audioGroupAudit"),
+        projection_rows=projection_rows,
+    )
+    if source.get("audioGroupAuditSha256") != audio_group_audit["auditSha256"]:
+        raise BarSelectorError("examplesArtifact.audioGroupAuditSha256 disagrees with its audit.")
+    label_determinacy_audit = _validated_label_determinacy_audit(
+        source.get("labelDeterminacyAudit"),
+        example_count=len(values),
+    )
+    if source.get("labelDeterminacyAuditSha256") != label_determinacy_audit["auditSha256"]:
+        raise BarSelectorError("examplesArtifact.labelDeterminacyAuditSha256 disagrees with its audit.")
     static_binding = _validated_shared_bindings(source.get("sharedBindings"), "examplesArtifact.sharedBindings")
     shared_bindings_sha256 = _sha256(
         source.get("sharedBindingsSha256"),
@@ -770,24 +1183,45 @@ def train_bar_selector(examples_artifact: Mapping[str, Any]) -> dict[str, Any]:
         key=lambda value: value["exampleKey"],
     )
     logical_bar_keys: set[tuple[str, int]] = set()
-    track_contracts: dict[str, tuple[str, str, str, str, str]] = {}
+    track_contracts: dict[str, tuple[str, ...]] = {}
     for row in rows:
         logical_key = (str(row["trackId"]), int(row["barIndex"]))
         if logical_key in logical_bar_keys:
             raise BarSelectorError("Bar selector examples contain a duplicate logical (trackId, barIndex).")
         logical_bar_keys.add(logical_key)
+        projection = projection_rows.get(str(row["trackId"]))
+        if projection is None:
+            raise BarSelectorError("An example track is absent from the sealed audio-lineage projection.")
+        if row["group"] != group_by_track[str(row["trackId"])]:
+            raise BarSelectorError("An example confidenceGroupId disagrees with the sealed audio-group audit.")
+        expected_lineage = {
+            "sourceAudioSha256": projection["sourceAudioSha256"],
+            "cachedFeatureArraySha256": projection["cachedArraySha256"],
+            "freshFeatureArraySha256": projection["freshArraySha256"],
+            "canonicalDurationMilliseconds": projection["canonicalDurationMilliseconds"],
+            "audioLineageRowSha256": projection["rowSha256"],
+            "audioLineageProjectionSha256": audio_lineage_projection["projectionSha256"],
+        }
+        if any(row.get(name) != expected for name, expected in expected_lineage.items()):
+            raise BarSelectorError("An example audio-lineage binding disagrees with the sealed projection.")
         track_contract = (
             str(row["group"]),
             str(row["sourceSummarySha256"]),
             str(row["predictionCoreSha256"]),
             str(row["uncertaintySha256"]),
             str(row["timingSha256"]),
+            str(row["sourceAudioSha256"]),
+            str(row["cachedFeatureArraySha256"]),
+            str(row["freshFeatureArraySha256"]),
+            str(row["canonicalDurationMilliseconds"]),
+            str(row["audioLineageRowSha256"]),
+            str(row["audioLineageProjectionSha256"]),
         )
         previous = track_contracts.setdefault(str(row["trackId"]), track_contract)
         if previous != track_contract:
             raise BarSelectorError(
                 "Every trackId must retain one confidenceGroupId and one source-summary, "
-                "prediction-core, uncertainty, and timing binding across all bars."
+                "prediction-core, uncertainty, timing, and audio-lineage binding across all bars."
             )
     keys = [str(row["exampleKey"]) for row in rows]
     if len(set(keys)) != len(keys):
@@ -888,6 +1322,12 @@ def train_bar_selector(examples_artifact: Mapping[str, Any]) -> dict[str, Any]:
             "predictionCoreSha256": row["predictionCoreSha256"],
             "uncertaintySha256": row["uncertaintySha256"],
             "timingSha256": row["timingSha256"],
+            "sourceAudioSha256": row["sourceAudioSha256"],
+            "cachedFeatureArraySha256": row["cachedFeatureArraySha256"],
+            "freshFeatureArraySha256": row["freshFeatureArraySha256"],
+            "canonicalDurationMilliseconds": row["canonicalDurationMilliseconds"],
+            "audioLineageRowSha256": row["audioLineageRowSha256"],
+            "audioLineageProjectionSha256": row["audioLineageProjectionSha256"],
             "barIndex": row["barIndex"],
         }
         for row in rows
@@ -927,7 +1367,9 @@ def train_bar_selector(examples_artifact: Mapping[str, Any]) -> dict[str, Any]:
         "training": {
             "split": "development",
             "target": "correct:boolean",
-            "structuralEligibilityInput": "pre-frozen-by-example-builder; not an estimator feature",
+            "estimand": SELECTOR_ESTIMAND,
+            "oofDenominator": OOF_DENOMINATOR,
+            "structuralEligibilityInput": STRUCTURAL_ELIGIBILITY_INPUT,
             "groupField": "confidenceGroupId",
             "groupFallback": None,
             "groupSampleWeight": "one-per-confidence-group",
@@ -950,6 +1392,19 @@ def train_bar_selector(examples_artifact: Mapping[str, Any]) -> dict[str, Any]:
             "sourceBenchmarkReportSha256": source["sourceBenchmarkReportSha256"],
             "sourceRuntimeBarGridManifestSha256": source["sourceRuntimeBarGridManifestSha256"],
             "sourceGroupManifestSha256": source["sourceGroupManifestSha256"],
+            "sourceAudioLineageSha256": source["sourceAudioLineageSha256"],
+            "sourceAudioLineageProjectionSha256": source["sourceAudioLineageProjectionSha256"],
+            "sourceBenchmarkAudioLineageBindingSha256": source["sourceBenchmarkAudioLineageBindingSha256"],
+            "sourceAudioGroupAuditSha256": source["audioGroupAuditSha256"],
+            "sourceLabelDeterminacyAuditSha256": source["labelDeterminacyAuditSha256"],
+            "audioLineageVerificationMode": source["audioLineageVerificationMode"],
+            "featureArrayVerification": source["featureArrayVerification"],
+            "totalBarCount": label_determinacy_audit["totalBarCount"],
+            "referenceDeterminateBarCount": label_determinacy_audit["referenceDeterminateBarCount"],
+            "excludedReferenceIndeterminateBarCount": label_determinacy_audit["excludedReferenceIndeterminateBarCount"],
+            "excludedPredictionNoneligibleBarCount": label_determinacy_audit["excludedPredictionNoneligibleBarCount"],
+            "predictionConfidenceMissingBarCount": label_determinacy_audit["predictionConfidenceMissingBarCount"],
+            "emittedExampleCount": label_determinacy_audit["emittedExampleCount"],
             "groupSetSha256": canonical_sha256(group_payload),
             "foldPlanSha256": canonical_sha256(fold_plan),
             "oofPredictionSetSha256": canonical_sha256(oof_payload),
@@ -970,7 +1425,14 @@ def train_bar_selector(examples_artifact: Mapping[str, Any]) -> dict[str, Any]:
             },
             "groupWeightAudit": group_payload,
         },
-        "outOfFoldEvaluation": _evaluation(oof_probability, labels, final_weights, keys, np),
+        "outOfFoldEvaluation": _evaluation(
+            oof_probability,
+            labels,
+            final_weights,
+            keys,
+            np,
+            label_determinacy_audit=label_determinacy_audit,
+        ),
         "estimator": {
             "kind": "standardized-elastic-net-logistic-regression",
             "imputation": "group-weighted-training-median",
@@ -1019,6 +1481,8 @@ _TRAINING_FIELDS = frozenset(
     {
         "split",
         "target",
+        "estimand",
+        "oofDenominator",
         "structuralEligibilityInput",
         "groupField",
         "groupFallback",
@@ -1036,6 +1500,19 @@ _TRAINING_FIELDS = frozenset(
         "sourceBenchmarkReportSha256",
         "sourceRuntimeBarGridManifestSha256",
         "sourceGroupManifestSha256",
+        "sourceAudioLineageSha256",
+        "sourceAudioLineageProjectionSha256",
+        "sourceBenchmarkAudioLineageBindingSha256",
+        "sourceAudioGroupAuditSha256",
+        "sourceLabelDeterminacyAuditSha256",
+        "audioLineageVerificationMode",
+        "featureArrayVerification",
+        "totalBarCount",
+        "referenceDeterminateBarCount",
+        "excludedReferenceIndeterminateBarCount",
+        "excludedPredictionNoneligibleBarCount",
+        "predictionConfidenceMissingBarCount",
+        "emittedExampleCount",
         "groupSetSha256",
         "foldPlanSha256",
         "oofPredictionSetSha256",
@@ -1079,6 +1556,13 @@ _OOF_AUDIT_FIELDS = frozenset(
 )
 _EVALUATION_FIELDS = frozenset(
     {
+        "estimand",
+        "denominator",
+        "denominatorExampleCount",
+        "totalBarCount",
+        "excludedReferenceIndeterminateBarCount",
+        "excludedPredictionNoneligibleBarCount",
+        "predictionConfidenceMissingBarCount",
         "groupBalancedLogLoss",
         "groupBalancedBrierScore",
         "groupBalancedAreaUnderRiskCoverage",
@@ -1179,13 +1663,17 @@ def validate_bar_selector_artifact(artifact: Mapping[str, Any]) -> dict[str, Any
     if (
         training.get("split") != "development"
         or training.get("target") != "correct:boolean"
-        or training.get("structuralEligibilityInput") != "pre-frozen-by-example-builder; not an estimator feature"
+        or training.get("estimand") != SELECTOR_ESTIMAND
+        or training.get("oofDenominator") != OOF_DENOMINATOR
+        or training.get("structuralEligibilityInput") != STRUCTURAL_ELIGIBILITY_INPUT
         or training.get("groupField") != "confidenceGroupId"
         or training.get("groupFallback") is not None
         or training.get("groupSampleWeight") != "one-per-confidence-group"
         or training.get("outerFoldCount") != OUTER_FOLD_COUNT
         or training.get("innerFoldCount") != INNER_FOLD_COUNT
         or training.get("configSha256") != BAR_SELECTOR_CONFIG_SHA256
+        or training.get("audioLineageVerificationMode") != AUDIO_LINEAGE_VERIFICATION_MODE
+        or training.get("featureArrayVerification") != FEATURE_ARRAY_VERIFICATION
     ):
         raise BarSelectorError("Selector training contract was changed.")
     for name in (
@@ -1199,14 +1687,49 @@ def validate_bar_selector_artifact(artifact: Mapping[str, Any]) -> dict[str, Any
         "sourceBenchmarkReportSha256",
         "sourceRuntimeBarGridManifestSha256",
         "sourceGroupManifestSha256",
+        "sourceAudioLineageSha256",
+        "sourceAudioLineageProjectionSha256",
+        "sourceBenchmarkAudioLineageBindingSha256",
+        "sourceAudioGroupAuditSha256",
+        "sourceLabelDeterminacyAuditSha256",
     ):
         _sha256(training.get(name), f"artifact.training.{name}")
     example_count = _integer(training.get("exampleCount"), "artifact.training.exampleCount", minimum=1)
     group_count = _integer(training.get("groupCount"), "artifact.training.groupCount", minimum=OUTER_FOLD_COUNT)
     correct_count = _integer(training.get("correctCount"), "artifact.training.correctCount", minimum=1)
     incorrect_count = _integer(training.get("incorrectCount"), "artifact.training.incorrectCount", minimum=1)
+    total_bar_count = _integer(training.get("totalBarCount"), "artifact.training.totalBarCount", minimum=1)
+    reference_determinate_count = _integer(
+        training.get("referenceDeterminateBarCount"),
+        "artifact.training.referenceDeterminateBarCount",
+        minimum=1,
+    )
+    excluded_reference_count = _integer(
+        training.get("excludedReferenceIndeterminateBarCount"),
+        "artifact.training.excludedReferenceIndeterminateBarCount",
+    )
+    excluded_prediction_count = _integer(
+        training.get("excludedPredictionNoneligibleBarCount"),
+        "artifact.training.excludedPredictionNoneligibleBarCount",
+    )
+    confidence_missing_count = _integer(
+        training.get("predictionConfidenceMissingBarCount"),
+        "artifact.training.predictionConfidenceMissingBarCount",
+    )
+    emitted_example_count = _integer(
+        training.get("emittedExampleCount"),
+        "artifact.training.emittedExampleCount",
+        minimum=1,
+    )
     if correct_count + incorrect_count != example_count:
         raise BarSelectorError("Selector training outcome counts do not match exampleCount.")
+    if (
+        emitted_example_count != example_count
+        or total_bar_count - reference_determinate_count != excluded_reference_count
+        or reference_determinate_count - emitted_example_count != excluded_prediction_count
+        or confidence_missing_count > emitted_example_count
+    ):
+        raise BarSelectorError("Selector training label-determinacy counts are inconsistent.")
     group_audit = _sequence(training.get("groupWeightAudit"), "artifact.training.groupWeightAudit")
     if len(group_audit) != group_count:
         raise BarSelectorError("Selector groupWeightAudit does not match groupCount.")
@@ -1377,6 +1900,41 @@ def validate_bar_selector_artifact(artifact: Mapping[str, Any]) -> dict[str, Any
 
     evaluation = _mapping(value.get("outOfFoldEvaluation"), "artifact.outOfFoldEvaluation")
     _exact_fields(evaluation, _EVALUATION_FIELDS, "artifact.outOfFoldEvaluation")
+    if evaluation.get("estimand") != SELECTOR_ESTIMAND or evaluation.get("denominator") != OOF_DENOMINATOR:
+        raise BarSelectorError("Selector OOF estimand or denominator disclosure was changed.")
+    evaluation_counts = {
+        "denominatorExampleCount": _integer(
+            evaluation.get("denominatorExampleCount"),
+            "artifact.outOfFoldEvaluation.denominatorExampleCount",
+            minimum=1,
+        ),
+        "totalBarCount": _integer(
+            evaluation.get("totalBarCount"),
+            "artifact.outOfFoldEvaluation.totalBarCount",
+            minimum=1,
+        ),
+        "excludedReferenceIndeterminateBarCount": _integer(
+            evaluation.get("excludedReferenceIndeterminateBarCount"),
+            "artifact.outOfFoldEvaluation.excludedReferenceIndeterminateBarCount",
+        ),
+        "excludedPredictionNoneligibleBarCount": _integer(
+            evaluation.get("excludedPredictionNoneligibleBarCount"),
+            "artifact.outOfFoldEvaluation.excludedPredictionNoneligibleBarCount",
+        ),
+        "predictionConfidenceMissingBarCount": _integer(
+            evaluation.get("predictionConfidenceMissingBarCount"),
+            "artifact.outOfFoldEvaluation.predictionConfidenceMissingBarCount",
+        ),
+    }
+    expected_evaluation_counts = {
+        "denominatorExampleCount": emitted_example_count,
+        "totalBarCount": total_bar_count,
+        "excludedReferenceIndeterminateBarCount": excluded_reference_count,
+        "excludedPredictionNoneligibleBarCount": excluded_prediction_count,
+        "predictionConfidenceMissingBarCount": confidence_missing_count,
+    }
+    if evaluation_counts != expected_evaluation_counts:
+        raise BarSelectorError("Selector OOF denominator counts disagree with training provenance.")
     for name in (
         "groupBalancedLogLoss",
         "groupBalancedBrierScore",
@@ -1424,6 +1982,13 @@ def validate_bar_selector_artifact(artifact: Mapping[str, Any]) -> dict[str, Any
         np.asarray(oof_weights, dtype=np.float64),
         oof_ordered_keys,
         np,
+        label_determinacy_audit={
+            "emittedExampleCount": emitted_example_count,
+            "totalBarCount": total_bar_count,
+            "excludedReferenceIndeterminateBarCount": excluded_reference_count,
+            "excludedPredictionNoneligibleBarCount": excluded_prediction_count,
+            "predictionConfidenceMissingBarCount": confidence_missing_count,
+        },
     )
     if canonical_sha256(recomputed_evaluation) != canonical_sha256(evaluation):
         raise BarSelectorError("Selector OOF headline metrics do not recompute from the sealed audit rows.")
@@ -1503,7 +2068,12 @@ def apply_bar_selector(
     bar_index: int,
     shared_bindings: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Return a correctness probability, or null plus a fail-closed reason."""
+    """Return a split-neutral correctness probability or a fail-closed reason.
+
+    The selector's development audio-lineage projection is training
+    provenance, not an application allowlist. Split-appropriate evaluation
+    joins validate input lineage before this reference-free scoring boundary.
+    """
 
     try:
         estimator = validate_bar_selector_artifact(artifact)
@@ -1517,7 +2087,10 @@ def apply_bar_selector(
         )
     try:
         index = _integer(bar_index, "barIndex")
-        summary = _validated_compact_bar_summary(bar_summary)
+        summary = _validated_compact_bar_summary(
+            bar_summary,
+            require_audio_lineage=False,
+        )
     except (BarSelectorError, TypeError, ValueError, OverflowError):
         return _application_result(
             probability=None,
@@ -1551,6 +2124,30 @@ def apply_bar_selector(
         return _application_result(
             probability=None,
             reason="binding-mismatch",
+            artifact_sha256=estimator["artifactSha256"],
+            summary_sha256=summary["barSummarySha256"],
+            bar_index=index,
+        )
+    if summary["predictionProduct"] is None:
+        return _application_result(
+            probability=None,
+            reason="prediction-product-missing",
+            artifact_sha256=estimator["artifactSha256"],
+            summary_sha256=summary["barSummarySha256"],
+            bar_index=index,
+        )
+    if summary["predictionCoverage"] < BAR_OUTCOME_ELIGIBILITY_CONTRACT["predictionCoverage"]:
+        return _application_result(
+            probability=None,
+            reason="prediction-coverage-below-eligibility-threshold",
+            artifact_sha256=estimator["artifactSha256"],
+            summary_sha256=summary["barSummarySha256"],
+            bar_index=index,
+        )
+    if summary["predictionDominance"] < BAR_OUTCOME_ELIGIBILITY_CONTRACT["predictionDominance"]:
+        return _application_result(
+            probability=None,
+            reason="prediction-dominance-below-eligibility-threshold",
             artifact_sha256=estimator["artifactSha256"],
             summary_sha256=summary["barSummarySha256"],
             bar_index=index,
