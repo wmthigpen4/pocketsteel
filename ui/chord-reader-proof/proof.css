@@ -87,6 +87,15 @@ audio { width: 100%; margin: 24px 0; accent-color: var(--green); }
 .measure-row.correct strong { color: var(--green); }
 .measure-row.wrong { background: var(--coral-dark); }
 .measure-row.wrong strong { color: var(--coral); }
+.measure-row.confidence { background: #172031; }
+.measure-row.confidence strong { color: var(--blue); }
+
+.local-mode .now-playing { grid-template-columns: .55fr 1fr; }
+.local-mode .current-chord.expected,
+.local-mode .current-chord.v2,
+.local-mode .current-chord.hybrid { display: none; }
+.local-mode .current-chord.student { border-color: var(--blue); background: #121b25; }
+.local-mode .legend .reference-only { display: none; }
 
 .results, .public-proof, .reproduction { margin-top: 24px; padding: clamp(24px, 5vw, 52px); }
 .section-heading { max-width: 790px; margin-bottom: 26px; }

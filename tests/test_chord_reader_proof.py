@@ -37,7 +37,9 @@ def test_visual_proof_uses_three_real_audio_assets_and_tracked_model() -> None:
         assert audio.is_file()
         assert proof["reproduce"]["audioSha256"][item["track"]["id"]] == hashlib.sha256(audio.read_bytes()).hexdigest()
         data_root = PROOF_ROOT / "data/tracks" / item["track"]["id"]
-        assert all((data_root / name).is_file() for name in ("reference.json", "v2.json", "student.json", "hybrid.json"))
+        assert all(
+            (data_root / name).is_file() for name in ("reference.json", "v2.json", "student.json", "hybrid.json")
+        )
 
 
 def test_visual_proof_exposes_successes_failures_and_hybrid_bar_by_bar() -> None:
@@ -69,7 +71,10 @@ def test_visual_proof_reports_suite_wins_and_remaining_failures_without_hiding_t
     by_id = {item["track"]["id"]: item for item in proof["tracks"]}
     for identifier in ("when-the-saints-preview-v1", "oh-susanna-preview-v1"):
         item = by_id[identifier]
-        assert item["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"] > item["engines"]["v2"]["metrics"]["majorMinorWeightedRecall"]
+        assert (
+            item["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"]
+            > item["engines"]["v2"]["metrics"]["majorMinorWeightedRecall"]
+        )
     amazing = by_id["amazing-grace-kevin-macleod-lesson-v1"]
     assert amazing["summary"]["hybridCorrectBars"] > amazing["summary"]["v2CorrectBars"]
     assert amazing["engines"]["hybrid"]["metrics"]["majorMinorWeightedRecall"] == 0.7994272009686358
@@ -103,12 +108,29 @@ def test_visual_proof_page_has_player_selector_hybrid_and_reproduction_evidence(
     script = (PROOF_ROOT / "proof.js").read_text(encoding="utf-8")
     assert '<audio id="audio" controls' in html
     assert 'id="track-selector"' in html
-    assert all(
-        label in html
-        for label in ("Hand-authored", "Current v2", "Domain-gated v8", "Safety overlay")
-    )
+    assert all(label in html for label in ("Hand-authored", "Current v2", "Domain-gated v8", "Safety overlay"))
     assert "including regressions" in html
     assert "Regenerate the evidence locally" in html
     assert 'fetch("./data/proof.json"' in script
     assert "await new Promise" in script and "seekAndPlay(bar.start)" in script
     assert "[...benchmark.datasets" in script
+
+
+def test_visual_proof_supports_ignored_local_v9_listening_bundle() -> None:
+    html = (PROOF_ROOT / "index.html").read_text(encoding="utf-8")
+    script = (PROOF_ROOT / "proof.js").read_text(encoding="utf-8")
+    css = (PROOF_ROOT / "proof.css").read_text(encoding="utf-8")
+    builder = (ROOT / "scripts/build_local_chord_reader_test.py").read_text(encoding="utf-8")
+    ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+
+    assert 'query.get("v") === "9"' in script
+    assert 'fetch("./local-tests/proof.json"' in script
+    assert 'proof.schemaVersion === "chord_reader_local_song_test_v1"' in script
+    assert "Confidence is the model's own probability, not measured correctness." in script
+    assert 'id="hero-eyebrow"' in html and 'id="footer-status"' in html
+    assert ".local-mode .current-chord.v2" in css
+    assert "ui/chord-reader-proof/local-tests/" in ignore
+    assert "StudentHeterogeneousBoundaryGuidedEnsembleRecognizer" in builder
+    assert '"NO-GO — listening test only; no operating threshold or accuracy claim"' in builder
+    assert "shutil.copyfile(source, destination)" in builder
+    assert '"sourcePath"' not in builder

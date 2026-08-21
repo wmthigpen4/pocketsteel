@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Chord Reader Proof Suite</title>
-  <link rel="stylesheet" href="./proof.css">
+  <link rel="stylesheet" href="./proof.css?v=10">
 </head>
 <body>
   <main class="page-shell">
     <header class="hero">
       <div>
-        <p class="eyebrow">Chord Reader ML v8 · visual proof</p>
-        <h1>Hear every claim.</h1>
-        <p class="lede">Three public-domain songs, 49 hand-authored bars, 366 multi-corpus audits, and 500 disjoint one-shot confirmations. Press play to compare production with the domain-gated root, quality, and boundary ensemble.</p>
+        <p class="eyebrow" id="hero-eyebrow">Chord Reader ML v8 · visual proof</p>
+        <h1 id="hero-title">Hear every claim.</h1>
+        <p class="lede" id="hero-lede">Three public-domain songs, 49 hand-authored bars, 366 multi-corpus audits, and 500 disjoint one-shot confirmations. Press play to compare production with the domain-gated root, quality, and boundary ensemble.</p>
       </div>
-      <div class="hero-badge"><span id="suite-bars">—</span><small>hybrid bars correct across suite</small></div>
+      <div class="hero-badge"><span id="suite-bars">—</span><small id="hero-badge-label">hybrid bars correct across suite</small></div>
     </header>
 
     <nav id="track-selector" class="track-selector" aria-label="Choose a proof song"></nav>
@@ -33,10 +33,10 @@
 
       <div class="now-playing" aria-live="polite">
         <div class="bar-marker"><span>BAR</span><strong id="current-bar">Count-in</strong></div>
-        <div class="current-chord expected"><span>Hand-authored</span><strong id="current-expected">N.C.</strong></div>
-        <div class="current-chord v2"><span>Current v2</span><strong id="current-v2">N.C.</strong></div>
-        <div class="current-chord student"><span>Domain-gated v8</span><strong id="current-student">N.C.</strong></div>
-        <div class="current-chord hybrid"><span>Safety overlay</span><strong id="current-hybrid">N.C.</strong></div>
+        <div class="current-chord expected"><span id="expected-label">Hand-authored</span><strong id="current-expected">N.C.</strong></div>
+        <div class="current-chord v2"><span id="v2-label">Current v2</span><strong id="current-v2">N.C.</strong></div>
+        <div class="current-chord student"><span id="student-label">Domain-gated v8</span><strong id="current-student">N.C.</strong></div>
+        <div class="current-chord hybrid"><span id="hybrid-label">Safety overlay</span><strong id="current-hybrid">N.C.</strong></div>
       </div>
 
       <div class="legend" aria-label="Result legend">
@@ -48,7 +48,7 @@
       <div id="bar-grid" class="bar-grid" aria-label="Bar-by-bar chord comparison"></div>
     </section>
 
-    <section class="results" aria-labelledby="result-heading">
+    <section class="results" id="selected-results" aria-labelledby="result-heading">
       <div class="section-heading">
         <p class="eyebrow">Selected-song result</p>
         <h2 id="result-heading">Loading the frozen comparison…</h2>
@@ -81,7 +81,7 @@
       </div>
     </section>
 
-    <section class="public-proof" aria-labelledby="suite-heading">
+    <section class="public-proof" id="suite-section" aria-labelledby="suite-heading">
       <div class="section-heading">
         <p class="eyebrow">Public-domain proof suite</p>
         <h2 id="suite-heading">Three songs · 49 musical bars</h2>
@@ -89,14 +89,14 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Song</th><th>Recording</th><th>v2 bars</th><th>Hybrid bars</th><th>v2 WCSR</th><th>Hybrid WCSR</th></tr></thead>
+          <thead id="suite-head"><tr><th>Song</th><th>Recording</th><th>v2 bars</th><th>Hybrid bars</th><th>v2 WCSR</th><th>Hybrid WCSR</th></tr></thead>
           <tbody id="suite-body"></tbody>
           <tfoot id="suite-foot"></tfoot>
         </table>
       </div>
     </section>
 
-    <section class="public-proof" aria-labelledby="public-heading">
+    <section class="public-proof" id="benchmark-section" aria-labelledby="public-heading">
       <div class="section-heading">
         <p class="eyebrow">Frozen multi-corpus benchmark</p>
         <h2 id="public-heading">124 held-out recordings across four corpora</h2>
@@ -115,7 +115,7 @@
       <div>
         <p class="eyebrow">No hand-picked output</p>
         <h2 id="reproduce-heading">Regenerate the evidence locally</h2>
-        <p>The page reads frozen JSON emitted directly by v2 and v8: three chord experts, a harmonic-CQT root guide, two quality experts, two boundary experts, and a sparse-texture fallback gate. Model and audio hashes are displayed so changed artifacts cannot masquerade as this run.</p>
+        <p id="reproduce-copy">The page reads frozen JSON emitted directly by v2 and v8: three chord experts, a harmonic-CQT root guide, two quality experts, two boundary experts, and a sparse-texture fallback gate. Model and audio hashes are displayed so changed artifacts cannot masquerade as this run.</p>
       </div>
       <div class="code-panel">
         <code id="reproduce-command">python scripts/build_chord_reader_proof.py</code>
@@ -128,9 +128,9 @@
 
     <footer>
       <p id="license-line"></p>
-      <p>Development proof only. The production reader remains v2.</p>
+      <p id="footer-status">Development proof only. The production reader remains v2.</p>
     </footer>
   </main>
-  <script src="./proof.js"></script>
+  <script src="./proof.js?v=10"></script>
 </body>
 </html>
