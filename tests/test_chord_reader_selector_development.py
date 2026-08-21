@@ -50,12 +50,13 @@ def _full_metadata_rows(tmp_path: Path) -> list[dict[str, Any]]:
     for composition in range(3):
         for player in range(6):
             for performance in ("comp", "solo"):
+                composition_id = f"guitar-work-{composition}"
                 add(
-                    f"guitar-{composition}-{player:02d}-{performance}",
+                    f"guitarset-{player:02d}_{composition_id}_{performance}",
                     "guitarset",
-                    f"guitar-work-{composition}",
+                    composition_id,
                     groupId=f"{player:02d}",
-                    performanceRole=performance,
+                    splitGroup=composition_id,
                 )
     for composition in range(6):
         for capture in range(4):
@@ -514,28 +515,81 @@ def test_derivative_registry_rejects_unknown_base_without_outputs(
 
 
 @pytest.mark.parametrize(
-    ("source", "expected"),
+    ("source", "track_id", "expected"),
     [
-        ({"datasetId": "guitarset", "performanceRole": "comp", "groupId": "00"}, "guitarset:comp:player-00"),
-        ({"datasetId": "guitarset", "performanceRole": "solo", "groupId": "05"}, "guitarset:solo:player-05"),
-        ({"datasetId": "aam"}, "aam:mix"),
-        ({"datasetId": "nrgcp"}, "nrgcp:mix"),
+        (
+            {
+                "datasetId": "guitarset",
+                "groupId": "00",
+                "compositionId": "Jazz2-110-Bb",
+                "splitGroup": "Jazz2-110-Bb",
+            },
+            "guitarset-00_Jazz2-110-Bb_comp",
+            "guitarset:comp:player-00",
+        ),
+        (
+            {
+                "datasetId": "guitarset",
+                "groupId": "05",
+                "compositionId": "work_with-hyphens_and_underscores",
+                "splitGroup": "work_with-hyphens_and_underscores",
+                "performanceRole": "solo",
+            },
+            "guitarset-05_work_with-hyphens_and_underscores_solo",
+            "guitarset:solo:player-05",
+        ),
+        ({"datasetId": "aam"}, "track", "aam:mix"),
+        ({"datasetId": "nrgcp"}, "track", "nrgcp:mix"),
         (
             {"datasetId": "idmt_guitar", "groupId": "mic-a", "performanceSpeed": "fast"},
+            "track",
             "idmt_guitar:capture=mic-a;speed=fast",
         ),
-        ({"datasetId": "winterreise", "groupId": "singer-a"}, "winterreise:performer=singer-a"),
+        (
+            {"datasetId": "winterreise", "groupId": "singer-a"},
+            "track",
+            "winterreise:performer=singer-a",
+        ),
     ],
 )
-def test_exact_dataset_audit_roles(source: dict[str, Any], expected: str) -> None:
-    assert development._production_role(source, "track") == expected
+def test_exact_dataset_audit_roles(source: dict[str, Any], track_id: str, expected: str) -> None:
+    assert development._production_role(source, track_id) == expected
+
+
+@pytest.mark.parametrize(
+    ("source_updates", "track_id"),
+    [
+        ({}, "guitar-00_Jazz2-110-Bb_comp"),
+        ({}, "guitarset-00_Jazz2-110-Bb_rhythm"),
+        ({"groupId": "01"}, "guitarset-00_Jazz2-110-Bb_comp"),
+        ({"groupId": "06"}, "guitarset-06_Jazz2-110-Bb_comp"),
+        (
+            {"compositionId": "Jazz2-110-B", "splitGroup": "Jazz2-110-B"},
+            "guitarset-00_Jazz2-110-Bb_comp",
+        ),
+        ({"splitGroup": "Rock2-142-D"}, "guitarset-00_Jazz2-110-Bb_comp"),
+        ({"performanceRole": "solo"}, "guitarset-00_Jazz2-110-Bb_comp"),
+    ],
+)
+def test_guitarset_role_rejects_metadata_or_id_mismatch(
+    source_updates: dict[str, Any],
+    track_id: str,
+) -> None:
+    source = {
+        "datasetId": "guitarset",
+        "groupId": "00",
+        "compositionId": "Jazz2-110-Bb",
+        "splitGroup": "Jazz2-110-Bb",
+        **source_updates,
+    }
+    with pytest.raises(development.SelectorDevelopmentError):
+        development._production_role(source, track_id)
 
 
 @pytest.mark.parametrize(
     "source",
     [
-        {"datasetId": "guitarset", "performanceRole": "rhythm", "groupId": "00"},
-        {"datasetId": "guitarset", "performanceRole": "comp", "groupId": "06"},
+        {"datasetId": "guitarset", "groupId": "00"},
         {"datasetId": "idmt_guitar", "groupId": "mic-a"},
         {"datasetId": "winterreise"},
         {"datasetId": "unregistered"},

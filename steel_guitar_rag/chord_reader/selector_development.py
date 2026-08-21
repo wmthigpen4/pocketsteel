@@ -842,10 +842,34 @@ def _production_role(source: Mapping[str, Any], track_id: str) -> str:
             f"Source track {track_id!r} uses unsupported dataset {dataset_id!r}; no role fallback exists."
         )
     if dataset_id == "guitarset":
-        performance = source.get("performanceRole")
-        player = source.get("groupId")
-        if performance not in {"comp", "solo"} or player not in _GUITARSET_PLAYERS:
-            raise SelectorDevelopmentError("GuitarSet requires performanceRole comp/solo and groupId player 00..05.")
+        identifier = _string(track_id, "GuitarSet track id")
+        player = _string(source.get("groupId"), f"source track {track_id!r} groupId")
+        composition_id = _string(
+            source.get("compositionId"),
+            f"source track {track_id!r} compositionId",
+        )
+        split_group = _string(
+            source.get("splitGroup"),
+            f"source track {track_id!r} splitGroup",
+        )
+        if player not in _GUITARSET_PLAYERS:
+            raise SelectorDevelopmentError("GuitarSet groupId must be player 00..05.")
+        if split_group != composition_id:
+            raise SelectorDevelopmentError("GuitarSet splitGroup must exactly equal compositionId.")
+        matching_performances = [
+            performance
+            for performance in ("comp", "solo")
+            if identifier == f"guitarset-{player}_{composition_id}_{performance}"
+        ]
+        if len(matching_performances) != 1:
+            raise SelectorDevelopmentError(
+                "GuitarSet track id must exactly bind groupId, compositionId, and comp/solo role."
+            )
+        performance = matching_performances[0]
+        if "performanceRole" in source and source.get("performanceRole") != performance:
+            raise SelectorDevelopmentError(
+                "GuitarSet performanceRole contradicts the role encoded by the exact track id."
+            )
         return f"guitarset:{performance}:player-{player}"
     if dataset_id == "aam":
         return "aam:mix"

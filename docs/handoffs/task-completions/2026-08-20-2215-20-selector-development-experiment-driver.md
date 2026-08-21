@@ -26,6 +26,17 @@ build_development_examples(...)
 train_development_selector(...)
 ```
 
+A follow-up real-metadata preflight removed the only discovered mismatch
+between the role admission code and the sanitized development descriptor.
+GuitarSet does not carry `performanceRole`; its role is now derived only when
+the track ID exactly equals
+`guitarset-{groupId}_{compositionId}_{comp|solo}`, `groupId` is `00..05`, and
+`splitGroup` exactly equals `compositionId`. A present `performanceRole` is
+accepted only when it agrees with the exact ID-derived role. Prefix, suffix,
+player, composition, split-group, and contradictory-metadata mismatches all
+fail closed. Exact string construction is used, so hyphens and underscores in
+composition IDs are not parsed heuristically.
+
 `freeze-expected-shape` accepts only a new output path and publishes the one
 independently reviewed real-run shape. Callers cannot supply or weaken its
 dataset/count policy: AAM is 2 groups of 1, GuitarSet is 3 groups of 12, IDMT
@@ -87,15 +98,20 @@ composition:<datasetId>:<compositionId>
 
 Dataset/role admission is exact and fail-closed:
 
-- GuitarSet: `guitarset:<comp|solo>:player-<00..05>`; every admitted
-  composition must contain all 12 unique roles.
+- GuitarSet: exact source ID
+  `guitarset-{groupId}_{compositionId}_{comp|solo}` with `groupId` `00..05`
+  and `splitGroup == compositionId`, producing
+  `guitarset:<comp|solo>:player-<00..05>`; every admitted composition must
+  contain all 12 unique roles. Missing `performanceRole` is expected; a
+  present contradictory value is rejected.
 - AAM: `aam:mix`.
 - NRGCP: `nrgcp:mix`.
 - IDMT Guitar: `idmt_guitar:capture=<groupId>;speed=<performanceSpeed>`.
 - Winterreise: `winterreise:performer=<groupId>`.
 
-Unknown datasets, missing role metadata, duplicate roles inside a composition,
-generic audit-role fallbacks, and malformed role strings are rejected.
+Unknown datasets, missing required role inputs, contradictory GuitarSet role
+metadata, duplicate roles inside a composition, generic audit-role fallbacks,
+and malformed role strings are rejected.
 
 The derivative registry is an exact, self-hashed development-only artifact.
 Omitting `--derivative-registry` selects a sealed explicit-empty registry; it
@@ -161,22 +177,33 @@ edited by this task.
 Frozen implementation SHA-256 values:
 
 - `steel_guitar_rag/chord_reader/selector_development.py`:
-  `829af06bfff75d1e037c267b11f3e9d68453b595c1be32ae2a7e4b20085ede97`
+  `f4bdbfc0c23a4bfe4f134a04e0545bf9e921aa412d7310f870290a78116df42e`
 - `scripts/chord_bar_selector_development.py`:
   `18fd5b464d678fa0dad0bfee36d72422493d26d2ddf584fc491d0590e6857644`
 - `tests/test_chord_reader_selector_development.py`:
-  `153bd6b9c5c78e94346a0d69419dcbe12133e254f65b8335d0a63999b049898d`
+  `ea650306ca31bf60621d53041054a7610da3b318bf9eced29dc11054e15156ab`
 
 The handoff's own final hash is reported outside this self-referential file.
 
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_selector_development.py`
-  - `52 passed`
-- `.venv/bin/python -m pytest -q tests/test_chord_reader_selector_development.py tests/test_chord_reader_audio_lineage.py tests/test_chord_reader_bar_examples.py tests/test_chord_reader_bar_selector.py tests/test_chord_reader_benchmark_uncertainty.py`
-  - `212 passed`
+  - `58 passed`
+- `.venv/bin/python -m pytest -q tests/test_chord_reader_selector_development.py tests/test_chord_reader_bar_examples.py tests/test_chord_reader_bar_selector.py tests/test_chord_reader_selector_readiness.py`
+  - `189 passed`
 - Full non-browser chord-reader suite (the two live Chrome nodes deselected):
-  - `530 passed, 4 skipped, 2 deselected`
+  - `606 passed, 4 skipped, 2 deselected`
+- Sanitized top-level metadata-only production-role audit:
+  - projected only `id`, `datasetId`, `compositionId`, `splitGroup`, `groupId`,
+    `performanceRole`, and `performanceSpeed` with `jq`, then invoked
+    `_production_role` for all 246 rows;
+  - exact dataset counts were `2/36/48/156/4` in reviewed dataset order;
+  - every row was admitted, including exactly three tracks for each of the 12
+    GuitarSet comp/solo-player roles;
+  - IDMT's required capture and speed fields and Winterreise's required
+    performer field are present and compatible with the existing fail-closed
+    policy. AAM and NRGCP use their fixed mix roles. No further mismatch was
+    found, so no other role policy changed.
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/selector_development.py scripts/chord_bar_selector_development.py tests/test_chord_reader_selector_development.py`
   - passed
 - `.venv/bin/ruff format --check steel_guitar_rag/chord_reader/selector_development.py scripts/chord_bar_selector_development.py tests/test_chord_reader_selector_development.py`
@@ -190,6 +217,8 @@ The handoff's own final hash is reported outside this self-referential file.
 Synthetic coverage includes the exact frozen 246/169 per-dataset shape and
 histograms; adversarial same-global-total dataset-count and group-size shifts;
 all five exact dataset role policies; complete GuitarSet composition roles;
+GuitarSet IDs with hyphens and underscores; wrong ID prefix, suffix, player,
+composition, split group, and contradictory optional role metadata;
 default empty and nonempty derivative registries; whole-base-group merge
 enforcement; unknown derivatives; exact caller counts; exact
 winner/source/lineage bindings; byte-identical winner/source relocation
@@ -203,10 +232,13 @@ direct generic-strata training rejection before trainer dispatch; group-builder
 and selector dispatch; canonical `sort_keys=True` examples write/read followed
 by actual selector training; and all six CLI subcommands.
 
-No real corpus, source audio, frozen feature array, reference, prediction,
-runtime timing, model, calibration, confirmation, test, private source, or
-browser was opened by this task. No target-Chrome run and no 246-track
-experiment was performed or claimed.
+The follow-up audit read only the sanitized top-level metadata fields named
+above from the real development descriptor. It did not inspect or resolve any
+audio path, reference path, label, timing array, or other nested artifact. No
+source audio, frozen feature array, reference, prediction, runtime timing,
+model, calibration, confirmation, test partition, private source, or browser
+was opened. No target-Chrome run and no 246-track experiment was performed or
+claimed.
 
 ## Integration notes
 
