@@ -1,0 +1,400 @@
+{
+  "schemaVersion": "chord_runtime_beat_cell_stage2_preregistration_v1",
+  "split": "development",
+  "developmentOnly": true,
+  "promotionEligible": false,
+  "sourceInputs": {
+    "stage1Report": {
+      "path": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage1/report.json",
+      "fileSha256": "0263746165db4f7388aa8ae2e8d8f39e7583f0719cde01718bce4bd5d498adec",
+      "canonicalSha256": "50de920799827cee0670faa135ce76d454896511e8e2cc39219049647748281e",
+      "artifactSha256": "c3019c5dfa7dd5466d18ea4e2ec98b08a2ec77ca925a1a033816963e7d22ab89",
+      "decisionSha256": "41c4859f8b5005b824acb222bbdf80bb4baace6c068712bf6d892f5843b52aaa",
+      "gateSetSha256": "e0b96b0ac56ecf4d4609afa38cf8311084f59e3c58affc413dec39e88d960ad0",
+      "trackSetSha256": "71c4b65785a9a6f4b7303b45b27d7eac605cf1b24ca2a078a3df7baba8e9b611",
+      "sourceContractSha256": "b4511d521945db84ab827f6c0207452a950322d964df9354274ee57eb3f9cfa4"
+    },
+    "stage1SummaryRoot": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage1/summaries",
+    "stage1SummaryArtifactSet": {
+      "projection": "canonical_sha256(sorted([{trackId:sidecar.trackId,artifactSha256:sidecar.artifactSha256} for each flat regular prediction-only sidecar],key=trackId))",
+      "sha256": "bf379a3bcf1601c92771e07529aa411aca0edca9b36f2bb2587db3c2d886dbff"
+    },
+    "stage1SummaryFileSet": {
+      "projection": "canonical_sha256(sorted([{name:basename,fileSha256:sha256(rawFileBytes)} for each flat regular summary file],key=name))",
+      "sha256": "a4e247adcd4c4ebfac5da9fc65b6c2c7c578ea9377542f9ec1e94f19af3a1312"
+    },
+    "benchmarkReport": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/benchmark-final/report.json",
+    "benchmarkRoot": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/benchmark-final",
+    "audioLineage": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/lineage/multiband-development-246.json",
+    "runtimeManifest": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/runtime-bar-grids/manifest.json",
+    "runtimeRoot": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/runtime-bar-grids",
+    "beatReceipt": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/runtime-beat-receipt.json",
+    "groupManifest": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/groups/manifest.json",
+    "groupRoot": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v4/processed",
+    "beatReceiptArtifactSha256": "4f14ed0a3b3436ea8cdd50ae5fef77d0b086efc96c4ec8ec8e7a9af11814834b",
+    "beatReceiptTrackSetSha256": "a2de02b7419753d41a0ad1e6e85ca14ae5877fc93c2dc7847508ccc7ac004602",
+    "beatReceiptTotalsSha256": "46c68e5de9b2cadbe7f0abc03e9a3faaf036d8b06db93f8998a1c0067c448e4a",
+    "predictionIdentitySetSha256": "aa6471a3de97ce33f4e2d8f7faaea3d6dd0197e49f2318e17a6917b4a5e38e8e",
+    "groupTrackSetSha256": "16bea714365fcfe5f1c317dbe69a51f51d47cb2cc3435577dc736a482a0e558c",
+    "confidenceGroupCount": 169,
+    "trackCount": 246,
+    "cellCount": 11234
+  },
+  "outputPaths": {
+    "featureSetManifest": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r2/feature-set/manifest.json",
+    "featureSummaryRoot": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r2/feature-set/summaries",
+    "examplesArtifact": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r2/examples/artifact.json",
+    "selectorArtifact": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r2/selector/artifact.json",
+    "readinessReport": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r2/readiness/report.json",
+    "publication": "canonical-new-path-only-retained-nofollow-dirfd-input-recheck-failure-atomic-v1"
+  },
+  "stageA": {
+    "labelBlind": true,
+    "stage1ReportAccess": "opaque-path-lstat-and-raw-file-sha256-only-no-json-parse",
+    "allowedParsedInputs": [
+      "predictionLeavesLocatedOnlyFromExactStage1SidecarPredictionIdentityUnderPinnedBenchmarkRoot",
+      "audioLineage",
+      "runtimeManifestAndTimingLeaves",
+      "beatReceipt",
+      "stage1PredictionOnlySidecars"
+    ],
+    "forbiddenInputs": [
+      "stage1ReportParsedObject",
+      "stage1CellOutcomes",
+      "groupManifest",
+      "groupRoot",
+      "referencePathsOrObjects"
+    ],
+    "completionBarrier": "all-11234-feature-rows-and-246-summaries-atomically-committed-before-stageB",
+    "labelMutationInvariant": "no-outcome-object-is-an-input-to-stageA-and-no-outcome-byte-can-change-any-stageA-output"
+  },
+  "featureMath": {
+    "schemaVersion": "chord_runtime_beat_cell_selector_feature_math_projection_v1",
+    "exactFieldsPolicy": "no-extra-no-missing-value-for-value",
+    "sourceModule": "steel_guitar_rag/chord_reader/bar_uncertainty.py",
+    "sourceModuleFileSha256": "dc22cd22d23eddeafcc2fa76cece43619fe5bffecc01f064d0f17f3afad11d95",
+    "sourceBeatCellStage1Module": "steel_guitar_rag/chord_reader/beat_cell_stage1.py",
+    "sourceBeatCellStage1ModuleFileSha256": "ed4b7d4dfa64afa7f07f193567e6c26d7e3d594e3b5f50e5ce03658838cc3a96",
+    "sourceBeatCellPredictionHelper": "summarize_prediction_cells",
+    "sourceBarFeatureContractSha256": "09e43a50baa00398b16878c381a36335cbe5f217c28e428a5f248e4643ecc8ad",
+    "sourceHelperNames": [
+      "_validate_prediction_uncertainty",
+      "_prediction_segments",
+      "_validate_selected_class_alignment",
+      "_overlap_by_product",
+      "_frame_weights",
+      "_bar_features"
+    ],
+    "frameSeconds": 0.1,
+    "frameTimestampConvention": "left-edge",
+    "finalFrame": "truncated-to-prediction-duration",
+    "predictionSegmentBoundaries": "frame-aligned-except-final-duration",
+    "epsilon": 1e-09,
+    "interval": "[startMs/1000,endMs/1000) from exact receipt integer beatCells",
+    "fullPrecisionFinalEndSubstitution": false,
+    "secondsToMillisecondsReconstruction": false,
+    "winnerProduct": "maximum math.fsum overlap; candidates math.isclose(abs_tol=1e-9,rel_tol=0); lexicographically minimum product",
+    "coverage": "clamp(math.fsum coveredSeconds/((endMs-startMs)/1000),0,1)",
+    "dominance": "clamp(winnerMathFsumSeconds/coveredMathFsumSeconds,0,1) when coveredSeconds>1e-9 else 0",
+    "transitionCount": "max(0,len(consecutive-deduplicated-positive-overlap-product-sequence)-1)",
+    "fullFrameWeights": "for each frame [i*frameSeconds,min(duration,(i+1)*frameSeconds)), intersection with cell; weights <=1e-9 retained as computed overlap and ignored by weighted summaries",
+    "winnerFrameWeights": "math.fsum intersections >1e-9 among prediction segments whose product equals the feature-math winning product, within frame and cell; zero when none",
+    "weightedSummary": "select non-null values with weight>1e-9; mean=math.fsum(value*weight)/math.fsum(weight); exact min/max; all null yields null mean/min/max",
+    "boundaryEdgeFrame": "floor(edgeSeconds/frameSeconds+0.5+1e-9); null when frame<0 or frame>=frameCount",
+    "productFamilyOrder": [
+      "null=>all-zero",
+      "N.C.=>None",
+      "suffix-m7=>MinorSeventh",
+      "suffix-m=>Minor",
+      "suffix-7=>Dominant",
+      "otherwise=>Major"
+    ],
+    "featureNames": [
+      "predictionCoverage",
+      "predictionDominance",
+      "predictionTransitionCount",
+      "productFamilyNone",
+      "productFamilyMajor",
+      "productFamilyMinor",
+      "productFamilyDominant",
+      "productFamilyMinorSeventh",
+      "rootSelectedProbabilityMean",
+      "rootSelectedProbabilityMinimum",
+      "rootMarginMean",
+      "rootMarginMinimum",
+      "rootNormalizedEntropyMean",
+      "rootNormalizedEntropyMaximum",
+      "productSelectedProbabilityMean",
+      "productSelectedProbabilityMinimum",
+      "productMarginMean",
+      "productMarginMinimum",
+      "productNormalizedEntropyMean",
+      "productNormalizedEntropyMaximum",
+      "rootSelectedVoteShareMean",
+      "rootSelectedVoteShareMinimum",
+      "productSelectedVoteShareMean",
+      "productSelectedVoteShareMinimum",
+      "rootPairwiseDisagreementMean",
+      "rootPairwiseDisagreementMaximum",
+      "productPairwiseDisagreementMean",
+      "productPairwiseDisagreementMaximum",
+      "rootSelectedProbabilityStdDevMean",
+      "rootSelectedProbabilityStdDevMaximum",
+      "productSelectedProbabilityStdDevMean",
+      "productSelectedProbabilityStdDevMaximum",
+      "rootMutualInformationMean",
+      "rootMutualInformationMaximum",
+      "productMutualInformationMean",
+      "productMutualInformationMaximum",
+      "boundaryModelProbabilityMean",
+      "boundaryModelProbabilityMaximum",
+      "boundaryStartEdgeProbability",
+      "boundaryEndEdgeProbability",
+      "representationRmsMean",
+      "representationRmsMaximum",
+      "temporalDeltaRmsMean",
+      "temporalDeltaRmsMaximum",
+      "absoluteActivationConcentrationMean",
+      "absoluteActivationConcentrationMaximum",
+      "cosineChangeMean",
+      "cosineChangeMaximum"
+    ],
+    "stage1CrossChecks": [
+      "predictionProduct",
+      "predictionCoverage",
+      "predictionDominance",
+      "sourceBeatCellSha256",
+      "predictionIdentitySha256",
+      "canonicalDurationMilliseconds"
+    ],
+    "stage1CrossCheckComparator": "recompute complete predictionSummary with frozen summarize_prediction_cells and require canonical-object equality including exact float values for integrity; separately require feature-math predictionProduct exact-equal to Stage1 product and feature-math coverage/dominance math.isclose(rel_tol=0,abs_tol=1e-9); mismatch fails the one shot"
+  },
+  "stageB": {
+    "fullStage1ValidationAfterStageACommit": true,
+    "rawReferenceAccess": false,
+    "outcomeMapping": {
+      "C": true,
+      "I": false,
+      "U": null,
+      "N": null
+    },
+    "expectedExampleCount": 9376,
+    "expectedExampleDurationMilliseconds": 5074349,
+    "estimatorInputFields": [
+      "featureValues"
+    ],
+    "metadataNeverEstimatorInput": [
+      "trackId",
+      "cellIndex",
+      "durationMilliseconds",
+      "datasetId",
+      "guitarsetRole",
+      "confidenceGroupId",
+      "correct",
+      "allHashesAndAudits"
+    ],
+    "groupPolicy": "one-confidenceGroupId-per-track-no-cross-fold-groups-and-identical-audio-one-group",
+    "uniqueness": "exactly-one-example-per-logical-(trackId,cellIndex)-among-C-or-I",
+    "exampleKey": {
+      "schemaVersion": "chord_runtime_beat_cell_selector_example_key_v1",
+      "algorithm": "canonical_sha256(exact no-extra-no-missing payload)",
+      "payloadFields": [
+        "schemaVersion",
+        "trackId",
+        "cellIndex",
+        "durationMilliseconds",
+        "sourceBeatCellSha256",
+        "predictionIdentitySha256",
+        "featureRowSha256",
+        "featureSummaryArtifactSha256",
+        "featureSetArtifactSha256",
+        "audioLineageRowSha256"
+      ],
+      "valueSources": {
+        "schemaVersion": "literal chord_runtime_beat_cell_selector_example_key_v1",
+        "trackId": "StageA feature summary.trackId",
+        "cellIndex": "StageA feature row.cellIndex",
+        "durationMilliseconds": "StageA feature row.durationMilliseconds",
+        "sourceBeatCellSha256": "StageA feature row.sourceBeatCellSha256",
+        "predictionIdentitySha256": "StageA feature summary.predictionIdentitySha256",
+        "featureRowSha256": "joined feature row.rowSha256",
+        "featureSummaryArtifactSha256": "joined feature summary.artifactSha256",
+        "featureSetArtifactSha256": "feature-set manifest.artifactSha256",
+        "audioLineageRowSha256": "StageA feature summary.audioLineageRowSha256"
+      }
+    }
+  },
+  "selectorCore": {
+    "schemaVersion": "chord_runtime_beat_cell_selector_core_projection_v1",
+    "exactFieldsPolicy": "no-extra-no-missing-value-for-value",
+    "sourceModule": "steel_guitar_rag/chord_reader/bar_selector.py",
+    "sourceModuleFileSha256": "c9d7efcec0ee85d0ee0697a1fe551bb270702bb730b25da3765a72acb475637b",
+    "sourceBarSelectorConfigSha256": "9691afc0464c90a369e042a8fed3a23fbe53fe0285987c2aa5ba544947b00f67",
+    "sourceHelperNames": [
+      "_folds",
+      "_group_weights",
+      "_fit_preprocessor",
+      "_transform",
+      "_sigmoid",
+      "_scalar_sigmoid",
+      "_fit_elastic_net",
+      "_weighted_log_loss",
+      "_fit_predict",
+      "_select_hyperparameters",
+      "_probability_blocks",
+      "_block_prefixes",
+      "_aurc",
+      "_precision_coverage"
+    ],
+    "developmentSplit": "development",
+    "estimand": "P(predictionProductCorrect | referenceLabelDeterminate=true and predictionProduct!=null and predictionCoverage>=0.75 and predictionDominance>=0.75)",
+    "oofDenominator": "emitted development beat-cell examples only; conditional on reference-label determinacy and predictionProduct non-null with coverage>=0.75 and dominance>=0.75",
+    "featureNamesSource": "featureMath.featureNames exact array",
+    "target": "correct:boolean",
+    "groupField": "confidenceGroupId",
+    "groupFallback": null,
+    "sampleWeight": "each confidenceGroupId total mass exactly one in each partition; equal mass per eligible cell within group; mass verified abs_tol=1e-12",
+    "foldAssignmentKind": "sha256-salted-group-order-round-robin-v1",
+    "foldAssignment": "unique groups sorted by (sha256(utf8(salt+NUL+group)).hexdigest(),group); fold=index modulo foldCount",
+    "outerFoldCount": 5,
+    "outerFoldSalt": "bar-selector-outer-v1",
+    "innerFoldCount": 4,
+    "innerFoldSaltTemplate": "bar-selector-inner-v1-outer-{outerFold}",
+    "finalInnerFoldSalt": "bar-selector-inner-v1-final",
+    "preprocessing": {
+      "missing": "training-partition-group-weighted-median using stable mergesort and left cumulative-weight median; zero when all missing",
+      "center": "training-partition-group-weighted-mean-after-imputation",
+      "scale": "training-partition-group-weighted-population-standard-deviation; one below floor",
+      "scaleFloor": 1e-08,
+      "allMissingScale": 1.0
+    },
+    "grid": [
+      {
+        "alpha": 0.01,
+        "l1Ratio": 0.25
+      },
+      {
+        "alpha": 0.01,
+        "l1Ratio": 0.5
+      },
+      {
+        "alpha": 0.05,
+        "l1Ratio": 0.25
+      },
+      {
+        "alpha": 0.05,
+        "l1Ratio": 0.5
+      },
+      {
+        "alpha": 0.05,
+        "l1Ratio": 0.75
+      }
+    ],
+    "estimatorKind": "elastic-net-logistic-regression",
+    "penalty": "alpha*((1-l1Ratio)/2*sum(coefficients^2)+l1Ratio*sum(abs(coefficients))); intercept unpenalized",
+    "objective": "group-weighted mean(logaddexp(0,logit)-label*logit)+alpha*(1-l1Ratio)/2*sum(coefficients^2)+alpha*l1Ratio*sum(abs(coefficients)); intercept unpenalized",
+    "initialization": "coefficients all zero; intercept log(groupWeightedPositiveMass/groupWeightedNegativeMass)",
+    "lipschitzMajorizer": "0.25*groupWeightedMean(rowSquaredNorm+1)+alpha*(1-l1Ratio)",
+    "optimizer": "deterministic-trace-majorized-restarted-fista-v2",
+    "restart": "restart when dot(accelerated-next,next-previous) including intercept is >0",
+    "linkFunction": "branch-stable-exact-logistic-sigmoid-float64-v1",
+    "convergence": "proximal-gradient-mapping-linf-v1",
+    "maxIterations": 3000,
+    "tolerance": 1e-06,
+    "probabilityFloor": 1e-12,
+    "validationFoldLoss": "for each inner validation fold compute group weights anew, foldWeight=sum(weights), foldLoss=weightedLogLoss; candidateLoss=sum(foldLoss*foldWeight)/sum(foldWeight)",
+    "hyperparameterSelection": "minimum inner group-balanced weighted log loss; exact grid index breaks ties",
+    "precisionCoverageTargets": [
+      0.05,
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.75,
+      0.9,
+      1.0
+    ],
+    "probabilityTieBlocks": "sort by descending exact float64 probability then exampleKey; group only exact-equal probability; every curve cutoff includes complete block; prefix and total use math.fsum",
+    "operatingThresholdSelection": null
+  },
+  "readiness": {
+    "schemaVersion": "chord_runtime_beat_cell_selector_readiness_preregistered_projection_v1",
+    "exactFieldsPolicy": "no-extra-no-missing-value-for-value",
+    "sourceModule": "steel_guitar_rag/chord_reader/selector_readiness.py",
+    "sourceModuleFileSha256": "464c918d9e579ce98ddce7a98f2ef35fe58e57dce2cff9b0d77af1548335b291",
+    "sourceBarReadinessRubricSha256": "b55cd06588ed4578bd31dcdb4eee6bdf894cac76ed98fab34ca5e4a516fce850",
+    "fixedTargetCoverage": 0.5,
+    "cutoff": "minimumProbabilityAtDescriptivePoint at exact targetCoverage=0.50; accept probability>=cutoff including complete tie block",
+    "countDenominators": {
+      "aggregateR": 9789,
+      "guitarsetR": 2218,
+      "guitarsetCompR": 954,
+      "guitarsetSoloR": 1264
+    },
+    "durationMillisecondDenominators": {
+      "aggregateR": 5316104,
+      "guitarsetR": 1034199,
+      "guitarsetCompR": 513043,
+      "guitarsetSoloR": 521156
+    },
+    "countGates": [
+      "aggregate:A>=150",
+      "aggregate:2*A>=9789",
+      "aggregate:50*CA>=49*A",
+      "aggregate:oneSidedWilson95LowerBound(CA,A,z=1.6448536269514722)>=0.98",
+      "aggregate:groupBalancedConditionalCoverage>=0.50",
+      "aggregate:groupBalancedPrecision>=0.98",
+      "guitarset:A>=30",
+      "guitarset:4*A>=2218",
+      "guitarset:50*CA>=49*A",
+      "guitarset:groupBalancedConditionalCoverage>=0.25",
+      "guitarset:groupBalancedPrecision>=0.98"
+    ],
+    "durationGates": [
+      "aggregate:2*A_ms>=5316104",
+      "aggregate:50*CA_ms>=49*A_ms",
+      "guitarset:4*A_ms>=1034199",
+      "guitarset:50*CA_ms>=49*A_ms"
+    ],
+    "durationWeightingScope": "micro-time-exposure-gates-only-not-training-group-balanced-Wilson-curve-cutoff-or-selection",
+    "guitarsetWilson": "mandatory-disclosure-only",
+    "mandatoryDatasetDisclosures": [
+      "aam",
+      "idmt_guitar"
+    ],
+    "guitarsetRolePolicy": "comp-and-solo-count-and-duration-accepted-coverage-and-precision-disclosures-with-exact-role-denominators-no-role-gate-no-solo-authorization",
+    "mandatoryDiagnostics": [
+      "fixed-probability-decile-micro-and-group-balanced-reliability-and-ECE",
+      "micro-and-group-balanced-log-loss-Brier-AURC",
+      "exact-tie-block-precision-coverage-curve",
+      "correct-and-incorrect-probability-quantiles",
+      "outer-fold-dataset-and-guitarset-role-slices",
+      "accepted-group-concentration",
+      "feature-missingness-allMissing-and-standardized-absolute-z-drift",
+      "reference-endpoint-reconciliation"
+    ],
+    "successDecision": "all-integrity-admission-count-duration-group-Wilson-and-diagnostic-gates-pass",
+    "onSuccess": {
+      "developmentReadinessPassed": true,
+      "calibrationMayOpenOnce": true,
+      "automaticCalibrationAccess": false
+    },
+    "onFailure": {
+      "developmentReadinessPassed": false,
+      "calibrationMayOpenOnce": false
+    }
+  },
+  "oneShot": {
+    "featureSetCount": 1,
+    "examplesArtifactCount": 1,
+    "selectorCandidateCount": 1,
+    "readinessEvaluationCount": 1,
+    "readinessReproductionRefitCount": 1,
+    "sameCycleRetryAllowed": false,
+    "alternateGridCutoffFoldFeatureWeightCellDatasetAllowed": false,
+    "stopAfterReadinessForIndependentAudit": true,
+    "calibrationTestConfirmationPlayerPublicSongTravisAccessDuringCycle": false
+  }
+}
