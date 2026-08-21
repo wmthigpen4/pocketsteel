@@ -20,6 +20,7 @@ from steel_guitar_rag.chord_reader.beat_cell_stage2_contract import (
     BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256,
     BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256,
     BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256,
+    BEAT_CELL_STAGE2_OUTPUT_PATHS,
     BEAT_CELL_STAGE_A_PROJECTION_SHA256,
     BEAT_CELL_STAGE_B_PROJECTION_SHA256,
     load_beat_cell_stage2_authority,
@@ -269,13 +270,26 @@ def test_committed_authority_loader_and_projections_are_exact() -> None:
     authority = load_beat_cell_stage2_authority()
     assert canonical_sha256(authority) == BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256
     assert BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256 == (
-        "674298f9077d3471e00d296dfe0925e2aa278270721544a6b7391b27cdd7cfb4"
+        "7fd598ec952c22ae3a59d4d28d66333f75cb88cdc9348e46566063d7d1709b34"
     )
     assert BEAT_CELL_STAGE_A_PROJECTION_SHA256 == ("814902fac2550294ce8e336a39b01db6c9012e628c0fdaeb3a1bfc31e13f0688")
     assert BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256 == (
         "65fc42417c1b45201e02fe35f140fee541f20608f08fbe6f2d92c127e4009ef2"
     )
     assert BEAT_CELL_STAGE_B_PROJECTION_SHA256 == ("ebf2cf85c1c854a8a9c30d0100bd27343612607b0c3fb440e9512b272cb5ff32")
+    assert set(BEAT_CELL_STAGE2_OUTPUT_PATHS) == {
+        "featureSetManifest",
+        "featureSummaryRoot",
+        "examplesArtifact",
+        "selectorArtifact",
+        "readinessReport",
+        "publication",
+    }
+    assert all(
+        "/beat-cell-stage2-r2/" in value
+        for name, value in BEAT_CELL_STAGE2_OUTPUT_PATHS.items()
+        if name != "publication"
+    )
 
 
 def test_full_synthetic_stage1_still_passes_public_validator(
@@ -595,6 +609,60 @@ def test_official_cli_wrappers_reject_all_path_and_weakening_flags() -> None:
         examples_main(["--allow-retry"])
 
 
+def test_official_runtime_manifest_binding_uses_exact_nested_analyzer_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime = {
+        "manifestSha256": _digest("runtime-manifest"),
+        "trackSetSha256": _digest("runtime-tracks"),
+        "analyzerContract": {"contractSha256": _digest("runtime-analyzer")},
+    }
+    runtime_raw = _render(runtime)
+    monkeypatch.setattr(
+        stage1,
+        "STAGE1_SOURCE_CONTRACT",
+        {
+            "runtimeManifest": {
+                "fileSha256": hashlib.sha256(runtime_raw).hexdigest(),
+                "manifestSha256": runtime["manifestSha256"],
+                "trackSetSha256": runtime["trackSetSha256"],
+                "analyzerContractSha256": runtime["analyzerContract"]["contractSha256"],
+            }
+        },
+    )
+    examples._validate_official_runtime_manifest_binding(runtime_raw, runtime)
+
+
+@pytest.mark.parametrize("nested", (None, "not-an-object", {"contractSha256": _digest("wrong-analyzer")}))
+def test_official_runtime_manifest_binding_rejects_bad_nested_analyzer_despite_top_level_alias(
+    monkeypatch: pytest.MonkeyPatch,
+    nested: Any,
+) -> None:
+    expected_analyzer = _digest("runtime-analyzer")
+    runtime: dict[str, Any] = {
+        "manifestSha256": _digest("runtime-manifest"),
+        "trackSetSha256": _digest("runtime-tracks"),
+        "analyzerContractSha256": expected_analyzer,
+    }
+    if nested is not None:
+        runtime["analyzerContract"] = nested
+    runtime_raw = _render(runtime)
+    monkeypatch.setattr(
+        stage1,
+        "STAGE1_SOURCE_CONTRACT",
+        {
+            "runtimeManifest": {
+                "fileSha256": hashlib.sha256(runtime_raw).hexdigest(),
+                "manifestSha256": runtime["manifestSha256"],
+                "trackSetSha256": runtime["trackSetSha256"],
+                "analyzerContractSha256": expected_analyzer,
+            }
+        },
+    )
+    with pytest.raises(examples.BeatCellExamplesError, match="analyzerContract|Runtime manifest disagrees"):
+        examples._validate_official_runtime_manifest_binding(runtime_raw, runtime)
+
+
 def test_official_stage_a_rejects_unpinned_audio_before_nested_path_or_root_access(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -604,7 +672,9 @@ def test_official_stage_a_rejects_unpinned_audio_before_nested_path_or_root_acce
     runtime = {
         "manifestSha256": _digest("runtime-manifest"),
         "trackSetSha256": _digest("runtime-tracks"),
-        "analyzerContractSha256": _digest("runtime-analyzer"),
+        "analyzerContract": {
+            "contractSha256": _digest("runtime-analyzer"),
+        },
     }
     runtime_path = tmp_path / "runtime-manifest.json"
     runtime_path.write_bytes(_render(runtime))
@@ -645,7 +715,7 @@ def test_official_stage_a_rejects_unpinned_audio_before_nested_path_or_root_acce
                 "fileSha256": hashlib.sha256(runtime_path.read_bytes()).hexdigest(),
                 "manifestSha256": runtime["manifestSha256"],
                 "trackSetSha256": runtime["trackSetSha256"],
-                "analyzerContractSha256": runtime["analyzerContractSha256"],
+                "analyzerContractSha256": runtime["analyzerContract"]["contractSha256"],
             },
             "audioLineage": {
                 "fileSha256": _digest("frozen-audio-file"),

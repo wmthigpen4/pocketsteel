@@ -2796,6 +2796,27 @@ def _preflight_official_examples_output() -> Path:
     return output
 
 
+def _validate_official_runtime_manifest_binding(
+    runtime_raw: bytes,
+    runtime: Mapping[str, Any],
+) -> None:
+    runtime_contract = _mapping(
+        _stage1.STAGE1_SOURCE_CONTRACT["runtimeManifest"],
+        "frozen runtime-manifest contract",
+    )
+    runtime_analyzer_contract = _mapping(
+        runtime.get("analyzerContract"),
+        "runtime manifest analyzerContract",
+    )
+    if (
+        hashlib.sha256(runtime_raw).hexdigest() != runtime_contract["fileSha256"]
+        or runtime.get("manifestSha256") != runtime_contract["manifestSha256"]
+        or runtime.get("trackSetSha256") != runtime_contract["trackSetSha256"]
+        or runtime_analyzer_contract.get("contractSha256") != runtime_contract["analyzerContractSha256"]
+    ):
+        raise BeatCellExamplesError("Runtime manifest disagrees with the frozen Stage-1 source contract.")
+
+
 def run_official_beat_cell_features() -> dict[str, Any]:
     """Run the one exact official Stage-A publication (no path overrides)."""
 
@@ -2817,14 +2838,7 @@ def run_official_beat_cell_features() -> dict[str, Any]:
     receipt_raw, receipt_inode = _sealed_read(receipt_path, "beat receipt")
     runtime = _strict_json(runtime_raw, "runtime manifest")
     receipt = _strict_json(receipt_raw, "beat receipt")
-    runtime_contract = _mapping(_stage1.STAGE1_SOURCE_CONTRACT["runtimeManifest"], "frozen runtime-manifest contract")
-    if (
-        hashlib.sha256(runtime_raw).hexdigest() != runtime_contract["fileSha256"]
-        or runtime.get("manifestSha256") != runtime_contract["manifestSha256"]
-        or runtime.get("trackSetSha256") != runtime_contract["trackSetSha256"]
-        or runtime.get("analyzerContractSha256") != runtime_contract["analyzerContractSha256"]
-    ):
-        raise BeatCellExamplesError("Runtime manifest disagrees with the frozen Stage-1 source contract.")
+    _validate_official_runtime_manifest_binding(runtime_raw, runtime)
     if hashlib.sha256(receipt_raw).hexdigest() != _stage1.OFFICIAL_BEAT_RECEIPT_CONTRACT["fileSha256"]:
         raise BeatCellExamplesError("Beat-receipt file hash is stale.")
 
