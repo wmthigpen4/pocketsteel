@@ -521,16 +521,28 @@ def _prepare_output_directory(output_dir: Path, *, replace_verified_set: bool) -
         if filename not in verified or dict(row) != dict(verified[filename]):
             raise ValueError("The prior manifest does not bind its complete timing artifact set.")
     declared = {str(row["timingFile"]) for row in artifact_rows}
-    if not declared <= set(verified):
-        raise ValueError("The prior output set is missing a declared timing artifact.")
+    if len(declared) != len(artifact_rows) or declared != set(verified):
+        raise ValueError("The prior manifest must exactly bind the complete active timing artifact inventory.")
     tracks = _sequence(prior_manifest.get("tracks"), "prior tracks")
+    referenced: set[str] = set()
     for index, raw_track in enumerate(tracks):
         track = _mapping(raw_track, f"prior tracks[{index}]")
         filename = str(track.get("timingFile") or "")
-        if filename not in verified or track.get("timingSha256") != verified[filename]["timingSha256"]:
+        if (
+            filename not in verified
+            or track.get("timingSha256") != verified[filename]["timingSha256"]
+            or track.get("timingContractSha256") != verified[filename]["timingContractSha256"]
+        ):
             raise ValueError("A prior track does not bind a verified timing artifact.")
+        referenced.add(filename)
+    if referenced != declared:
+        raise ValueError("The prior active timing artifact inventory must exactly equal current track references.")
     if previous_runtime_attested:
-        validate_runtime_bar_grid_manifest(prior_manifest, verify_sources=False)
+        validate_runtime_bar_grid_manifest(
+            prior_manifest,
+            artifact_root=absolute,
+            verify_sources=False,
+        )
     return _OutputState(absolute, previous_sha256, previous_runtime_attested, verified)
 
 
@@ -1063,6 +1075,7 @@ def validate_runtime_bar_grid_manifest(
         raise ValueError("Runtime bar-grid manifest requires tracks.")
     tracks: list[Mapping[str, Any]] = []
     track_ids: set[str] = set()
+    referenced_artifacts: set[str] = set()
     runtime_identity_hashes: set[str] = set()
     for index, raw_track in enumerate(raw_tracks):
         track = _mapping(raw_track, f"tracks[{index}]")
@@ -1156,10 +1169,12 @@ def validate_runtime_bar_grid_manifest(
         filename = track.get("timingFile")
         if not isinstance(filename, str) or filename not in artifact_rows:
             raise ValueError("Runtime track does not reference a declared timing artifact.")
+        referenced_artifacts.add(filename)
         artifact = artifact_rows[filename]
-        if track.get("timingSha256") != artifact["timingSha256"] or track.get(
-            "timingContractSha256"
-        ) != artifact["timingContractSha256"]:
+        if (
+            track.get("timingSha256") != artifact["timingSha256"]
+            or track.get("timingContractSha256") != artifact["timingContractSha256"]
+        ):
             raise ValueError("Runtime track timing hashes disagree with timingArtifacts.")
         if track.get("timingSourceContractSha256") != analyzer_contract_sha256:
             raise ValueError("Runtime track timing source does not bind analyzerContract.")
@@ -1175,6 +1190,8 @@ def validate_runtime_bar_grid_manifest(
         tracks.append(track)
     if [track["trackId"] for track in tracks] != sorted(track_ids):
         raise ValueError("Runtime tracks must be canonically sorted by trackId.")
+    if referenced_artifacts != set(artifact_rows):
+        raise ValueError("Runtime timingArtifacts must exactly equal the active timing files referenced by tracks.")
     if len(runtime_identity_hashes) != 1:
         raise ValueError("A runtime batch must use exactly one browser/runtime identity.")
     if sum(row["trackCount"] for row in source_rows) != len(tracks):
@@ -1366,7 +1383,7 @@ def _generate_runtime_bar_grids(
     source_manifest_rows.sort(key=lambda item: str(item["sourceManifestSha256"]))
     source_manifest_set_sha256 = canonical_sha256(source_manifest_rows)
 
-    artifact_rows: dict[str, Mapping[str, Any]] = dict(output_state.verified_artifacts)
+    artifact_rows: dict[str, Mapping[str, Any]] = {}
     timings_by_file: dict[str, Mapping[str, Any]] = {}
     for _track_id, timing, entry in generated:
         filename = str(entry["timingFile"])
@@ -1380,6 +1397,11 @@ def _generate_runtime_bar_grids(
             raise ValueError("A content-addressed timing filename collided with different content.")
         artifact_rows[filename] = row
         timings_by_file[filename] = timing
+    if output_state.previous_manifest_sha256 is not None and dict(output_state.verified_artifacts) != artifact_rows:
+        raise ValueError(
+            "Verified-set replacement requires the exact same active timing artifact inventory; "
+            "write a changed timing set to a new output_dir."
+        )
     timing_artifacts = [artifact_rows[key] for key in sorted(artifact_rows)]
     manifest_payload: dict[str, Any] = {
         "schemaVersion": OUTPUT_MANIFEST_SCHEMA,
@@ -1412,6 +1434,21 @@ def _generate_runtime_bar_grids(
     # sole commit point and is atomically replaced only after every timing file.
     for destination in new_destinations:
         _atomic_write_json(destination, timings_by_file[destination.name])
+    emitted_timings: dict[str, Mapping[str, Any]] = {}
+    for filename, artifact in artifact_rows.items():
+        digest, timing = _validate_timing_artifact(output_state.output_dir / filename)
+        if digest != artifact["timingSha256"] or timing.get("contractSha256") != artifact["timingContractSha256"]:
+            raise ValueError("An active timing artifact changed before manifest commit.")
+        emitted_timings[filename] = timing
+    if attestation_mode:
+        for entry in entries:
+            _validate_runtime_timing_payload(
+                emitted_timings[str(entry["timingFile"])],
+                timing_sha256=str(entry["timingSha256"]),
+                analyzer_contract_sha256=str(contract["contractSha256"]),
+                duration_seconds=float(entry["durationSeconds"]),
+                bar_count=int(entry["barCount"]),
+            )
     _atomic_write_json(manifest_destination, output_manifest)
     if attestation_mode:
         validate_runtime_bar_grid_manifest(

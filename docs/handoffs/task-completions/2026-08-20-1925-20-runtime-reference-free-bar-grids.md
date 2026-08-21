@@ -28,6 +28,13 @@ later protected manifest therefore blocks earlier development audio. Only
 self-contained `.wav`, `.mp3`, `.m4a`, and `.aac` files are accepted; playlist,
 URL, and unsupported suffixes fail before path access.
 
+The committed output inventory is now active-only: every declared
+`timingArtifacts` row must be referenced by at least one current track, and
+every current track must reference a declared row. Each declared runtime leaf
+therefore receives the full runtime/deployable/reference-free provenance
+validation. Unlisted content-addressed files, including a valid-self-hashed
+annotation-derived orphan, fail replacement before the analyzer is called.
+
 No corpus, generated development set, calibration, test, heldout, confirmation,
 reference, label, or private data was opened. The only audio analyzed was a
 locally generated synthetic click track and an MP3 transcoded from that fixture
@@ -111,9 +118,9 @@ At this handoff:
 - browser runner SHA-256:
   `5bf52ac7927e28cc756c02855b94456e06cfac9bd33608e07afb193c677170b9`
 - Python generator/validator SHA-256:
-  `1d1d73d11f7ea444585e2eac971b7a5e8373c2e3c40ac61dd2e38590ec661a2f`
+  `5079798827503a4a1a2ea123637c116591fde51e6e93b58495738f973485263c`
 - analyzer source-contract SHA-256:
-  `79973513e839c57b3f5f6d76cd187be7063b573e8db77e4ba1e57fb0cee5904f`
+  `8e1df05daf18371899e06884006403b56a4228109687a6c7ca178f1621fef89e`
 - browser launch-contract SHA-256:
   `b07bdcb7e534bb507a80e8463fa0c22dbc0a4a0eb986a3ae73cd876cb18f9e1d`
 
@@ -140,22 +147,26 @@ in provenance as `prefixExcludedSeconds`.
 
 Timing filenames are content addressed as
 `timing-{canonical-timing-sha256}.json`. All new timing objects are atomically
-written and fsynced before `manifest.json`; the manifest is the sole commit
-point and is written last. A fault injected before manifest replacement leaves
-the old manifest byte-for-byte valid.
+written and fsynced before `manifest.json`. Immediately before that commit,
+every active file is rehashed and every attested runtime leaf is deeply
+revalidated against its current track and analyzer contract. The manifest is
+the sole commit point and is written last. A fault injected before manifest
+replacement leaves the old manifest byte-for-byte valid.
 
 The default output must be new or empty. Explicit replacement requires a
 valid, canonical, committed prior manifest and verified content-addressed
 artifacts; timing files without a manifest are insufficient. Symlinked output
 components/destinations and unrelated files fail before analysis.
 
-Replacement has an intentional archival policy: verified prior
-content-addressed timing artifacts remain present and listed in
-`timingArtifacts`, even when no current track row references them. This allows
-a new run to recover a timing artifact written before a failed manifest commit
-while preserving the old commit point. The prior and new sets must have the
-same runtime-attestation class. No prior artifact is deleted or silently
-overwritten.
+Replacement is intentionally immutable at the timing-set boundary. The prior
+manifest's `timingArtifacts`, the content-addressed files physically present,
+and the unique timing files referenced by current track rows must be the exact
+same set. A replacement run must generate that same active artifact map; a
+changed timing set must use a new output directory. This policy neither deletes
+nor silently archives prior evidence, and it prevents crash leftovers or
+annotation/reference-derived timing from being laundered into a
+`runtimeAttested: true` inventory. A fault before the manifest write leaves the
+old manifest and exact active file set byte-for-byte valid.
 
 ## Real target-browser integration evidence
 
@@ -202,12 +213,18 @@ factorized, CLI, player, worker, and corpus files were not edited.
 
 ## Tests and checks
 
-- `.venv/bin/python -m pytest -q tests/test_chord_reader_runtime_bar_grid.py`
-  - `36 passed in 19.08s`
-  - The same frozen source also passed as 34 non-browser unit tests and 2
-    separately selected real-browser tests.
-- `.venv/bin/python -m pytest -q tests/test_chord_reader*.py`
-  - `475 passed, 4 skipped in 25.42s`
+- `.venv/bin/python -m pytest -q tests/test_chord_reader_runtime_bar_grid.py -k 'not real_browser'`
+  - `37 passed, 2 deselected in 1.03s`
+  - Includes active-inventory equality, immutable replacement, annotation
+    orphan, and declared-active annotation provenance attacks.
+- `.venv/bin/python -m pytest -q tests/test_chord_reader_runtime_bar_grid.py tests/test_chord_reader_bar_uncertainty.py -k 'not real_browser'`
+  - `59 passed, 2 deselected in 1.00s`
+- `.venv/bin/python -m pytest -q tests/test_chord_reader*.py -k 'not real_browser'`
+  - Concurrent audio-lineage integration changed `bar_examples.py`,
+    `benchmark.py`, and `cli.py` while this lane was running. The snapshot
+    completed `448 passed, 4 skipped, 2 deselected` with `44 failed` because
+    those new required lineage arguments had not yet been added to their tests.
+    None of the failures involved `runtime_bar_grid.py` or its focused tests.
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/runtime_bar_grid.py tests/test_chord_reader_runtime_bar_grid.py`
   - passed
 - `node --check scripts/chord_runtime_bar_analyzer.js`
@@ -222,6 +239,11 @@ factorized, CLI, player, worker, and corpus files were not edited.
 - This lane proves exact source/runtime/audio provenance and deterministic
   execution. It does not prove that the rhythm analyzer's musical downbeats are
   correct on public development songs.
+- The timing-inventory hardening did not change the browser runner, client, or
+  worker, but it changed the generator hash and therefore the aggregate analyzer
+  source-contract hash. The two target-Chrome integration tests were explicitly
+  excluded from this focused non-Chrome patch run and must pass on the authorized
+  host before a real batch uses the new contract.
 - This is pinned target-Google-Chrome parity only. Other browser engines,
   Chrome versions, OS decoder stacks, or Node versions require a new attested
   contract and fresh evidence.
@@ -238,18 +260,31 @@ factorized, CLI, player, worker, and corpus files were not edited.
 
 ## Safe-to-stage exact file list
 
-- `scripts/chord_runtime_bar_analyzer.js`
-- `scripts/chord_runtime_bar_grid.py`
 - `steel_guitar_rag/chord_reader/runtime_bar_grid.py`
 - `tests/test_chord_reader_runtime_bar_grid.py`
 - `docs/handoffs/task-completions/2026-08-20-1925-20-runtime-reference-free-bar-grids.md`
 
-Do not stage the concurrently owned `bar_examples.py`, `bar_selector.py`, their
-tests/handoffs, generated timing/manifests/audio, corpus content, reference
-data, calibration/test/heldout artifacts, models, predictions, feature caches,
-reports, or private data.
+Do not stage the concurrently owned `audio_lineage.py`, `bar_examples.py`,
+`benchmark.py`, `cli.py`, their tests/handoffs, generated timing/manifests/audio,
+corpus content, reference data, calibration/test/heldout artifacts, models,
+predictions, feature caches, reports, or private data.
+
+## Human decision needed
+
+None for the timing-inventory policy. A changed timing set now always uses a new
+output directory; retaining an in-place historical archive would require a new,
+explicit schema and was intentionally not introduced.
+
+## Recommended next lane
+
+Lane 01 Repo Steward should review and stage only the three exact files above
+after the concurrent audio-lineage integration reaches a stable test snapshot.
+The authorized host must then rerun the two target-Chrome tests before any real
+development batch.
 
 ## Commit readiness
 
-Ready for exact-path review with only the five files listed above. This task
+The runtime timing-inventory slice is ready for exact-path review with only the
+three files listed above. Focused tests and static checks pass. The broad suite
+is temporarily blocked by concurrent lineage API/test migration, and this task
 was explicitly instructed not to commit.

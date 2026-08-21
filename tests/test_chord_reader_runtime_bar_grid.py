@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import hashlib
 import inspect
 import json
@@ -52,6 +53,13 @@ def _write_manifest(
                 "tracks": tracks,
             }
         ),
+        encoding="utf-8",
+    )
+
+
+def _write_canonical_json(path: Path, value: dict[str, object]) -> None:
+    path.write_text(
+        json.dumps(value, ensure_ascii=False, allow_nan=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
@@ -147,6 +155,81 @@ def _offline_generate(
     )
 
 
+def _replace_single_active_timing(
+    output: Path,
+    manifest: dict[str, object],
+    timing: dict[str, object],
+) -> dict[str, object]:
+    tracks = manifest["tracks"]
+    assert isinstance(tracks, list) and len(tracks) == 1
+    track = tracks[0]
+    assert isinstance(track, dict)
+    prior_filename = track["timingFile"]
+    assert isinstance(prior_filename, str)
+
+    timing_payload = {key: value for key, value in timing.items() if key != "contractSha256"}
+    timing["contractSha256"] = canonical_sha256(timing_payload)
+    timing_sha256 = canonical_sha256(timing)
+    timing_filename = f"timing-{timing_sha256}.json"
+    if timing_filename != prior_filename:
+        (output / prior_filename).unlink()
+    _write_canonical_json(output / timing_filename, timing)
+
+    track["timingFile"] = timing_filename
+    track["timingSha256"] = timing_sha256
+    track["timingContractSha256"] = timing["contractSha256"]
+    track["trackArtifactSha256"] = canonical_sha256(
+        {key: value for key, value in track.items() if key != "trackArtifactSha256"}
+    )
+    manifest["timingArtifacts"] = [
+        {
+            "timingFile": timing_filename,
+            "timingSha256": timing_sha256,
+            "timingContractSha256": timing["contractSha256"],
+        }
+    ]
+    manifest["trackSetSha256"] = canonical_sha256(
+        [{"trackId": track["trackId"], "trackArtifactSha256": track["trackArtifactSha256"]}]
+    )
+    manifest["manifestSha256"] = canonical_sha256(
+        {key: value for key, value in manifest.items() if key != "manifestSha256"}
+    )
+    _write_canonical_json(output / "manifest.json", manifest)
+    return manifest
+
+
+def _attest_single_offline_fixture(
+    output: Path,
+    manifest: dict[str, object],
+) -> dict[str, object]:
+    result = deepcopy(manifest)
+    tracks = result["tracks"]
+    assert isinstance(tracks, list) and len(tracks) == 1
+    track = tracks[0]
+    assert isinstance(track, dict)
+    timing_filename = track["timingFile"]
+    assert isinstance(timing_filename, str)
+    timing = json.loads((output / timing_filename).read_text(encoding="utf-8"))
+    assert isinstance(timing, dict)
+    provenance = timing["timingProvenance"]["barStartsSeconds"]
+    analyzer = result["analyzerContract"]
+    assert isinstance(provenance, dict) and isinstance(analyzer, dict)
+    provenance.update(
+        {
+            "sourceClass": "runtime",
+            "sourceId": SOURCE_ID,
+            "sourceContractSha256": analyzer["contractSha256"],
+            "deployable": True,
+            "referenceFree": True,
+        }
+    )
+    result["runtimeAttested"] = True
+    result["selectorUseAllowed"] = True
+    track["selectorUseAllowed"] = True
+    track["timingSourceContractSha256"] = analyzer["contractSha256"]
+    return _replace_single_active_timing(output, result, timing)
+
+
 def test_public_api_has_no_runner_source_or_deployability_injection() -> None:
     assert tuple(inspect.signature(analyzer_contract).parameters) == ()
     assert tuple(inspect.signature(generate_runtime_bar_grids).parameters) == (
@@ -177,9 +260,7 @@ def test_contract_binds_exact_browser_client_worker_runner_generator_and_node() 
     assert runtime["browserExecutableSha256"] == _file_sha256(BROWSER)
     node = Path(shutil.which("node") or "").resolve()
     assert runtime["nodeExecutableSha256"] == _file_sha256(node)
-    assert runtime["browserLaunchContractSha256"] == canonical_sha256(
-        runtime["browserLaunchArguments"]
-    )
+    assert runtime["browserLaunchContractSha256"] == canonical_sha256(runtime["browserLaunchArguments"])
     payload = {key: value for key, value in contract.items() if key != "contractSha256"}
     assert contract["contractSha256"] == canonical_sha256(payload)
     assert contract["decode"] == {
@@ -209,9 +290,7 @@ def test_runner_source_is_exact_player_webaudio_path_with_network_denial() -> No
     assert "sourceAudioSha256" in source
     assert "decodedPcmSha256" in source
     assert "--host-resolver-rules=MAP * ~NOTFOUND" in source
-    assert source.index('cdp.send("Browser.getVersion")') < source.index(
-        '"Page.setDocumentContent"'
-    )
+    assert source.index('cdp.send("Browser.getVersion")') < source.index('"Page.setDocumentContent"')
     assert "await terminateBrowser(browser?.child)" in source
     assert "Chrome stderr tail:" in source
     assert "void terminateBrowser(child).then" in source
@@ -395,7 +474,7 @@ def test_replacement_requires_a_committed_prior_manifest_before_analysis(tmp_pat
     assert calls == []
 
 
-def test_verified_set_replacement_keeps_prior_artifacts_and_commits_manifest_last(
+def test_verified_set_replacement_requires_the_exact_active_timing_inventory(
     tmp_path: Path,
 ) -> None:
     first_audio = tmp_path / "first.wav"
@@ -408,34 +487,39 @@ def test_verified_set_replacement_keeps_prior_artifacts_and_commits_manifest_las
     _write_manifest(second_manifest, [_track("second", second_audio.name)])
     output = tmp_path / "output"
     first = _offline_generate([first_manifest], output)
+    first_manifest_bytes = (output / "manifest.json").read_bytes()
 
     with pytest.raises(ValueError, match="new or empty"):
         _offline_generate([second_manifest], output)
-    second = _offline_generate([second_manifest], output, replace=True)
-    assert second["previousManifestSha256"] == first["manifestSha256"]
-    assert len(second["timingArtifacts"]) == 2
-    assert {row["timingFile"] for row in second["timingArtifacts"]} == {
+    with pytest.raises(ValueError, match="exact same active timing artifact inventory"):
+        _offline_generate([second_manifest], output, replace=True)
+    assert (output / "manifest.json").read_bytes() == first_manifest_bytes
+    assert {path.name for path in output.iterdir()} == {
+        "manifest.json",
         first["tracks"][0]["timingFile"],
-        second["tracks"][0]["timingFile"],
     }
-    assert (output / first["tracks"][0]["timingFile"]).is_file()
-    assert _validate_prior_manifest(output / "manifest.json")["manifestSha256"] == second[
-        "manifestSha256"
+
+    replacement = _offline_generate([first_manifest], output, replace=True)
+    assert replacement["previousManifestSha256"] == first["manifestSha256"]
+    assert replacement["timingArtifacts"] == [
+        {
+            "timingFile": replacement["tracks"][0]["timingFile"],
+            "timingSha256": replacement["tracks"][0]["timingSha256"],
+            "timingContractSha256": replacement["tracks"][0]["timingContractSha256"],
+        }
     ]
+    assert (output / first["tracks"][0]["timingFile"]).is_file()
+    assert _validate_prior_manifest(output / "manifest.json")["manifestSha256"] == replacement["manifestSha256"]
 
 
-def test_fault_before_manifest_commit_preserves_old_manifest_and_recovers_orphan(
+def test_fault_before_same_inventory_manifest_commit_preserves_old_manifest(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     first_audio = tmp_path / "first.wav"
-    second_audio = tmp_path / "second.wav"
     first_audio.write_bytes(b"first")
-    second_audio.write_bytes(b"second")
     first_manifest = tmp_path / "first.json"
-    second_manifest = tmp_path / "second.json"
     _write_manifest(first_manifest, [_track("first", first_audio.name)])
-    _write_manifest(second_manifest, [_track("second", second_audio.name)])
     output = tmp_path / "output"
     first = _offline_generate([first_manifest], output)
     old_manifest_bytes = (output / "manifest.json").read_bytes()
@@ -451,14 +535,144 @@ def test_fault_before_manifest_commit_preserves_old_manifest_and_recovers_orphan
 
     monkeypatch.setattr(module, "_atomic_write_json", fail_manifest)
     with pytest.raises(RuntimeError, match="injected manifest commit failure"):
-        _offline_generate([second_manifest], output, replace=True)
+        _offline_generate([first_manifest], output, replace=True)
     assert (output / "manifest.json").read_bytes() == old_manifest_bytes
-    assert _validate_prior_manifest(output / "manifest.json")["manifestSha256"] == first[
-        "manifestSha256"
-    ]
+    assert _validate_prior_manifest(output / "manifest.json")["manifestSha256"] == first["manifestSha256"]
     state = _prepare_output_directory(output, replace_verified_set=True)
     assert state.previous_manifest_sha256 == first["manifestSha256"]
-    assert len(state.verified_artifacts) == 2
+    assert len(state.verified_artifacts) == 1
+
+
+def test_orphan_annotation_timing_fails_before_replacement_analysis(tmp_path: Path) -> None:
+    audio = tmp_path / "first.wav"
+    audio.write_bytes(b"first")
+    manifest_path = tmp_path / "manifest.json"
+    _write_manifest(manifest_path, [_track("first", audio.name)])
+    output = tmp_path / "output"
+    committed = _offline_generate([manifest_path], output)
+    active_filename = committed["tracks"][0]["timingFile"]
+    active = json.loads((output / active_filename).read_text(encoding="utf-8"))
+    orphan = deepcopy(active)
+    provenance = orphan["timingProvenance"]["barStartsSeconds"]
+    provenance.update(
+        {
+            "sourceClass": "annotation",
+            "sourceId": "adversarial-annotation-grid",
+            "deployable": False,
+            "referenceFree": False,
+        }
+    )
+    orphan_payload = {key: value for key, value in orphan.items() if key != "contractSha256"}
+    orphan["contractSha256"] = canonical_sha256(orphan_payload)
+    orphan_filename = f"timing-{canonical_sha256(orphan)}.json"
+    _write_canonical_json(output / orphan_filename, orphan)
+    calls: list[Path] = []
+
+    def forbidden_provider(*args: object) -> dict[str, object]:
+        calls.append(args[0])
+        raise AssertionError("analysis must not start")
+
+    with pytest.raises(ValueError, match="complete active timing artifact inventory"):
+        _offline_generate(
+            [manifest_path],
+            output,
+            replace=True,
+            provider=forbidden_provider,
+        )
+    assert calls == []
+    assert _validate_prior_manifest(output / "manifest.json")["manifestSha256"] == committed["manifestSha256"]
+
+
+def test_declared_active_annotation_timing_fails_deep_validation_before_analysis(
+    tmp_path: Path,
+) -> None:
+    audio = tmp_path / "first.wav"
+    audio.write_bytes(b"first")
+    manifest_path = tmp_path / "manifest.json"
+    _write_manifest(manifest_path, [_track("first", audio.name)])
+    output = tmp_path / "output"
+    runtime = _attest_single_offline_fixture(
+        output,
+        _offline_generate([manifest_path], output),
+    )
+    assert (
+        validate_runtime_bar_grid_manifest(
+            runtime,
+            artifact_root=output,
+            verify_sources=True,
+        )
+        == runtime
+    )
+
+    track = runtime["tracks"][0]
+    active = json.loads((output / track["timingFile"]).read_text(encoding="utf-8"))
+    provenance = active["timingProvenance"]["barStartsSeconds"]
+    provenance["sourceClass"] = "annotation"
+    _replace_single_active_timing(output, runtime, active)
+    calls: list[Path] = []
+
+    def forbidden_provider(*args: object) -> dict[str, object]:
+        calls.append(args[0])
+        raise AssertionError("analysis must not start")
+
+    with pytest.raises(ValueError, match="not explicit runtime timing"):
+        _offline_generate(
+            [manifest_path],
+            output,
+            replace=True,
+            provider=forbidden_provider,
+        )
+    assert calls == []
+
+
+def test_runtime_validator_rejects_unreferenced_declared_annotation_artifact(
+    tmp_path: Path,
+) -> None:
+    audio = tmp_path / "first.wav"
+    audio.write_bytes(b"first")
+    manifest_path = tmp_path / "manifest.json"
+    _write_manifest(manifest_path, [_track("first", audio.name)])
+    output = tmp_path / "output"
+    runtime = _attest_single_offline_fixture(
+        output,
+        _offline_generate([manifest_path], output),
+    )
+    track = runtime["tracks"][0]
+    active = json.loads((output / track["timingFile"]).read_text(encoding="utf-8"))
+    annotation = deepcopy(active)
+    provenance = annotation["timingProvenance"]["barStartsSeconds"]
+    provenance.update(
+        {
+            "sourceClass": "annotation",
+            "sourceId": "unreferenced-annotation-grid",
+            "deployable": False,
+            "referenceFree": False,
+        }
+    )
+    annotation_payload = {key: value for key, value in annotation.items() if key != "contractSha256"}
+    annotation["contractSha256"] = canonical_sha256(annotation_payload)
+    annotation_sha256 = canonical_sha256(annotation)
+    annotation_filename = f"timing-{annotation_sha256}.json"
+    _write_canonical_json(output / annotation_filename, annotation)
+    runtime["timingArtifacts"].append(
+        {
+            "timingFile": annotation_filename,
+            "timingSha256": annotation_sha256,
+            "timingContractSha256": annotation["contractSha256"],
+        }
+    )
+    runtime["timingArtifacts"].sort(key=lambda row: row["timingFile"])
+    runtime["manifestSha256"] = canonical_sha256(
+        {key: value for key, value in runtime.items() if key != "manifestSha256"}
+    )
+    _write_canonical_json(output / "manifest.json", runtime)
+
+    with pytest.raises(ValueError, match="exactly equal the active timing files"):
+        validate_runtime_bar_grid_manifest(
+            runtime,
+            artifact_root=output,
+            verify_sources=True,
+        )
 
 
 def test_symlinked_output_directory_and_destination_are_rejected(tmp_path: Path) -> None:
@@ -568,11 +782,14 @@ def test_real_browser_webaudio_wav_is_repeatable_and_emits_runtime_provenance(
     second = generate_runtime_bar_grids([manifest], tmp_path / "second-output", timeout_seconds=60)
 
     assert first == second
-    assert validate_runtime_bar_grid_manifest(
-        first,
-        artifact_root=tmp_path / "first-output",
-        verify_sources=True,
-    ) == first
+    assert (
+        validate_runtime_bar_grid_manifest(
+            first,
+            artifact_root=tmp_path / "first-output",
+            verify_sources=True,
+        )
+        == first
+    )
     assert first["runtimeAttested"] is True
     assert first["selectorUseAllowed"] is True
     entry = first["tracks"][0]
@@ -582,14 +799,12 @@ def test_real_browser_webaudio_wav_is_repeatable_and_emits_runtime_provenance(
     assert binding["sourceAudioSha256"] == _file_sha256(audio)
     assert len(binding["decodedPcmSha256"]) == 64
     assert len(binding["analyzerPcmSha256"]) == 64
-    assert abs(
-        binding["decodedDurationSeconds"]
-        - binding["decodedPcmSampleCount"] / binding["decodedSampleRateHz"]
-    ) <= 1 / binding["decodedSampleRateHz"]
-    assert entry["durationSeconds"] == binding["canonicalDurationMilliseconds"] / 1000
-    timing = json.loads(
-        (tmp_path / "first-output" / entry["timingFile"]).read_text(encoding="utf-8")
+    assert (
+        abs(binding["decodedDurationSeconds"] - binding["decodedPcmSampleCount"] / binding["decodedSampleRateHz"])
+        <= 1 / binding["decodedSampleRateHz"]
     )
+    assert entry["durationSeconds"] == binding["canonicalDurationMilliseconds"] / 1000
+    timing = json.loads((tmp_path / "first-output" / entry["timingFile"]).read_text(encoding="utf-8"))
     provenance = timing["timingProvenance"]["barStartsSeconds"]
     assert provenance["sourceClass"] == "runtime"
     assert provenance["deployable"] is True
@@ -627,10 +842,10 @@ def test_real_browser_webaudio_lossy_mp3_binds_true_decode_duration_and_pcm(
     assert binding["sourceAudioSha256"] == _file_sha256(mp3)
     assert binding["decodedPcmSampleCount"] > 0
     assert binding["decodedSampleRateHz"] > 0
-    assert abs(
-        binding["decodedDurationSeconds"]
-        - binding["decodedPcmSampleCount"] / binding["decodedSampleRateHz"]
-    ) <= 1 / binding["decodedSampleRateHz"]
+    assert (
+        abs(binding["decodedDurationSeconds"] - binding["decodedPcmSampleCount"] / binding["decodedSampleRateHz"])
+        <= 1 / binding["decodedSampleRateHz"]
+    )
     expected_milliseconds = math.floor(binding["decodedDurationSeconds"] * 1000 + 0.5)
     assert binding["canonicalDurationMilliseconds"] == expected_milliseconds
     assert result["tracks"][0]["durationSeconds"] == expected_milliseconds / 1000
