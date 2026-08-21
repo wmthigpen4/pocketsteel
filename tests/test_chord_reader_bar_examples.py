@@ -976,6 +976,24 @@ def test_builds_exact_compact_selector_artifact_and_preserves_explicit_groups(tm
         _validated_example(example, selector_binding)
 
 
+def test_builder_projects_reordered_feature_mapping_to_frozen_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report, runtime, groups, audio_lineage, _references = _fixture(tmp_path)
+    original = bar_examples.summarize_prediction_bars
+
+    def reordered_summary(prediction: dict[str, Any], timing: dict[str, Any]) -> dict[str, Any]:
+        summary = original(prediction, timing)
+        for bar in summary["bars"]:
+            bar["featureValues"] = dict(reversed(list(bar["featureValues"].items())))
+        return summary
+
+    monkeypatch.setattr(bar_examples, "summarize_prediction_bars", reordered_summary)
+    result = _build(tmp_path, report, runtime, groups, audio_lineage)
+    assert all(tuple(example["barSummary"]["featureValues"]) == BAR_FEATURE_NAMES for example in result["examples"])
+
+
 def test_rejects_production_extractor_entrypoint_drift_before_leaf_access(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

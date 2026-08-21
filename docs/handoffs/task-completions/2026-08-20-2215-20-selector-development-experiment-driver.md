@@ -128,7 +128,12 @@ with rollback on any publication failure.
 the same exact certification-only five-dataset audit (so direct CLI training
 cannot bypass the build guard), invokes `train_bar_selector`, then atomically
 persists only an exact non-promotable development selector. It does not choose
-an operating threshold.
+an operating threshold. The committed examples JSON is intentionally rendered
+with `sort_keys=True`; a real disk write/read regression now passes that
+alphabetized nested `featureValues` object through the actual
+`train_development_selector` path and completes training. The selector projects
+the exact feature key set in `BAR_FEATURE_NAMES` order rather than relying on
+JSON object iteration order.
 
 All JSON output helpers reject existing destinations and symlinked path
 components, walk/open parents through no-follow directory descriptors, write
@@ -160,16 +165,18 @@ Frozen implementation SHA-256 values:
 - `scripts/chord_bar_selector_development.py`:
   `18fd5b464d678fa0dad0bfee36d72422493d26d2ddf584fc491d0590e6857644`
 - `tests/test_chord_reader_selector_development.py`:
-  `1bca8e962d0385fce32c8cc61bae5838598c37718a77916d5728921577565f05`
+  `153bd6b9c5c78e94346a0d69419dcbe12133e254f65b8335d0a63999b049898d`
 
 The handoff's own final hash is reported outside this self-referential file.
 
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_selector_development.py`
-  - `51 passed`
+  - `52 passed`
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_selector_development.py tests/test_chord_reader_audio_lineage.py tests/test_chord_reader_bar_examples.py tests/test_chord_reader_bar_selector.py tests/test_chord_reader_benchmark_uncertainty.py`
-  - `209 passed`
+  - `212 passed`
+- Full non-browser chord-reader suite (the two live Chrome nodes deselected):
+  - `530 passed, 4 skipped, 2 deselected`
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/selector_development.py scripts/chord_bar_selector_development.py tests/test_chord_reader_selector_development.py`
   - passed
 - `.venv/bin/ruff format --check steel_guitar_rag/chord_reader/selector_development.py scripts/chord_bar_selector_development.py tests/test_chord_reader_selector_development.py`
@@ -193,7 +200,8 @@ path swaps for both JSON and summary-set publication; full-lineage
 example-builder dispatch; certification-only five-strata admission; resealed
 generic-stratum and aggregate-count mismatch rejection before publication;
 direct generic-strata training rejection before trainer dispatch; group-builder
-and selector dispatch; and all six CLI subcommands.
+and selector dispatch; canonical `sort_keys=True` examples write/read followed
+by actual selector training; and all six CLI subcommands.
 
 No real corpus, source audio, frozen feature array, reference, prediction,
 runtime timing, model, calibration, confirmation, test, private source, or

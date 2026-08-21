@@ -428,9 +428,11 @@ def _unsigned(value: Mapping[str, Any], hash_field: str) -> dict[str, Any]:
 
 def _validated_feature_values(value: Any, name: str) -> list[float | None]:
     features = _mapping(value, name)
-    if tuple(features) != BAR_FEATURE_NAMES:
+    # The development publisher renders JSON objects with sort_keys=True.
+    # Membership is semantic; the loop below supplies the only model order.
+    if set(features) != set(BAR_FEATURE_NAMES):
         raise BarSelectorError(
-            f"{name} must contain exactly BAR_FEATURE_NAMES in the frozen order; identity/outcome fields are forbidden."
+            f"{name} must contain exactly the BAR_FEATURE_NAMES key set; identity/outcome fields are forbidden."
         )
     output: list[float | None] = []
     for feature_name in BAR_FEATURE_NAMES:

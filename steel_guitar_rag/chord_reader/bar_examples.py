@@ -1126,8 +1126,10 @@ def _compact_bar_summary(
 ) -> dict[str, Any]:
     binding = _mapping(summary.get("binding"), "bar summary binding")
     feature_values = _mapping(bar.get("featureValues"), "bar featureValues")
-    if tuple(feature_values) != BAR_FEATURE_NAMES:
-        raise ValueError("Bar featureValues are not in the exact frozen feature order.")
+    # JSON object order is not semantic; normalize explicitly for in-memory
+    # consumers before the publisher's sort_keys=True disk representation.
+    if set(feature_values) != set(BAR_FEATURE_NAMES):
+        raise ValueError("Bar featureValues do not contain the exact frozen feature key set.")
     payload: dict[str, Any] = {
         "schemaVersion": COMPACT_BAR_SUMMARY_SCHEMA,
         "trackId": summary.get("trackId"),
@@ -1151,7 +1153,7 @@ def _compact_bar_summary(
         "predictionCoverage": bar.get("predictionCoverage"),
         "predictionDominance": bar.get("predictionDominance"),
         "predictionTransitionCount": bar.get("predictionTransitionCount"),
-        "featureValues": dict(feature_values),
+        "featureValues": {feature_name: feature_values[feature_name] for feature_name in BAR_FEATURE_NAMES},
     }
     if tuple(payload) != _COMPACT_BAR_KEYS:
         raise RuntimeError("Internal compact bar-summary field order drifted.")

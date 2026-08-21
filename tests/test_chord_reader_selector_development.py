@@ -13,6 +13,7 @@ from steel_guitar_rag.chord_reader.audio_lineage import AUDIO_LINEAGE_SCHEMA
 from steel_guitar_rag.chord_reader.bar_examples import EXAMPLES_SCHEMA, GROUP_MANIFEST_SCHEMA
 from steel_guitar_rag.chord_reader.bar_promotion import canonical_sha256
 from steel_guitar_rag.chord_reader.bar_selector import BAR_SELECTOR_ARTIFACT_SCHEMA
+from steel_guitar_rag.chord_reader.bar_uncertainty import BAR_FEATURE_NAMES
 from steel_guitar_rag.chord_reader.runtime_bar_grid import INPUT_MANIFEST_SCHEMA
 
 
@@ -1221,6 +1222,26 @@ def test_train_selector_dispatches_and_persists_nonpromotable_artifact(
     output = tmp_path / "selector.json"
     assert development.train_development_selector(examples_path, output) == artifact
     assert json.loads(output.read_text()) == artifact
+
+
+def test_train_selector_accepts_sort_keys_json_feature_mapping_round_trip(
+    tmp_path: Path,
+) -> None:
+    from tests.test_chord_reader_bar_selector import _examples_artifact
+
+    examples = _examples_artifact()
+    examples_path = tmp_path / "examples.json"
+    _write_json(examples_path, examples)
+    persisted = json.loads(examples_path.read_text(encoding="utf-8"))
+    persisted_features = persisted["examples"][0]["barSummary"]["featureValues"]
+    assert set(persisted_features) == set(BAR_FEATURE_NAMES)
+    assert tuple(persisted_features) != BAR_FEATURE_NAMES
+
+    output = tmp_path / "selector.json"
+    artifact = development.train_development_selector(examples_path, output)
+    assert artifact["schemaVersion"] == BAR_SELECTOR_ARTIFACT_SCHEMA
+    assert artifact["training"]["exampleCount"] == len(examples["examples"])
+    assert json.loads(output.read_text(encoding="utf-8")) == artifact
 
 
 def test_train_selector_rejects_generic_dataset_strata_before_trainer(

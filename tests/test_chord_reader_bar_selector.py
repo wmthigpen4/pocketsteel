@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import inspect
+import json
 
 import pytest
 
@@ -800,15 +801,24 @@ def test_forbidden_metadata_or_outcome_feature_is_rejected(forbidden: str) -> No
         train_bar_selector(source)
 
 
-def test_reordered_feature_mapping_is_rejected() -> None:
+def test_sorted_json_feature_mapping_is_projected_in_frozen_model_order() -> None:
+    source = _examples_artifact()
+    expected = train_bar_selector(source)
+    round_tripped = json.loads(json.dumps(source, sort_keys=True))
+    feature_values = round_tripped["examples"][0]["barSummary"]["featureValues"]
+    assert set(feature_values) == set(BAR_FEATURE_NAMES)
+    assert tuple(feature_values) != BAR_FEATURE_NAMES
+    assert train_bar_selector(round_tripped) == expected
+
+
+def test_missing_feature_key_is_rejected() -> None:
     source = _examples_artifact()
     example = source["examples"][0]
-    values = example["barSummary"]["featureValues"]
-    example["barSummary"]["featureValues"] = dict(reversed(list(values.items())))
+    example["barSummary"]["featureValues"].pop(BAR_FEATURE_NAMES[-1])
     _reseal_summary(example["barSummary"])
     _reseal_example(example)
     _reseal_source(source)
-    with pytest.raises(BarSelectorError, match="frozen order"):
+    with pytest.raises(BarSelectorError, match="BAR_FEATURE_NAMES key set"):
         train_bar_selector(source)
 
 

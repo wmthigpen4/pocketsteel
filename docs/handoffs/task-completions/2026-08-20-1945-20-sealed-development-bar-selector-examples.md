@@ -1,5 +1,15 @@
 # Sealed development bar-selector examples
 
+## 2026-08-20 canonical JSON feature-map update
+
+Compact bar construction now treats `featureValues` as a JSON object: it
+requires the exact `BAR_FEATURE_NAMES` key set, ignores object iteration order,
+and explicitly reconstructs the compact mapping in frozen model-feature order.
+This preserves strict missing/extra-key rejection while remaining correct when
+canonical publication uses `sort_keys=True` and alphabetizes nested object
+keys. A synthetic regression reverses the source summary's feature-map order
+and proves the builder normalizes it without changing estimator inputs.
+
 ## 2026-08-20 audio-lineage hardening update
 
 The example-builder boundary now requires the complete
@@ -188,12 +198,14 @@ production, deployment, auth, UI, or model file was edited by this task.
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_examples.py`
-  - `53 passed`
+  - `54 passed`
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_examples.py tests/test_chord_reader_bar_selector.py`
-  - `118 passed`
+  - `120 passed`
 - Runtime/examples/selector/uncertainty integration with the two environment-
   dependent live Chrome launches deselected:
-  - `194 passed, 2 deselected`
+  - `196 passed, 2 deselected`
+- Full non-browser chord-reader suite with the same two nodes deselected:
+  - `530 passed, 4 skipped, 2 deselected`
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/bar_examples.py tests/test_chord_reader_bar_examples.py`
   - passed
 - `.venv/bin/python -m py_compile steel_guitar_rag/chord_reader/bar_examples.py tests/test_chord_reader_bar_examples.py`

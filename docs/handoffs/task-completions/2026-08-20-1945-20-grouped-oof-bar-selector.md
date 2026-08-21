@@ -1,5 +1,15 @@
 # Development-only grouped OOF chord-bar selector
 
+## 2026-08-20 canonical JSON feature-map update
+
+Selector validation now requires the exact `BAR_FEATURE_NAMES` key set but
+does not treat JSON object iteration order as semantic. It always projects
+values by iterating `BAR_FEATURE_NAMES` explicitly before constructing the
+NumPy matrix. Missing and extra keys still fail closed, while a committed
+examples artifact rendered with `sort_keys=True` trains identically to its
+in-memory form. Focused tests cover the sorted-JSON round trip and prove the
+resulting selector artifact is byte-for-byte canonical-equivalent.
+
 ## 2026-08-20 audio-lineage and application hardening update
 
 Training now strictly consumes the lineage-enriched examples artifact. The
@@ -167,12 +177,14 @@ deployment, UI, auth, or production file was edited by this task.
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_selector.py`
-  - `65 passed`
+  - `66 passed`
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_selector.py tests/test_chord_reader_bar_examples.py`
-  - `118 passed`
+  - `120 passed`
 - Runtime/examples/selector/uncertainty integration with the two environment-
   dependent live Chrome launches deselected:
-  - `194 passed, 2 deselected`
+  - `196 passed, 2 deselected`
+- Full non-browser chord-reader suite with the same two nodes deselected:
+  - `530 passed, 4 skipped, 2 deselected`
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/bar_selector.py tests/test_chord_reader_bar_selector.py`
   - passed
 - `.venv/bin/ruff format --check steel_guitar_rag/chord_reader/bar_selector.py tests/test_chord_reader_bar_selector.py`
