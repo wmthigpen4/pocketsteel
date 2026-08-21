@@ -96,6 +96,15 @@ _BAR_FEATURE_CONTRACT = {
         "timeEpsilonSeconds": _EPSILON,
         "predictionSegmentBoundaries": "frame-aligned except final duration",
     },
+    "timingDurationAlignment": {
+        "timingSource": "runtime-only explicit bar grid",
+        "runtimeDuration": "Math.round(decoded AudioBuffer duration * 1000) / 1000",
+        "predictionDuration": "full-precision frozen feature-cache duration",
+        "requiredRelation": (
+            "timingDurationSeconds == floor(predictionDurationSeconds*1000 + 0.5)/1000"
+        ),
+        "barEnd": "full-precision prediction duration",
+    },
     "winningProductScope": (
         "root, product, and ensemble evidence is weighted by exact overlap "
         "with decoded intervals assigned to the bar's winning predicted product"
@@ -784,8 +793,22 @@ def _validate_timing(timing_only: Mapping[str, Any], duration: float) -> dict[st
     if timing.get("schemaVersion") != EXPLICIT_BAR_GRID_SCHEMA:
         raise ValueError("timing_only must use the explicit bar-grid schema.")
     timing_duration = _positive_number(timing.get("durationSeconds"), "timing_only.durationSeconds")
-    if not math.isclose(timing_duration, duration, rel_tol=0, abs_tol=_EPSILON):
-        raise ValueError("Timing and prediction durations disagree.")
+    canonical_prediction_duration = math.floor(duration * 1000 + 0.5) / 1000
+    if not math.isclose(
+        timing_duration,
+        canonical_prediction_duration,
+        rel_tol=0,
+        abs_tol=_EPSILON,
+    ):
+        raise ValueError(
+            "Runtime timing duration must equal the exact player-canonical "
+            "millisecond rounding of the prediction duration."
+        )
+    duration_alignment = (
+        "exact"
+        if math.isclose(timing_duration, duration, rel_tol=0, abs_tol=_EPSILON)
+        else "player-canonical-millisecond"
+    )
     claimed_contract_sha256 = _required_sha256(
         timing.get("contractSha256"),
         "timing_only.contractSha256",
@@ -877,6 +900,8 @@ def _validate_timing(timing_only: Mapping[str, Any], duration: float) -> dict[st
 
     return {
         "starts": starts,
+        "durationSeconds": timing_duration,
+        "durationAlignment": duration_alignment,
         "contractSha256": claimed_contract_sha256,
         "sha256": _canonical_sha256(timing),
         "sourceClass": str(source_class),
@@ -1210,6 +1235,9 @@ def summarize_prediction_bars(
             "sourceClass": timing["sourceClass"],
             "sourceId": timing["sourceId"],
             "deployable": bool(timing["deployable"]),
+            "durationSeconds": timing["durationSeconds"],
+            "predictionDurationSeconds": float(evidence["duration"]),
+            "durationAlignment": timing["durationAlignment"],
             "gridStartSeconds": timing["gridStartSeconds"],
             "excludedPrefixDurationSeconds": timing["excludedPrefixDurationSeconds"],
             "barCount": len(bars),

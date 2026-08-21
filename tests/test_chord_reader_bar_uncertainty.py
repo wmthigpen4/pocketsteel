@@ -310,6 +310,28 @@ def test_partial_frames_final_truncation_and_non_aligned_bar_edges_are_integrate
     assert second["featureValues"]["boundaryEndEdgeProbability"] is None
 
 
+def test_runtime_duration_uses_exact_player_millisecond_alignment_without_tolerance() -> None:
+    prediction = _prediction(
+        0.2504,
+        [
+            {"start": 0.0, "end": 0.2, "label": "C:maj"},
+            {"start": 0.2, "end": 0.2504, "label": "G:maj"},
+        ],
+    )
+
+    result = summarize_prediction_bars(prediction, _timing(0.25, [0.0, 0.2]))
+
+    assert result["durationSeconds"] == pytest.approx(0.2504)
+    assert result["timing"]["durationSeconds"] == pytest.approx(0.25)
+    assert result["timing"]["predictionDurationSeconds"] == pytest.approx(0.2504)
+    assert result["timing"]["durationAlignment"] == "player-canonical-millisecond"
+    assert result["bars"][-1]["end"] == pytest.approx(0.2504)
+
+    mismatched = _timing(0.251, [0.0, 0.2])
+    with pytest.raises(ValueError, match="exact player-canonical millisecond rounding"):
+        summarize_prediction_bars(prediction, mismatched)
+
+
 def test_aligned_bar_end_uses_the_transition_into_the_next_frame() -> None:
     prediction = _prediction(
         0.3,
