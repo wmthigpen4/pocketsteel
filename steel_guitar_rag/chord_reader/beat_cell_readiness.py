@@ -38,10 +38,13 @@ from .beat_cell_selector import (
 )
 from .beat_cell_stage1 import make_funnel, validate_beat_cell_stage1_artifact
 from .beat_cell_stage2_contract import (
+    BEAT_CELL_FEATURE_SET_PUBLICATION_MODE,
     BEAT_CELL_ONE_SHOT_PROJECTION_SHA256,
     BEAT_CELL_READINESS_PROJECTION_SHA256,
+    BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE,
     BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256,
     BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256,
+    BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA,
     authority_path,
     load_beat_cell_stage2_authority,
 )
@@ -57,7 +60,7 @@ AUTHORITY_FILE_SHA256 = BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256
 AUTHORITY_CANONICAL_SHA256 = BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256
 READINESS_PROJECTION_SHA256 = BEAT_CELL_READINESS_PROJECTION_SHA256
 ONE_SHOT_PROJECTION_SHA256 = BEAT_CELL_ONE_SHOT_PROJECTION_SHA256
-IMPLEMENTATION_AUTHORITY_HEAD = "3e93d279e2d6308918e4e4df3801520f4211edb6"
+IMPLEMENTATION_AUTHORITY_HEAD = "0933007489656500ec17fec1f64628031564214f"
 
 FIXED_TARGET_COVERAGE = 0.50
 WILSON_ONE_SIDED_Z_95 = 1.6448536269514722
@@ -80,7 +83,8 @@ EXPECTED_GUITARSET_ROLE_REFERENCE_COUNTS = {"comp": 954, "solo": 1264}
 EXPECTED_GUITARSET_ROLE_REFERENCE_DURATION_MS = {"comp": 513043, "solo": 521156}
 EXPECTED_STAGE1_ADMISSION_PROJECTION_SHA256 = "9819e8a3c639179a04246c53e59ea85627178e33dd6a51d2e412a63082309be9"
 READINESS_PURPOSE = "one-shot development readiness only; not calibration, promotion, or player authorization"
-PUBLICATION_MODE = "canonical-new-path-only-retained-nofollow-dirfd-input-recheck-failure-atomic-v1"
+PUBLICATION_MODE = BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE
+_PUBLICATION_POLICY_FIELDS = frozenset({"schemaVersion", "featureSet", "singleJson"})
 
 EXPECTED_STAGE1_AGGREGATE_COUNT = {
     "T": 11234,
@@ -273,6 +277,19 @@ def _ratio(numerator: int | float, denominator: int | float) -> float | None:
     return numerator / denominator if denominator > 0 else None
 
 
+def _authority_publication_policy(authority: Mapping[str, Any]) -> Mapping[str, Any]:
+    output_paths = _mapping(authority.get("outputPaths"), "authority.outputPaths")
+    publication = _mapping(output_paths.get("publication"), "authority.outputPaths.publication")
+    _exact_fields(publication, _PUBLICATION_POLICY_FIELDS, "authority.outputPaths.publication")
+    if (
+        publication.get("schemaVersion") != BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA
+        or publication.get("featureSet") != BEAT_CELL_FEATURE_SET_PUBLICATION_MODE
+        or publication.get("singleJson") != PUBLICATION_MODE
+    ):
+        raise BeatCellReadinessError("The authority publication policy is not the exact frozen split policy.")
+    return publication
+
+
 def _authority_contract() -> dict[str, Any]:
     """Load and re-pin the one committed machine authority before artifact access."""
 
@@ -282,6 +299,7 @@ def _authority_contract() -> dict[str, Any]:
         raise BeatCellReadinessError("The committed beat-cell Stage-2 authority failed validation.") from error
     if canonical_sha256(authority) != AUTHORITY_CANONICAL_SHA256:
         raise BeatCellReadinessError("The committed beat-cell Stage-2 authority canonical hash drifted.")
+    _authority_publication_policy(authority)
     readiness = _mapping(authority.get("readiness"), "authority.readiness")
     one_shot = _mapping(authority.get("oneShot"), "authority.oneShot")
     if canonical_sha256(readiness) != READINESS_PROJECTION_SHA256:
@@ -1893,7 +1911,7 @@ def evaluate_beat_cell_readiness(
         "authority.outputPaths.readinessReport",
     )
     publication = {
-        "mode": PUBLICATION_MODE,
+        "mode": _authority_publication_policy(authority)["singleJson"],
         "outputPath": publication_path,
         "outputPathSha256": canonical_sha256(publication_path),
         "callerPathOverrideAllowed": False,
@@ -2361,6 +2379,7 @@ def validate_beat_cell_readiness_artifact(artifact: Mapping[str, Any]) -> dict[s
     )
     if (
         publication.get("mode") != PUBLICATION_MODE
+        or publication.get("mode") != _authority_publication_policy(authority)["singleJson"]
         or publication.get("outputPath") != exact_output
         or publication.get("outputPathSha256") != canonical_sha256(exact_output)
         or publication.get("callerPathOverrideAllowed") is not False

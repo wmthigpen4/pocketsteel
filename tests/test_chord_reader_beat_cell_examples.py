@@ -20,9 +20,12 @@ from steel_guitar_rag.chord_reader import beat_cell_stage2_contract as stage2_co
 from steel_guitar_rag.chord_reader.bar_promotion import canonical_sha256
 from steel_guitar_rag.chord_reader.beat_cell_stage2_contract import (
     BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256,
+    BEAT_CELL_FEATURE_SET_PUBLICATION_MODE,
+    BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE,
     BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256,
     BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256,
     BEAT_CELL_STAGE2_OUTPUT_PATHS,
+    BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA,
     BEAT_CELL_STAGE_A_PROJECTION_SHA256,
     BEAT_CELL_STAGE_B_PROJECTION_SHA256,
     load_beat_cell_stage2_authority,
@@ -138,6 +141,28 @@ def _synthetic_stage_a(
         source_stage1_summary_file_set_sha256=_digest("sidecar-file-set"),
     )
     return sidecar, prediction, feature_summary, manifest
+
+
+def _synthetic_feature_set_for_output(
+    monkeypatch: pytest.MonkeyPatch,
+    summary_output_root: Path,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    sidecar, _prediction_value, summary, _manifest = _synthetic_stage_a(monkeypatch)
+    manifest = examples.build_beat_cell_feature_set_manifest(
+        [summary],
+        summary_output_root=summary_output_root,
+        source_stage1_report_path=Path("/synthetic/stage1.json"),
+        source_stage1_report_file_sha256=_digest("stage1-file"),
+        source_stage1_summary_artifact_set_sha256=canonical_sha256(
+            [{"trackId": "track-1", "artifactSha256": sidecar["artifactSha256"]}]
+        ),
+        source_stage1_summary_file_set_sha256=_digest("sidecar-file-set"),
+    )
+    return summary, manifest
+
+
+def _staged_bytes(root: Path) -> dict[str, bytes]:
+    return {path.name: path.read_bytes() for path in sorted(root.iterdir())}
 
 
 def _zero_funnel() -> dict[str, Any]:
@@ -330,11 +355,11 @@ def _install_product_reconciliation_authority(
         "predictionIdentitySetSha256": source_inputs["predictionIdentitySetSha256"],
     }
     post_freeze_preflight = {
-        "schemaVersion": "chord_runtime_beat_cell_stage2_post_freeze_label_blind_preflight_v1",
+        "schemaVersion": "chord_runtime_beat_cell_stage2_post_freeze_label_blind_preflight_v2",
         "authorization": "exactly-two-deterministic-in-memory-committed-production-builder-runs-only",
         "authorizedRunCount": 2,
         "executionPhase": (
-            "only-after-R3-authority-and-corrected-production-code-are-committed-at-one-clean-HEAD-and-all-"
+            "only-after-R4-authority-and-corrected-production-code-are-committed-at-one-clean-HEAD-and-all-"
             "authority-source-hashes-are-final"
         ),
         "productionBuilder": {
@@ -392,7 +417,7 @@ def _install_product_reconciliation_authority(
         },
         "oneShotConsumption": {
             "consumesOfficialInvocation": False,
-            "consumesR3OneShot": False,
+            "consumesR4OneShot": False,
             "reason": "synthetic preflight is non-consuming",
         },
     }
@@ -628,11 +653,11 @@ def test_committed_authority_loader_and_projections_are_exact() -> None:
     authority = load_beat_cell_stage2_authority()
     assert canonical_sha256(authority) == BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256
     assert BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256 == (
-        "c738861f164022ce558258b2ecad4ebcbe707394750fe4bdc9cb97df5cd3e305"
+        "329bb235e760a9c665945817b21d4ea0e9d824a26251a668cad4d47fa5b7e2a1"
     )
     assert BEAT_CELL_STAGE_A_PROJECTION_SHA256 == ("814902fac2550294ce8e336a39b01db6c9012e628c0fdaeb3a1bfc31e13f0688")
     assert BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256 == (
-        "0735dc64d064f227bf4fcdd698ef1ff16644fbb31e261e7a057c5f021e693602"
+        "4b450d74df5314d68e7a8034d488b8d727144c2847e0ae628ba351c69d4ddfb0"
     )
     assert BEAT_CELL_STAGE_B_PROJECTION_SHA256 == ("ebf2cf85c1c854a8a9c30d0100bd27343612607b0c3fb440e9512b272cb5ff32")
     assert set(BEAT_CELL_STAGE2_OUTPUT_PATHS) == {
@@ -643,11 +668,42 @@ def test_committed_authority_loader_and_projections_are_exact() -> None:
         "readinessReport",
         "publication",
     }
+    assert BEAT_CELL_STAGE2_OUTPUT_PATHS["publication"] == {
+        "schemaVersion": BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA,
+        "featureSet": BEAT_CELL_FEATURE_SET_PUBLICATION_MODE,
+        "singleJson": BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE,
+    }
     assert all(
-        "/beat-cell-stage2-r3/" in value
+        "/beat-cell-stage2-r4/" in value
         for name, value in BEAT_CELL_STAGE2_OUTPUT_PATHS.items()
         if name != "publication"
     )
+
+
+@pytest.mark.parametrize("tamper", ("missing", "extra", "schema", "feature-set", "single-json"))
+def test_authority_split_publication_policy_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    tamper: str,
+) -> None:
+    authority = load_beat_cell_stage2_authority()
+    publication = authority["outputPaths"]["publication"]
+    if tamper == "missing":
+        publication.pop("singleJson")
+    elif tamper == "extra":
+        publication["alternate"] = "forbidden"
+    elif tamper == "schema":
+        publication["schemaVersion"] = "stale-publication-policy"
+    elif tamper == "feature-set":
+        publication["featureSet"] = "resealed-but-weakened"
+    else:
+        publication["singleJson"] = "resealed-but-weakened"
+    monkeypatch.setattr(
+        stage2_contract,
+        "BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256",
+        canonical_sha256(authority),
+    )
+    with pytest.raises(stage2_contract.BeatCellStage2ContractError, match="publication policy is not exact"):
+        stage2_contract.validate_beat_cell_stage2_authority(authority)
 
 
 @pytest.mark.parametrize(
@@ -660,7 +716,7 @@ def test_committed_authority_loader_and_projections_are_exact() -> None:
         ("nonmatching-module", "file hash is stale"),
     ),
 )
-def test_r3_stage_a_source_module_binding_fails_closed(
+def test_r4_stage_a_source_module_binding_fails_closed(
     monkeypatch: pytest.MonkeyPatch,
     tamper: str,
     message: str,
@@ -816,8 +872,11 @@ def test_multi_piece_fsum_overlap_can_form_a_three_way_tolerant_tie() -> None:
         "top-level-scoring-policy",
         "sweep-hash",
         "sweep-count-coherently-resealed",
+        "preflight-stale-schema",
         "preflight-authorized-run-count",
+        "preflight-stale-r3-execution-phase",
         "preflight-one-shot-consumption",
+        "preflight-stale-r3-one-shot-key",
         "preflight-forbidden-operation-count",
         "incident-parse-count",
         "incident-decision-input",
@@ -840,10 +899,20 @@ def test_complete_product_reconciliation_policy_tamper_is_rejected(
     elif tamper == "sweep-count-coherently-resealed":
         policy["labelBlindSweep"]["cellCount"] += 1
         policy["labelBlindSweepSha256"] = canonical_sha256(policy["labelBlindSweep"])
+    elif tamper == "preflight-stale-schema":
+        policy["postFreezeLabelBlindPreflight"]["schemaVersion"] = (
+            "chord_runtime_beat_cell_stage2_post_freeze_label_blind_preflight_v1"
+        )
     elif tamper == "preflight-authorized-run-count":
         policy["postFreezeLabelBlindPreflight"]["authorizedRunCount"] = 1
+    elif tamper == "preflight-stale-r3-execution-phase":
+        phase = policy["postFreezeLabelBlindPreflight"]["executionPhase"]
+        policy["postFreezeLabelBlindPreflight"]["executionPhase"] = phase.replace("R4", "R3")
     elif tamper == "preflight-one-shot-consumption":
-        policy["postFreezeLabelBlindPreflight"]["oneShotConsumption"]["consumesR3OneShot"] = True
+        policy["postFreezeLabelBlindPreflight"]["oneShotConsumption"]["consumesR4OneShot"] = True
+    elif tamper == "preflight-stale-r3-one-shot-key":
+        one_shot = policy["postFreezeLabelBlindPreflight"]["oneShotConsumption"]
+        one_shot["consumesR3OneShot"] = False
     elif tamper == "preflight-forbidden-operation-count":
         policy["postFreezeLabelBlindPreflight"]["forbiddenOperationCounts"]["officialRunnerInvocations"] = 1
     elif tamper == "incident-parse-count":
@@ -1476,6 +1545,366 @@ def test_official_stage_a_rejects_unpinned_audio_before_nested_path_or_root_acce
     assert not protected.exists()
 
 
+def test_official_feature_publication_uses_exact_in_memory_bytes_without_scratch(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    summary, manifest = _synthetic_feature_set_for_output(monkeypatch, summaries)
+    observed: dict[str, Any] = {}
+    original_publish = examples._publish_rendered_feature_set_with_precommit
+
+    def capture(
+        artifact_path: Path,
+        artifact_rendered: bytes,
+        rendered_summaries: dict[str, bytes],
+        summary_output_root: Path,
+        precommit: Any,
+    ) -> None:
+        observed["manifest"] = artifact_rendered
+        observed["summaries"] = rendered_summaries
+        original_publish(
+            artifact_path,
+            artifact_rendered,
+            rendered_summaries,
+            summary_output_root,
+            precommit,
+        )
+
+    def forbidden(*_args: Any, **_kwargs: Any) -> Any:
+        pytest.fail("a process-temp scratch directory was opened")
+
+    precommit_calls = 0
+
+    def precommit() -> None:
+        nonlocal precommit_calls
+        precommit_calls += 1
+
+    monkeypatch.setattr(examples, "_open_existing_directory", forbidden)
+    monkeypatch.setattr(examples, "_publish_rendered_feature_set_with_precommit", capture)
+    examples._publish_complete_feature_set_with_precommit(
+        output,
+        manifest,
+        [summary],
+        summaries,
+        precommit,
+    )
+
+    name = examples._feature_summary_filename(summary)
+    assert observed["manifest"] == _render(manifest)
+    assert dict(observed["summaries"]) == {name: _render(summary)}
+    with pytest.raises(TypeError):
+        observed["summaries"]["foreign.json"] = b"{}\n"
+    assert output.read_bytes() == _render(manifest)
+    assert (summaries / name).read_bytes() == _render(summary)
+    assert precommit_calls == 2
+
+
+def test_in_memory_feature_publication_rejects_resealed_wrong_manifest_path_before_output(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    summary, manifest = _synthetic_feature_set_for_output(monkeypatch, summaries)
+    tampered = deepcopy(manifest)
+    row = tampered["summaries"][0]
+    row["path"] = str(tmp_path / "foreign" / examples._feature_summary_filename(summary))
+    row["pathSha256"] = canonical_sha256(row["path"])
+    _rehash(row, "rowSha256")
+    tampered["summarySetSha256"] = canonical_sha256(tampered["summaries"])
+    _rehash(tampered, "artifactSha256")
+    assert examples.validate_beat_cell_feature_set(tampered, [summary])[0] == tampered
+
+    with pytest.raises(examples.BeatCellExamplesError, match="manifest-bound output name"):
+        examples._publish_complete_feature_set_with_precommit(
+            output,
+            tampered,
+            [summary],
+            summaries,
+            lambda: None,
+        )
+
+    assert not output.parent.parent.exists()
+
+
+def test_in_memory_feature_publication_rejects_duplicate_summary_before_output(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    summary, manifest = _synthetic_feature_set_for_output(monkeypatch, summaries)
+
+    with pytest.raises(examples.BeatCellExamplesError, match="exactly cover"):
+        examples._publish_complete_feature_set_with_precommit(
+            output,
+            manifest,
+            [summary, summary],
+            summaries,
+            lambda: None,
+        )
+
+    assert not output.parent.parent.exists()
+
+
+def test_in_memory_feature_publication_isolated_from_input_mutation_after_freeze(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    summary, manifest = _synthetic_feature_set_for_output(monkeypatch, summaries)
+    name = examples._feature_summary_filename(summary)
+    expected_summary = _render(summary)
+    expected_manifest = _render(manifest)
+    callback_count = 0
+
+    def mutate_original_input() -> None:
+        nonlocal callback_count
+        callback_count += 1
+        if callback_count == 1:
+            summary["trackId"] = "mutated-after-freeze"
+            manifest["schemaVersion"] = "mutated-after-freeze"
+
+    examples._publish_complete_feature_set_with_precommit(
+        output,
+        manifest,
+        [summary],
+        summaries,
+        mutate_original_input,
+    )
+
+    assert callback_count == 2
+    assert output.read_bytes() == expected_manifest
+    assert (summaries / name).read_bytes() == expected_summary
+
+
+def test_private_feature_root_substitution_before_rename_preserves_foreign_and_publishes_nothing(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    foreign_root: Path | None = None
+    stranded_owned = output.parent.parent / "stranded-owned-feature-set"
+
+    def substitute_private_root() -> None:
+        nonlocal foreign_root
+        private_roots = list(output.parent.parent.glob(".feature-set.*.tmp"))
+        assert len(private_roots) == 1
+        foreign_root = private_roots[0]
+        foreign_root.rename(stranded_owned)
+        foreign_root.mkdir()
+        (foreign_root / "foreign.txt").write_text("foreign", encoding="utf-8")
+
+    with pytest.raises(examples.BeatCellExamplesError, match="private feature-set root name changed"):
+        examples._publish_rendered_feature_set_with_precommit(
+            output,
+            b'{"schemaVersion":"synthetic"}\n',
+            {"summary.json": b'{"summary":true}\n'},
+            summaries,
+            substitute_private_root,
+        )
+
+    assert foreign_root is not None
+    assert (foreign_root / "foreign.txt").read_text(encoding="utf-8") == "foreign"
+    assert not stranded_owned.exists()
+    assert not output.parent.exists()
+
+
+def test_private_feature_root_substitution_during_descriptor_capture_preserves_foreign_and_owned_cleanup(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    original_open = examples.os.open
+    foreign_root: Path | None = None
+    stranded_owned = output.parent.parent / "stranded-created-feature-set"
+
+    def substitute_before_open(
+        path: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        flags: int,
+        mode: int = 0o777,
+        *,
+        dir_fd: int | None = None,
+    ) -> int:
+        nonlocal foreign_root
+        if (
+            foreign_root is None
+            and isinstance(path, str)
+            and path.startswith(".feature-set.")
+            and path.endswith(".tmp")
+            and dir_fd is not None
+        ):
+            foreign_root = output.parent.parent / path
+            foreign_root.rename(stranded_owned)
+            foreign_root.mkdir()
+            (foreign_root / "foreign.txt").write_text("foreign", encoding="utf-8")
+        return original_open(path, flags, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(examples.os, "open", substitute_before_open)
+    with pytest.raises(examples.BeatCellExamplesError, match="changed between creation and descriptor capture"):
+        examples._publish_rendered_feature_set_with_precommit(
+            output,
+            b'{"schemaVersion":"synthetic"}\n',
+            {"summary.json": b'{"summary":true}\n'},
+            summaries,
+            lambda: None,
+        )
+
+    assert foreign_root is not None
+    assert (foreign_root / "foreign.txt").read_text(encoding="utf-8") == "foreign"
+    assert not stranded_owned.exists()
+    assert not output.parent.exists()
+
+
+@pytest.mark.parametrize("target", ("manifest", "summary"))
+def test_private_feature_leaf_substitution_before_rename_preserves_foreign_and_publishes_nothing(
+    tmp_path: Path,
+    target: str,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    foreign_bytes = b'{"foreign":true}\n'
+    foreign_leaf: Path | None = None
+    stranded_leaf: Path | None = None
+
+    def substitute_private_leaf() -> None:
+        nonlocal foreign_leaf, stranded_leaf
+        private_roots = list(output.parent.parent.glob(".feature-set.*.tmp"))
+        assert len(private_roots) == 1
+        foreign_leaf = (
+            private_roots[0] / "manifest.json"
+            if target == "manifest"
+            else private_roots[0] / "summaries" / "summary.json"
+        )
+        stranded_leaf = foreign_leaf.with_name(f"stranded-{foreign_leaf.name}")
+        foreign_leaf.rename(stranded_leaf)
+        foreign_leaf.write_bytes(foreign_bytes)
+
+    with pytest.raises(examples.BeatCellExamplesError, match="inventory changed"):
+        examples._publish_rendered_feature_set_with_precommit(
+            output,
+            b'{"schemaVersion":"synthetic"}\n',
+            {"summary.json": b'{"summary":true}\n'},
+            summaries,
+            substitute_private_leaf,
+        )
+
+    assert foreign_leaf is not None and stranded_leaf is not None
+    assert foreign_leaf.read_bytes() == foreign_bytes
+    assert not stranded_leaf.exists()
+    assert not output.parent.exists()
+
+
+@pytest.mark.parametrize("location", ("root", "summaries"))
+def test_private_feature_extra_entry_before_rename_is_rejected_without_foreign_deletion(
+    tmp_path: Path,
+    location: str,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    foreign_entry: Path | None = None
+
+    def inject_extra_entry() -> None:
+        nonlocal foreign_entry
+        private_roots = list(output.parent.parent.glob(".feature-set.*.tmp"))
+        assert len(private_roots) == 1
+        parent = private_roots[0] if location == "root" else private_roots[0] / "summaries"
+        foreign_entry = parent / "foreign-extra.json"
+        foreign_entry.write_bytes(b'{"foreign":true}\n')
+
+    with pytest.raises(examples.BeatCellExamplesError, match="inventory changed"):
+        examples._publish_rendered_feature_set_with_precommit(
+            output,
+            b'{"schemaVersion":"synthetic"}\n',
+            {"summary.json": b'{"summary":true}\n'},
+            summaries,
+            inject_extra_entry,
+        )
+
+    assert foreign_entry is not None
+    assert foreign_entry.read_bytes() == b'{"foreign":true}\n'
+    assert not output.parent.exists()
+
+
+def test_owned_directory_rename_rejects_source_substitution_inside_rename_boundary(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "output" / "feature-set" / "manifest.json"
+    summaries = output.parent / "summaries"
+    original_rename = examples._rename_directory_noreplace
+    foreign_root: Path | None = None
+    stranded_owned = output.parent.parent / "stranded-owned-feature-set"
+
+    def substitute_then_rename(
+        parent_descriptor: int,
+        source_name: str,
+        destination_name: str,
+        expected_source_inode: tuple[int, int],
+    ) -> None:
+        nonlocal foreign_root
+        foreign_root = output.parent.parent / source_name
+        foreign_root.rename(stranded_owned)
+        foreign_root.mkdir()
+        (foreign_root / "foreign.txt").write_text("foreign", encoding="utf-8")
+        original_rename(
+            parent_descriptor,
+            source_name,
+            destination_name,
+            expected_source_inode,
+        )
+
+    monkeypatch.setattr(examples, "_rename_directory_noreplace", substitute_then_rename)
+    with pytest.raises(examples.BeatCellExamplesError, match="private feature-set root name changed"):
+        examples._publish_rendered_feature_set_with_precommit(
+            output,
+            b'{"schemaVersion":"synthetic"}\n',
+            {"summary.json": b'{"summary":true}\n'},
+            summaries,
+            lambda: None,
+        )
+
+    assert foreign_root is not None
+    assert (foreign_root / "foreign.txt").read_text(encoding="utf-8") == "foreign"
+    assert not stranded_owned.exists()
+    assert not output.parent.exists()
+
+
+@pytest.mark.parametrize(
+    ("stage", "policy_field"),
+    (("features", "featureSet"), ("examples", "singleJson")),
+)
+def test_official_publication_policy_tamper_fails_before_output_access(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    stage: str,
+    policy_field: str,
+) -> None:
+    outputs = deepcopy(examples.BEAT_CELL_STAGE2_OUTPUT_PATHS)
+    outputs["publication"][policy_field] = "resealed-but-weakened"
+    outputs["featureSetManifest"] = str(tmp_path / "feature-set" / "manifest.json")
+    outputs["featureSummaryRoot"] = str(tmp_path / "feature-set" / "summaries")
+    outputs["examplesArtifact"] = str(tmp_path / "examples" / "artifact.json")
+
+    def forbidden(*_args: Any, **_kwargs: Any) -> Any:
+        pytest.fail("output filesystem access occurred after publication-policy tamper")
+
+    monkeypatch.setattr(examples, "BEAT_CELL_STAGE2_OUTPUT_PATHS", outputs)
+    monkeypatch.setattr(examples, "_preflight_new_directory", forbidden)
+    monkeypatch.setattr(examples, "_preflight_new_json", forbidden)
+    preflight = (
+        examples._preflight_official_feature_outputs
+        if stage == "features"
+        else examples._preflight_official_examples_output
+    )
+    with pytest.raises(examples.BeatCellExamplesError, match="exact frozen split policy"):
+        preflight()
+
+
 @pytest.mark.parametrize("publication", ("feature-set", "examples"))
 def test_input_mutation_at_precommit_leaves_no_visible_output(
     tmp_path: Path,
@@ -1501,10 +1930,10 @@ def test_input_mutation_at_precommit_leaves_no_visible_output(
     (staging / "summary.json").write_text('{"summary":true}\n', encoding="utf-8")
     summary_output = output.parent / "summaries"
     with pytest.raises(examples.BeatCellExamplesError, match="changed before publication"):
-        examples._publish_complete_feature_set_with_precommit(
+        examples._publish_rendered_feature_set_with_precommit(
             output,
-            artifact,
-            staging,
+            _render(artifact),
+            _staged_bytes(staging),
             summary_output,
             mutate_then_verify,
         )
@@ -1815,20 +2244,25 @@ def test_source_mutation_during_complete_tree_rename_fails_postcheck_and_rolls_b
 
     original_rename = examples._rename_directory_noreplace
 
-    def rename_then_mutate(parent_descriptor: int, source_name: str, destination_name: str) -> None:
+    def rename_then_mutate(
+        parent_descriptor: int,
+        source_name: str,
+        destination_name: str,
+        expected_source_inode: tuple[int, int],
+    ) -> None:
         assert not output.parent.exists()
         private_root = output.parent.parent / source_name
         assert (private_root / "manifest.json").is_file()
         assert sorted(path.name for path in (private_root / "summaries").iterdir()) == ["summary.json"]
-        original_rename(parent_descriptor, source_name, destination_name)
+        original_rename(parent_descriptor, source_name, destination_name, expected_source_inode)
         source.write_text('{"version":2}\n', encoding="utf-8")
 
     monkeypatch.setattr(examples, "_rename_directory_noreplace", rename_then_mutate)
     with pytest.raises(examples.BeatCellExamplesError, match="changed before publication"):
-        examples._publish_complete_feature_set_with_precommit(
+        examples._publish_rendered_feature_set_with_precommit(
             output,
-            {"schemaVersion": "synthetic"},
-            staging,
+            _render({"schemaVersion": "synthetic"}),
+            _staged_bytes(staging),
             summary_output,
             verify,
         )
@@ -1862,11 +2296,11 @@ def test_complete_tree_final_callback_name_swap_preserves_foreign_and_cleans_own
             swapped.rename(stranded)
             swapped.write_bytes(foreign_bytes)
 
-    with pytest.raises(examples.BeatCellExamplesError, match="output name changed"):
-        examples._publish_complete_feature_set_with_precommit(
+    with pytest.raises(examples.BeatCellExamplesError, match="inventory changed"):
+        examples._publish_rendered_feature_set_with_precommit(
             output,
-            {"schemaVersion": "synthetic"},
-            staging,
+            _render({"schemaVersion": "synthetic"}),
+            _staged_bytes(staging),
             summaries,
             swap_at_final_callback,
         )
@@ -1901,10 +2335,10 @@ def test_complete_tree_final_callback_root_swap_preserves_foreign_and_cleans_own
             (output.parent / "foreign.txt").write_text("foreign", encoding="utf-8")
 
     with pytest.raises(Exception, match="path changed during publication"):
-        examples._publish_complete_feature_set_with_precommit(
+        examples._publish_rendered_feature_set_with_precommit(
             output,
-            {"schemaVersion": "synthetic"},
-            staging,
+            _render({"schemaVersion": "synthetic"}),
+            _staged_bytes(staging),
             summaries,
             swap_root_at_final_callback,
         )
@@ -2021,10 +2455,15 @@ def test_complete_feature_set_publishes_only_as_one_complete_tree(
 
     original_rename = examples._rename_directory_noreplace
 
-    def record_single_rename(parent_descriptor: int, source_name: str, destination_name: str) -> None:
+    def record_single_rename(
+        parent_descriptor: int,
+        source_name: str,
+        destination_name: str,
+        expected_source_inode: tuple[int, int],
+    ) -> None:
         nonlocal private_inode
         private_inode = os.stat(source_name, dir_fd=parent_descriptor, follow_symlinks=False).st_ino
-        original_rename(parent_descriptor, source_name, destination_name)
+        original_rename(parent_descriptor, source_name, destination_name, expected_source_inode)
 
     monkeypatch.setattr(examples, "_rename_directory_noreplace", record_single_rename)
 
@@ -2037,10 +2476,10 @@ def test_complete_feature_set_publishes_only_as_one_complete_tree(
             assert output.is_file()
             assert {path.name for path in summaries.iterdir()} == set(staged)
 
-    examples._publish_complete_feature_set_with_precommit(
+    examples._publish_rendered_feature_set_with_precommit(
         output,
-        {"schemaVersion": "synthetic"},
-        staging,
+        _render({"schemaVersion": "synthetic"}),
+        staged,
         summaries,
         verify_completion_barrier,
     )
@@ -2062,17 +2501,22 @@ def test_complete_feature_set_noreplace_preserves_concurrent_foreign_directory(
     summaries = output.parent / "summaries"
     original_rename = examples._rename_directory_noreplace
 
-    def race(parent_descriptor: int, source_name: str, destination_name: str) -> None:
+    def race(
+        parent_descriptor: int,
+        source_name: str,
+        destination_name: str,
+        expected_source_inode: tuple[int, int],
+    ) -> None:
         output.parent.mkdir()
         (output.parent / "foreign.txt").write_text("foreign", encoding="utf-8")
-        original_rename(parent_descriptor, source_name, destination_name)
+        original_rename(parent_descriptor, source_name, destination_name, expected_source_inode)
 
     monkeypatch.setattr(examples, "_rename_directory_noreplace", race)
     with pytest.raises(examples.BeatCellExamplesError, match="concurrently created"):
-        examples._publish_complete_feature_set_with_precommit(
+        examples._publish_rendered_feature_set_with_precommit(
             output,
-            {"schemaVersion": "synthetic"},
-            staging,
+            _render({"schemaVersion": "synthetic"}),
+            _staged_bytes(staging),
             summaries,
             lambda: None,
         )
@@ -2093,7 +2537,12 @@ def test_failure_at_single_directory_rename_has_no_visible_partial_official_root
     output = tmp_path / "output" / "feature-set" / "manifest.json"
     summaries = output.parent / "summaries"
 
-    def fail_at_publish(_parent_descriptor: int, source_name: str, _destination_name: str) -> None:
+    def fail_at_publish(
+        _parent_descriptor: int,
+        source_name: str,
+        _destination_name: str,
+        _expected_source_inode: tuple[int, int],
+    ) -> None:
         private_root = output.parent.parent / source_name
         assert not output.parent.exists()
         assert (private_root / "manifest.json").is_file()
@@ -2105,10 +2554,10 @@ def test_failure_at_single_directory_rename_has_no_visible_partial_official_root
 
     monkeypatch.setattr(examples, "_rename_directory_noreplace", fail_at_publish)
     with pytest.raises(examples.BeatCellExamplesError, match="sole directory rename"):
-        examples._publish_complete_feature_set_with_precommit(
+        examples._publish_rendered_feature_set_with_precommit(
             output,
-            {"schemaVersion": "synthetic"},
-            staging,
+            _render({"schemaVersion": "synthetic"}),
+            _staged_bytes(staging),
             summaries,
             lambda: None,
         )
@@ -2131,10 +2580,10 @@ def test_complete_feature_set_parent_swap_fails_before_publish_and_cleans_privat
         output.parent.parent.mkdir()
 
     with pytest.raises(Exception, match="path changed during publication"):
-        examples._publish_complete_feature_set_with_precommit(
+        examples._publish_rendered_feature_set_with_precommit(
             output,
-            {"schemaVersion": "synthetic"},
-            staging,
+            _render({"schemaVersion": "synthetic"}),
+            _staged_bytes(staging),
             summaries,
             swap_parent,
         )

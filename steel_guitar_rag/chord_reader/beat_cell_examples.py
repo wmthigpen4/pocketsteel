@@ -22,7 +22,7 @@ from pathlib import Path
 import secrets
 import shutil
 import stat
-import tempfile
+from types import MappingProxyType
 from typing import Any
 
 from . import bar_examples as _bar_examples
@@ -38,10 +38,13 @@ from .audio_lineage import (
 from .beat_cell_stage2_contract import (
     BEAT_CELL_FEATURE_MATH_PROJECTION,
     BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256,
+    BEAT_CELL_FEATURE_SET_PUBLICATION_MODE,
+    BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE,
     BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256,
     BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256,
     BEAT_CELL_STAGE2_SOURCE_INPUTS,
     BEAT_CELL_STAGE2_OUTPUT_PATHS,
+    BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA,
     BEAT_CELL_STAGE_A_PROJECTION_SHA256,
     BEAT_CELL_STAGE_B_PROJECTION,
     BEAT_CELL_STAGE_B_PROJECTION_SHA256,
@@ -49,7 +52,6 @@ from .beat_cell_stage2_contract import (
 )
 from .runtime_beat_grid import validate_runtime_beat_grid_receipt
 from .selector_development import (
-    _atomic_publish_json_set,
     _create_temporary_json,
     _directory_open_flags,
     _entry_stat,
@@ -58,7 +60,6 @@ from .selector_development import (
     _open_or_create_directory,
     _preflight_new_directory,
     _preflight_new_json,
-    _read_entry,
     _remove_owned_directory,
     _unlink_owned_entry,
     _verify_directory_path,
@@ -72,6 +73,9 @@ BEAT_CELL_EXAMPLE_SCHEMA = "chord_runtime_beat_cell_selector_example_v1"
 BEAT_CELL_EXAMPLES_SCHEMA = "chord_runtime_beat_cell_selector_examples_v1"
 BEAT_CELL_EXAMPLE_KEY_SCHEMA = "chord_runtime_beat_cell_selector_example_key_v1"
 BEAT_CELL_LABEL_AUDITS_SCHEMA = "chord_runtime_beat_cell_selector_label_audits_v1"
+_OFFICIAL_FEATURE_PUBLICATION_POLICY = BEAT_CELL_FEATURE_SET_PUBLICATION_MODE
+_OFFICIAL_SINGLE_JSON_PUBLICATION_POLICY = BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE
+_OFFICIAL_PUBLICATION_POLICY_FIELDS = frozenset({"schemaVersion", "featureSet", "singleJson"})
 
 FEATURE_NAMES = tuple(str(name) for name in BEAT_CELL_FEATURE_MATH_PROJECTION["featureNames"])
 if FEATURE_NAMES != tuple(_bar_uncertainty.BAR_FEATURE_NAMES):
@@ -1317,13 +1321,13 @@ def _expected_product_reconciliations() -> list[dict[str, Any]]:
         or sweep.get("coverageMismatchCountAtAbsoluteTolerance1e-9") != 0
         or sweep.get("dominanceMismatchCountAtAbsoluteTolerance1e-9") != 0
         or sweep.get("unexpectedReconciliationCount") != 0
-        or preflight.get("schemaVersion") != "chord_runtime_beat_cell_stage2_post_freeze_label_blind_preflight_v1"
+        or preflight.get("schemaVersion") != "chord_runtime_beat_cell_stage2_post_freeze_label_blind_preflight_v2"
         or preflight.get("authorization")
         != "exactly-two-deterministic-in-memory-committed-production-builder-runs-only"
         or preflight.get("authorizedRunCount") != 2
         or preflight.get("executionPhase")
         != (
-            "only-after-R3-authority-and-corrected-production-code-are-committed-at-one-clean-HEAD-and-all-"
+            "only-after-R4-authority-and-corrected-production-code-are-committed-at-one-clean-HEAD-and-all-"
             "authority-source-hashes-are-final"
         )
         or preflight_inventory.get("trackCount") != BEAT_CELL_STAGE2_SOURCE_INPUTS["trackCount"]
@@ -1349,8 +1353,14 @@ def _expected_product_reconciliations() -> list[dict[str, Any]]:
         != "opaque raw bytes/hash/stat only; no JSON parse or traversal"
         or not preflight_delta
         or any(value != "block" for value in preflight_delta.values())
+        or set(preflight_one_shot)
+        != {
+            "consumesOfficialInvocation",
+            "consumesR4OneShot",
+            "reason",
+        }
         or preflight_one_shot.get("consumesOfficialInvocation") is not False
-        or preflight_one_shot.get("consumesR3OneShot") is not False
+        or preflight_one_shot.get("consumesR4OneShot") is not False
         or preflight_builder.get("module") != "steel_guitar_rag/chord_reader/beat_cell_examples.py"
         or preflight_builder.get("callable") != "build_beat_cell_feature_summary"
         or preflight_builder.get("moduleFileSha256Source") != "featureMath.sourceStageAImplementationModuleFileSha256"
@@ -2920,8 +2930,16 @@ def _rename_directory_noreplace(
     parent_descriptor: int,
     source_name: str,
     destination_name: str,
+    expected_source_inode: tuple[int, int],
 ) -> None:
-    """Rename a directory within one retained parent without replacement."""
+    """Rename one owned directory within a retained parent without replacement."""
+
+    _verify_owned_directory_entry(
+        parent_descriptor,
+        source_name,
+        expected_source_inode,
+        "private feature-set root",
+    )
 
     library = ctypes.CDLL(None, use_errno=True)
     source = os.fsencode(source_name)
@@ -2951,6 +2969,12 @@ def _rename_directory_noreplace(
     else:
         raise BeatCellExamplesError("This platform lacks a supported no-replace directory rename primitive.")
     if result == 0:
+        _verify_owned_directory_entry(
+            parent_descriptor,
+            destination_name,
+            expected_source_inode,
+            "published complete feature-set root",
+        )
         return
     error_number = ctypes.get_errno()
     if error_number in {errno.EEXIST, errno.ENOTEMPTY}:
@@ -2958,6 +2982,100 @@ def _rename_directory_noreplace(
     raise BeatCellExamplesError(
         f"Could not atomically publish the complete feature-set directory: {os.strerror(error_number)}."
     )
+
+
+def _verify_owned_directory_entry(
+    parent_descriptor: int,
+    name: str,
+    expected_inode: tuple[int, int],
+    label: str,
+) -> None:
+    current = _entry_stat(parent_descriptor, name)
+    if current is None or not stat.S_ISDIR(current.st_mode) or _publication_identity(current) != expected_inode:
+        raise BeatCellExamplesError(f"The {label} name changed during publication.")
+
+
+def _create_owned_directory(
+    parent_descriptor: int,
+    name: str,
+    mode: int,
+    label: str,
+) -> tuple[int, tuple[int, int]]:
+    """Create, open, and bind one directory name to its just-created inode."""
+
+    descriptor: int | None = None
+    created_inode: tuple[int, int] | None = None
+    try:
+        os.mkdir(name, mode=mode, dir_fd=parent_descriptor)
+        created = _entry_stat(parent_descriptor, name)
+        if created is None or not stat.S_ISDIR(created.st_mode):
+            raise BeatCellExamplesError(f"The {label} was not created as a directory.")
+        created_inode = _publication_identity(created)
+        descriptor = os.open(
+            name,
+            _directory_open_flags(),
+            dir_fd=parent_descriptor,
+        )
+        opened = os.fstat(descriptor)
+        if not stat.S_ISDIR(opened.st_mode) or _publication_identity(opened) != created_inode:
+            raise BeatCellExamplesError(f"The {label} changed between creation and descriptor capture.")
+        _verify_owned_directory_entry(parent_descriptor, name, created_inode, label)
+        return descriptor, created_inode
+    except BaseException:
+        if descriptor is not None:
+            os.close(descriptor)
+        if created_inode is not None:
+            _remove_owned_directory(parent_descriptor, name, created_inode)
+            _remove_all_owned_directories(parent_descriptor, created_inode)
+        raise
+
+
+def _directory_inventory(descriptor: int, label: str) -> set[str]:
+    try:
+        return set(os.listdir(descriptor))
+    except OSError as error:
+        raise BeatCellExamplesError(f"Could not inspect the {label} inventory.") from error
+
+
+def _verify_exact_private_feature_tree(
+    private_descriptor: int,
+    summary_descriptor: int,
+    manifest_name: str,
+    manifest_inode: tuple[int, int],
+    manifest_rendered: bytes,
+    summary_directory_name: str,
+    summary_inode: tuple[int, int],
+    summary_entries: Mapping[str, tuple[tuple[int, int], bytes]],
+) -> None:
+    """Require the exact owned tree and bytes, with no additional entries."""
+
+    expected_root_names = {manifest_name, summary_directory_name}
+    expected_summary_names = set(summary_entries)
+    if (
+        _directory_inventory(private_descriptor, "private feature-set root") != expected_root_names
+        or _directory_inventory(summary_descriptor, "private feature-summary root") != expected_summary_names
+    ):
+        raise BeatCellExamplesError("The private feature-set inventory changed during publication.")
+    _verify_owned_directory_entry(
+        private_descriptor,
+        summary_directory_name,
+        summary_inode,
+        "private feature-summary root",
+    )
+    _verify_owned_json_entry(private_descriptor, manifest_name, manifest_inode)
+    if _read_owned_json_entry(private_descriptor, manifest_name, manifest_inode) != manifest_rendered:
+        raise BeatCellExamplesError("Private feature-set manifest bytes changed during publication.")
+    _verify_owned_json_entry(private_descriptor, manifest_name, manifest_inode)
+    for name, (owned_inode, expected_bytes) in summary_entries.items():
+        _verify_owned_json_entry(summary_descriptor, name, owned_inode)
+        if _read_owned_json_entry(summary_descriptor, name, owned_inode) != expected_bytes:
+            raise BeatCellExamplesError("Private feature summary bytes changed during publication.")
+        _verify_owned_json_entry(summary_descriptor, name, owned_inode)
+    if (
+        _directory_inventory(summary_descriptor, "private feature-summary root") != expected_summary_names
+        or _directory_inventory(private_descriptor, "private feature-set root") != expected_root_names
+    ):
+        raise BeatCellExamplesError("The private feature-set inventory changed during publication.")
 
 
 def _link_private_json(
@@ -2994,19 +3112,66 @@ def _link_private_json(
         _unlink_owned_entry(parent_descriptor, temporary_name, temporary_inode)
 
 
-def _publish_complete_feature_set_with_precommit(
-    artifact_path: Path,
+def _freeze_feature_set_publication(
     artifact: Mapping[str, Any],
-    staging_summary_root: Path,
+    summaries: Sequence[Mapping[str, Any]],
+    summary_output_root: Path,
+) -> tuple[bytes, Mapping[str, bytes]]:
+    """Bind one manifest to immutable, exactly named in-memory summary bytes."""
+
+    sealed_artifact, sealed_summaries = validate_beat_cell_feature_set(artifact, summaries)
+    summary_output = _absolute(summary_output_root)
+    bindings = {str(row["trackId"]): row for row in sealed_artifact["summaries"]}
+    rendered: dict[str, bytes] = {}
+    for summary in sealed_summaries:
+        track_id = str(summary["trackId"])
+        name = _feature_summary_filename(summary)
+        raw = _render_json(summary)
+        expected_path = str(summary_output / name)
+        binding = bindings[track_id]
+        if (
+            Path(name).name != name
+            or Path(name).suffix.lower() != ".json"
+            or name in rendered
+            or binding["path"] != expected_path
+            or binding["pathSha256"] != canonical_sha256(expected_path)
+            or binding["fileSha256"] != hashlib.sha256(raw).hexdigest()
+            or binding["artifactSha256"] != summary["artifactSha256"]
+        ):
+            raise BeatCellExamplesError("A feature summary does not have one exact manifest-bound output name.")
+        rendered[name] = raw
+    if not rendered or len(rendered) != len(bindings):
+        raise BeatCellExamplesError("Feature summary publication inventory is incomplete or duplicated.")
+    return _render_json(sealed_artifact), MappingProxyType(rendered)
+
+
+def _publish_rendered_feature_set_with_precommit(
+    artifact_path: Path,
+    artifact_rendered: bytes,
+    rendered_summaries: Mapping[str, bytes],
     summary_output_root: Path,
     precommit: Any,
 ) -> None:
-    """Publish manifest plus all summaries as one no-replace directory rename.
+    """Publish already-bound bytes as one no-replace directory rename.
 
     The complete tree is built under an unpublished hidden sibling.  Therefore
     a crash before the single rename cannot expose a partial official summary
     root, while a crash after it can expose only the complete tree.
     """
+
+    if not isinstance(artifact_rendered, bytes):
+        raise BeatCellExamplesError("Rendered feature-set manifest must be immutable bytes.")
+    staged_summaries: tuple[tuple[str, bytes], ...] = tuple(
+        sorted(rendered_summaries.items(), key=lambda item: item[0])
+    )
+    if not staged_summaries or any(
+        not isinstance(name, str)
+        or Path(name).name != name
+        or Path(name).suffix.lower() != ".json"
+        or not isinstance(raw, bytes)
+        for name, raw in staged_summaries
+    ):
+        raise BeatCellExamplesError("Rendered feature summaries must be a nonempty flat JSON byte mapping.")
 
     artifact_output = _absolute(artifact_path)
     summary_output = _absolute(summary_output_root)
@@ -3019,10 +3184,6 @@ def _publish_complete_feature_set_with_precommit(
         raise BeatCellExamplesError("Feature manifest and summaries must share one feature-set directory.")
     _preflight_new_directory(feature_set_root, "complete feature-set output")
 
-    staging_descriptor, staging_inode = _open_existing_directory(
-        staging_summary_root,
-        "staging feature-summary root",
-    )
     parent_descriptor: int | None = None
     parent_inode: tuple[int, int] | None = None
     private_descriptor: int | None = None
@@ -3035,29 +3196,6 @@ def _publish_complete_feature_set_with_precommit(
     summary_entries: list[tuple[str, tuple[int, int]]] = []
     succeeded = False
     try:
-        summary_names = sorted(os.listdir(staging_descriptor))
-        if not summary_names:
-            raise BeatCellExamplesError("Staged feature summaries must be nonempty.")
-        staged_summaries: list[tuple[str, bytes]] = []
-        for name in summary_names:
-            if Path(name).name != name or Path(name).suffix.lower() != ".json":
-                raise BeatCellExamplesError("Staged summaries must be flat regular JSON files.")
-            source_stat = _entry_stat(staging_descriptor, name)
-            if source_stat is None or not stat.S_ISREG(source_stat.st_mode):
-                raise BeatCellExamplesError("Staged summaries must be flat regular JSON files.")
-            source_inode = _publication_identity(source_stat)
-            source_bytes = _read_entry(staging_descriptor, name)
-            current = _entry_stat(staging_descriptor, name)
-            if current is None or _publication_identity(current) != source_inode:
-                raise BeatCellExamplesError("A staged feature summary changed while captured.")
-            staged_summaries.append((name, source_bytes))
-        _verify_directory_path(
-            staging_summary_root,
-            staging_descriptor,
-            staging_inode,
-            "staging feature-summary root",
-        )
-
         parent_descriptor, parent_inode = _open_or_create_directory(
             feature_set_root.parent,
             "feature-set output parent",
@@ -3067,7 +3205,12 @@ def _publish_complete_feature_set_with_precommit(
         for _attempt in range(128):
             candidate = f".{feature_set_root.name}.{secrets.token_hex(16)}.tmp"
             try:
-                os.mkdir(candidate, mode=0o700, dir_fd=parent_descriptor)
+                private_descriptor, private_inode = _create_owned_directory(
+                    parent_descriptor,
+                    candidate,
+                    0o700,
+                    "private feature-set root",
+                )
             except FileExistsError:
                 continue
             private_name = candidate
@@ -3075,21 +3218,13 @@ def _publish_complete_feature_set_with_precommit(
             break
         if private_name is None:
             raise BeatCellExamplesError("Could not reserve a private feature-set staging directory.")
-        private_descriptor = os.open(
-            private_name,
-            _directory_open_flags(),
-            dir_fd=parent_descriptor,
-        )
-        private_inode = _publication_identity(os.fstat(private_descriptor))
-        os.mkdir(summary_output.name, mode=0o755, dir_fd=private_descriptor)
-        summary_descriptor = os.open(
+        summary_descriptor, summary_inode = _create_owned_directory(
+            private_descriptor,
             summary_output.name,
-            _directory_open_flags(),
-            dir_fd=private_descriptor,
+            0o755,
+            "private feature-summary root",
         )
-        summary_inode = _publication_identity(os.fstat(summary_descriptor))
 
-        artifact_rendered = _render_json(artifact)
         manifest_inode = _link_private_json(
             private_descriptor,
             artifact_output.name,
@@ -3097,6 +3232,10 @@ def _publish_complete_feature_set_with_precommit(
         )
         for name, source_bytes in staged_summaries:
             summary_entries.append((name, _link_private_json(summary_descriptor, name, source_bytes)))
+        summary_inode_by_name = dict(summary_entries)
+        summary_entry_bindings = {
+            name: (summary_inode_by_name[name], source_bytes) for name, source_bytes in staged_summaries
+        }
         os.fsync(summary_descriptor)
         os.fsync(private_descriptor)
         os.fsync(parent_descriptor)
@@ -3110,12 +3249,29 @@ def _publish_complete_feature_set_with_precommit(
             parent_inode,
             "feature-set output parent",
         )
+        _verify_owned_directory_entry(
+            parent_descriptor,
+            private_name,
+            private_inode,
+            "private feature-set root",
+        )
+        _verify_exact_private_feature_tree(
+            private_descriptor,
+            summary_descriptor,
+            artifact_output.name,
+            manifest_inode,
+            artifact_rendered,
+            summary_output.name,
+            summary_inode,
+            summary_entry_bindings,
+        )
         if _entry_stat(parent_descriptor, feature_set_root.name) is not None:
             raise BeatCellExamplesError("Feature-set output appeared before publication.")
         _rename_directory_noreplace(
             parent_descriptor,
             private_name,
             feature_set_root.name,
+            private_inode,
         )
         active_root_name = feature_set_root.name
         os.fsync(parent_descriptor)
@@ -3132,11 +3288,16 @@ def _publish_complete_feature_set_with_precommit(
             summary_inode,
             "published feature-summary root",
         )
-        if _read_entry(private_descriptor, artifact_output.name) != artifact_rendered:
-            raise BeatCellExamplesError("Published feature-set manifest did not round-trip.")
-        for name, source_bytes in staged_summaries:
-            if _read_entry(summary_descriptor, name) != source_bytes:
-                raise BeatCellExamplesError("Published feature summary did not round-trip.")
+        _verify_exact_private_feature_tree(
+            private_descriptor,
+            summary_descriptor,
+            artifact_output.name,
+            manifest_inode,
+            artifact_rendered,
+            summary_output.name,
+            summary_inode,
+            summary_entry_bindings,
+        )
 
         # Barrier 2 closes the small rename/verification window.  Failure
         # rolls back only the directory inode created by this invocation.
@@ -3159,25 +3320,16 @@ def _publish_complete_feature_set_with_precommit(
             summary_inode,
             "published feature-summary root",
         )
-        _verify_owned_json_entry(
+        _verify_exact_private_feature_tree(
             private_descriptor,
+            summary_descriptor,
             artifact_output.name,
             manifest_inode,
+            artifact_rendered,
+            summary_output.name,
+            summary_inode,
+            summary_entry_bindings,
         )
-        if _read_owned_json_entry(private_descriptor, artifact_output.name, manifest_inode) != artifact_rendered:
-            raise BeatCellExamplesError("Published feature-set manifest changed after the final source barrier.")
-        _verify_owned_json_entry(
-            private_descriptor,
-            artifact_output.name,
-            manifest_inode,
-        )
-        summary_inode_by_name = dict(summary_entries)
-        for name, source_bytes in staged_summaries:
-            owned_inode = summary_inode_by_name[name]
-            _verify_owned_json_entry(summary_descriptor, name, owned_inode)
-            if _read_owned_json_entry(summary_descriptor, name, owned_inode) != source_bytes:
-                raise BeatCellExamplesError("A published feature summary changed after the final source barrier.")
-            _verify_owned_json_entry(summary_descriptor, name, owned_inode)
         _verify_directory_path(
             summary_output,
             summary_descriptor,
@@ -3231,7 +3383,29 @@ def _publish_complete_feature_set_with_precommit(
             os.close(summary_descriptor)
         if parent_descriptor is not None:
             os.close(parent_descriptor)
-        os.close(staging_descriptor)
+
+
+def _publish_complete_feature_set_with_precommit(
+    artifact_path: Path,
+    artifact: Mapping[str, Any],
+    summaries: Sequence[Mapping[str, Any]],
+    summary_output_root: Path,
+    precommit: Any,
+) -> None:
+    """Validate, freeze, and publish the exact in-memory feature-set inventory."""
+
+    artifact_rendered, rendered_summaries = _freeze_feature_set_publication(
+        artifact,
+        summaries,
+        summary_output_root,
+    )
+    _publish_rendered_feature_set_with_precommit(
+        artifact_path,
+        artifact_rendered,
+        rendered_summaries,
+        summary_output_root,
+        precommit,
+    )
 
 
 def _require_disjoint_paths(outputs: Sequence[Path], sources: Sequence[Path]) -> None:
@@ -3248,7 +3422,22 @@ def _require_disjoint_paths(outputs: Sequence[Path], sources: Sequence[Path]) ->
                 raise BeatCellExamplesError("Official Stage-2 outputs must be disjoint from all sources.")
 
 
+def _official_publication_policy() -> Mapping[str, Any]:
+    publication = BEAT_CELL_STAGE2_OUTPUT_PATHS.get("publication")
+    if (
+        not isinstance(publication, Mapping)
+        or set(publication) != _OFFICIAL_PUBLICATION_POLICY_FIELDS
+        or publication.get("schemaVersion") != BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA
+        or publication.get("featureSet") != _OFFICIAL_FEATURE_PUBLICATION_POLICY
+        or publication.get("singleJson") != _OFFICIAL_SINGLE_JSON_PUBLICATION_POLICY
+    ):
+        raise BeatCellExamplesError("Official publication policy is not the exact frozen split policy.")
+    return publication
+
+
 def _preflight_official_feature_outputs() -> tuple[Path, Path]:
+    if _official_publication_policy()["featureSet"] != _OFFICIAL_FEATURE_PUBLICATION_POLICY:
+        raise BeatCellExamplesError("Official feature publication policy is not the exact frozen v2 policy.")
     output = Path(str(BEAT_CELL_STAGE2_OUTPUT_PATHS["featureSetManifest"]))
     summaries = Path(str(BEAT_CELL_STAGE2_OUTPUT_PATHS["featureSummaryRoot"]))
     feature_set_root = _absolute(output).parent
@@ -3277,6 +3466,8 @@ def _preflight_official_feature_outputs() -> tuple[Path, Path]:
 
 
 def _preflight_official_examples_output() -> Path:
+    if _official_publication_policy()["singleJson"] != _OFFICIAL_SINGLE_JSON_PUBLICATION_POLICY:
+        raise BeatCellExamplesError("Official examples publication policy is not the exact frozen v1 policy.")
     output = Path(str(BEAT_CELL_STAGE2_OUTPUT_PATHS["examplesArtifact"]))
     _preflight_new_json(output, "official examples artifact")
     source = BEAT_CELL_STAGE2_SOURCE_INPUTS
@@ -3479,17 +3670,13 @@ def run_official_beat_cell_features() -> dict[str, Any]:
         _verify_snapshot(audio_path, audio_raw, audio_inode, "audio lineage")
         _verify_official_label_blind_sources(label_blind_snapshot)
 
-    with tempfile.TemporaryDirectory(prefix="beat-cell-stage2-features-") as temporary:
-        staging_root = Path(temporary)
-        staged = {staging_root / _feature_summary_filename(summary): summary for summary in summaries}
-        _atomic_publish_json_set(staged)
-        _publish_complete_feature_set_with_precommit(
-            manifest_path,
-            manifest,
-            staging_root,
-            summary_root,
-            precommit,
-        )
+    _publish_complete_feature_set_with_precommit(
+        manifest_path,
+        manifest,
+        summaries,
+        summary_root,
+        precommit,
+    )
     return deepcopy(manifest)
 
 

@@ -686,6 +686,23 @@ def test_train_cli_refuses_existing_destination_before_calling_trainer(
     assert called is False
 
 
+@pytest.mark.parametrize("field", ("schemaVersion", "featureSet", "singleJson"))
+def test_selector_cli_rejects_split_publication_policy_tamper_before_access(
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+) -> None:
+    authority = deepcopy(selector_cli.load_beat_cell_stage2_authority())
+    authority["outputPaths"]["publication"][field] = "resealed-but-weakened"
+
+    def forbidden(*_args: Any, **_kwargs: Any) -> Any:
+        pytest.fail("source or destination access occurred after publication-policy tamper")
+
+    monkeypatch.setattr(selector_cli, "load_beat_cell_stage2_authority", lambda: deepcopy(authority))
+    monkeypatch.setattr(selector_cli, "_preflight_new_output", forbidden)
+    monkeypatch.setattr(selector_cli, "_sealed_read_snapshot", forbidden)
+    assert selector_cli.main(["train"]) == 1
+
+
 def test_official_train_rejects_coherently_resealed_wrong_stage1_binding_before_fit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -429,6 +429,19 @@ def test_exact_complete_stage1_admission_projection_receipt_is_frozen() -> None:
     )
 
 
+@pytest.mark.parametrize("field", ("schemaVersion", "featureSet", "singleJson"))
+def test_readiness_rejects_split_publication_policy_tamper_before_artifact_access(
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+) -> None:
+    authority = deepcopy(load_beat_cell_stage2_authority())
+    authority["outputPaths"]["publication"][field] = "resealed-but-weakened"
+    monkeypatch.setattr(readiness, "load_beat_cell_stage2_authority", lambda: deepcopy(authority))
+    monkeypatch.setattr(readiness, "AUTHORITY_CANONICAL_SHA256", canonical_sha256(authority))
+    with pytest.raises(readiness.BeatCellReadinessError, match="exact frozen split policy"):
+        readiness._authority_contract()
+
+
 @pytest.mark.parametrize("diagnostic", ["outer-fold-slice", "feature-missingness", "feature-z"])
 def test_standalone_validator_recomputes_every_mandatory_diagnostic(
     diagnostic: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

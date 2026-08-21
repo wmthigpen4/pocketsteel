@@ -20,13 +20,21 @@ from .bar_promotion import canonical_sha256
 
 
 BEAT_CELL_STAGE2_AUTHORITY_SCHEMA = "chord_runtime_beat_cell_stage2_preregistration_v1"
-BEAT_CELL_STAGE2_AUTHORITY_RELATIVE_PATH = Path(
-    "docs/handoffs/task-completions/2026-08-21-0740-20-beat-cell-stage2-r3-recovery-preregistration.json"
+BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA = "chord_runtime_beat_cell_stage2_publication_policy_v2"
+BEAT_CELL_FEATURE_SET_PUBLICATION_MODE = (
+    "canonical-new-path-only-retained-nofollow-dirfd-input-recheck-failure-atomic-"
+    "direct-in-memory-exact-rendered-inventory-owned-complete-tree-v2"
 )
-BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256 = "c738861f164022ce558258b2ecad4ebcbe707394750fe4bdc9cb97df5cd3e305"
-BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256 = "1050b7c7f676b04431d04b8009827d8695e7e22896917ad9b39d29f3edf1f761"
+BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE = (
+    "canonical-new-path-only-retained-nofollow-dirfd-input-recheck-failure-atomic-v1"
+)
+BEAT_CELL_STAGE2_AUTHORITY_RELATIVE_PATH = Path(
+    "docs/handoffs/task-completions/2026-08-21-1019-20-beat-cell-stage2-r4-final-source-amended-preregistration.json"
+)
+BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256 = "329bb235e760a9c665945817b21d4ea0e9d824a26251a668cad4d47fa5b7e2a1"
+BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256 = "a606cfefb1026bc29d335aeb9e73f0adead459a6e789e550aaff35bca214e7c9"
 BEAT_CELL_STAGE_A_PROJECTION_SHA256 = "814902fac2550294ce8e336a39b01db6c9012e628c0fdaeb3a1bfc31e13f0688"
-BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256 = "0735dc64d064f227bf4fcdd698ef1ff16644fbb31e261e7a057c5f021e693602"
+BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256 = "4b450d74df5314d68e7a8034d488b8d727144c2847e0ae628ba351c69d4ddfb0"
 BEAT_CELL_STAGE_B_PROJECTION_SHA256 = "ebf2cf85c1c854a8a9c30d0100bd27343612607b0c3fb440e9512b272cb5ff32"
 BEAT_CELL_SELECTOR_CORE_PROJECTION_SHA256 = "2c0b541418b6360b2e79945375b4638bcc50eb1733894311dedcb9b566f156cf"
 BEAT_CELL_READINESS_PROJECTION_SHA256 = "81f58801c789370e06104203117331b8e2d487e3055d14b7a1831e1c22b73b18"
@@ -56,6 +64,17 @@ _PROJECTION_HASHES = {
     "readiness": BEAT_CELL_READINESS_PROJECTION_SHA256,
     "oneShot": BEAT_CELL_ONE_SHOT_PROJECTION_SHA256,
 }
+_OUTPUT_PATH_FIELDS = frozenset(
+    {
+        "featureSetManifest",
+        "featureSummaryRoot",
+        "examplesArtifact",
+        "selectorArtifact",
+        "readinessReport",
+        "publication",
+    }
+)
+_PUBLICATION_POLICY_FIELDS = frozenset({"schemaVersion", "featureSet", "singleJson"})
 
 
 class BeatCellStage2ContractError(ValueError):
@@ -185,6 +204,18 @@ def validate_beat_cell_stage2_authority(authority: Mapping[str, Any]) -> dict[st
         or value.get("promotionEligible") is not False
     ):
         raise BeatCellStage2ContractError("Stage-2 authority is not the frozen development-only envelope.")
+    output_paths = value.get("outputPaths")
+    if not isinstance(output_paths, Mapping) or set(output_paths) != _OUTPUT_PATH_FIELDS:
+        raise BeatCellStage2ContractError("Stage-2 authority outputPaths fields are not exact.")
+    publication = output_paths.get("publication")
+    if (
+        not isinstance(publication, Mapping)
+        or set(publication) != _PUBLICATION_POLICY_FIELDS
+        or publication.get("schemaVersion") != BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA
+        or publication.get("featureSet") != BEAT_CELL_FEATURE_SET_PUBLICATION_MODE
+        or publication.get("singleJson") != BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE
+    ):
+        raise BeatCellStage2ContractError("Stage-2 authority publication policy is not exact.")
     if canonical_sha256(value) != BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256:
         raise BeatCellStage2ContractError("Stage-2 authority canonical hash is stale.")
     for name, expected in _PROJECTION_HASHES.items():
@@ -250,6 +281,7 @@ BEAT_CELL_ONE_SHOT_PROJECTION = deepcopy(_AUTHORITY["oneShot"])
 __all__ = [
     "BEAT_CELL_FEATURE_MATH_PROJECTION",
     "BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256",
+    "BEAT_CELL_FEATURE_SET_PUBLICATION_MODE",
     "BEAT_CELL_ONE_SHOT_PROJECTION",
     "BEAT_CELL_ONE_SHOT_PROJECTION_SHA256",
     "BEAT_CELL_READINESS_PROJECTION",
@@ -261,11 +293,13 @@ __all__ = [
     "BEAT_CELL_STAGE2_AUTHORITY_RELATIVE_PATH",
     "BEAT_CELL_STAGE2_AUTHORITY_SCHEMA",
     "BEAT_CELL_STAGE2_OUTPUT_PATHS",
+    "BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA",
     "BEAT_CELL_STAGE2_SOURCE_INPUTS",
     "BEAT_CELL_STAGE_A_PROJECTION",
     "BEAT_CELL_STAGE_A_PROJECTION_SHA256",
     "BEAT_CELL_STAGE_B_PROJECTION",
     "BEAT_CELL_STAGE_B_PROJECTION_SHA256",
+    "BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE",
     "BeatCellStage2ContractError",
     "authority_path",
     "load_beat_cell_stage2_authority",

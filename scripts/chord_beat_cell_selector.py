@@ -27,6 +27,9 @@ from steel_guitar_rag.chord_reader.beat_cell_examples import (  # noqa: E402
     validate_beat_cell_examples_artifact,
 )
 from steel_guitar_rag.chord_reader.beat_cell_stage2_contract import (  # noqa: E402
+    BEAT_CELL_FEATURE_SET_PUBLICATION_MODE,
+    BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE,
+    BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA,
     load_beat_cell_stage2_authority,
 )
 
@@ -37,6 +40,7 @@ class BeatCellSelectorCliError(ValueError):
 
 _OFFICIAL_EXAMPLE_COUNT = 9376
 _OFFICIAL_EXAMPLE_DURATION_MILLISECONDS = 5074349
+_PUBLICATION_POLICY_FIELDS = frozenset({"schemaVersion", "featureSet", "singleJson"})
 _STAGE1_EXAMPLES_BINDINGS = {
     "sourceStage1FileSha256": "fileSha256",
     "sourceStage1CanonicalSha256": "canonicalSha256",
@@ -376,6 +380,15 @@ def _official_paths(authority: Mapping[str, Any] | None = None) -> tuple[Path, P
     output_paths = value.get("outputPaths")
     if not isinstance(output_paths, Mapping):  # pragma: no cover - authority validator owns this
         raise BeatCellSelectorCliError("The authority outputPaths projection is invalid.")
+    publication = output_paths.get("publication")
+    if (
+        not isinstance(publication, Mapping)
+        or set(publication) != _PUBLICATION_POLICY_FIELDS
+        or publication.get("schemaVersion") != BEAT_CELL_STAGE2_PUBLICATION_POLICY_SCHEMA
+        or publication.get("featureSet") != BEAT_CELL_FEATURE_SET_PUBLICATION_MODE
+        or publication.get("singleJson") != BEAT_CELL_SINGLE_JSON_PUBLICATION_MODE
+    ):
+        raise BeatCellSelectorCliError("The authority publication policy is not the exact frozen split policy.")
     examples = output_paths.get("examplesArtifact")
     selector = output_paths.get("selectorArtifact")
     if not isinstance(examples, str) or not isinstance(selector, str):
