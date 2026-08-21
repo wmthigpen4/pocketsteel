@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import inspect
 import json
+import math
 
 import pytest
 
@@ -663,6 +664,120 @@ def test_training_fails_closed_when_any_inner_optimizer_does_not_converge(
         train_bar_selector(_examples_artifact())
 
 
+def test_restarted_fista_converges_on_finite_real_scale_imbalanced_geometry() -> None:
+    from steel_guitar_rag.chord_reader import bar_selector
+
+    np = pytest.importorskip("numpy")
+    row_count = 992
+    feature_count = 48
+    row = np.arange(row_count, dtype=np.float64)
+    column = np.arange(feature_count, dtype=np.float64)
+    phase = (row + 0.5) / row_count
+    matrix = np.sin(
+        2.0 * np.pi * phase[:, None] * (1.0 + (column % 11.0))[None, :] + column[None, :] * 0.17
+    ) + 0.25 * np.cos(2.0 * np.pi * phase[:, None] * (1.0 + (column % 5.0))[None, :] - column[None, :] * 0.07)
+    labels = np.ones(row_count, dtype=np.float64)
+    labels[-40:] = 0.0
+    weights = 0.5 + (row % 17.0) / 17.0
+    normalizer = math.fsum(float(value) for value in weights)
+    center = (matrix * weights[:, None]).sum(axis=0) / normalizer
+    scale = np.sqrt((((matrix - center) ** 2) * weights[:, None]).sum(axis=0) / normalizer)
+    matrix = (matrix - center) / scale
+
+    first = bar_selector._fit_elastic_net(matrix, labels, weights, ELASTIC_NET_GRID[0], np)
+    second = bar_selector._fit_elastic_net(matrix, labels, weights, ELASTIC_NET_GRID[0], np)
+    assert first[2] < bar_selector.OPTIMIZER_MAX_ITERATIONS
+    assert first[3] is True
+    assert first[1:] == second[1:]
+    assert np.array_equal(first[0], second[0])
+
+    coefficients, intercept = first[:2]
+    alpha = ELASTIC_NET_GRID[0]["alpha"]
+    l1_ratio = ELASTIC_NET_GRID[0]["l1Ratio"]
+    l1_penalty = alpha * l1_ratio
+    l2_penalty = alpha * (1.0 - l1_ratio)
+    row_norm_bound = (
+        math.fsum(
+            float(weight) * (float(np.dot(values, values)) + 1.0)
+            for weight, values in zip(weights, matrix, strict=True)
+        )
+        / normalizer
+    )
+    step = 1.0 / (0.25 * row_norm_bound + l2_penalty)
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        probability = bar_selector._sigmoid(matrix @ coefficients + intercept, np)
+        residual = weights * (probability - labels) / normalizer
+        coefficient_gradient = matrix.T @ residual + l2_penalty * coefficients
+        intercept_gradient = math.fsum(float(value) for value in residual)
+        proposal = coefficients - step * coefficient_gradient
+        certificate_coefficients = np.sign(proposal) * np.maximum(
+            np.abs(proposal) - step * l1_penalty,
+            0.0,
+        )
+        certificate_intercept = intercept - step * intercept_gradient
+    stationarity = max(
+        float(np.max(np.abs(coefficients - certificate_coefficients), initial=0.0)) / step,
+        abs(intercept - certificate_intercept) / step,
+    )
+    assert stationarity <= bar_selector.OPTIMIZER_TOLERANCE
+
+
+def test_stable_sigmoid_handles_extreme_finite_logits_without_warning() -> None:
+    from steel_guitar_rag.chord_reader import bar_selector
+
+    np = pytest.importorskip("numpy")
+    logits = np.asarray([-np.finfo(np.float64).max, -1000.0, 0.0, 1000.0, np.finfo(np.float64).max])
+    with np.errstate(all="raise"):
+        probability = bar_selector._sigmoid(logits, np)
+    assert np.isfinite(probability).all()
+    assert probability.tolist() == [0.0, 0.0, 0.5, 1.0, 1.0]
+    assert [bar_selector._scalar_sigmoid(float(value)) for value in logits] == probability.tolist()
+
+
+def test_optimizer_rejects_nonfinite_inputs_and_overflowing_trace() -> None:
+    from steel_guitar_rag.chord_reader import bar_selector
+
+    np = pytest.importorskip("numpy")
+    labels = np.asarray([0.0, 1.0], dtype=np.float64)
+    weights = np.ones(2, dtype=np.float64)
+    for bad_value in (np.nan, np.inf, -np.inf):
+        matrix = np.asarray([[0.0], [bad_value]], dtype=np.float64)
+        with pytest.raises(BarSelectorError, match="inputs and positive weights must be finite"):
+            bar_selector._fit_elastic_net(matrix, labels, weights, ELASTIC_NET_GRID[0], np)
+    matrix = np.asarray([[-1e308], [1e308]], dtype=np.float64)
+    with pytest.raises(BarSelectorError, match="squared norms"):
+        bar_selector._fit_elastic_net(matrix, labels, weights, ELASTIC_NET_GRID[0], np)
+
+
+def test_exact_fsum_precision_curve_endpoint_matches_readiness_recomputation() -> None:
+    from steel_guitar_rag.chord_reader import bar_selector, selector_readiness
+
+    np = pytest.importorskip("numpy")
+    weights = np.asarray(
+        [1.0 / group_size for group_size in range(1, 38) for _index in range(group_size)],
+        dtype=np.float64,
+    )
+    count = len(weights)
+    probabilities = np.asarray(
+        [1.0 - (index // 3) / (count // 3 + 1.0) for index in range(count)],
+        dtype=np.float64,
+    )
+    labels = np.asarray([1.0 if index % 13 else 0.0 for index in range(count)], dtype=np.float64)
+    keys = [f"row-{index:04d}" for index in range(count)]
+    selector_curve = bar_selector._precision_coverage(probabilities, labels, weights, keys)
+    readiness_curve = selector_readiness._precision_coverage(probabilities, labels, weights, keys)
+    assert selector_curve == readiness_curve
+    assert bar_selector._aurc(probabilities, labels, weights, keys) == selector_readiness._aurc(
+        probabilities,
+        labels,
+        weights,
+        keys,
+    )
+    assert selector_curve[-1]["targetCoverage"] == 1.0
+    assert selector_curve[-1]["realizableCoverage"] == 1.0
+    assert all(0.0 <= point["realizableCoverage"] <= 1.0 for point in selector_curve)
+
+
 def test_no_group_crosses_outer_or_inner_partitions(trained: tuple[dict, dict]) -> None:
     _source, artifact = trained
     training = artifact["training"]
@@ -1271,6 +1386,33 @@ def test_artifact_validator_rejects_threshold_even_when_resealed(trained: tuple[
     tampered["operatingThreshold"] = 0.98
     _reseal_artifact(tampered)
     with pytest.raises(BarSelectorError, match="no operating threshold"):
+        validate_bar_selector_artifact(tampered)
+
+
+def test_artifact_validator_rejects_resealed_legacy_optimizer_identity(
+    trained: tuple[dict, dict],
+) -> None:
+    _source, artifact = trained
+    tampered = deepcopy(artifact)
+    tampered["estimator"]["optimizer"]["kind"] = "deterministic-proximal-gradient-v1"
+    _reseal_artifact(tampered)
+    with pytest.raises(BarSelectorError, match="optimizer contract was changed"):
+        validate_bar_selector_artifact(tampered)
+
+
+@pytest.mark.parametrize("replacement", [None, "clipped-logistic-sigmoid-v0"])
+def test_artifact_validator_rejects_resealed_missing_or_wrong_link_function(
+    trained: tuple[dict, dict],
+    replacement: str | None,
+) -> None:
+    _source, artifact = trained
+    tampered = deepcopy(artifact)
+    if replacement is None:
+        tampered["estimator"].pop("linkFunction")
+    else:
+        tampered["estimator"]["linkFunction"] = replacement
+    _reseal_artifact(tampered)
+    with pytest.raises(BarSelectorError, match="frozen schema|link function"):
         validate_bar_selector_artifact(tampered)
 
 

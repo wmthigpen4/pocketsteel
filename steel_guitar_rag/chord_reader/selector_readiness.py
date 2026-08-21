@@ -990,40 +990,57 @@ def _probability_blocks(
     keys: Sequence[str],
 ) -> list[dict[str, float]]:
     order = sorted(range(len(keys)), key=lambda index: (-float(probabilities[index]), keys[index]))
-    blocks: list[dict[str, float]] = []
+    grouped: list[dict[str, Any]] = []
     for index in order:
         probability = float(probabilities[index])
-        if not blocks or probability != blocks[-1]["probability"]:
-            blocks.append({"probability": probability, "weight": 0.0, "correctWeight": 0.0})
-        blocks[-1]["weight"] += float(weights[index])
-        blocks[-1]["correctWeight"] += float(weights[index] * labels[index])
-    return blocks
+        if not grouped or probability != grouped[-1]["probability"]:
+            grouped.append({"probability": probability, "weights": [], "correctWeights": []})
+        grouped[-1]["weights"].append(float(weights[index]))
+        grouped[-1]["correctWeights"].append(float(weights[index] * labels[index]))
+    return [
+        {
+            "probability": block["probability"],
+            "weight": math.fsum(block["weights"]),
+            "correctWeight": math.fsum(block["correctWeights"]),
+        }
+        for block in grouped
+    ]
+
+
+def _block_prefixes(blocks: Sequence[Mapping[str, float]]) -> tuple[float, list[tuple[float, float]]]:
+    block_weights = [float(block["weight"]) for block in blocks]
+    block_correct_weights = [float(block["correctWeight"]) for block in blocks]
+    total_weight = math.fsum(block_weights)
+    prefixes = [
+        (
+            math.fsum(block_weights[: index + 1]),
+            math.fsum(block_correct_weights[: index + 1]),
+        )
+        for index in range(len(blocks))
+    ]
+    return total_weight, prefixes
 
 
 def _aurc(probabilities: Any, labels: Any, weights: Any, keys: Sequence[str]) -> float:
-    total_weight = float(weights.sum())
-    cumulative_weight = 0.0
-    cumulative_error = 0.0
-    area = 0.0
-    for block in _probability_blocks(probabilities, labels, weights, keys):
-        cumulative_weight += block["weight"]
-        cumulative_error += block["weight"] - block["correctWeight"]
-        risk = cumulative_error / cumulative_weight
-        area += block["weight"] / total_weight * risk
-    return area
+    blocks = _probability_blocks(probabilities, labels, weights, keys)
+    total_weight, prefixes = _block_prefixes(blocks)
+    return math.fsum(
+        block["weight"] / total_weight * ((cumulative_weight - cumulative_correct) / cumulative_weight)
+        for block, (cumulative_weight, cumulative_correct) in zip(blocks, prefixes, strict=True)
+    )
 
 
 def _precision_coverage(probabilities: Any, labels: Any, weights: Any, keys: Sequence[str]) -> list[dict[str, Any]]:
     blocks = _probability_blocks(probabilities, labels, weights, keys)
-    total = float(weights.sum())
+    total, prefixes = _block_prefixes(blocks)
     output: list[dict[str, Any]] = []
     for target in PRECISION_COVERAGE_TARGETS:
-        cumulative = 0.0
-        correct = 0.0
+        cumulative = prefixes[-1][0]
+        correct = prefixes[-1][1]
         minimum_probability: float | None = None
-        for block in blocks:
-            cumulative += block["weight"]
-            correct += block["correctWeight"]
+        for block, (candidate_cumulative, candidate_correct) in zip(blocks, prefixes, strict=True):
+            cumulative = candidate_cumulative
+            correct = candidate_correct
             minimum_probability = block["probability"]
             if cumulative / total + 1e-15 >= target:
                 break

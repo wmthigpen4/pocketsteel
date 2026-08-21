@@ -85,6 +85,9 @@ OUTER_FOLD_COUNT = 5
 INNER_FOLD_COUNT = 4
 OPTIMIZER_MAX_ITERATIONS = 3000
 OPTIMIZER_TOLERANCE = 1e-6
+OPTIMIZER_KIND = "deterministic-trace-majorized-restarted-fista-v2"
+OPTIMIZER_CONVERGENCE = "proximal-gradient-mapping-linf-v1"
+LINK_FUNCTION = "branch-stable-exact-logistic-sigmoid-float64-v1"
 STANDARD_SCALE_FLOOR = 1e-8
 PROBABILITY_FLOOR = 1e-12
 
@@ -392,9 +395,11 @@ _SELECTOR_CONFIG = {
     },
     "estimator": {
         "kind": "elastic-net-logistic-regression",
+        "linkFunction": LINK_FUNCTION,
         "penalty": "alpha*((1-l1Ratio)/2*L2Squared+l1Ratio*L1)",
         "grid": [dict(value) for value in ELASTIC_NET_GRID],
-        "optimizer": "deterministic-proximal-gradient-v1",
+        "optimizer": OPTIMIZER_KIND,
+        "convergence": OPTIMIZER_CONVERGENCE,
         "maxIterations": OPTIMIZER_MAX_ITERATIONS,
         "tolerance": OPTIMIZER_TOLERANCE,
     },
@@ -1214,8 +1219,27 @@ def _transform(matrix: Any, imputation: Any, center: Any, scale: Any, np: Any) -
 
 
 def _sigmoid(logits: Any, np: Any) -> Any:
-    clipped = np.clip(logits, -40.0, 40.0)
-    return 1.0 / (1.0 + np.exp(-clipped))
+    values = np.asarray(logits, dtype=np.float64)
+    if not bool(np.isfinite(values).all()):
+        raise BarSelectorError("Logistic-regression logits must remain finite.")
+    probability = np.empty_like(values)
+    nonnegative = values >= 0.0
+    with np.errstate(over="ignore", under="ignore", invalid="ignore", divide="ignore"):
+        probability[nonnegative] = 1.0 / (1.0 + np.exp(-values[nonnegative]))
+        negative_exponential = np.exp(values[~nonnegative])
+        probability[~nonnegative] = negative_exponential / (1.0 + negative_exponential)
+    if not bool(np.isfinite(probability).all()):
+        raise BarSelectorError("Logistic-regression probabilities must remain finite.")
+    return probability
+
+
+def _scalar_sigmoid(logit: float) -> float:
+    if not math.isfinite(logit):
+        raise BarSelectorError("Logistic-regression logit must remain finite.")
+    if logit >= 0.0:
+        return 1.0 / (1.0 + math.exp(-logit))
+    exponential = math.exp(logit)
+    return exponential / (1.0 + exponential)
 
 
 def _fit_elastic_net(
@@ -1225,8 +1249,20 @@ def _fit_elastic_net(
     hyperparameters: Mapping[str, float],
     np: Any,
 ) -> tuple[Any, float, int, bool]:
-    positive_mass = float((weights * labels).sum())
-    negative_mass = float((weights * (1.0 - labels)).sum())
+    if matrix.ndim != 2 or matrix.shape[0] == 0 or matrix.shape[1] == 0:
+        raise BarSelectorError("Elastic-net training requires a nonempty two-dimensional matrix.")
+    if labels.shape != (matrix.shape[0],) or weights.shape != (matrix.shape[0],):
+        raise BarSelectorError("Elastic-net labels and weights must match the training matrix rows.")
+    if (
+        not bool(np.isfinite(matrix).all())
+        or not bool(np.isfinite(labels).all())
+        or not bool(np.isfinite(weights).all())
+        or bool((weights <= 0.0).any())
+    ):
+        raise BarSelectorError("Elastic-net training inputs and positive weights must be finite.")
+    normalizer = math.fsum(float(weight) for weight in weights)
+    positive_mass = math.fsum(float(weight * label) for weight, label in zip(weights, labels, strict=True))
+    negative_mass = math.fsum(float(weight * (1.0 - label)) for weight, label in zip(weights, labels, strict=True))
     if positive_mass <= 0 or negative_mass <= 0:
         raise BarSelectorError("Every selector training partition must contain both correct and incorrect bars.")
     alpha = float(hyperparameters["alpha"])
@@ -1235,29 +1271,143 @@ def _fit_elastic_net(
     l2_penalty = alpha * (1.0 - l1_ratio)
     coefficients = np.zeros(matrix.shape[1], dtype=np.float64)
     intercept = math.log(positive_mass / negative_mass)
-    normalizer = float(weights.sum())
-    row_norm_bound = float((weights * (((matrix * matrix).sum(axis=1)) + 1.0)).sum() / normalizer)
-    step = 1.0 / max(1e-12, 0.25 * row_norm_bound + l2_penalty)
-    converged = False
-    iteration = 0
-    for iteration in range(1, OPTIMIZER_MAX_ITERATIONS + 1):
-        probability = _sigmoid(matrix @ coefficients + intercept, np)
-        residual = weights * (probability - labels) / normalizer
-        coefficient_gradient = matrix.T @ residual + l2_penalty * coefficients
-        intercept_gradient = float(residual.sum())
-        proposal = coefficients - step * coefficient_gradient
-        next_coefficients = np.sign(proposal) * np.maximum(np.abs(proposal) - step * l1_penalty, 0.0)
-        next_intercept = intercept - step * intercept_gradient
-        maximum_change = max(
-            float(np.max(np.abs(next_coefficients - coefficients), initial=0.0)),
-            abs(next_intercept - intercept),
+    with np.errstate(over="ignore", invalid="ignore"):
+        squared_row_norms = np.einsum("ij,ij->i", matrix, matrix)
+    if not bool(np.isfinite(squared_row_norms).all()):
+        raise BarSelectorError("Elastic-net training rows have non-finite squared norms.")
+    try:
+        row_norm_bound = (
+            math.fsum(
+                float(weight) * (float(squared_norm) + 1.0)
+                for weight, squared_norm in zip(weights, squared_row_norms, strict=True)
+            )
+            / normalizer
         )
+    except OverflowError as error:
+        raise BarSelectorError("Elastic-net trace majorizer overflowed.") from error
+    lipschitz_majorizer = 0.25 * row_norm_bound + l2_penalty
+    if not math.isfinite(lipschitz_majorizer) or lipschitz_majorizer <= 0.0:
+        raise BarSelectorError("Elastic-net trace majorizer must be finite and positive.")
+    step = 1.0 / lipschitz_majorizer
+    if not math.isfinite(step) or step <= 0.0:
+        raise BarSelectorError("Elastic-net optimizer step must be finite and positive.")
+
+    def state(at_coefficients: Any, at_intercept: float) -> tuple[Any, float, float]:
+        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+            logits = matrix @ at_coefficients + at_intercept
+        probability = _sigmoid(logits, np)
+        residual = weights * (probability - labels) / normalizer
+        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+            coefficient_gradient = matrix.T @ residual + l2_penalty * at_coefficients
+        intercept_gradient = math.fsum(float(value) for value in residual)
+        if not bool(np.isfinite(coefficient_gradient).all()) or not math.isfinite(intercept_gradient):
+            raise BarSelectorError("Elastic-net optimizer gradient became non-finite.")
+        with np.errstate(over="ignore", invalid="ignore"):
+            logistic_losses = np.logaddexp(0.0, logits) - labels * logits
+            squared_coefficients = at_coefficients * at_coefficients
+        if not bool(np.isfinite(logistic_losses).all()) or not bool(np.isfinite(squared_coefficients).all()):
+            raise BarSelectorError("Elastic-net objective became non-finite.")
+        try:
+            objective = (
+                math.fsum(float(weight) * float(loss) for weight, loss in zip(weights, logistic_losses, strict=True))
+                / normalizer
+                + 0.5 * l2_penalty * math.fsum(float(value) for value in squared_coefficients)
+                + l1_penalty * math.fsum(abs(float(value)) for value in at_coefficients)
+            )
+        except OverflowError as error:
+            raise BarSelectorError("Elastic-net objective overflowed.") from error
+        if not math.isfinite(objective):
+            raise BarSelectorError("Elastic-net objective became non-finite.")
+        return coefficient_gradient, intercept_gradient, objective
+
+    def proximal_step(
+        at_coefficients: Any,
+        at_intercept: float,
+        coefficient_gradient: Any,
+        intercept_gradient: float,
+    ) -> tuple[Any, float]:
+        with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+            proposal = at_coefficients - step * coefficient_gradient
+            next_coefficients = np.sign(proposal) * np.maximum(
+                np.abs(proposal) - step * l1_penalty,
+                0.0,
+            )
+            next_intercept = at_intercept - step * intercept_gradient
+        if not bool(np.isfinite(next_coefficients).all()) or not math.isfinite(next_intercept):
+            raise BarSelectorError("Elastic-net proximal step became non-finite.")
+        return next_coefficients, float(next_intercept)
+
+    accelerated_coefficients = coefficients.copy()
+    accelerated_intercept = intercept
+    momentum = 1.0
+    for iteration in range(1, OPTIMIZER_MAX_ITERATIONS + 1):
+        accelerated_gradient, accelerated_intercept_gradient, _accelerated_objective = state(
+            accelerated_coefficients,
+            accelerated_intercept,
+        )
+        next_coefficients, next_intercept = proximal_step(
+            accelerated_coefficients,
+            accelerated_intercept,
+            accelerated_gradient,
+            accelerated_intercept_gradient,
+        )
+        next_gradient, next_intercept_gradient, _next_objective = state(next_coefficients, next_intercept)
+        certificate_coefficients, certificate_intercept = proximal_step(
+            next_coefficients,
+            next_intercept,
+            next_gradient,
+            next_intercept_gradient,
+        )
+        stationarity = max(
+            float(
+                np.max(
+                    np.abs(next_coefficients - certificate_coefficients),
+                    initial=0.0,
+                )
+                / step
+            ),
+            abs(next_intercept - certificate_intercept) / step,
+        )
+        if not math.isfinite(stationarity):
+            raise BarSelectorError("Elastic-net stationarity certificate became non-finite.")
+        if stationarity <= OPTIMIZER_TOLERANCE:
+            return next_coefficients, float(next_intercept), iteration, True
+
+        next_momentum = (1.0 + math.sqrt(1.0 + 4.0 * momentum * momentum)) / 2.0
+        momentum_fraction = (momentum - 1.0) / next_momentum
+        coefficient_delta = next_coefficients - coefficients
+        intercept_delta = next_intercept - intercept
+        restart_inner_product = (
+            math.fsum(
+                float(left) * float(right)
+                for left, right in zip(
+                    accelerated_coefficients - next_coefficients,
+                    coefficient_delta,
+                    strict=True,
+                )
+            )
+            + (accelerated_intercept - next_intercept) * intercept_delta
+        )
+        if not math.isfinite(restart_inner_product):
+            raise BarSelectorError("Elastic-net restart criterion became non-finite.")
+        if restart_inner_product > 0.0:
+            next_momentum = 1.0
+            next_accelerated_coefficients = next_coefficients.copy()
+            next_accelerated_intercept = next_intercept
+        else:
+            with np.errstate(over="ignore", invalid="ignore"):
+                next_accelerated_coefficients = next_coefficients + momentum_fraction * coefficient_delta
+                next_accelerated_intercept = next_intercept + momentum_fraction * intercept_delta
+            if not bool(np.isfinite(next_accelerated_coefficients).all()) or not math.isfinite(
+                next_accelerated_intercept
+            ):
+                raise BarSelectorError("Elastic-net accelerated iterate became non-finite.")
         coefficients = next_coefficients
         intercept = next_intercept
-        if maximum_change <= OPTIMIZER_TOLERANCE:
-            converged = True
-            break
-    return coefficients, float(intercept), iteration, converged
+        accelerated_coefficients = next_accelerated_coefficients
+        accelerated_intercept = float(next_accelerated_intercept)
+        momentum = next_momentum
+    return coefficients, float(intercept), OPTIMIZER_MAX_ITERATIONS, False
 
 
 def _weighted_log_loss(probabilities: Any, labels: Any, weights: Any, np: Any) -> float:
@@ -1287,7 +1437,9 @@ def _fit_predict(
         np,
     )
     validation_matrix = _transform(matrix[validate_indices], imputation, center, scale, np)
-    probability = _sigmoid(validation_matrix @ coefficients + intercept, np)
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        validation_logits = validation_matrix @ coefficients + intercept
+    probability = _sigmoid(validation_logits, np)
     return probability, {
         "imputation": imputation,
         "center": center,
@@ -1356,27 +1508,44 @@ def _select_hyperparameters(
 
 def _probability_blocks(probabilities: Any, labels: Any, weights: Any, keys: Sequence[str]) -> list[dict[str, float]]:
     order = sorted(range(len(keys)), key=lambda index: (-float(probabilities[index]), keys[index]))
-    blocks: list[dict[str, float]] = []
+    grouped: list[dict[str, Any]] = []
     for index in order:
         probability = float(probabilities[index])
-        if not blocks or probability != blocks[-1]["probability"]:
-            blocks.append({"probability": probability, "weight": 0.0, "correctWeight": 0.0})
-        blocks[-1]["weight"] += float(weights[index])
-        blocks[-1]["correctWeight"] += float(weights[index] * labels[index])
-    return blocks
+        if not grouped or probability != grouped[-1]["probability"]:
+            grouped.append({"probability": probability, "weights": [], "correctWeights": []})
+        grouped[-1]["weights"].append(float(weights[index]))
+        grouped[-1]["correctWeights"].append(float(weights[index] * labels[index]))
+    return [
+        {
+            "probability": block["probability"],
+            "weight": math.fsum(block["weights"]),
+            "correctWeight": math.fsum(block["correctWeights"]),
+        }
+        for block in grouped
+    ]
+
+
+def _block_prefixes(blocks: Sequence[Mapping[str, float]]) -> tuple[float, list[tuple[float, float]]]:
+    block_weights = [float(block["weight"]) for block in blocks]
+    block_correct_weights = [float(block["correctWeight"]) for block in blocks]
+    total_weight = math.fsum(block_weights)
+    prefixes = [
+        (
+            math.fsum(block_weights[: index + 1]),
+            math.fsum(block_correct_weights[: index + 1]),
+        )
+        for index in range(len(blocks))
+    ]
+    return total_weight, prefixes
 
 
 def _aurc(probabilities: Any, labels: Any, weights: Any, keys: Sequence[str]) -> float:
-    total_weight = float(weights.sum())
-    cumulative_weight = 0.0
-    cumulative_error = 0.0
-    area = 0.0
-    for block in _probability_blocks(probabilities, labels, weights, keys):
-        cumulative_weight += block["weight"]
-        cumulative_error += block["weight"] - block["correctWeight"]
-        risk = cumulative_error / cumulative_weight
-        area += block["weight"] / total_weight * risk
-    return area
+    blocks = _probability_blocks(probabilities, labels, weights, keys)
+    total_weight, prefixes = _block_prefixes(blocks)
+    return math.fsum(
+        block["weight"] / total_weight * ((cumulative_weight - cumulative_correct) / cumulative_weight)
+        for block, (cumulative_weight, cumulative_correct) in zip(blocks, prefixes, strict=True)
+    )
 
 
 def _precision_coverage(
@@ -1386,15 +1555,15 @@ def _precision_coverage(
     keys: Sequence[str],
 ) -> list[dict[str, Any]]:
     blocks = _probability_blocks(probabilities, labels, weights, keys)
-    total = float(weights.sum())
+    total, prefixes = _block_prefixes(blocks)
     output: list[dict[str, Any]] = []
     for target in PRECISION_COVERAGE_TARGETS:
-        cumulative = 0.0
-        correct = 0.0
+        cumulative = prefixes[-1][0]
+        correct = prefixes[-1][1]
         minimum_probability: float | None = None
-        for block in blocks:
-            cumulative += block["weight"]
-            correct += block["correctWeight"]
+        for block, (candidate_cumulative, candidate_correct) in zip(blocks, prefixes, strict=True):
+            cumulative = candidate_cumulative
+            correct = candidate_correct
             minimum_probability = block["probability"]
             if cumulative / total + 1e-15 >= target:
                 break
@@ -1813,6 +1982,7 @@ def train_bar_selector(examples_artifact: Mapping[str, Any]) -> dict[str, Any]:
         ),
         "estimator": {
             "kind": "standardized-elastic-net-logistic-regression",
+            "linkFunction": LINK_FUNCTION,
             "imputation": "group-weighted-training-median",
             "imputationValues": imputation.tolist(),
             "allMissingFeatureNames": [
@@ -1824,7 +1994,7 @@ def train_bar_selector(examples_artifact: Mapping[str, Any]) -> dict[str, Any]:
             "intercept": float(intercept),
             "hyperparameters": final_hyperparameters,
             "optimizer": {
-                "kind": "deterministic-proximal-gradient-v1",
+                "kind": OPTIMIZER_KIND,
                 "iterations": int(iterations),
                 "converged": bool(converged),
                 "maximumIterations": OPTIMIZER_MAX_ITERATIONS,
@@ -1971,6 +2141,7 @@ _PRECISION_COVERAGE_FIELDS = frozenset(
 _ESTIMATOR_FIELDS = frozenset(
     {
         "kind",
+        "linkFunction",
         "imputation",
         "imputationValues",
         "allMissingFeatureNames",
@@ -2474,9 +2645,10 @@ def validate_bar_selector_artifact(artifact: Mapping[str, Any]) -> dict[str, Any
     _exact_fields(estimator, _ESTIMATOR_FIELDS, "artifact.estimator")
     if (
         estimator.get("kind") != "standardized-elastic-net-logistic-regression"
+        or estimator.get("linkFunction") != LINK_FUNCTION
         or estimator.get("imputation") != "group-weighted-training-median"
     ):
-        raise BarSelectorError("Selector estimator kind or imputation contract was changed.")
+        raise BarSelectorError("Selector estimator kind, link function, or imputation contract was changed.")
     numeric_arrays: dict[str, list[float]] = {}
     for name in ("imputationValues", "center", "scale", "coefficients"):
         raw_array = _sequence(estimator.get(name), f"artifact.estimator.{name}")
@@ -2499,7 +2671,7 @@ def validate_bar_selector_artifact(artifact: Mapping[str, Any]) -> dict[str, Any
     optimizer = _mapping(estimator.get("optimizer"), "artifact.estimator.optimizer")
     _exact_fields(optimizer, _OPTIMIZER_FIELDS, "artifact.estimator.optimizer")
     if (
-        optimizer.get("kind") != "deterministic-proximal-gradient-v1"
+        optimizer.get("kind") != OPTIMIZER_KIND
         or optimizer.get("maximumIterations") != OPTIMIZER_MAX_ITERATIONS
         or optimizer.get("tolerance") != OPTIMIZER_TOLERANCE
         or optimizer.get("converged") is not True
@@ -2638,7 +2810,7 @@ def apply_bar_selector(
             (value - estimator["center"][position]) / estimator["scale"][position] * estimator["coefficients"][position]
             for position, value in enumerate(numeric)
         )
-        probability = 1.0 / (1.0 + math.exp(-max(-40.0, min(40.0, logit))))
+        probability = _scalar_sigmoid(logit)
     except (ArithmeticError, TypeError, ValueError, OverflowError):
         return _application_result(
             probability=None,
