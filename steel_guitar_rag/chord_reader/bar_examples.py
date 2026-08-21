@@ -54,6 +54,14 @@ BAR_SCORE_SCHEMA = "chord_bar_product_confidence_v1"
 BENCHMARK_AUDIO_LINEAGE_SCHEMA = "chord_benchmark_audio_lineage_v1"
 AUDIO_GROUP_AUDIT_SCHEMA = "chord_bar_selector_audio_group_audit_v1"
 LABEL_DETERMINACY_AUDIT_SCHEMA = "chord_bar_selector_label_determinacy_audit_v1"
+DATASET_LABEL_DETERMINACY_AUDIT_SCHEMA = "chord_bar_selector_dataset_label_determinacy_audit_v1"
+LABEL_DETERMINACY_DATASET_IDS = (
+    "aam",
+    "guitarset",
+    "idmt_guitar",
+    "nrgcp",
+    "winterreise",
+)
 AUDIO_LINEAGE_VERIFICATION_MODE = "full-files-and-reextraction-v1"
 FEATURE_ARRAY_VERIFICATION = "loaded-cache-contiguous-little-endian-float16-sha256-v1"
 PRODUCTION_EXTRACTOR_ENTRYPOINT = f"{extract_student_features.__module__}.{extract_student_features.__qualname__}"
@@ -163,6 +171,7 @@ _EXAMPLE_KEYS = frozenset(
         "canonicalDurationMilliseconds",
         "audioLineageRowSha256",
         "audioLineageProjectionSha256",
+        "legacyProductConfidenceMissing",
         "outcome",
         "exampleSha256",
     }
@@ -209,9 +218,46 @@ _OUTPUT_KEYS = frozenset(
         "audioGroupAuditSha256",
         "labelDeterminacyAudit",
         "labelDeterminacyAuditSha256",
+        "datasetLabelDeterminacyAudit",
+        "datasetLabelDeterminacyAuditSha256",
         "examples",
         "exampleSetSha256",
         "artifactSha256",
+    }
+)
+_LABEL_AUDIT_BASE_COUNT_FIELDS = (
+    "totalBarCount",
+    "referenceDeterminateBarCount",
+    "referenceMixedBarCount",
+    "referenceUncoveredBarCount",
+    "predictionMixedBarCount",
+    "predictionUncoveredBarCount",
+    "predictionConfidenceMissingBarCount",
+    "predictionStructurallyScorableBarCount",
+)
+_LABEL_AUDIT_COUNT_FIELDS = (
+    *_LABEL_AUDIT_BASE_COUNT_FIELDS,
+    "excludedReferenceIndeterminateBarCount",
+    "excludedPredictionNoneligibleBarCount",
+    "emittedExampleCount",
+)
+_DATASET_LABEL_AUDIT_ROW_KEYS = frozenset(
+    {
+        "datasetId",
+        *_LABEL_AUDIT_COUNT_FIELDS,
+        "rowSha256",
+    }
+)
+_DATASET_LABEL_AUDIT_KEYS = frozenset(
+    {
+        "schemaVersion",
+        "strataMode",
+        "requiredDatasetIds",
+        "datasetIds",
+        "aggregateLabelDeterminacyAuditSha256",
+        "rows",
+        "rowSetSha256",
+        "auditSha256",
     }
 )
 _REPORT_AUDIO_LINEAGE_KEYS = frozenset(
@@ -277,6 +323,10 @@ def _required_string(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value.strip() or value != value.strip():
         raise ValueError(f"{name} must be a nonempty string without surrounding whitespace.")
     return value
+
+
+def _required_dataset_id(value: Any, name: str) -> str:
+    return _required_string(value, name)
 
 
 def _required_sha256(value: Any, name: str) -> str:
@@ -567,7 +617,10 @@ def _validate_group_manifest(manifest: Mapping[str, Any]) -> dict[str, dict[str,
             raise ValueError(f"Duplicate confidence-group track id {track_id!r}.")
         # These fields are audit metadata only. They are required, then discarded
         # before selector features are assembled.
-        _required_string(track.get("datasetId"), f"group track {track_id!r} datasetId")
+        _required_dataset_id(
+            track.get("datasetId"),
+            f"group track {track_id!r} datasetId",
+        )
         _required_string(track.get("role"), f"group track {track_id!r} role")
         _required_string(track.get("confidenceGroupId"), f"group track {track_id!r} confidenceGroupId")
         _required_string(track.get("referenceFile"), f"group track {track_id!r} referenceFile")
@@ -658,6 +711,7 @@ def _validate_cross_audio_bindings(
     track_ids: Sequence[str],
     report_tracks: Mapping[str, Mapping[str, Any]],
     runtime_tracks: Mapping[str, Mapping[str, Any]],
+    group_tracks: Mapping[str, Mapping[str, Any]],
     projection_tracks: Mapping[str, Mapping[str, Any]],
 ) -> None:
     """Reject metadata-level audio/cache/duration splices before leaf artifacts."""
@@ -665,7 +719,12 @@ def _validate_cross_audio_bindings(
     for track_id in track_ids:
         report = report_tracks[track_id]
         runtime = runtime_tracks[track_id]
+        group = group_tracks[track_id]
         projection = projection_tracks[track_id]
+        dataset_id = _required_dataset_id(
+            projection.get("datasetId"),
+            f"audio-lineage track {track_id!r} datasetId",
+        )
         expected_report = {
             "sourceAudioSha256": projection["sourceAudioSha256"],
             "cachedFeatureArraySha256": projection["cachedArraySha256"],
@@ -675,8 +734,10 @@ def _validate_cross_audio_bindings(
         }
         if any(report.get(field) != expected for field, expected in expected_report.items()):
             raise ValueError(f"Benchmark row and audio lineage disagree for track {track_id!r}.")
-        if report.get("datasetId") != projection.get("datasetId"):
-            raise ValueError(f"Benchmark dataset and audio lineage disagree for track {track_id!r}.")
+        if report.get("datasetId") != dataset_id or group.get("datasetId") != dataset_id:
+            raise ValueError(
+                f"Benchmark, confidence-group, and audio-lineage datasets disagree for track {track_id!r}."
+            )
         audio_binding = _mapping(runtime.get("audioBinding"), f"runtime track {track_id!r} audioBinding")
         expected_audio_sha256 = projection["sourceAudioSha256"]
         expected_milliseconds = projection["canonicalDurationMilliseconds"]
@@ -743,6 +804,77 @@ def _audio_group_audit(
     return {**payload, "auditSha256": canonical_sha256(payload)}
 
 
+def _empty_label_counts() -> dict[str, int]:
+    return {name: 0 for name in _LABEL_AUDIT_BASE_COUNT_FIELDS}
+
+
+def _complete_label_counts(
+    base_counts: Mapping[str, Any],
+    *,
+    emitted_example_count: int,
+    name: str,
+) -> dict[str, int]:
+    counts = {
+        field: _strict_integer(base_counts.get(field), f"{name}.{field}") for field in _LABEL_AUDIT_BASE_COUNT_FIELDS
+    }
+    emitted = _strict_integer(emitted_example_count, f"{name}.emittedExampleCount")
+    excluded_reference = counts["totalBarCount"] - counts["referenceDeterminateBarCount"]
+    excluded_prediction = counts["referenceDeterminateBarCount"] - counts["predictionStructurallyScorableBarCount"]
+    if (
+        excluded_reference < 0
+        or excluded_prediction < 0
+        or counts["referenceMixedBarCount"] + counts["referenceUncoveredBarCount"] != excluded_reference
+        or counts["predictionMixedBarCount"] + counts["predictionUncoveredBarCount"] != excluded_prediction
+        or counts["predictionConfidenceMissingBarCount"] > counts["predictionStructurallyScorableBarCount"]
+        or emitted != counts["predictionStructurallyScorableBarCount"]
+    ):
+        raise ValueError(f"{name} label-determinacy counts are internally inconsistent.")
+    return {
+        **counts,
+        "excludedReferenceIndeterminateBarCount": excluded_reference,
+        "excludedPredictionNoneligibleBarCount": excluded_prediction,
+        "emittedExampleCount": emitted,
+    }
+
+
+def _dataset_label_determinacy_audit(
+    counts_by_dataset: Mapping[str, Mapping[str, Any]],
+    emitted_by_dataset: Mapping[str, int],
+    *,
+    aggregate_counts: Mapping[str, int],
+    aggregate_audit_sha256: str,
+) -> dict[str, Any]:
+    required_ids = list(LABEL_DETERMINACY_DATASET_IDS)
+    custom_ids = sorted(set(counts_by_dataset) - set(LABEL_DETERMINACY_DATASET_IDS))
+    dataset_ids = [*required_ids, *custom_ids]
+    rows: list[dict[str, Any]] = []
+    for dataset_id in dataset_ids:
+        counts = _complete_label_counts(
+            counts_by_dataset[dataset_id],
+            emitted_example_count=emitted_by_dataset.get(dataset_id, 0),
+            name=f"datasetLabelDeterminacyAudit[{dataset_id!r}]",
+        )
+        row_payload = {"datasetId": dataset_id, **counts}
+        row = {**row_payload, "rowSha256": canonical_sha256(row_payload)}
+        _exact_keys(row, _DATASET_LABEL_AUDIT_ROW_KEYS, "dataset label-determinacy row")
+        rows.append(row)
+    for field in _LABEL_AUDIT_COUNT_FIELDS:
+        if sum(int(row[field]) for row in rows) != int(aggregate_counts[field]):
+            raise RuntimeError(f"Dataset label-determinacy rows do not sum to aggregate {field}.")
+    payload = {
+        "schemaVersion": DATASET_LABEL_DETERMINACY_AUDIT_SCHEMA,
+        "strataMode": ("certification-datasets-only-v1" if not custom_ids else "generic-with-custom-datasets-v1"),
+        "requiredDatasetIds": required_ids,
+        "datasetIds": dataset_ids,
+        "aggregateLabelDeterminacyAuditSha256": aggregate_audit_sha256,
+        "rows": rows,
+        "rowSetSha256": canonical_sha256(rows),
+    }
+    audit = {**payload, "auditSha256": canonical_sha256(payload)}
+    _exact_keys(audit, _DATASET_LABEL_AUDIT_KEYS, "dataset label-determinacy audit")
+    return audit
+
+
 def build_bar_selector_group_manifest(
     track_descriptors: Sequence[Mapping[str, Any]],
     *,
@@ -773,7 +905,7 @@ def build_bar_selector_group_manifest(
         validated.append(
             {
                 "trackId": track_id,
-                "datasetId": _required_string(
+                "datasetId": _required_dataset_id(
                     descriptor.get("datasetId"),
                     f"track_descriptors[{index}].datasetId",
                 ),
@@ -1268,6 +1400,7 @@ def build_bar_selector_examples(
         track_ids,
         report_tracks,
         runtime_tracks,
+        group_tracks,
         projection_tracks,
     )
     audio_group_audit = _audio_group_audit(track_ids, group_tracks, projection_tracks)
@@ -1411,19 +1544,24 @@ def build_bar_selector_examples(
     # Reference phase. At this point all tracks, not merely the current track,
     # have complete and hash-stable prediction-only bar features in memory.
     examples: list[dict[str, Any]] = []
-    score_counts = {
-        "totalBarCount": 0,
-        "referenceDeterminateBarCount": 0,
-        "referenceMixedBarCount": 0,
-        "referenceUncoveredBarCount": 0,
-        "predictionMixedBarCount": 0,
-        "predictionUncoveredBarCount": 0,
-        "predictionConfidenceMissingBarCount": 0,
-        "predictionStructurallyScorableBarCount": 0,
-    }
+    score_counts = _empty_label_counts()
+    score_counts_by_dataset = {dataset_id: _empty_label_counts() for dataset_id in LABEL_DETERMINACY_DATASET_IDS}
+    emitted_by_dataset = {dataset_id: 0 for dataset_id in LABEL_DETERMINACY_DATASET_IDS}
+
+    def add_score_count(dataset_id: str, field: str, value: int = 1) -> None:
+        count = _strict_integer(value, f"score {field}")
+        score_counts_by_dataset.setdefault(dataset_id, _empty_label_counts())
+        emitted_by_dataset.setdefault(dataset_id, 0)
+        score_counts[field] += count
+        score_counts_by_dataset[dataset_id][field] += count
+
     for record in feature_records:
         track_id = str(record["trackId"])
         group_track = group_tracks[track_id]
+        dataset_id = _required_dataset_id(
+            _mapping(record["audioLineageRow"], "audio-lineage row").get("datasetId"),
+            f"audio-lineage track {track_id!r} datasetId",
+        )
         reference_path = _artifact_path(
             group_manifest_root,
             group_track["referenceFile"],
@@ -1453,18 +1591,25 @@ def build_bar_selector_examples(
         if score.get("available") is not True or score.get("explicitBarGrid") is not True:
             raise ValueError(f"Reference bar scoring is unavailable for track {track_id!r}.")
         score_bars = _validate_frozen_bar_score(score)
-        score_counts["totalBarCount"] += _strict_integer(score.get("totalBarCount"), "score totalBarCount")
-        score_counts["referenceDeterminateBarCount"] += _strict_integer(
+        add_score_count(
+            dataset_id,
+            "totalBarCount",
+            _strict_integer(score.get("totalBarCount"), "score totalBarCount"),
+        )
+        add_score_count(
+            dataset_id,
+            "referenceDeterminateBarCount",
             score.get("eligibleBarCount"),
-            "score eligibleBarCount",
         )
-        score_counts["referenceMixedBarCount"] += _strict_integer(
+        add_score_count(
+            dataset_id,
+            "referenceMixedBarCount",
             score.get("excludedMixedBarCount"),
-            "score excludedMixedBarCount",
         )
-        score_counts["referenceUncoveredBarCount"] += _strict_integer(
+        add_score_count(
+            dataset_id,
+            "referenceUncoveredBarCount",
             score.get("excludedUncoveredBarCount"),
-            "score excludedUncoveredBarCount",
         )
         # Validate the legacy scorer's prediction audit counts, but compute the
         # selector denominator below from the exact application-time gates.
@@ -1503,10 +1648,10 @@ def build_bar_selector_examples(
                 prediction_product is None
                 or prediction_coverage < BAR_OUTCOME_ELIGIBILITY_CONTRACT["predictionCoverage"]
             ):
-                score_counts["predictionUncoveredBarCount"] += 1
+                add_score_count(dataset_id, "predictionUncoveredBarCount")
                 continue
             if prediction_dominance < BAR_OUTCOME_ELIGIBILITY_CONTRACT["predictionDominance"]:
-                score_counts["predictionMixedBarCount"] += 1
+                add_score_count(dataset_id, "predictionMixedBarCount")
                 continue
             prediction_product = _required_string(
                 prediction_product,
@@ -1516,9 +1661,12 @@ def build_bar_selector_examples(
                 score_bar.get("referenceProduct"),
                 "reference score bar referenceProduct",
             )
-            score_counts["predictionStructurallyScorableBarCount"] += 1
-            if score_bar.get("predictionExclusionReason") == "prediction-confidence-missing":
-                score_counts["predictionConfidenceMissingBarCount"] += 1
+            add_score_count(dataset_id, "predictionStructurallyScorableBarCount")
+            legacy_product_confidence_missing = (
+                score_bar.get("predictionExclusionReason") == "prediction-confidence-missing"
+            )
+            if legacy_product_confidence_missing:
+                add_score_count(dataset_id, "predictionConfidenceMissingBarCount")
             elif not isinstance(score_bar.get("correct"), bool):
                 raise ValueError(
                     "A structurally eligible prediction without legacy confidence must be explicitly audited."
@@ -1541,34 +1689,38 @@ def build_bar_selector_examples(
                 "canonicalDurationMilliseconds": compact_bar["canonicalDurationMilliseconds"],
                 "audioLineageRowSha256": compact_bar["audioLineageRowSha256"],
                 "audioLineageProjectionSha256": compact_bar["audioLineageProjectionSha256"],
+                "legacyProductConfidenceMissing": legacy_product_confidence_missing,
                 "outcome": {"correct": correct},
             }
             example = {**example_payload, "exampleSha256": canonical_sha256(example_payload)}
             _exact_keys(example, _EXAMPLE_KEYS, "selector example")
             examples.append(example)
+            emitted_by_dataset[dataset_id] = emitted_by_dataset.get(dataset_id, 0) + 1
 
     examples.sort(key=lambda value: (str(value["trackId"]), int(value["barIndex"])))
     if score_counts["predictionStructurallyScorableBarCount"] != len(examples):
         raise ValueError("Emitted examples disagree with the frozen scorable-prediction denominator.")
-    excluded_reference = score_counts["totalBarCount"] - score_counts["referenceDeterminateBarCount"]
-    excluded_prediction = (
-        score_counts["referenceDeterminateBarCount"] - score_counts["predictionStructurallyScorableBarCount"]
+    complete_score_counts = _complete_label_counts(
+        score_counts,
+        emitted_example_count=len(examples),
+        name="aggregate",
     )
-    if excluded_reference < 0 or excluded_prediction < 0:
-        raise ValueError("Bar label-determinacy counts are internally inconsistent.")
     label_audit_payload = {
         "schemaVersion": LABEL_DETERMINACY_AUDIT_SCHEMA,
         "estimand": SELECTOR_ESTIMAND,
         "oofDenominator": OOF_DENOMINATOR,
-        **score_counts,
-        "excludedReferenceIndeterminateBarCount": excluded_reference,
-        "excludedPredictionNoneligibleBarCount": excluded_prediction,
-        "emittedExampleCount": len(examples),
+        **complete_score_counts,
     }
     label_determinacy_audit = {
         **label_audit_payload,
         "auditSha256": canonical_sha256(label_audit_payload),
     }
+    dataset_label_determinacy_audit = _dataset_label_determinacy_audit(
+        score_counts_by_dataset,
+        emitted_by_dataset,
+        aggregate_counts=complete_score_counts,
+        aggregate_audit_sha256=label_determinacy_audit["auditSha256"],
+    )
     example_set_sha256 = canonical_sha256(examples)
     output_payload: dict[str, Any] = {
         "schemaVersion": EXAMPLES_SCHEMA,
@@ -1590,6 +1742,8 @@ def build_bar_selector_examples(
         "audioGroupAuditSha256": audio_group_audit["auditSha256"],
         "labelDeterminacyAudit": label_determinacy_audit,
         "labelDeterminacyAuditSha256": label_determinacy_audit["auditSha256"],
+        "datasetLabelDeterminacyAudit": dataset_label_determinacy_audit,
+        "datasetLabelDeterminacyAuditSha256": dataset_label_determinacy_audit["auditSha256"],
         "examples": examples,
         "exampleSetSha256": example_set_sha256,
     }
@@ -1605,11 +1759,13 @@ __all__ = [
     "BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256",
     "BENCHMARK_AUDIO_LINEAGE_SCHEMA",
     "COMPACT_BAR_SUMMARY_SCHEMA",
+    "DATASET_LABEL_DETERMINACY_AUDIT_SCHEMA",
     "DEVELOPMENT_SPLIT",
     "EXAMPLES_SCHEMA",
     "FEATURE_ARRAY_VERIFICATION",
     "GROUP_MANIFEST_SCHEMA",
     "LABEL_DETERMINACY_AUDIT_SCHEMA",
+    "LABEL_DETERMINACY_DATASET_IDS",
     "OOF_DENOMINATOR",
     "SELECTOR_ESTIMAND",
     "build_bar_selector_group_manifest",

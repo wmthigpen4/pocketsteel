@@ -17,9 +17,11 @@ from steel_guitar_rag.chord_reader.bar_selector import (
     BAR_SELECTOR_EXAMPLES_SCHEMA,
     BAR_OUTCOME_ELIGIBILITY_CONTRACT,
     BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256,
+    DATASET_LABEL_DETERMINACY_AUDIT_SCHEMA,
     ELASTIC_NET_GRID,
     FEATURE_ARRAY_VERIFICATION,
     INNER_FOLD_COUNT,
+    LABEL_DETERMINACY_DATASET_IDS,
     OUTER_FOLD_COUNT,
     OOF_DENOMINATOR,
     SELECTOR_ESTIMAND,
@@ -144,6 +146,7 @@ def _example(group: str, correct: bool, ordinal: int, bindings: dict) -> dict:
         "memberOrderSha256": bindings["memberOrderSha256"],
         **_lineage_fields(ordinal),
         "audioLineageProjectionSha256": summary["audioLineageProjectionSha256"],
+        "legacyProductConfidenceMissing": ordinal == 1,
         "outcome": {"correct": correct},
     }
     value["exampleSha256"] = canonical_sha256(value)
@@ -161,18 +164,19 @@ def _examples_artifact() -> dict:
             examples.append(_example(group, position % 2 == 0, ordinal, bindings))
             ordinal += 1
     source_audio_lineage_sha256 = _digest("audio-lineage-artifact")
-    projection_rows = [
-        {
-            "trackId": example["trackId"],
-            "datasetId": "fixture",
-            "sourceAudioSha256": example["sourceAudioSha256"],
-            "cachedArraySha256": example["cachedFeatureArraySha256"],
-            "freshArraySha256": example["freshFeatureArraySha256"],
-            "canonicalDurationMilliseconds": example["canonicalDurationMilliseconds"],
-            "rowSha256": example["audioLineageRowSha256"],
-        }
-        for example in sorted(examples, key=lambda value: value["trackId"])
-    ]
+    projection_rows = []
+    for index, example in enumerate(sorted(examples, key=lambda value: value["trackId"])):
+        projection_rows.append(
+            {
+                "trackId": example["trackId"],
+                "datasetId": LABEL_DETERMINACY_DATASET_IDS[index % len(LABEL_DETERMINACY_DATASET_IDS)],
+                "sourceAudioSha256": example["sourceAudioSha256"],
+                "cachedArraySha256": example["cachedFeatureArraySha256"],
+                "freshArraySha256": example["freshFeatureArraySha256"],
+                "canonicalDurationMilliseconds": example["canonicalDurationMilliseconds"],
+                "rowSha256": example["audioLineageRowSha256"],
+            }
+        )
     projection_payload = {
         "schemaVersion": AUDIO_LINEAGE_PROJECTION_SCHEMA,
         "split": "development",
@@ -240,6 +244,43 @@ def _examples_artifact() -> dict:
         **label_audit_payload,
         "auditSha256": canonical_sha256(label_audit_payload),
     }
+    dataset_by_track = {row["trackId"]: row["datasetId"] for row in projection_rows}
+    emitted_by_dataset = {
+        dataset_id: sum(dataset_by_track[example["trackId"]] == dataset_id for example in examples)
+        for dataset_id in LABEL_DETERMINACY_DATASET_IDS
+    }
+    dataset_rows = []
+    for dataset_id in LABEL_DETERMINACY_DATASET_IDS:
+        emitted = emitted_by_dataset[dataset_id]
+        is_guitarset = dataset_id == "guitarset"
+        row_payload = {
+            "datasetId": dataset_id,
+            "totalBarCount": emitted + (5 if is_guitarset else 0),
+            "referenceDeterminateBarCount": emitted + (3 if is_guitarset else 0),
+            "referenceMixedBarCount": 1 if is_guitarset else 0,
+            "referenceUncoveredBarCount": 1 if is_guitarset else 0,
+            "predictionMixedBarCount": 1 if is_guitarset else 0,
+            "predictionUncoveredBarCount": 2 if is_guitarset else 0,
+            "predictionConfidenceMissingBarCount": 1 if is_guitarset else 0,
+            "predictionStructurallyScorableBarCount": emitted,
+            "excludedReferenceIndeterminateBarCount": 2 if is_guitarset else 0,
+            "excludedPredictionNoneligibleBarCount": 3 if is_guitarset else 0,
+            "emittedExampleCount": emitted,
+        }
+        dataset_rows.append({**row_payload, "rowSha256": canonical_sha256(row_payload)})
+    dataset_audit_payload = {
+        "schemaVersion": DATASET_LABEL_DETERMINACY_AUDIT_SCHEMA,
+        "strataMode": "certification-datasets-only-v1",
+        "requiredDatasetIds": list(LABEL_DETERMINACY_DATASET_IDS),
+        "datasetIds": list(LABEL_DETERMINACY_DATASET_IDS),
+        "aggregateLabelDeterminacyAuditSha256": label_audit["auditSha256"],
+        "rows": dataset_rows,
+        "rowSetSha256": canonical_sha256(dataset_rows),
+    }
+    dataset_audit = {
+        **dataset_audit_payload,
+        "auditSha256": canonical_sha256(dataset_audit_payload),
+    }
     value = {
         "schemaVersion": BAR_SELECTOR_EXAMPLES_SCHEMA,
         "split": "development",
@@ -260,6 +301,8 @@ def _examples_artifact() -> dict:
         "audioGroupAuditSha256": audio_group_audit["auditSha256"],
         "labelDeterminacyAudit": label_audit,
         "labelDeterminacyAuditSha256": label_audit["auditSha256"],
+        "datasetLabelDeterminacyAudit": dataset_audit,
+        "datasetLabelDeterminacyAuditSha256": dataset_audit["auditSha256"],
         "examples": examples,
         "exampleSetSha256": canonical_sha256(examples),
     }
@@ -314,6 +357,13 @@ def _reseal_source(source: dict) -> None:
     )
 
 
+def _reseal_dataset_label_audit(audit: dict) -> None:
+    for row in audit["rows"]:
+        row["rowSha256"] = canonical_sha256({key: value for key, value in row.items() if key != "rowSha256"})
+    audit["rowSetSha256"] = canonical_sha256(audit["rows"])
+    audit["auditSha256"] = canonical_sha256({key: value for key, value in audit.items() if key != "auditSha256"})
+
+
 def _reseal_artifact(artifact: dict) -> None:
     artifact["artifactSha256"] = canonical_sha256(
         {key: value for key, value in artifact.items() if key != "artifactSha256"}
@@ -344,14 +394,107 @@ def test_nested_grouped_training_is_deterministic_and_sealed(trained: tuple[dict
     assert artifact["training"]["sourceAudioLineageProjectionSha256"] == source["sourceAudioLineageProjectionSha256"]
     assert artifact["training"]["sourceAudioGroupAuditSha256"] == source["audioGroupAuditSha256"]
     assert artifact["training"]["sourceLabelDeterminacyAuditSha256"] == source["labelDeterminacyAuditSha256"]
+    assert (
+        artifact["training"]["sourceDatasetLabelDeterminacyAuditSha256"] == source["datasetLabelDeterminacyAuditSha256"]
+    )
+    assert artifact["training"]["datasetLabelDeterminacyAudit"] == source["datasetLabelDeterminacyAudit"]
     assert artifact["training"]["audioLineageVerificationMode"] == AUDIO_LINEAGE_VERIFICATION_MODE
     assert artifact["training"]["featureArrayVerification"] == FEATURE_ARRAY_VERIFICATION
     assert artifact["training"]["estimand"] == SELECTOR_ESTIMAND
     assert artifact["training"]["oofDenominator"] == OOF_DENOMINATOR
+    assert (
+        sum(row["legacyProductConfidenceMissing"] for row in artifact["training"]["oofAuditRows"])
+        == source["labelDeterminacyAudit"]["predictionConfidenceMissingBarCount"]
+    )
+    assert all("datasetId" in row for row in artifact["training"]["oofAuditRows"])
     assert artifact["artifactSha256"] == canonical_sha256(
         {key: value for key, value in artifact.items() if key != "artifactSha256"}
     )
     assert validate_bar_selector_artifact(artifact)["artifactSha256"] == artifact["artifactSha256"]
+
+
+def test_dataset_label_determinacy_strata_sum_exactly_and_expose_guitar_denominator(
+    trained: tuple[dict, dict],
+) -> None:
+    source, artifact = trained
+    audit = source["datasetLabelDeterminacyAudit"]
+    assert audit["strataMode"] == "certification-datasets-only-v1"
+    assert audit["requiredDatasetIds"] == list(LABEL_DETERMINACY_DATASET_IDS)
+    assert audit["datasetIds"] == list(LABEL_DETERMINACY_DATASET_IDS)
+    aggregate = source["labelDeterminacyAudit"]
+    for field in (
+        "totalBarCount",
+        "referenceDeterminateBarCount",
+        "referenceMixedBarCount",
+        "referenceUncoveredBarCount",
+        "predictionMixedBarCount",
+        "predictionUncoveredBarCount",
+        "predictionConfidenceMissingBarCount",
+        "predictionStructurallyScorableBarCount",
+        "excludedReferenceIndeterminateBarCount",
+        "excludedPredictionNoneligibleBarCount",
+        "emittedExampleCount",
+    ):
+        assert sum(row[field] for row in audit["rows"]) == aggregate[field]
+    guitarset = next(row for row in audit["rows"] if row["datasetId"] == "guitarset")
+    assert guitarset["referenceDeterminateBarCount"] == guitarset["emittedExampleCount"] + 3
+    assert artifact["training"]["datasetLabelDeterminacyAudit"]["rows"] == audit["rows"]
+
+
+def test_rejects_fully_resealed_dataset_label_determinacy_tamper() -> None:
+    source = _examples_artifact()
+    audit = source["datasetLabelDeterminacyAudit"]
+    guitarset = next(row for row in audit["rows"] if row["datasetId"] == "guitarset")
+    guitarset["totalBarCount"] += 1
+    guitarset["referenceDeterminateBarCount"] += 1
+    guitarset["predictionUncoveredBarCount"] += 1
+    guitarset["excludedPredictionNoneligibleBarCount"] += 1
+    _reseal_dataset_label_audit(audit)
+    source["datasetLabelDeterminacyAuditSha256"] = audit["auditSha256"]
+    _reseal_source(source)
+    with pytest.raises(BarSelectorError, match="do not sum to the aggregate"):
+        train_bar_selector(source)
+
+
+def test_selector_artifact_rejects_resealed_propagated_dataset_audit_tamper(
+    trained: tuple[dict, dict],
+) -> None:
+    _source, original = trained
+    artifact = deepcopy(original)
+    audit = artifact["training"]["datasetLabelDeterminacyAudit"]
+    guitarset = next(row for row in audit["rows"] if row["datasetId"] == "guitarset")
+    guitarset["totalBarCount"] += 1
+    guitarset["referenceDeterminateBarCount"] += 1
+    guitarset["predictionUncoveredBarCount"] += 1
+    guitarset["excludedPredictionNoneligibleBarCount"] += 1
+    _reseal_dataset_label_audit(audit)
+    artifact["training"]["sourceDatasetLabelDeterminacyAuditSha256"] = audit["auditSha256"]
+    _reseal_artifact(artifact)
+    with pytest.raises(BarSelectorError, match="do not sum to the aggregate"):
+        validate_bar_selector_artifact(artifact)
+
+
+def test_rejects_resealed_per_example_missing_confidence_audit_tamper() -> None:
+    source = _examples_artifact()
+    example = next(row for row in source["examples"] if not row["legacyProductConfidenceMissing"])
+    example["legacyProductConfidenceMissing"] = True
+    _reseal_example(example)
+    _reseal_source(source)
+    with pytest.raises(BarSelectorError, match="missing-legacy-confidence count"):
+        train_bar_selector(source)
+
+
+def test_selector_artifact_rejects_resealed_oof_missing_confidence_tamper(
+    trained: tuple[dict, dict],
+) -> None:
+    _source, original = trained
+    artifact = deepcopy(original)
+    row = next(value for value in artifact["training"]["oofAuditRows"] if not value["legacyProductConfidenceMissing"])
+    row["legacyProductConfidenceMissing"] = True
+    artifact["training"]["oofPredictionSetSha256"] = canonical_sha256(artifact["training"]["oofAuditRows"])
+    _reseal_artifact(artifact)
+    with pytest.raises(BarSelectorError, match="missing-legacy-confidence flags"):
+        validate_bar_selector_artifact(artifact)
 
 
 def test_every_group_has_unit_mass_and_one_outer_fold(trained: tuple[dict, dict]) -> None:
@@ -634,7 +777,18 @@ def test_outcome_exposes_only_boolean_correct() -> None:
         train_bar_selector(source)
 
 
-@pytest.mark.parametrize("forbidden", ["trackId", "datasetId", "role", "reference", "correct", "eligible"])
+@pytest.mark.parametrize(
+    "forbidden",
+    [
+        "trackId",
+        "datasetId",
+        "role",
+        "reference",
+        "correct",
+        "eligible",
+        "legacyProductConfidenceMissing",
+    ],
+)
 def test_forbidden_metadata_or_outcome_feature_is_rejected(forbidden: str) -> None:
     source = _examples_artifact()
     example = source["examples"][0]

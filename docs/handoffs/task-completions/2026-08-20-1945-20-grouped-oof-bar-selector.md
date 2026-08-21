@@ -21,6 +21,27 @@ audit-only missing legacy confidence. Missing legacy confidence remains inside
 the emitted denominator when product/coverage/dominance pass. Accordingly, OOF
 precision is not presented as accuracy over every runtime bar.
 
+Training now validates and propagates the complete sealed per-dataset
+label-determinacy audit. The exact required strata are `aam`, `guitarset`,
+`idmt_guitar`, `nrgcp`, and `winterreise`; generic synthetic datasets may be
+present only as canonical sorted extra strata. Every dataset row is
+self-hashed, internally reconciled, checked against the actual emitted
+example-to-lineage dataset join, and all eleven row counts must sum exactly to
+the aggregate audit. The selector training artifact retains the complete
+audit, its source hash, and all aggregate component counts, so a downstream
+same-cutoff evaluation can use GuitarSet
+`referenceDeterminateBarCount` as its end-to-end coverage denominator even for
+reference-determinate bars excluded before example emission. None of these
+dataset/count fields enter the estimator matrix.
+
+The hash-bound per-example `legacyProductConfidenceMissing` boolean is
+validated against aggregate and per-dataset counts, copied into the sealed
+training input provenance and OOF audit rows, and retained alongside
+`datasetId` only as audit metadata. Standalone selector validation reconciles
+the OOF flag totals and per-dataset counts to the propagated audit. This makes
+the missing-confidence subset's support and correctness directly measurable;
+neither field can enter the feature allowlist.
+
 `apply_bar_selector` now checks only reference-free prediction structure before
 scoring. A missing `predictionProduct`, coverage below `0.75`, or dominance
 below `0.75` returns `probability: null` with a stable reason. Coverage and
@@ -98,6 +119,12 @@ weights so the artifact validator recomputes every headline metric rather than
 trusting reported floats. The artifact seals feature/config, source/input,
 group, fold-plan, OOF-prediction, and canonical self hashes.
 
+The selector artifact validator also revalidates every propagated dataset row,
+its row-set and audit hashes, required/custom stratum ordering and mode,
+aggregate binding, internal count identities, and exact aggregate sums.
+Fully resealed count tampering therefore fails closed at both the examples
+consumer and standalone selector-artifact validation boundaries.
+
 Those SHA-256 values are canonical integrity commitments, not digital
 signatures and not independent authentication of provenance. They detect
 mutation and splicing only when the artifact enters through the trusted
@@ -140,12 +167,12 @@ deployment, UI, auth, or production file was edited by this task.
 ## Tests and checks
 
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_selector.py`
-  - `59 passed`
+  - `65 passed`
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_selector.py tests/test_chord_reader_bar_examples.py`
-  - `112 passed`
+  - `118 passed`
 - Runtime/examples/selector/uncertainty integration with the two environment-
   dependent live Chrome launches deselected:
-  - `211 passed, 2 deselected`
+  - `194 passed, 2 deselected`
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/bar_selector.py tests/test_chord_reader_bar_selector.py`
   - passed
 - `.venv/bin/ruff format --check steel_guitar_rag/chord_reader/bar_selector.py tests/test_chord_reader_bar_selector.py`
@@ -167,6 +194,9 @@ hash splice, source/static binding mismatch and foreign-model splice rejection,
 per-example audio/cache/fresh-array/millisecond/lineage-row splice rejection,
 audio-group audit reassignment, distinct non-training track application and
 lineage-free split-neutral core application,
+exact per-dataset/aggregate label-audit reconciliation, GuitarSet denominator
+availability, custom-stratum canonicalization, fully resealed dataset-audit
+tampering, and per-example/OOF missing-confidence flag reconciliation,
 missing-product/coverage/dominance application rejection, exact `0.75`
 boundary acceptance, and legacy-confidence-missing audit-only inclusion through
 training and application,

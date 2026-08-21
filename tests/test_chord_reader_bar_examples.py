@@ -16,9 +16,11 @@ from steel_guitar_rag.chord_reader.bar_examples import (
     BAR_OUTCOME_ELIGIBILITY_CONTRACT,
     BAR_OUTCOME_ELIGIBILITY_CONTRACT_SHA256,
     COMPACT_BAR_SUMMARY_SCHEMA,
+    DATASET_LABEL_DETERMINACY_AUDIT_SCHEMA,
     EXAMPLES_SCHEMA,
     FEATURE_ARRAY_VERIFICATION,
     GROUP_MANIFEST_SCHEMA,
+    LABEL_DETERMINACY_DATASET_IDS,
     build_bar_selector_group_manifest,
     build_bar_selector_examples,
     summary_artifact_filename,
@@ -931,6 +933,17 @@ def test_builds_exact_compact_selector_artifact_and_preserves_explicit_groups(tm
     assert result["labelDeterminacyAudit"]["emittedExampleCount"] == len(result["examples"])
     assert result["labelDeterminacyAudit"]["excludedReferenceIndeterminateBarCount"] == 0
     assert result["labelDeterminacyAudit"]["excludedPredictionNoneligibleBarCount"] == 0
+    dataset_audit = result["datasetLabelDeterminacyAudit"]
+    assert dataset_audit["schemaVersion"] == DATASET_LABEL_DETERMINACY_AUDIT_SCHEMA
+    assert dataset_audit["strataMode"] == "generic-with-custom-datasets-v1"
+    assert dataset_audit["requiredDatasetIds"] == list(LABEL_DETERMINACY_DATASET_IDS)
+    assert dataset_audit["datasetIds"] == [
+        *LABEL_DETERMINACY_DATASET_IDS,
+        "cross-corpus",
+    ]
+    assert result["datasetLabelDeterminacyAuditSha256"] == dataset_audit["auditSha256"]
+    for field in bar_examples._LABEL_AUDIT_COUNT_FIELDS:
+        assert sum(row[field] for row in dataset_audit["rows"]) == result["labelDeterminacyAudit"][field]
     for example in result["examples"]:
         assert set(example) == bar_examples._EXAMPLE_KEYS
         assert example["barSummary"]["schemaVersion"] == COMPACT_BAR_SUMMARY_SCHEMA
@@ -944,7 +957,17 @@ def test_builds_exact_compact_selector_artifact_and_preserves_explicit_groups(tm
             == example["barSummary"]["barSummarySha256"]
         )
         assert set(example["outcome"]) == {"correct"}
-        assert not ({"datasetId", "role", "reference", "eligible"} & set(example["barSummary"]["featureValues"]))
+        assert isinstance(example["legacyProductConfidenceMissing"], bool)
+        assert not (
+            {
+                "datasetId",
+                "role",
+                "reference",
+                "eligible",
+                "legacyProductConfidenceMissing",
+            }
+            & set(example["barSummary"]["featureValues"])
+        )
 
     # Direct consumer-boundary validation: the selector can ingest the exact
     # bindings and every emitted compact row without adapting the schema.
@@ -1342,6 +1365,7 @@ def test_legacy_confidence_missing_is_audited_but_does_not_gate_boolean_label(
     )
     result = _build(tmp_path, report, runtime, groups, audio_lineage)
     assert [example["outcome"] for example in result["examples"]] == [{"correct": True}]
+    assert [example["legacyProductConfidenceMissing"] for example in result["examples"]] == [True]
     audit = result["labelDeterminacyAudit"]
     assert audit["predictionConfidenceMissingBarCount"] == 1
     assert audit["predictionStructurallyScorableBarCount"] == 1
@@ -1368,7 +1392,7 @@ def test_builder_uses_exact_application_structural_boundaries(
     definitions = [
         {
             "id": "structural-boundary",
-            "datasetId": "fixture",
+            "datasetId": "guitarset",
             "role": "comp",
             "group": "composition",
             "prediction": ["C"],
@@ -1382,7 +1406,10 @@ def test_builder_uses_exact_application_structural_boundaries(
     )
     result = _build(tmp_path, report, runtime, groups, audio_lineage)
     audit = result["labelDeterminacyAudit"]
+    guitarset = next(row for row in result["datasetLabelDeterminacyAudit"]["rows"] if row["datasetId"] == "guitarset")
     assert len(result["examples"]) == expected_examples
+    assert guitarset["referenceDeterminateBarCount"] == 1
+    assert guitarset["emittedExampleCount"] == expected_examples
     assert audit["predictionStructurallyScorableBarCount"] == expected_examples
     assert audit["excludedPredictionNoneligibleBarCount"] == 1 - expected_examples
     assert audit[exclusion_field] == 1 - expected_examples

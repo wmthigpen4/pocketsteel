@@ -39,6 +39,25 @@ stated estimand is explicitly conditional on a determinate reference label, a
 non-null prediction product, coverage at least `0.75`, and dominance at least
 `0.75`; it is not accuracy over every runtime bar.
 
+The builder now also emits a separately self-hashed
+`chord_bar_selector_dataset_label_determinacy_audit_v1`. Every row mirrors all
+eleven aggregate label-audit counts, including emitted examples, and the
+builder proves each aggregate count is exactly the sum of its dataset rows.
+The five certification strata are always present in this exact order:
+`aam`, `guitarset`, `idmt_guitar`, `nrgcp`, `winterreise`. Thus GuitarSet's
+reference-determinate denominator is sealed even when structurally ineligible
+predictions emitted no example. A real five-corpus artifact declares
+`strataMode=certification-datasets-only-v1`; generic synthetic/custom callers
+remain supported through canonical, sorted extra rows and declare
+`generic-with-custom-datasets-v1`. Dataset and role remain audit metadata and
+never enter `featureValues`.
+
+Every emitted example also carries the hash-bound audit-only boolean
+`legacyProductConfidenceMissing`. Its sum must equal both the aggregate
+missing-confidence count and the corresponding per-dataset row counts. This
+makes missing-confidence subset correctness joinable without exposing legacy
+confidence as a feature or changing structural eligibility.
+
 ## Task summary
 
 Implemented the development-only join between the frozen uncertainty benchmark,
@@ -125,7 +144,7 @@ and dominance at least `0.75`. Correctness is derived exactly as
 `predictionProduct == referenceProduct`, including when legacy product
 confidence is missing. The reference contributes exactly
 `outcome: {correct: boolean}`. Reference labels, eligibility, dataset, role,
-and legacy confidence availability never enter `featureValues`.
+and `legacyProductConfidenceMissing` never enter `featureValues`.
 
 The runtime v2 duration is the player's integer-millisecond duration while the
 frozen prediction may retain more precision. The prediction-only summarizer
@@ -143,6 +162,9 @@ order, feature specification, observability profile, runtime timing source, and
 the canonical bar outcome/eligibility contract plus its SHA-256. Each compact
 summary carries its own `trackId` and `sharedBindingsSha256`, preventing a
 summary from being silently reassigned to another track or selector binding.
+The root artifact additionally binds the per-dataset audit and its SHA-256;
+each dataset row has its own hash plus a canonical row-set hash, and the audit
+binds the aggregate label-determinacy audit hash.
 
 All SHA-256 values in this artifact family are canonical integrity commitments,
 not digital signatures and not independent proof of provenance or
@@ -168,10 +190,10 @@ production, deployment, auth, UI, or model file was edited by this task.
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_examples.py`
   - `53 passed`
 - `.venv/bin/python -m pytest -q tests/test_chord_reader_bar_examples.py tests/test_chord_reader_bar_selector.py`
-  - `112 passed`
+  - `118 passed`
 - Runtime/examples/selector/uncertainty integration with the two environment-
   dependent live Chrome launches deselected:
-  - `211 passed, 2 deselected`
+  - `194 passed, 2 deselected`
 - `.venv/bin/ruff check steel_guitar_rag/chord_reader/bar_examples.py tests/test_chord_reader_bar_examples.py`
   - passed
 - `.venv/bin/python -m py_compile steel_guitar_rag/chord_reader/bar_examples.py tests/test_chord_reader_bar_examples.py`
@@ -191,6 +213,10 @@ no group fallback; descriptor and envelope split rejection before path access;
 exact track-set identity; prediction, runtime timing, and reference drift;
 production-extractor enforcement; exact full-lineage/report projection binding;
 full file and fresh-re-extraction verification before protected leaf access;
+exact per-dataset/aggregate determinacy reconciliation, sealed GuitarSet
+reference-determinate denominators, canonical custom synthetic strata, and
+hash-bound per-example missing-confidence flags reconciled to aggregate and
+dataset counts;
 adversarial runtime-audio splicing; cached/fresh feature-array, lineage-row, and
 canonical-millisecond disagreement; identical-audio cross-group rejection and
 same-group audit acceptance;
