@@ -1,0 +1,144 @@
+{
+  "schemaVersion": "chord_runtime_beat_cell_stage2_readiness_recovery_preregistration_v1",
+  "split": "development",
+  "developmentOnly": true,
+  "promotionEligible": false,
+  "recoveryId": "beat-cell-stage2-r5-readiness-only",
+  "sourceCycle": {
+    "recoveryMode": "reuse-immutable-r4-feature-examples-selector-no-regeneration",
+    "authorityPath": "docs/handoffs/task-completions/2026-08-21-1019-20-beat-cell-stage2-r4-final-source-amended-preregistration.json",
+    "authorityFileSha256": "329bb235e760a9c665945817b21d4ea0e9d824a26251a668cad4d47fa5b7e2a1",
+    "authorityCanonicalSha256": "a606cfefb1026bc29d335aeb9e73f0adead459a6e789e550aaff35bca214e7c9",
+    "implementationHead": "edec952077c42c31bed280cb7e3994ec335a318e",
+    "projectionSha256": {
+      "sourceInputs": "d236e26249cfcf616e4ca95cb199f231b9509c212bdbdb27b947f32028a2c185",
+      "outputPaths": "a8b3d76cd0adc5e656ce3f53466d352e83a3b048e78a645e72db0482413981ce",
+      "stageA": "814902fac2550294ce8e336a39b01db6c9012e628c0fdaeb3a1bfc31e13f0688",
+      "featureMath": "4b450d74df5314d68e7a8034d488b8d727144c2847e0ae628ba351c69d4ddfb0",
+      "stageB": "ebf2cf85c1c854a8a9c30d0100bd27343612607b0c3fb440e9512b272cb5ff32",
+      "selectorCore": "2c0b541418b6360b2e79945375b4638bcc50eb1733894311dedcb9b566f156cf",
+      "readiness": "81f58801c789370e06104203117331b8e2d487e3055d14b7a1831e1c22b73b18",
+      "oneShot": "450413b12835c8ffa5117ceb41e896b0f1168589ea2a6f48a2b601fa09f78796"
+    }
+  },
+  "consumedFailure": {
+    "receiptPath": "docs/handoffs/task-completions/2026-08-21-1243-20-beat-cell-stage2-r4-readiness-failure.md",
+    "receiptFileSha256": "941d6d8b8248ca691255b9e015100974d411b80248901bbac0a0a974dae46c50",
+    "officialExitCode": 1,
+    "officialStdoutReceiptEmitted": false,
+    "terminalError": "A joined row ordered feature vector disagrees with featureValuesSha256.",
+    "readinessEvaluationCount": 1,
+    "readinessReproductionRefitCount": 1,
+    "readinessReportPublished": false,
+    "sameCycleRetryAllowed": false
+  },
+  "immutableInputs": {
+    "stage1": {
+      "path": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage1/report.json",
+      "fileSha256": "0263746165db4f7388aa8ae2e8d8f39e7583f0719cde01718bce4bd5d498adec",
+      "canonicalSha256": "50de920799827cee0670faa135ce76d454896511e8e2cc39219049647748281e",
+      "artifactSha256": "c3019c5dfa7dd5466d18ea4e2ec98b08a2ec77ca925a1a033816963e7d22ab89"
+    },
+    "featureSet": {
+      "manifestPath": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r4/feature-set/manifest.json",
+      "manifestFileSha256": "0ec6dd87ba47e101cbec709bb2c08d8942e27868bd36b4d6788ae1bc1d9a611a",
+      "manifestCanonicalSha256": "c520c283b589bfb35e6d095164e801c4ce5b453850dd15e6dce510b90bae3aa5",
+      "artifactSha256": "e8aaf20823d1f55992394dc2f6921e4ffca85ee4a53c82583b3e813aa2fada08",
+      "summarySetSha256": "bc575174c34209f2e8796a3fbef95228f0f282b3fb98ab20eb5bbdff27a659a3",
+      "featureRowSetSha256": "ffe6d60c311dec6795e8198bb2f10d9d958f5a32c53d7ddc3fe93df986a2d991"
+    },
+    "examples": {
+      "path": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r4/examples/artifact.json",
+      "fileSha256": "4afd0bea0e2db29c71ce503caa56651006d2dd90c6d09076a92f097d992646db",
+      "canonicalSha256": "faabe454862463fd2f83bc25f9651dde48fe7d5498e6abe50cb355282b864026",
+      "artifactSha256": "4338ba6a3b288d97b9c9bc22d8acb515912198b6ac2567e29eb5b3bdb7320150",
+      "exampleCount": 9376,
+      "exampleDurationMilliseconds": 5074349
+    },
+    "selector": {
+      "path": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r4/selector/artifact.json",
+      "fileSha256": "cbd99d98df6c37705ac73a27fadb18a7f81b92adc9134a411a5067ea72518ac8",
+      "canonicalSha256": "f23fd4ad38a76121ccbd0aea48d68fdef566a1f039ce717cdd6f55e58d7c21fd",
+      "artifactSha256": "269dec163c874f77a76f4e1269f2bb6137a4e588a68c152cfac2637e915328bd"
+    }
+  },
+  "output": {
+    "readinessReport": "/Users/cory/Documents/Pocket Steel/tmp/chord-reader-v9/experiments/winner-seven-selector-development-v1/beat-cell-stage2-r5-readiness-only/readiness/report.json",
+    "publicationMode": "canonical-new-path-only-retained-nofollow-dirfd-input-recheck-failure-atomic-v1",
+    "mustBeNew": true,
+    "callerPathOverrideAllowed": false
+  },
+  "frozenPolicy": {
+    "readinessProjectionSha256": "81f58801c789370e06104203117331b8e2d487e3055d14b7a1831e1c22b73b18",
+    "oneShotProjectionSha256": "450413b12835c8ffa5117ceb41e896b0f1168589ea2a6f48a2b601fa09f78796",
+    "readinessRubricSha256": "5b5d25fae2271eed1283e2a5c17a3f77b1b0508a2ff330c85bdf1efc9c7a7236",
+    "fixedTargetCoverage": 0.5,
+    "gateCount": 15,
+    "gatePolicy": "exact-r4-readiness-count-duration-group-balanced-wilson-gates-no-change",
+    "cutoffPolicy": "minimumProbabilityAtDescriptivePoint-at-targetCoverage-0.50-inclusive-ties-not-operating-threshold",
+    "featureFoldWeightDatasetSelectorChangeAllowed": false,
+    "thresholdSelectionAllowed": false,
+    "calibrationAccessDuringRecoveryAllowed": false
+  },
+  "implementation": {
+    "allowedChangedFiles": [
+      "steel_guitar_rag/chord_reader/beat_cell_readiness.py",
+      "steel_guitar_rag/chord_reader/beat_cell_readiness_recovery_contract.py",
+      "scripts/chord_beat_cell_readiness.py",
+      "tests/test_chord_reader_beat_cell_readiness.py",
+      "docs/handoffs/task-completions/2026-08-21-1243-20-beat-cell-stage2-r4-readiness-failure.md",
+      "docs/handoffs/task-completions/2026-08-21-1244-20-beat-cell-stage2-r5-readiness-only-preregistration.json",
+      "docs/handoffs/task-completions/2026-08-21-1329-20-beat-cell-stage2-r5-readiness-only-implementation.md",
+      "docs/handoffs/task-completions/2026-08-21-1330-20-beat-cell-stage2-r5-readiness-only-implementation-authorization.json"
+    ],
+    "permittedSemanticChange": "preserve-sealed-json-int-float-types-through-ordered-feature-vector-and-standalone-validation",
+    "affectedIntegerFeatureNames": [
+      "predictionTransitionCount",
+      "productFamilyNone",
+      "productFamilyMajor",
+      "productFamilyMinor",
+      "productFamilyDominant",
+      "productFamilyMinorSeventh"
+    ],
+    "fixOnlyReadinessModuleFileSha256": "225773bd6fc32c43b1308afa46b1648317b3200c1a5cb32c49ad18c584505306",
+    "fixOnlyReadinessTestFileSha256": "4bc06c16ef91bc166998af0531d68adf442e5536b8fa47e1f3b0a1b3e8a67d76",
+    "unchangedCliFileSha256": "cc0c68ff11b654f8e17f4dc9c8a746c88e543be14d8188e2cf1189304e9b77dd",
+    "finalReadinessModuleFileSha256": null,
+    "finalRecoveryContractFileSha256": null,
+    "finalReadinessTestFileSha256": null,
+    "finalImplementationCommit": null,
+    "executionAuthorized": false
+  },
+  "oneShot": {
+    "newCycle": {
+      "featureSetBuildCount": 0,
+      "examplesBuildCount": 0,
+      "selectorCandidateCount": 0,
+      "readinessEvaluationCount": 1,
+      "readinessReproductionRefitCount": 1,
+      "sameCycleRetryAllowed": false
+    },
+    "cumulativeIncludingConsumedR4": {
+      "featureSetBuildCount": 1,
+      "examplesBuildCount": 1,
+      "selectorCandidateCount": 1,
+      "readinessEvaluationCount": 2,
+      "readinessReproductionRefitCount": 2
+    },
+    "immutableR4ArtifactsMustBeReused": true,
+    "featureExamplesSelectorRegenerationAllowed": false,
+    "stopAfterReadinessForIndependentAudit": true
+  },
+  "forbiddenAccess": {
+    "calibration": false,
+    "test": false,
+    "confirmation": false,
+    "player": false,
+    "publicSong": false,
+    "browserRuntime": false,
+    "travis": false,
+    "thresholdSelection": false,
+    "promotion": false,
+    "deployment": false
+  }
+}
