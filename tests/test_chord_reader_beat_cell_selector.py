@@ -460,6 +460,13 @@ def test_split_neutral_application_is_probability_only_and_fails_closed(
     assert below["probability"] is None
     assert below["reason"] == "prediction-coverage-below-eligibility-threshold"
 
+    near_tie = apply_beat_cell_selector(
+        _feature_row(examples_artifact["examples"][0], dominance=0.5000000000000088),
+        selector_artifact,
+    )
+    assert near_tie["probability"] is None
+    assert near_tie["reason"] == "prediction-dominance-below-eligibility-threshold"
+
     invalid = deepcopy(row)
     invalid["featureValues"]["rootSelectedProbabilityMean"] = math.nan
     assert apply_beat_cell_selector(invalid, selector_artifact)["reason"] == "invalid-feature-row"

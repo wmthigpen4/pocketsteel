@@ -21,12 +21,12 @@ from .bar_promotion import canonical_sha256
 
 BEAT_CELL_STAGE2_AUTHORITY_SCHEMA = "chord_runtime_beat_cell_stage2_preregistration_v1"
 BEAT_CELL_STAGE2_AUTHORITY_RELATIVE_PATH = Path(
-    "docs/handoffs/task-completions/2026-08-21-0658-20-beat-cell-stage2-r2-recovery-preregistration.json"
+    "docs/handoffs/task-completions/2026-08-21-0740-20-beat-cell-stage2-r3-recovery-preregistration.json"
 )
-BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256 = "7fd598ec952c22ae3a59d4d28d66333f75cb88cdc9348e46566063d7d1709b34"
-BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256 = "33e74034f0bab7b9a8f146188835306f535a158f68bb5bcf66bb0d265d69dd2a"
+BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256 = "c738861f164022ce558258b2ecad4ebcbe707394750fe4bdc9cb97df5cd3e305"
+BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256 = "1050b7c7f676b04431d04b8009827d8695e7e22896917ad9b39d29f3edf1f761"
 BEAT_CELL_STAGE_A_PROJECTION_SHA256 = "814902fac2550294ce8e336a39b01db6c9012e628c0fdaeb3a1bfc31e13f0688"
-BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256 = "65fc42417c1b45201e02fe35f140fee541f20608f08fbe6f2d92c127e4009ef2"
+BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256 = "0735dc64d064f227bf4fcdd698ef1ff16644fbb31e261e7a057c5f021e693602"
 BEAT_CELL_STAGE_B_PROJECTION_SHA256 = "ebf2cf85c1c854a8a9c30d0100bd27343612607b0c3fb440e9512b272cb5ff32"
 BEAT_CELL_SELECTOR_CORE_PROJECTION_SHA256 = "2c0b541418b6360b2e79945375b4638bcc50eb1733894311dedcb9b566f156cf"
 BEAT_CELL_READINESS_PROJECTION_SHA256 = "81f58801c789370e06104203117331b8e2d487e3055d14b7a1831e1c22b73b18"
@@ -198,6 +198,22 @@ def validate_beat_cell_stage2_authority(authority: Mapping[str, Any]) -> dict[st
         "sourceBeatCellStage1Module",
         "sourceBeatCellStage1ModuleFileSha256",
     )
+    feature_math = value.get("featureMath")
+    if isinstance(feature_math, Mapping):
+        has_reconciliation = "stage1ProductReconciliation" in feature_math
+        has_stage_a_module = "sourceStageAImplementationModule" in feature_math
+        has_stage_a_hash = "sourceStageAImplementationModuleFileSha256" in feature_math
+        if has_reconciliation and not (has_stage_a_module and has_stage_a_hash):
+            raise BeatCellStage2ContractError(
+                "The reconciled feature-math authority must bind the exact Stage-A implementation source."
+            )
+    if isinstance(feature_math, Mapping) and (has_stage_a_module or has_stage_a_hash):
+        _validate_source_module(
+            value,
+            "featureMath",
+            "sourceStageAImplementationModule",
+            "sourceStageAImplementationModuleFileSha256",
+        )
     _validate_source_module(value, "selectorCore", "sourceModule", "sourceModuleFileSha256")
     _validate_source_module(value, "readiness", "sourceModule", "sourceModuleFileSha256")
     return value

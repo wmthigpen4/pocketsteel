@@ -1074,11 +1074,416 @@ def _winner(
     return product, float(overlaps[product])
 
 
+def _winner_candidates(overlaps: Mapping[str, float]) -> tuple[str, ...]:
+    if not overlaps:
+        return ()
+    maximum = max(float(seconds) for seconds in overlaps.values())
+    return tuple(
+        sorted(
+            product
+            for product, seconds in overlaps.items()
+            if math.isclose(float(seconds), maximum, rel_tol=0, abs_tol=_EPSILON)
+        )
+    )
+
+
+_PRODUCT_RECONCILIATION_POLICY_FIELDS = frozenset(
+    {
+        "schemaVersion",
+        "sourceStage1ScoringPolicySha256",
+        "predecessorFailure",
+        "rule",
+        "structuralIneligibility",
+        "expectedCount",
+        "expectedRows",
+        "expectedRowSetSha256",
+        "forbiddenDecisionInputs",
+        "labelBlindSweep",
+        "labelBlindSweepSha256",
+        "postFreezeLabelBlindPreflight",
+        "preCommitGovernanceIncidentDisclosure",
+        "stageBAdmission",
+    }
+)
+_PRODUCT_RECONCILIATION_ROW_FIELDS = frozenset(
+    {
+        "trackId",
+        "cellIndex",
+        "startMilliseconds",
+        "endMilliseconds",
+        "sourceBeatCellSha256",
+        "featureProduct",
+        "stage1Product",
+        "featureCoverage",
+        "stage1Coverage",
+        "featureDominance",
+        "stage1Dominance",
+        "candidateProducts",
+        "overlapSecondsByProduct",
+    }
+)
+_STAGE_B_RECONCILIATION_FIELDS = (
+    "trackId",
+    "cellIndex",
+    "startMilliseconds",
+    "endMilliseconds",
+    "sourceBeatCellSha256",
+    "featureProduct",
+    "stage1Product",
+    "featureCoverage",
+    "stage1Coverage",
+    "featureDominance",
+    "stage1Dominance",
+)
+
+
+def _validate_expected_product_reconciliation_row(
+    row: Mapping[str, Any],
+    *,
+    index: int,
+) -> dict[str, Any]:
+    value = deepcopy(dict(_mapping(row, f"stage1ProductReconciliation.expectedRows[{index}]")))
+    _exact_fields(
+        value,
+        _PRODUCT_RECONCILIATION_ROW_FIELDS,
+        f"stage1ProductReconciliation.expectedRows[{index}]",
+    )
+    _string(value.get("trackId"), f"expectedRows[{index}].trackId")
+    _sha256(value.get("sourceBeatCellSha256"), f"expectedRows[{index}].sourceBeatCellSha256")
+    _integer(value.get("cellIndex"), f"expectedRows[{index}].cellIndex")
+    start_ms = _integer(value.get("startMilliseconds"), f"expectedRows[{index}].startMilliseconds")
+    end_ms = _integer(value.get("endMilliseconds"), f"expectedRows[{index}].endMilliseconds", minimum=1)
+    if end_ms <= start_ms:
+        raise BeatCellExamplesError("A product-reconciliation interval must be positive.")
+    feature_product = _string(value.get("featureProduct"), f"expectedRows[{index}].featureProduct")
+    stage1_product = _string(value.get("stage1Product"), f"expectedRows[{index}].stage1Product")
+    if feature_product == stage1_product:
+        raise BeatCellExamplesError("A product reconciliation must bind two unequal products.")
+
+    raw_candidates = _sequence(value.get("candidateProducts"), f"expectedRows[{index}].candidateProducts")
+    candidates = tuple(
+        _string(product, f"expectedRows[{index}].candidateProducts[{candidate_index}]")
+        for candidate_index, product in enumerate(raw_candidates)
+    )
+    if (
+        candidates != tuple(sorted(set(candidates)))
+        or feature_product not in candidates
+        or stage1_product not in candidates
+    ):
+        raise BeatCellExamplesError("Product-reconciliation candidates are not exact sorted unique bindings.")
+    raw_overlaps = _mapping(value.get("overlapSecondsByProduct"), f"expectedRows[{index}].overlapSecondsByProduct")
+    overlaps = {
+        _string(product, f"expectedRows[{index}].overlap product"): _finite(
+            seconds,
+            f"expectedRows[{index}].overlapSecondsByProduct[{product!r}]",
+        )
+        for product, seconds in raw_overlaps.items()
+    }
+    if not overlaps or any(seconds <= 0 for seconds in overlaps.values()):
+        raise BeatCellExamplesError("Product-reconciliation overlaps must be positive and nonempty.")
+    if _winner_candidates(overlaps) != candidates or _winner(overlaps)[0] != feature_product:
+        raise BeatCellExamplesError("Product-reconciliation tolerant-winner evidence is stale.")
+    exact_maximum = max(overlaps.values())
+    exact_candidates = sorted(product for product, seconds in overlaps.items() if seconds == exact_maximum)
+    if not exact_candidates or exact_candidates[0] != stage1_product:
+        raise BeatCellExamplesError("Product-reconciliation Stage-1 exact winner is stale.")
+
+    feature_coverage = _finite(value.get("featureCoverage"), f"expectedRows[{index}].featureCoverage")
+    stage1_coverage = _finite(value.get("stage1Coverage"), f"expectedRows[{index}].stage1Coverage")
+    feature_dominance = _finite(value.get("featureDominance"), f"expectedRows[{index}].featureDominance")
+    stage1_dominance = _finite(value.get("stage1Dominance"), f"expectedRows[{index}].stage1Dominance")
+    if any(
+        observed < 0 or observed > 1
+        for observed in (feature_coverage, stage1_coverage, feature_dominance, stage1_dominance)
+    ):
+        raise BeatCellExamplesError("Product-reconciliation coverage/dominance values must be within [0,1].")
+    interval_seconds = (end_ms - start_ms) / 1000
+    covered_seconds = min(interval_seconds, max(0.0, math.fsum(overlaps.values())))
+    winner_seconds = min(covered_seconds, max(0.0, overlaps[feature_product]))
+    expected_feature_coverage = min(1.0, max(0.0, covered_seconds / interval_seconds))
+    expected_feature_dominance = (
+        min(1.0, max(0.0, winner_seconds / covered_seconds)) if covered_seconds > _EPSILON else 0.0
+    )
+    if (
+        feature_coverage != expected_feature_coverage
+        or feature_dominance != expected_feature_dominance
+        or not math.isclose(feature_coverage, stage1_coverage, rel_tol=0, abs_tol=_EPSILON)
+        or not math.isclose(feature_dominance, stage1_dominance, rel_tol=0, abs_tol=_EPSILON)
+        or not _prediction_is_structurally_ineligible(feature_product, feature_coverage, feature_dominance)
+        or not _prediction_is_structurally_ineligible(stage1_product, stage1_coverage, stage1_dominance)
+    ):
+        raise BeatCellExamplesError("Product-reconciliation values do not prove dual structural ineligibility.")
+    return value
+
+
+def _expected_product_reconciliations() -> list[dict[str, Any]]:
+    policy = _mapping(
+        BEAT_CELL_FEATURE_MATH_PROJECTION.get("stage1ProductReconciliation"),
+        "feature-math stage1ProductReconciliation",
+    )
+    _exact_fields(policy, _PRODUCT_RECONCILIATION_POLICY_FIELDS, "feature-math stage1ProductReconciliation")
+    expected = [
+        _validate_expected_product_reconciliation_row(row, index=index)
+        for index, row in enumerate(_sequence(policy.get("expectedRows"), "stage1ProductReconciliation.expectedRows"))
+    ]
+    expected.sort(key=lambda row: (str(row.get("trackId")), int(row.get("cellIndex", -1))))
+    structural = _mapping(policy.get("structuralIneligibility"), "stage1ProductReconciliation.structuralIneligibility")
+    expected_structural = {
+        "comparisonEpsilon": _stage1.SCORING_POLICY["comparisonEpsilon"],
+        "expectedStage1Result": True,
+        "expectedStageAResult": True,
+        "formula": (
+            "predictionProduct is null or predictionCoverage+comparisonEpsilon<predictionCoverageMinimum "
+            "or predictionDominance+comparisonEpsilon<predictionDominanceMinimum"
+        ),
+        "predictionCoverageMinimum": _stage1.SCORING_POLICY["predictionCoverage"],
+        "predictionDominanceMinimum": _stage1.SCORING_POLICY["predictionDominance"],
+        "stage1Required": True,
+        "stageARequired": True,
+    }
+    sweep = _mapping(policy.get("labelBlindSweep"), "stage1ProductReconciliation.labelBlindSweep")
+    preflight = _mapping(
+        policy.get("postFreezeLabelBlindPreflight"),
+        "stage1ProductReconciliation.postFreezeLabelBlindPreflight",
+    )
+    incident = _mapping(
+        policy.get("preCommitGovernanceIncidentDisclosure"),
+        "stage1ProductReconciliation.preCommitGovernanceIncidentDisclosure",
+    )
+    stage_b = _mapping(policy.get("stageBAdmission"), "stage1ProductReconciliation.stageBAdmission")
+    projected = [{field: row.get(field) for field in _STAGE_B_RECONCILIATION_FIELDS} for row in expected]
+    preflight_inventory = _mapping(
+        preflight.get("inventoryPerRun"),
+        "stage1ProductReconciliation.postFreezeLabelBlindPreflight.inventoryPerRun",
+    )
+    preflight_results = _mapping(
+        preflight.get("requiredInMemoryResultsPerRun"),
+        "stage1ProductReconciliation.postFreezeLabelBlindPreflight.requiredInMemoryResultsPerRun",
+    )
+    preflight_forbidden = _mapping(
+        preflight.get("forbiddenOperationCounts"),
+        "stage1ProductReconciliation.postFreezeLabelBlindPreflight.forbiddenOperationCounts",
+    )
+    preflight_boundary = _mapping(
+        preflight.get("inputSnapshotBoundary"),
+        "stage1ProductReconciliation.postFreezeLabelBlindPreflight.inputSnapshotBoundary",
+    )
+    preflight_delta = _mapping(
+        preflight.get("deltaPolicy"),
+        "stage1ProductReconciliation.postFreezeLabelBlindPreflight.deltaPolicy",
+    )
+    preflight_one_shot = _mapping(
+        preflight.get("oneShotConsumption"),
+        "stage1ProductReconciliation.postFreezeLabelBlindPreflight.oneShotConsumption",
+    )
+    preflight_builder = _mapping(
+        preflight.get("productionBuilder"),
+        "stage1ProductReconciliation.postFreezeLabelBlindPreflight.productionBuilder",
+    )
+    incident_decision = _mapping(
+        incident.get("decisionIndependence"),
+        "stage1ProductReconciliation.preCommitGovernanceIncidentDisclosure.decisionIndependence",
+    )
+    incident_indexed = _mapping(
+        incident.get("indexedProtectedCollections"),
+        "stage1ProductReconciliation.preCommitGovernanceIncidentDisclosure.indexedProtectedCollections",
+    )
+    incident_post = _mapping(
+        incident.get("postIncidentParseCounts"),
+        "stage1ProductReconciliation.preCommitGovernanceIncidentDisclosure.postIncidentParseCounts",
+    )
+    incident_retention = _mapping(
+        incident.get("retention"),
+        "stage1ProductReconciliation.preCommitGovernanceIncidentDisclosure.retention",
+    )
+    if (
+        policy.get("schemaVersion") != "chord_runtime_beat_cell_stage2_product_reconciliation_v1"
+        or BEAT_CELL_FEATURE_MATH_PROJECTION.get("sourceStage1ScoringPolicySha256") != _stage1.SCORING_POLICY_SHA256
+        or policy.get("sourceStage1ScoringPolicySha256") != _stage1.SCORING_POLICY_SHA256
+        or policy.get("expectedCount") != len(expected)
+        or policy.get("expectedRowSetSha256") != canonical_sha256(expected)
+        or dict(structural) != expected_structural
+        or policy.get("labelBlindSweepSha256") != canonical_sha256(sweep)
+        or sweep.get("schemaVersion") != "chord_runtime_beat_cell_stage2_product_reconciliation_sweep_v1"
+        or sweep.get("labelBlind") is not True
+        or sweep.get("trackCount") != BEAT_CELL_STAGE2_SOURCE_INPUTS["trackCount"]
+        or sweep.get("cellCount") != BEAT_CELL_STAGE2_SOURCE_INPUTS["cellCount"]
+        or sweep.get("predictionIdentitySetSha256") != BEAT_CELL_STAGE2_SOURCE_INPUTS["predictionIdentitySetSha256"]
+        or sweep.get("stage1SummaryArtifactSetSha256")
+        != BEAT_CELL_STAGE2_SOURCE_INPUTS["stage1SummaryArtifactSet"]["sha256"]
+        or sweep.get("stage1SummaryFileSetSha256") != BEAT_CELL_STAGE2_SOURCE_INPUTS["stage1SummaryFileSet"]["sha256"]
+        or sweep.get("tolerantWinnerStage1ProductMismatchCount") != len(expected)
+        or sweep.get("expectedReconciliationCount") != len(expected)
+        or sweep.get("coverageMismatchCountAtAbsoluteTolerance1e-9") != 0
+        or sweep.get("dominanceMismatchCountAtAbsoluteTolerance1e-9") != 0
+        or sweep.get("unexpectedReconciliationCount") != 0
+        or preflight.get("schemaVersion") != "chord_runtime_beat_cell_stage2_post_freeze_label_blind_preflight_v1"
+        or preflight.get("authorization")
+        != "exactly-two-deterministic-in-memory-committed-production-builder-runs-only"
+        or preflight.get("authorizedRunCount") != 2
+        or preflight.get("executionPhase")
+        != (
+            "only-after-R3-authority-and-corrected-production-code-are-committed-at-one-clean-HEAD-and-all-"
+            "authority-source-hashes-are-final"
+        )
+        or preflight_inventory.get("trackCount") != BEAT_CELL_STAGE2_SOURCE_INPUTS["trackCount"]
+        or preflight_inventory.get("cellCount") != BEAT_CELL_STAGE2_SOURCE_INPUTS["cellCount"]
+        or preflight_inventory.get("featureSummaryCount") != BEAT_CELL_STAGE2_SOURCE_INPUTS["trackCount"]
+        or preflight_inventory.get("featureRowCount") != BEAT_CELL_STAGE2_SOURCE_INPUTS["cellCount"]
+        or preflight_inventory.get("predictionIdentitySetSha256")
+        != BEAT_CELL_STAGE2_SOURCE_INPUTS["predictionIdentitySetSha256"]
+        or preflight_inventory.get("stage1SummaryArtifactSetSha256")
+        != BEAT_CELL_STAGE2_SOURCE_INPUTS["stage1SummaryArtifactSet"]["sha256"]
+        or preflight_inventory.get("stage1SummaryFileSetSha256")
+        != BEAT_CELL_STAGE2_SOURCE_INPUTS["stage1SummaryFileSet"]["sha256"]
+        or preflight_results.get("exactReconciliationCount") != len(expected)
+        or preflight_results.get("exactReconciliationRowSetSha256") != canonical_sha256(expected)
+        or preflight_results.get("unexpectedReconciliationCount") != 0
+        or preflight_results.get("allFeatureSummariesAndRowsValidate") is not True
+        or preflight_results.get("runOneAndRunTwoCanonicalSummaryInventoryEqual") is not True
+        or not preflight_forbidden
+        or any(value != 0 for value in preflight_forbidden.values())
+        or preflight_boundary.get("fullDirectAndTransitiveStageAInputInventoryRequired") is not True
+        or preflight_boundary.get("nofollowSealedReadsRequired") is not True
+        or preflight_boundary.get("stage1ReportHandling")
+        != "opaque raw bytes/hash/stat only; no JSON parse or traversal"
+        or not preflight_delta
+        or any(value != "block" for value in preflight_delta.values())
+        or preflight_one_shot.get("consumesOfficialInvocation") is not False
+        or preflight_one_shot.get("consumesR3OneShot") is not False
+        or preflight_builder.get("module") != "steel_guitar_rag/chord_reader/beat_cell_examples.py"
+        or preflight_builder.get("callable") != "build_beat_cell_feature_summary"
+        or preflight_builder.get("moduleFileSha256Source") != "featureMath.sourceStageAImplementationModuleFileSha256"
+        or preflight_builder.get("exactCommittedModuleBytesRequired") is not True
+        or preflight_builder.get("officialRunnerOrCliAllowed") is not False
+        or incident.get("schemaVersion") != "chord_runtime_beat_cell_stage2_precommit_governance_incident_v1"
+        or incident.get("docsAuditStage1ReportJsonLoadsCount") != 1
+        or incident.get("canonicalTraversalCount") != 1
+        or incident.get("attemptedPath")
+        != "aggregate.funnel.counts (failed at aggregate.funnel before any duration expression evaluated)"
+        or incident.get("terminalError") != "KeyError('funnel')"
+        or incident.get("terminalErrorOccurredBeforeAttemptedPathOutput") is not True
+        or incident.get("numericOrProtectedSemanticValuesEmittedCount") != 0
+        or incident.get("numericOrProtectedSemanticValuesRetainedCount") != 0
+        or incident_decision.get("usedAsDecisionInput") is not False
+        or incident_decision.get("changedPolicyOrExpectedInventory") is not False
+        or incident_decision.get("tolerantWinnerReconciliationPolicySelectedBeforeIncident") is not True
+        or not incident_indexed
+        or any(value != 0 for value in incident_indexed.values())
+        or not incident_post
+        or any(value != 0 for value in incident_post.values())
+        or not incident_retention
+        or any(value is not False for value in incident_retention.values())
+        or stage_b.get("exactReconciliationProjectionFields") != list(_STAGE_B_RECONCILIATION_FIELDS)
+        or stage_b.get("expectedReconciliationProjectionCount") != len(projected)
+        or stage_b.get("expectedReconciliationProjectionSetSha256") != canonical_sha256(projected)
+        or stage_b.get("requiredOutcomeClassificationSet") != ["U", "N"]
+        or stage_b.get("exampleEmissionAllowed") is not False
+        or stage_b.get("expectedExampleEmissionCount") != 0
+        or stage_b.get("classificationMayChangeStageA") is not False
+        or stage_b.get("classificationAccessPhase")
+        != "StageB-only-after-complete-StageA-publication-and-independent-label-blind-audit"
+        or stage_b.get("allOtherProductMismatches") != "fail-closed"
+    ):
+        raise BeatCellExamplesError("The Stage-A product-reconciliation authority is stale.")
+    return expected
+
+
+def _validate_product_reconciliation_inventory(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    track_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    observed = [deepcopy(dict(_mapping(row, "Stage-A product reconciliation"))) for row in rows]
+    observed.sort(key=lambda row: (str(row.get("trackId")), int(row.get("cellIndex", -1))))
+    expected = _expected_product_reconciliations()
+    if track_ids is not None:
+        expected = [row for row in expected if str(row.get("trackId")) in track_ids]
+    if observed != expected or canonical_sha256(observed) != canonical_sha256(expected):
+        raise BeatCellExamplesError("Stage-A product-reconciliation inventory is not exact.")
+    return observed
+
+
+def _prediction_is_structurally_ineligible(
+    product: str | None,
+    coverage: float,
+    dominance: float,
+) -> bool:
+    epsilon = float(_stage1.SCORING_POLICY["comparisonEpsilon"])
+    return (
+        product is None
+        or coverage + epsilon < float(_stage1.SCORING_POLICY["predictionCoverage"])
+        or dominance + epsilon < float(_stage1.SCORING_POLICY["predictionDominance"])
+    )
+
+
+def _product_reconciliation_row(
+    *,
+    track_id: str,
+    cell_index: int,
+    start_ms: int,
+    end_ms: int,
+    cell: Mapping[str, Any],
+    overlaps: Mapping[str, float],
+    feature_product: str | None,
+    stage1_product: str | None,
+    feature_coverage: float,
+    stage1_coverage: float,
+    feature_dominance: float,
+    stage1_dominance: float,
+) -> dict[str, Any]:
+    return {
+        "trackId": track_id,
+        "cellIndex": cell_index,
+        "startMilliseconds": start_ms,
+        "endMilliseconds": end_ms,
+        "sourceBeatCellSha256": canonical_sha256(cell),
+        "featureProduct": feature_product,
+        "stage1Product": stage1_product,
+        "featureCoverage": feature_coverage,
+        "stage1Coverage": stage1_coverage,
+        "featureDominance": feature_dominance,
+        "stage1Dominance": stage1_dominance,
+        "candidateProducts": list(_winner_candidates(overlaps)),
+        "overlapSecondsByProduct": {product: float(overlaps[product]) for product in sorted(overlaps)},
+    }
+
+
+def _reconcile_stage1_product(
+    reconciliation: Mapping[str, Any],
+) -> dict[str, Any]:
+    row = deepcopy(dict(_mapping(reconciliation, "Stage-A product reconciliation")))
+    feature_product = row.get("featureProduct")
+    stage1_product = row.get("stage1Product")
+    candidates = _sequence(row.get("candidateProducts"), "reconciliation candidateProducts")
+    if (
+        not isinstance(feature_product, str)
+        or not isinstance(stage1_product, str)
+        or feature_product == stage1_product
+        or feature_product not in candidates
+        or stage1_product not in candidates
+        or not _prediction_is_structurally_ineligible(
+            feature_product,
+            _finite(row.get("featureCoverage"), "reconciliation featureCoverage"),
+            _finite(row.get("featureDominance"), "reconciliation featureDominance"),
+        )
+        or not _prediction_is_structurally_ineligible(
+            stage1_product,
+            _finite(row.get("stage1Coverage"), "reconciliation stage1Coverage"),
+            _finite(row.get("stage1Dominance"), "reconciliation stage1Dominance"),
+        )
+        or row not in _expected_product_reconciliations()
+    ):
+        raise BeatCellExamplesError("Stage-A prediction-product mismatch is not an exact ineligible reconciliation.")
+    return row
+
+
 def build_beat_cell_feature_summary(
     stage1_sidecar: Mapping[str, Any],
     prediction: Mapping[str, Any],
     *,
     prediction_file_sha256: str,
+    product_reconciliations: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build one label-blind Stage-A feature summary.
 
@@ -1171,18 +1576,43 @@ def build_beat_cell_feature_summary(
             bar_start=start,
             bar_end=end,
         )
+        stage1_product = stage1_row.get("predictionProduct")
+        stage1_coverage = _finite(stage1_row.get("predictionCoverage"), "Stage-1 predictionCoverage")
+        stage1_dominance = _finite(stage1_row.get("predictionDominance"), "Stage-1 predictionDominance")
+        product_matches = product == stage1_product
+        reconciliation: dict[str, Any] | None = None
+        if not product_matches:
+            reconciliation = _reconcile_stage1_product(
+                _product_reconciliation_row(
+                    track_id=str(sidecar["trackId"]),
+                    cell_index=index,
+                    start_ms=start_ms,
+                    end_ms=end_ms,
+                    cell=cell,
+                    overlaps=overlaps,
+                    feature_product=product,
+                    stage1_product=stage1_product,
+                    feature_coverage=coverage,
+                    stage1_coverage=stage1_coverage,
+                    feature_dominance=dominance,
+                    stage1_dominance=stage1_dominance,
+                )
+            )
+            product_matches = True
+            if product_reconciliations is not None:
+                product_reconciliations.append(reconciliation)
         if (
             tuple(feature_values) != FEATURE_NAMES
-            or product != stage1_row.get("predictionProduct")
+            or not product_matches
             or not math.isclose(
                 coverage,
-                _finite(stage1_row.get("predictionCoverage"), "Stage-1 predictionCoverage"),
+                stage1_coverage,
                 rel_tol=0,
                 abs_tol=_EPSILON,
             )
             or not math.isclose(
                 dominance,
-                _finite(stage1_row.get("predictionDominance"), "Stage-1 predictionDominance"),
+                stage1_dominance,
                 rel_tol=0,
                 abs_tol=_EPSILON,
             )
@@ -1379,6 +1809,7 @@ def validate_beat_cell_feature_set_semantics(
         or set(prediction_file_sha256s) != expected_tracks
     ):
         raise BeatCellExamplesError("Semantic Stage-A validation requires the exact sidecar/prediction track set.")
+    product_reconciliations: list[dict[str, Any]] = []
     for summary in sealed_summaries:
         track_id = str(summary["trackId"])
         sidecar = validate_stage1_prediction_sidecar(stage1_sidecars[track_id])
@@ -1392,11 +1823,16 @@ def validate_beat_cell_feature_set_semantics(
             sidecar,
             predictions[track_id],
             prediction_file_sha256=prediction_file_sha256s[track_id],
+            product_reconciliations=product_reconciliations,
         )
         if recomputed != summary or canonical_sha256(recomputed) != canonical_sha256(summary):
             raise BeatCellExamplesError(
                 "A committed feature summary is not exact under label-blind semantic recomputation."
             )
+    _validate_product_reconciliation_inventory(
+        product_reconciliations,
+        track_ids=expected_tracks,
+    )
     return sealed_manifest, sealed_summaries
 
 
@@ -1534,6 +1970,27 @@ def _build_label_audits(
     return _validate_label_audits(audits, examples)
 
 
+def _stage_b_reconciliation_projection(row: Mapping[str, Any]) -> dict[str, Any]:
+    value = _mapping(row, "Stage-B product reconciliation")
+    return {field: value.get(field) for field in _STAGE_B_RECONCILIATION_FIELDS}
+
+
+def _validate_stage_b_product_reconciliations(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    track_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    observed = [_stage_b_reconciliation_projection(row) for row in rows]
+    observed.sort(key=lambda row: (str(row.get("trackId")), int(row.get("cellIndex", -1))))
+    expected = [_stage_b_reconciliation_projection(row) for row in _expected_product_reconciliations()]
+    if track_ids is not None:
+        expected = [row for row in expected if str(row.get("trackId")) in track_ids]
+    expected.sort(key=lambda row: (str(row.get("trackId")), int(row.get("cellIndex", -1))))
+    if observed != expected or canonical_sha256(observed) != canonical_sha256(expected):
+        raise BeatCellExamplesError("Stage-B ineligible product-reconciliation inventory is not exact.")
+    return observed
+
+
 def build_beat_cell_examples(
     stage1_artifact: Mapping[str, Any],
     feature_set_manifest: Mapping[str, Any],
@@ -1580,6 +2037,7 @@ def build_beat_cell_examples(
 
     examples: list[dict[str, Any]] = []
     logical_keys: set[tuple[str, int]] = set()
+    stage_b_product_reconciliations: list[dict[str, Any]] = []
     for raw_track in tracks:
         track = _mapping(raw_track, "Stage-1 track")
         track_id = str(track["trackId"])
@@ -1602,14 +2060,49 @@ def build_beat_cell_examples(
         for raw_outcome in outcomes:
             outcome = _mapping(raw_outcome, "Stage-1 cell outcome")
             classification = outcome.get("classification")
-            if classification in {"U", "N"}:
-                continue
-            if classification not in {"C", "I"}:
-                raise BeatCellExamplesError("Stage-1 outcome is not terminal U/N/C/I.")
             cell_index = _integer(outcome.get("cellIndex"), "Stage-1 outcome.cellIndex")
             feature = feature_rows.get(cell_index)
             if feature is None:
                 raise BeatCellExamplesError("A Stage-1 outcome has no exact feature row.")
+            if feature["predictionProduct"] != outcome.get("predictionProduct"):
+                reconciliation = {
+                    "trackId": track_id,
+                    "cellIndex": cell_index,
+                    "startMilliseconds": feature["startMilliseconds"],
+                    "endMilliseconds": feature["endMilliseconds"],
+                    "sourceBeatCellSha256": feature["sourceBeatCellSha256"],
+                    "featureProduct": feature["predictionProduct"],
+                    "stage1Product": outcome.get("predictionProduct"),
+                    "featureCoverage": feature["predictionCoverage"],
+                    "stage1Coverage": outcome.get("predictionCoverage"),
+                    "featureDominance": feature["predictionDominance"],
+                    "stage1Dominance": outcome.get("predictionDominance"),
+                }
+                if (
+                    classification not in {"U", "N"}
+                    or feature["sourceBeatCellSha256"] != outcome.get("sourceBeatCellSha256")
+                    or feature["durationMilliseconds"] != outcome.get("durationMilliseconds")
+                    or not _prediction_is_structurally_ineligible(
+                        feature["predictionProduct"],
+                        float(feature["predictionCoverage"]),
+                        float(feature["predictionDominance"]),
+                    )
+                    or not _prediction_is_structurally_ineligible(
+                        outcome.get("predictionProduct"),
+                        _finite(outcome.get("predictionCoverage"), "outcome.predictionCoverage"),
+                        _finite(outcome.get("predictionDominance"), "outcome.predictionDominance"),
+                    )
+                    or _stage_b_reconciliation_projection(reconciliation)
+                    not in [_stage_b_reconciliation_projection(row) for row in _expected_product_reconciliations()]
+                ):
+                    raise BeatCellExamplesError(
+                        "A Stage-1/feature product mismatch is not an exact ineligible reconciliation."
+                    )
+                stage_b_product_reconciliations.append(reconciliation)
+            if classification in {"U", "N"}:
+                continue
+            if classification not in {"C", "I"}:
+                raise BeatCellExamplesError("Stage-1 outcome is not terminal U/N/C/I.")
             if (
                 feature["sourceBeatCellSha256"] != outcome.get("sourceBeatCellSha256")
                 or feature["durationMilliseconds"] != outcome.get("durationMilliseconds")
@@ -1657,6 +2150,10 @@ def build_beat_cell_examples(
             }
             payload["exampleKey"] = canonical_sha256(_example_key_payload(payload))
             examples.append(_hashed(payload, "exampleSha256"))
+    _validate_stage_b_product_reconciliations(
+        stage_b_product_reconciliations,
+        track_ids=set(summaries_by_id),
+    )
     examples.sort(key=lambda row: str(row["exampleKey"]))
     label_audits = _build_label_audits(examples, stage1)
     reference_audit = deepcopy(stage1["referenceEndpointReconciliationAudit"])
@@ -2821,6 +3318,7 @@ def run_official_beat_cell_features() -> dict[str, Any]:
     """Run the one exact official Stage-A publication (no path overrides)."""
 
     load_beat_cell_stage2_authority()
+    _expected_product_reconciliations()
     manifest_path, summary_root = _preflight_official_feature_outputs()
     source = BEAT_CELL_STAGE2_SOURCE_INPUTS
     outputs = BEAT_CELL_STAGE2_OUTPUT_PATHS
@@ -2919,14 +3417,17 @@ def run_official_beat_cell_features() -> dict[str, Any]:
         audio_projection,
         str(audio_contract["projectionSha256"]),
     )
+    product_reconciliations: list[dict[str, Any]] = []
     summaries = [
         build_beat_cell_feature_summary(
             sidecars[track_id],
             predictions[track_id],
             prediction_file_sha256=prediction_sha256s[track_id],
+            product_reconciliations=product_reconciliations,
         )
         for track_id in sorted(sidecars)
     ]
+    _validate_product_reconciliation_inventory(product_reconciliations)
     manifest = build_beat_cell_feature_set_manifest(
         summaries,
         summary_output_root=Path(str(outputs["featureSummaryRoot"])),
@@ -3029,6 +3530,7 @@ def run_official_beat_cell_examples() -> dict[str, Any]:
     """Run the one exact official Stage-B join (no path overrides)."""
 
     load_beat_cell_stage2_authority()
+    _expected_product_reconciliations()
     examples_output = _preflight_official_examples_output()
     source = BEAT_CELL_STAGE2_SOURCE_INPUTS
     outputs = BEAT_CELL_STAGE2_OUTPUT_PATHS

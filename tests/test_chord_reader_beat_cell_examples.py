@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -15,6 +16,7 @@ from steel_guitar_rag.chord_reader import bar_examples
 from steel_guitar_rag.chord_reader import bar_uncertainty
 from steel_guitar_rag.chord_reader import beat_cell_examples as examples
 from steel_guitar_rag.chord_reader import beat_cell_stage1 as stage1
+from steel_guitar_rag.chord_reader import beat_cell_stage2_contract as stage2_contract
 from steel_guitar_rag.chord_reader.bar_promotion import canonical_sha256
 from steel_guitar_rag.chord_reader.beat_cell_stage2_contract import (
     BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256,
@@ -172,7 +174,10 @@ def _fake_stage1(
                     "predictionCoverage": feature["predictionCoverage"],
                     "predictionDominance": feature["predictionDominance"],
                     "classification": classification,
-                    "reason": None,
+                    "reason": {
+                        "U": "referenceUncovered",
+                        "N": "predictionMixed",
+                    }.get(classification),
                 },
                 "rowSha256",
             )
@@ -266,15 +271,368 @@ def _minimal_examples_artifact(
     )
 
 
+def _hu33_product_reconciliation() -> dict[str, Any]:
+    return {
+        "trackId": "winterreise-schubert_d911-20_hu33",
+        "cellIndex": 75,
+        "startMilliseconds": 50852,
+        "endMilliseconds": 51548,
+        "sourceBeatCellSha256": "a3739deae1523c937dd7d6cf0cf6de1b90285b5fa58c4572fde9c64ba714bf1b",
+        "featureProduct": "C7",
+        "stage1Product": "Fm",
+        "featureCoverage": 1.0,
+        "stage1Coverage": 1.0,
+        "featureDominance": 0.49999999999999856,
+        "stage1Dominance": 0.5000000000000088,
+        "candidateProducts": ["C7", "Fm"],
+        "overlapSecondsByProduct": {
+            "C7": 0.347999999999999,
+            "Fm": 0.3480000000000061,
+        },
+    }
+
+
+def _install_product_reconciliation_authority(
+    monkeypatch: pytest.MonkeyPatch,
+    expected_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    rows = sorted(
+        deepcopy(expected_rows),
+        key=lambda row: (str(row["trackId"]), int(row["cellIndex"])),
+    )
+    stage_b_fields = [
+        "trackId",
+        "cellIndex",
+        "startMilliseconds",
+        "endMilliseconds",
+        "sourceBeatCellSha256",
+        "featureProduct",
+        "stage1Product",
+        "featureCoverage",
+        "stage1Coverage",
+        "featureDominance",
+        "stage1Dominance",
+    ]
+    stage_b_rows = [{field: row[field] for field in stage_b_fields} for row in rows]
+    source_inputs = examples.BEAT_CELL_STAGE2_SOURCE_INPUTS
+    sweep = {
+        "schemaVersion": "chord_runtime_beat_cell_stage2_product_reconciliation_sweep_v1",
+        "labelBlind": True,
+        "trackCount": source_inputs["trackCount"],
+        "cellCount": source_inputs["cellCount"],
+        "tolerantWinnerStage1ProductMismatchCount": len(rows),
+        "coverageMismatchCountAtAbsoluteTolerance1e-9": 0,
+        "dominanceMismatchCountAtAbsoluteTolerance1e-9": 0,
+        "expectedReconciliationCount": len(rows),
+        "unexpectedReconciliationCount": 0,
+        "stage1SummaryArtifactSetSha256": source_inputs["stage1SummaryArtifactSet"]["sha256"],
+        "stage1SummaryFileSetSha256": source_inputs["stage1SummaryFileSet"]["sha256"],
+        "predictionIdentitySetSha256": source_inputs["predictionIdentitySetSha256"],
+    }
+    post_freeze_preflight = {
+        "schemaVersion": "chord_runtime_beat_cell_stage2_post_freeze_label_blind_preflight_v1",
+        "authorization": "exactly-two-deterministic-in-memory-committed-production-builder-runs-only",
+        "authorizedRunCount": 2,
+        "executionPhase": (
+            "only-after-R3-authority-and-corrected-production-code-are-committed-at-one-clean-HEAD-and-all-"
+            "authority-source-hashes-are-final"
+        ),
+        "productionBuilder": {
+            "module": "steel_guitar_rag/chord_reader/beat_cell_examples.py",
+            "callable": "build_beat_cell_feature_summary",
+            "exactCommittedModuleBytesRequired": True,
+            "moduleFileSha256Source": "featureMath.sourceStageAImplementationModuleFileSha256",
+            "officialRunnerOrCliAllowed": False,
+        },
+        "inventoryPerRun": {
+            "trackCount": source_inputs["trackCount"],
+            "cellCount": source_inputs["cellCount"],
+            "featureSummaryCount": source_inputs["trackCount"],
+            "featureRowCount": source_inputs["cellCount"],
+            "stage1SummaryArtifactSetSha256": source_inputs["stage1SummaryArtifactSet"]["sha256"],
+            "stage1SummaryFileSetSha256": source_inputs["stage1SummaryFileSet"]["sha256"],
+            "predictionIdentitySetSha256": source_inputs["predictionIdentitySetSha256"],
+        },
+        "inputSnapshotBoundary": {
+            "beforeEachRun": "synthetic exact pre-run snapshot",
+            "afterEachRun": "synthetic exact post-run snapshot",
+            "stage1ReportHandling": "opaque raw bytes/hash/stat only; no JSON parse or traversal",
+            "nofollowSealedReadsRequired": True,
+            "fullDirectAndTransitiveStageAInputInventoryRequired": True,
+            "anyByteInodeRootOrPathDelta": "block-preflight-and-authorize-no-official-invocation",
+        },
+        "requiredInMemoryResultsPerRun": {
+            "exactReconciliationCount": len(rows),
+            "exactReconciliationRowSetSha256": canonical_sha256(rows),
+            "unexpectedReconciliationCount": 0,
+            "allFeatureSummariesAndRowsValidate": True,
+            "runOneAndRunTwoCanonicalSummaryInventoryEqual": True,
+        },
+        "deltaPolicy": {
+            "anyInputDelta": "block",
+            "anyBuilderException": "block",
+            "anySummaryOrRowValidationDelta": "block",
+            "anyRunOneRunTwoCanonicalDelta": "block",
+            "anyReconciliationCountOrSetDelta": "block",
+            "anyForbiddenOperation": "block",
+        },
+        "forbiddenOperationCounts": {
+            "officialCliInvocations": 0,
+            "officialRunnerInvocations": 0,
+            "stage1ReportJsonParses": 0,
+            "stage1OutcomeObjectAccesses": 0,
+            "referenceOrGroupObjectAccesses": 0,
+            "temporaryDirectoriesCreated": 0,
+            "outputPathsCreated": 0,
+            "publicationCalls": 0,
+            "examplesBuilt": 0,
+            "selectorFits": 0,
+            "readinessEvaluationsOrFits": 0,
+            "calibrationTestConfirmationPlayerPublicSongTravisAccesses": 0,
+        },
+        "oneShotConsumption": {
+            "consumesOfficialInvocation": False,
+            "consumesR3OneShot": False,
+            "reason": "synthetic preflight is non-consuming",
+        },
+    }
+    governance_incident = {
+        "schemaVersion": "chord_runtime_beat_cell_stage2_precommit_governance_incident_v1",
+        "phase": "pre-commit-docs-audit-before-R3-authority-and-production-code-freeze",
+        "docsAuditStage1ReportJsonLoadsCount": 1,
+        "canonicalTraversalCount": 1,
+        "canonicalTraversalPurpose": "whole-object canonical receipt verification only",
+        "topReceiptPrints": "occurred-before-the-funnel-attempt",
+        "attemptedPath": "aggregate.funnel.counts (failed at aggregate.funnel before any duration expression evaluated)",
+        "terminalError": "KeyError('funnel')",
+        "terminalErrorOccurredBeforeAttemptedPathOutput": True,
+        "numericOrProtectedSemanticValuesEmittedCount": 0,
+        "numericOrProtectedSemanticValuesRetainedCount": 0,
+        "indexedProtectedCollections": {
+            "tracks": 0,
+            "outcomes": 0,
+            "classifications": 0,
+            "references": 0,
+            "groups": 0,
+            "datasets": 0,
+        },
+        "decisionIndependence": {
+            "tolerantWinnerReconciliationPolicySelectedBeforeIncident": True,
+            "usedAsDecisionInput": False,
+            "changedPolicyOrExpectedInventory": False,
+        },
+        "postIncidentParseCounts": {
+            "furtherDocsAuditStage1ReportJsonParses": 0,
+            "officialStage1ReportJsonParses": 0,
+            "authorizedPostFreezePreflightStage1ReportJsonParses": 0,
+        },
+        "retention": {
+            "parsedStage1ObjectRetained": False,
+            "derivedNumericOrProtectedSemanticValueRetained": False,
+            "funnelResultRetained": False,
+        },
+        "authorizationEffect": (
+            "disclosure-only; authorizes no protected access and does not consume or expand the R3 one-shot"
+        ),
+    }
+    policy = {
+        "schemaVersion": "chord_runtime_beat_cell_stage2_product_reconciliation_v1",
+        "sourceStage1ScoringPolicySha256": stage1.SCORING_POLICY_SHA256,
+        "predecessorFailure": {"cycle": "synthetic-test"},
+        "rule": "synthetic exact tolerant-winner reconciliation authority",
+        "structuralIneligibility": {
+            "comparisonEpsilon": stage1.SCORING_POLICY["comparisonEpsilon"],
+            "expectedStage1Result": True,
+            "expectedStageAResult": True,
+            "formula": (
+                "predictionProduct is null or predictionCoverage+comparisonEpsilon<predictionCoverageMinimum "
+                "or predictionDominance+comparisonEpsilon<predictionDominanceMinimum"
+            ),
+            "predictionCoverageMinimum": stage1.SCORING_POLICY["predictionCoverage"],
+            "predictionDominanceMinimum": stage1.SCORING_POLICY["predictionDominance"],
+            "stage1Required": True,
+            "stageARequired": True,
+        },
+        "expectedCount": len(rows),
+        "expectedRows": rows,
+        "expectedRowSetSha256": canonical_sha256(rows),
+        "forbiddenDecisionInputs": [],
+        "labelBlindSweep": sweep,
+        "labelBlindSweepSha256": canonical_sha256(sweep),
+        "postFreezeLabelBlindPreflight": post_freeze_preflight,
+        "preCommitGovernanceIncidentDisclosure": governance_incident,
+        "stageBAdmission": {
+            "exactReconciliationProjectionFields": stage_b_fields,
+            "expectedReconciliationProjectionCount": len(stage_b_rows),
+            "expectedReconciliationProjectionSetSha256": canonical_sha256(stage_b_rows),
+            "requiredOutcomeClassificationSet": ["U", "N"],
+            "exampleEmissionAllowed": False,
+            "expectedExampleEmissionCount": 0,
+            "classificationMayChangeStageA": False,
+            "classificationAccessPhase": (
+                "StageB-only-after-complete-StageA-publication-and-independent-label-blind-audit"
+            ),
+            "allOtherProductMismatches": "fail-closed",
+        },
+    }
+    projection = deepcopy(examples.BEAT_CELL_FEATURE_MATH_PROJECTION)
+    projection["sourceStage1ScoringPolicySha256"] = stage1.SCORING_POLICY_SHA256
+    projection["stage1ProductReconciliation"] = policy
+    monkeypatch.setattr(examples, "BEAT_CELL_FEATURE_MATH_PROJECTION", projection)
+    return policy
+
+
+def _real_shape_hu33_stage_a_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[dict[str, Any], dict[str, Any], str, dict[str, Any]]:
+    track_id = "winterreise-schubert_d911-20_hu33"
+    cells = [
+        {
+            "beatIndex": 0,
+            "retainedBarIndex": 0,
+            "pulseNumber": 1,
+            "downbeatCandidate": True,
+            "startMs": 50852,
+            "endMs": 51548,
+            "durationMilliseconds": 696,
+        },
+        {
+            "beatIndex": 1,
+            "retainedBarIndex": 0,
+            "pulseNumber": 2,
+            "downbeatCandidate": False,
+            "startMs": 51548,
+            "endMs": 52200,
+            "durationMilliseconds": 652,
+        },
+    ]
+    track = _beat_track(track_id)
+    track_payload = {key: value for key, value in track.items() if key != "trackReceiptSha256"}
+    track_payload.update(
+        {
+            "durationMilliseconds": 52200,
+            "prefixExcludedMilliseconds": 50852,
+            "coveredDurationMilliseconds": 1348,
+            "beatCount": 2,
+            "beatTimesMs": [50852, 51548],
+            "barStartsMs": [50852],
+            "beatsPerBar": 2,
+            "beatCells": cells,
+        }
+    )
+    track_payload["topologySha256"] = canonical_sha256(
+        {
+            "beatTimesMs": track_payload["beatTimesMs"],
+            "barStartsMs": track_payload["barStartsMs"],
+            "durationMilliseconds": track_payload["durationMilliseconds"],
+            "beatsPerBar": track_payload["beatsPerBar"],
+            "beatCells": track_payload["beatCells"],
+        }
+    )
+    track = {**track_payload, "trackReceiptSha256": canonical_sha256(track_payload)}
+    receipt, receipt_file_sha256 = _receipt([track])
+    _install_synthetic_beat_contract(monkeypatch, receipt, receipt_file_sha256)
+    construction, derived = stage1.construct_beat_cells(
+        track,
+        source_beat_receipt_file_sha256=receipt_file_sha256,
+        source_beat_receipt_sha256=receipt["receiptSha256"],
+    )
+    prediction = _prediction(
+        52.2,
+        [
+            {"start": 46.6, "end": 51.2, "label": "Fm", "productLabel": "Fm"},
+            {"start": 51.2, "end": 52.2, "label": "C7", "productLabel": "C7"},
+        ],
+        id=track_id,
+    )
+    raw_sha256 = hashlib.sha256(_render(prediction)).hexdigest()
+    identity = stage1._prediction_identity(
+        {
+            "id": track_id,
+            "split": "development",
+            "predictionFile": f"predictions/{track_id}.json",
+            "predictionSha256": raw_sha256,
+            "predictionCoreSha256": prediction["predictionCoreSha256"],
+            "uncertaintySha256": prediction["uncertaintySha256"],
+            "sourceAudioSha256": _digest("hu33-source-audio"),
+            "cachedFeatureArraySha256": _digest("hu33-cached-features"),
+            "freshFeatureArraySha256": _digest("hu33-fresh-features"),
+            "canonicalDurationMilliseconds": 52200,
+            "audioLineageRowSha256": _digest("hu33-audio-lineage-row"),
+        }
+    )
+    validation_audit = stage1._self_hashed(
+        {
+            "schemaVersion": "chord_runtime_beat_cell_prediction_validation_audit_v1",
+            "trackId": track_id,
+            "predictionCoreSha256": prediction["predictionCoreSha256"],
+            "uncertaintySha256": prediction["uncertaintySha256"],
+        },
+        "auditSha256",
+    )
+    prediction_summary = stage1.summarize_prediction_cells(
+        prediction,
+        construction,
+        derived,
+        prediction_validation_audit_sha256=validation_audit["auditSha256"],
+    )
+    sidecar = stage1._self_hashed(
+        {
+            "schemaVersion": stage1.CELL_SUMMARY_SCHEMA,
+            "split": "development",
+            "developmentOnly": True,
+            "promotionEligible": False,
+            "referenceFree": True,
+            "trackId": track_id,
+            "predictionIdentity": identity,
+            "predictionIdentitySha256": identity["predictionIdentitySha256"],
+            "sourceRuntimeTrackArtifactSha256": _digest("hu33-runtime-track"),
+            "sourceBeatReceiptTrack": track,
+            "sourceBeatReceiptTrackSha256": track["trackReceiptSha256"],
+            "sourceAudioLineageRowSha256": identity["audioLineageRowSha256"],
+            "constructionPolicySha256": stage1.CONSTRUCTION_POLICY_SHA256,
+            "scoringPolicySha256": stage1.SCORING_POLICY_SHA256,
+            "construction": construction,
+            "constructionSha256": construction["constructionSha256"],
+            "derivedCellTiming": derived,
+            "derivedCellTimingContractSha256": derived["contractSha256"],
+            "predictionValidationAudit": validation_audit,
+            "predictionValidationAuditSha256": validation_audit["auditSha256"],
+            "predictionSummary": prediction_summary,
+            "predictionSummarySha256": prediction_summary["summarySha256"],
+        },
+        "artifactSha256",
+    )
+    expected_reconciliation = {
+        "trackId": track_id,
+        "cellIndex": 0,
+        "startMilliseconds": 50852,
+        "endMilliseconds": 51548,
+        "sourceBeatCellSha256": canonical_sha256(cells[0]),
+        "featureProduct": "C7",
+        "stage1Product": "Fm",
+        "featureCoverage": 1.0,
+        "stage1Coverage": 1.0,
+        "featureDominance": 0.49999999999999856,
+        "stage1Dominance": 0.5000000000000088,
+        "candidateProducts": ["C7", "Fm"],
+        "overlapSecondsByProduct": {
+            "C7": 0.347999999999999,
+            "Fm": 0.3480000000000061,
+        },
+    }
+    return sidecar, prediction, raw_sha256, expected_reconciliation
+
+
 def test_committed_authority_loader_and_projections_are_exact() -> None:
     authority = load_beat_cell_stage2_authority()
     assert canonical_sha256(authority) == BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256
     assert BEAT_CELL_STAGE2_AUTHORITY_FILE_SHA256 == (
-        "7fd598ec952c22ae3a59d4d28d66333f75cb88cdc9348e46566063d7d1709b34"
+        "c738861f164022ce558258b2ecad4ebcbe707394750fe4bdc9cb97df5cd3e305"
     )
     assert BEAT_CELL_STAGE_A_PROJECTION_SHA256 == ("814902fac2550294ce8e336a39b01db6c9012e628c0fdaeb3a1bfc31e13f0688")
     assert BEAT_CELL_FEATURE_MATH_PROJECTION_SHA256 == (
-        "65fc42417c1b45201e02fe35f140fee541f20608f08fbe6f2d92c127e4009ef2"
+        "0735dc64d064f227bf4fcdd698ef1ff16644fbb31e261e7a057c5f021e693602"
     )
     assert BEAT_CELL_STAGE_B_PROJECTION_SHA256 == ("ebf2cf85c1c854a8a9c30d0100bd27343612607b0c3fb440e9512b272cb5ff32")
     assert set(BEAT_CELL_STAGE2_OUTPUT_PATHS) == {
@@ -286,10 +644,63 @@ def test_committed_authority_loader_and_projections_are_exact() -> None:
         "publication",
     }
     assert all(
-        "/beat-cell-stage2-r2/" in value
+        "/beat-cell-stage2-r3/" in value
         for name, value in BEAT_CELL_STAGE2_OUTPUT_PATHS.items()
         if name != "publication"
     )
+
+
+@pytest.mark.parametrize(
+    ("tamper", "message"),
+    (
+        ("missing-path", "bind the exact Stage-A implementation source"),
+        ("missing-hash", "bind the exact Stage-A implementation source"),
+        ("missing-both", "bind the exact Stage-A implementation source"),
+        ("stale-hash", "file hash is stale"),
+        ("nonmatching-module", "file hash is stale"),
+    ),
+)
+def test_r3_stage_a_source_module_binding_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    tamper: str,
+    message: str,
+) -> None:
+    authority = load_beat_cell_stage2_authority()
+    feature_math = authority["featureMath"]
+    feature_math.setdefault("stage1ProductReconciliation", {})
+    relative_path = "steel_guitar_rag/chord_reader/beat_cell_examples.py"
+    source_path = Path(stage2_contract.__file__).resolve().parents[2] / relative_path
+    feature_math["sourceStageAImplementationModule"] = relative_path
+    feature_math["sourceStageAImplementationModuleFileSha256"] = hashlib.sha256(source_path.read_bytes()).hexdigest()
+
+    def bind_expected_hashes(value: dict[str, Any]) -> None:
+        projection_hashes = deepcopy(stage2_contract._PROJECTION_HASHES)
+        projection_hashes["featureMath"] = canonical_sha256(value["featureMath"])
+        monkeypatch.setattr(stage2_contract, "_PROJECTION_HASHES", projection_hashes)
+        monkeypatch.setattr(
+            stage2_contract,
+            "BEAT_CELL_STAGE2_AUTHORITY_CANONICAL_SHA256",
+            canonical_sha256(value),
+        )
+
+    bind_expected_hashes(authority)
+    assert stage2_contract.validate_beat_cell_stage2_authority(authority) == authority
+
+    if tamper == "missing-path":
+        feature_math.pop("sourceStageAImplementationModule")
+    elif tamper == "missing-hash":
+        feature_math.pop("sourceStageAImplementationModuleFileSha256")
+    elif tamper == "missing-both":
+        feature_math.pop("sourceStageAImplementationModule")
+        feature_math.pop("sourceStageAImplementationModuleFileSha256")
+    elif tamper == "stale-hash":
+        feature_math["sourceStageAImplementationModuleFileSha256"] = _digest("stale-stage-a-source")
+    else:
+        feature_math["sourceStageAImplementationModule"] = "steel_guitar_rag/chord_reader/beat_cell_stage1.py"
+    bind_expected_hashes(authority)
+
+    with pytest.raises(stage2_contract.BeatCellStage2ContractError, match=message):
+        stage2_contract.validate_beat_cell_stage2_authority(authority)
 
 
 def test_full_synthetic_stage1_still_passes_public_validator(
@@ -316,6 +727,331 @@ def test_stage_a_feature_math_and_complete_stage1_cross_check(
     )
     assert validated_manifest == manifest
     assert validated == [summary]
+
+
+def test_exact_hu33_tolerant_winner_reconciliation_matches_authority_inventory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reconciliation = _hu33_product_reconciliation()
+    _install_product_reconciliation_authority(monkeypatch, [reconciliation])
+
+    assert canonical_sha256(reconciliation) == "1ad9846a2f084e3aba4f22f75223b43865dd84782ca7fa1e8901b10e6e91d9ba"
+    assert canonical_sha256([reconciliation]) == "964195b1e89c9de88b1073269d3c160cb8874aad9d52868c36b33eac10bdef9d"
+    assert examples._winner_candidates(reconciliation["overlapSecondsByProduct"]) == ("C7", "Fm")
+    assert examples._winner(reconciliation["overlapSecondsByProduct"])[0] == "C7"
+    assert examples._reconcile_stage1_product(reconciliation) == reconciliation
+    assert examples._validate_product_reconciliation_inventory([reconciliation]) == [reconciliation]
+
+
+def test_public_feature_builder_collects_exact_real_shape_hu33_reconciliation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sidecar, prediction, raw_sha256, reconciliation = _real_shape_hu33_stage_a_inputs(monkeypatch)
+    _install_product_reconciliation_authority(monkeypatch, [reconciliation])
+    collected: list[dict[str, Any]] = []
+
+    summary = examples.build_beat_cell_feature_summary(
+        sidecar,
+        prediction,
+        prediction_file_sha256=raw_sha256,
+        product_reconciliations=collected,
+    )
+
+    assert sidecar["predictionSummary"]["cells"][0]["predictionProduct"] == "Fm"
+    assert summary["rows"][0]["startMilliseconds"] == 50852
+    assert summary["rows"][0]["endMilliseconds"] == 51548
+    assert summary["rows"][0]["predictionProduct"] == "C7"
+    assert collected == [reconciliation]
+    assert examples._validate_product_reconciliation_inventory(
+        collected,
+        track_ids={reconciliation["trackId"]},
+    ) == [reconciliation]
+
+
+def test_tolerant_winner_candidate_boundary_is_closed_at_exactly_one_e_minus_nine() -> None:
+    epsilon = examples._EPSILON
+    maximum = 2 * epsilon
+    contender_at_boundary = epsilon
+    contender_just_inside = math.nextafter(contender_at_boundary, math.inf)
+    contender_just_outside = math.nextafter(contender_at_boundary, 0.0)
+    assert maximum - contender_just_inside < epsilon
+    assert maximum - contender_at_boundary == epsilon
+    assert maximum - contender_just_outside > epsilon
+
+    assert examples._winner_candidates({"A": contender_just_inside, "B": maximum}) == ("A", "B")
+    assert examples._winner_candidates({"A": contender_at_boundary, "B": maximum}) == ("A", "B")
+    assert examples._winner_candidates({"A": contender_just_outside, "B": maximum}) == ("B",)
+    assert examples._winner({"A": contender_at_boundary, "B": maximum}) == (
+        "A",
+        contender_at_boundary,
+    )
+
+
+def test_multi_piece_fsum_overlap_can_form_a_three_way_tolerant_tie() -> None:
+    segments = [
+        {"start": 0.0, "end": 0.1, "product": "C"},
+        {"start": 0.1, "end": 0.4, "product": "C7"},
+        {"start": 0.4, "end": 0.6, "product": "C"},
+        {"start": 0.6, "end": 0.75, "product": "Fm"},
+        {"start": 0.75, "end": 0.9, "product": "Fm"},
+    ]
+
+    overlaps, covered, sequence = bar_uncertainty._overlap_by_product(segments, 0.0, 0.9)
+
+    assert overlaps == {
+        "C": math.fsum([0.1, 0.6 - 0.4]),
+        "C7": 0.4 - 0.1,
+        "Fm": math.fsum([0.75 - 0.6, 0.9 - 0.75]),
+    }
+    assert covered == math.fsum([0.1, 0.4 - 0.1, 0.6 - 0.4, 0.75 - 0.6, 0.9 - 0.75])
+    assert sequence == ["C", "C7", "C", "Fm"]
+    assert examples._winner_candidates(overlaps) == ("C", "C7", "Fm")
+    assert examples._winner(overlaps)[0] == "C"
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    (
+        "structural-threshold",
+        "top-level-scoring-policy",
+        "sweep-hash",
+        "sweep-count-coherently-resealed",
+        "preflight-authorized-run-count",
+        "preflight-one-shot-consumption",
+        "preflight-forbidden-operation-count",
+        "incident-parse-count",
+        "incident-decision-input",
+        "incident-retention",
+        "stage-b-classification",
+        "stage-b-projection-hash",
+    ),
+)
+def test_complete_product_reconciliation_policy_tamper_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    tamper: str,
+) -> None:
+    policy = _install_product_reconciliation_authority(monkeypatch, [_hu33_product_reconciliation()])
+    if tamper == "structural-threshold":
+        policy["structuralIneligibility"]["predictionDominanceMinimum"] = 0.74
+    elif tamper == "top-level-scoring-policy":
+        examples.BEAT_CELL_FEATURE_MATH_PROJECTION["sourceStage1ScoringPolicySha256"] = _digest("stale-scoring-policy")
+    elif tamper == "sweep-hash":
+        policy["labelBlindSweepSha256"] = _digest("stale-sweep")
+    elif tamper == "sweep-count-coherently-resealed":
+        policy["labelBlindSweep"]["cellCount"] += 1
+        policy["labelBlindSweepSha256"] = canonical_sha256(policy["labelBlindSweep"])
+    elif tamper == "preflight-authorized-run-count":
+        policy["postFreezeLabelBlindPreflight"]["authorizedRunCount"] = 1
+    elif tamper == "preflight-one-shot-consumption":
+        policy["postFreezeLabelBlindPreflight"]["oneShotConsumption"]["consumesR3OneShot"] = True
+    elif tamper == "preflight-forbidden-operation-count":
+        policy["postFreezeLabelBlindPreflight"]["forbiddenOperationCounts"]["officialRunnerInvocations"] = 1
+    elif tamper == "incident-parse-count":
+        policy["preCommitGovernanceIncidentDisclosure"]["docsAuditStage1ReportJsonLoadsCount"] = 2
+    elif tamper == "incident-decision-input":
+        policy["preCommitGovernanceIncidentDisclosure"]["decisionIndependence"]["usedAsDecisionInput"] = True
+    elif tamper == "incident-retention":
+        policy["preCommitGovernanceIncidentDisclosure"]["retention"]["parsedStage1ObjectRetained"] = True
+    elif tamper == "stage-b-classification":
+        policy["stageBAdmission"]["requiredOutcomeClassificationSet"] = ["C", "I"]
+    else:
+        policy["stageBAdmission"]["expectedReconciliationProjectionSetSha256"] = _digest("stale-stage-b-projection")
+
+    with pytest.raises(examples.BeatCellExamplesError, match="authority is stale"):
+        examples._expected_product_reconciliations()
+
+
+@pytest.mark.parametrize("mutation", ("eligible", "wider-gap"))
+def test_product_reconciliation_rejects_eligible_or_nontied_product_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+) -> None:
+    reconciliation = _hu33_product_reconciliation()
+    _install_product_reconciliation_authority(monkeypatch, [reconciliation])
+    reconciliation = deepcopy(reconciliation)
+    if mutation == "eligible":
+        reconciliation["featureDominance"] = 0.75
+        reconciliation["stage1Dominance"] = 0.75
+    else:
+        reconciliation["overlapSecondsByProduct"]["Fm"] = 0.35
+        reconciliation["candidateProducts"] = ["Fm"]
+
+    with pytest.raises(examples.BeatCellExamplesError, match="not an exact ineligible reconciliation"):
+        examples._reconcile_stage1_product(reconciliation)
+
+
+def test_exact_product_match_does_not_enter_reconciliation_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sidecar, prediction, baseline, _manifest = _synthetic_stage_a(monkeypatch)
+    reconciliations: list[dict[str, Any]] = []
+
+    def forbidden(_value: Any) -> dict[str, Any]:
+        raise AssertionError("an exact product match entered tolerant reconciliation")
+
+    monkeypatch.setattr(examples, "_reconcile_stage1_product", forbidden)
+    observed = examples.build_beat_cell_feature_summary(
+        sidecar,
+        prediction,
+        prediction_file_sha256=sidecar["predictionIdentity"]["predictionSha256"],
+        product_reconciliations=reconciliations,
+    )
+    assert observed == baseline
+    assert reconciliations == []
+
+
+@pytest.mark.parametrize("inventory", ("missing", "extra"))
+def test_product_reconciliation_inventory_rejects_missing_or_extra_row(
+    monkeypatch: pytest.MonkeyPatch,
+    inventory: str,
+) -> None:
+    reconciliation = _hu33_product_reconciliation()
+    _install_product_reconciliation_authority(monkeypatch, [reconciliation])
+    observed = [] if inventory == "missing" else [reconciliation, {**reconciliation, "trackId": "unexpected"}]
+
+    with pytest.raises(examples.BeatCellExamplesError, match="inventory is not exact"):
+        examples._validate_product_reconciliation_inventory(observed)
+
+
+def test_product_reconciliation_inventory_is_scoped_to_the_validated_track_subset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reconciliation = _hu33_product_reconciliation()
+    _install_product_reconciliation_authority(monkeypatch, [reconciliation])
+    sidecar, prediction, summary, manifest = _synthetic_stage_a(monkeypatch)
+
+    validated_manifest, validated = examples.validate_beat_cell_feature_set_semantics(
+        manifest,
+        [summary],
+        stage1_sidecars={"track-1": sidecar},
+        predictions={"track-1": prediction},
+        prediction_file_sha256s={"track-1": sidecar["predictionIdentity"]["predictionSha256"]},
+    )
+    assert validated_manifest == manifest
+    assert validated == [summary]
+    assert examples._validate_product_reconciliation_inventory([], track_ids={"track-1"}) == []
+    assert examples._validate_stage_b_product_reconciliations([], track_ids={"track-1"}) == []
+
+
+def test_pinned_track_subset_requires_its_exact_reconciliation_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reconciliation = _hu33_product_reconciliation()
+    track_ids = {reconciliation["trackId"]}
+    _install_product_reconciliation_authority(monkeypatch, [reconciliation])
+
+    assert examples._validate_product_reconciliation_inventory([reconciliation], track_ids=track_ids) == [
+        reconciliation
+    ]
+    with pytest.raises(examples.BeatCellExamplesError, match="inventory is not exact"):
+        examples._validate_product_reconciliation_inventory([], track_ids=track_ids)
+    expected_stage_b = examples._stage_b_reconciliation_projection(reconciliation)
+    assert examples._validate_stage_b_product_reconciliations([reconciliation], track_ids=track_ids) == [
+        expected_stage_b
+    ]
+    with pytest.raises(examples.BeatCellExamplesError, match="inventory is not exact"):
+        examples._validate_stage_b_product_reconciliations([], track_ids=track_ids)
+
+
+def _stage_b_product_mismatch_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+    classification: str,
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
+    sidecar, prediction, feature_summary, manifest = _synthetic_stage_a(monkeypatch)
+    feature_summary = deepcopy(feature_summary)
+    feature = feature_summary["rows"][0]
+    feature["predictionProduct"] = "C7"
+    feature["predictionCoverage"] = 1.0
+    feature["predictionDominance"] = 0.499999999999999
+
+    stage1_artifact = _fake_stage1(sidecar, feature_summary, (classification, "C"))
+    outcome = stage1_artifact["tracks"][0]["cellOutcomes"][0]
+    outcome["predictionProduct"] = "Fm"
+    outcome["predictionCoverage"] = 1.0
+    outcome["predictionDominance"] = 0.5000000000000061
+    _rehash(outcome, "rowSha256")
+    _rehash(stage1_artifact, "artifactSha256")
+
+    reconciliation = {
+        "trackId": "track-1",
+        "cellIndex": feature["cellIndex"],
+        "startMilliseconds": feature["startMilliseconds"],
+        "endMilliseconds": feature["endMilliseconds"],
+        "sourceBeatCellSha256": feature["sourceBeatCellSha256"],
+        "featureProduct": feature["predictionProduct"],
+        "stage1Product": outcome["predictionProduct"],
+        "featureCoverage": feature["predictionCoverage"],
+        "stage1Coverage": outcome["predictionCoverage"],
+        "featureDominance": feature["predictionDominance"],
+        "stage1Dominance": outcome["predictionDominance"],
+        "candidateProducts": ["C7", "Fm"],
+        "overlapSecondsByProduct": {
+            "C7": 0.499999999999999,
+            "Fm": 0.5000000000000061,
+        },
+    }
+    _install_product_reconciliation_authority(monkeypatch, [reconciliation])
+    monkeypatch.setattr(
+        examples,
+        "validate_beat_cell_feature_set_semantics",
+        lambda *_args, **_kwargs: (deepcopy(manifest), [deepcopy(feature_summary)]),
+    )
+    monkeypatch.setattr(stage1, "validate_beat_cell_stage1_artifact", lambda value: deepcopy(dict(value)))
+    return sidecar, prediction, feature_summary, manifest, stage1_artifact, reconciliation
+
+
+@pytest.mark.parametrize("classification", ("U", "N"))
+def test_stage_b_ineligible_product_reconciliation_emits_no_example_for_that_cell(
+    monkeypatch: pytest.MonkeyPatch,
+    classification: str,
+) -> None:
+    sidecar, prediction, feature_summary, manifest, stage1_artifact, _reconciliation = (
+        _stage_b_product_mismatch_fixture(monkeypatch, classification)
+    )
+    artifact = examples.build_beat_cell_examples(
+        stage1_artifact,
+        manifest,
+        [feature_summary],
+        stage1_sidecars={"track-1": sidecar},
+        predictions={"track-1": prediction},
+        prediction_file_sha256s={"track-1": sidecar["predictionIdentity"]["predictionSha256"]},
+        source_stage1_file_sha256=manifest["sourceStage1ReportFileSha256"],
+        source_stage1_canonical_sha256=canonical_sha256(stage1_artifact),
+        source_feature_set_file_sha256=hashlib.sha256(_render(manifest)).hexdigest(),
+    )
+
+    assert artifact["exampleCount"] == 1
+    assert [row["cellIndex"] for row in artifact["examples"]] == [1]
+
+
+@pytest.mark.parametrize("classification", ("C", "I"))
+def test_stage_b_product_mismatch_is_fatal_for_correctness_examples(
+    monkeypatch: pytest.MonkeyPatch,
+    classification: str,
+) -> None:
+    sidecar, prediction, feature_summary, manifest, stage1_artifact, _reconciliation = (
+        _stage_b_product_mismatch_fixture(monkeypatch, classification)
+    )
+
+    with pytest.raises(examples.BeatCellExamplesError, match="not an exact ineligible reconciliation"):
+        examples.build_beat_cell_examples(
+            stage1_artifact,
+            manifest,
+            [feature_summary],
+            stage1_sidecars={"track-1": sidecar},
+            predictions={"track-1": prediction},
+            prediction_file_sha256s={"track-1": sidecar["predictionIdentity"]["predictionSha256"]},
+            source_stage1_file_sha256=manifest["sourceStage1ReportFileSha256"],
+            source_stage1_canonical_sha256=canonical_sha256(stage1_artifact),
+            source_feature_set_file_sha256=hashlib.sha256(_render(manifest)).hexdigest(),
+        )
 
 
 @pytest.mark.parametrize(
@@ -702,6 +1438,7 @@ def test_official_stage_a_rejects_unpinned_audio_before_nested_path_or_root_acce
     }
     monkeypatch.setattr(examples, "BEAT_CELL_STAGE2_SOURCE_INPUTS", source)
     monkeypatch.setattr(examples, "load_beat_cell_stage2_authority", lambda: {})
+    monkeypatch.setattr(examples, "_expected_product_reconciliations", lambda: [])
     monkeypatch.setattr(
         examples,
         "_preflight_official_feature_outputs",
