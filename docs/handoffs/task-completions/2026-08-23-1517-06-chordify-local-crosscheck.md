@@ -144,6 +144,8 @@ Lane 01 Repo Steward for the exact-path implementation commit, followed by local
 
 Safe to commit
 
+Implementation commit: `7e8241bb3f5621b5b46fb550d1956e1a7fcbf36a` (`feat: add local Chordify chord cross-check`).
+
 ## Suggested next step
 
-Lane 01: stage exactly the seven safe paths above, review the cached diff, commit the local Chordify cross-check, and leave the private ignored bundle untouched.
+Local user smoke: open the recorded localhost URL, start with Together Again, and adjudicate the recurring D-vs-G rows before using any disagreement as a correction or training label.

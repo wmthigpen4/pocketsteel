@@ -1,13 +1,26 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-08-05 16:10 America/Chicago
+Updated: 2026-08-23 15:17 America/Chicago
 
 ## Repository state
 
-- Branch: `fix/local-play-along-route-options`
-- Current implementation: `9e6ac02a feat: add default-off canonical frontier candidate`
+- Branch: `feature/chord-reader-ssl-v9`
+- Current implementation: `7e8241bb feat: add local Chordify chord cross-check`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
+
+## Local chord-reader cross-check
+
+Status: **LOCAL USER SMOKE READY — three private songs now show our engine beside a user-authorized Chordify MIDI export with seekable review windows.**
+
+- Product/root agreement: String By 94.1%/94.7%, Cowboy Take Me Away 86.6%/86.6%, Together Again 68.8%/71.4%.
+- Together Again exposes eight recurring D-vs-G intervals as the clearest human-review target.
+- Scores are cross-system agreement, not ground-truth accuracy; no readiness, threshold, promotion, or production claim changed.
+- The comparator uses only the Python standard library and the ignored local bundle is deterministic.
+- Focused pytest: 8 passed. Repository JavaScript syntax check: passed. Local Chrome browser smoke: passed.
+- Private audio, MIDI exports, and generated proof data remain ignored and uncommitted.
+- Local user URL: `http://127.0.0.1:8898/ui/chord-reader-proof/?v=9`.
+- Implementation handoff: `docs/handoffs/task-completions/2026-08-23-1517-06-chordify-local-crosscheck.md`.
 
 ## Canonical frontier knowledge candidate
 
