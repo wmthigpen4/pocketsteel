@@ -235,11 +235,16 @@
     if (index < 0) {
       byId("current-bar").textContent = "—";
       byId("current-student").textContent = "N.C.";
+      byId("current-hybrid").textContent = "N.C.";
       return;
     }
     const segment = segments[index];
     byId("current-bar").textContent = String(index + 1);
     byId("current-student").textContent = segment.productLabel || segment.label || "N.C.";
+    const reference = selected.crossCheck?.segments?.find(
+      (item) => time >= Number(item.start) && time < Number(item.end),
+    );
+    byId("current-hybrid").textContent = reference?.productLabel || reference?.label || "N.C.";
     document.querySelector(`.measure[data-bar="${index + 1}"]`)?.classList.add("active");
   }
 
@@ -293,7 +298,7 @@
       ["Mean confidence", percent(summary.meanConfidence), "not accuracy"],
       ["Low-confidence audio", percent(summary.lowConfidenceFraction), "below 50% confidence"],
     ];
-    document.querySelectorAll(".score-card").forEach((card, index) => {
+    byId("selected-results").querySelectorAll(".score-card").forEach((card, index) => {
       const [label, value, note] = cards[index];
       card.querySelector("p").textContent = label;
       card.querySelector("strong").textContent = value;
@@ -301,6 +306,51 @@
     });
     const chords = summary.dominantChords.map((item) => `${item.symbol} ${duration(item.seconds)}`).join(" · ");
     byId("track-note").textContent = `${proof.disclosure} Route: ${prediction.domainRoute}; gate probability: ${prediction.domainGateProbability == null ? "not reported" : percent(prediction.domainGateProbability)}. Most time by chord: ${chords}.`;
+  }
+
+  function renderCrossCheck() {
+    const section = byId("crosscheck-section");
+    const crossCheck = selected.crossCheck;
+    section.hidden = !crossCheck;
+    document.body.classList.toggle("has-crosscheck", Boolean(crossCheck));
+    if (!crossCheck) return;
+    byId("crosscheck-heading").textContent = `${selected.track.title}: our engine vs ${crossCheck.provider}`;
+    byId("crosscheck-disclosure").textContent = crossCheck.disclosure;
+    byId("crosscheck-exact").textContent = percent(crossCheck.exactAgreementFraction);
+    byId("crosscheck-root").textContent = percent(crossCheck.rootAgreementFraction);
+    byId("crosscheck-covered").textContent = duration(crossCheck.coveredSeconds);
+    byId("crosscheck-bpm").textContent = crossCheck.bpm == null ? "—" : String(Math.round(crossCheck.bpm));
+    const body = byId("crosscheck-body");
+    body.replaceChildren();
+    crossCheck.reviewWindows.forEach((window) => {
+      const row = document.createElement("tr");
+      row.className = "review-window";
+      [duration(window.start), window.ourChord, window.referenceChord, percent(window.ourConfidence), `${window.seconds.toFixed(1)}s`].forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+      });
+      row.tabIndex = 0;
+      row.addEventListener("click", () => seekAndPlay(Number(window.start)).catch(() => {}));
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") seekAndPlay(Number(window.start)).catch(() => {});
+      });
+      body.append(row);
+    });
+    const methodology = proof.crossCheckMethodology;
+    byId("methodology-title").textContent = methodology.title;
+    byId("methodology-summary").textContent = methodology.summary;
+    const links = byId("methodology-links");
+    links.replaceChildren();
+    methodology.sources.forEach((source, index) => {
+      const link = document.createElement("a");
+      link.href = source.url;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = source.label;
+      if (index) links.append(document.createTextNode(" · "));
+      links.append(link);
+    });
   }
 
   function renderLocalTrack() {
@@ -325,6 +375,7 @@
     renderLocalTrackSelector();
     renderLocalSegments();
     renderLocalResults();
+    renderCrossCheck();
     updateLocalPlayback();
   }
 
@@ -363,9 +414,10 @@
     byId("hero-title").textContent = "Listen to what the model heard.";
     byId("hero-lede").textContent = "Three user-supplied songs were analyzed by the frozen domain-gated root, quality, and boundary ensemble. This is a listening test: confidence is not accuracy, and readiness remains NO-GO.";
     byId("student-label").textContent = "Experimental ensemble";
+    byId("hybrid-label").textContent = "Chordify";
     byId("current-bar").previousElementSibling.textContent = "SEGMENT";
     byId("selected-results").querySelector(".eyebrow").textContent = "Selected-song model behavior";
-    byId("selected-results").querySelector(".honesty-note h3").textContent = "No chart means no accuracy score";
+    byId("selected-results").querySelector(".honesty-note h3").textContent = "Agreement is not accuracy";
     const legend = document.querySelector(".legend");
     legend.replaceChildren();
     ["Click any segment to seek.", "Confidence is the model's own probability, not measured correctness."].forEach((value) => {
@@ -375,8 +427,8 @@
     });
     byId("benchmark-section").hidden = true;
     byId("reproduce-heading").textContent = "Rebuild this private local test";
-    byId("reproduce-copy").textContent = "The ignored test bundle was emitted by the same frozen Python ensemble used for the v8 proof. Audio and model hashes identify exactly what ran; no file was uploaded.";
-    byId("reproduce-command").textContent = "python scripts/build_local_chord_reader_test.py --audio <your-local-files>";
+    byId("reproduce-copy").textContent = "The ignored test bundle was emitted by the frozen Python ensemble, then augmented from user-authorized Chordify MIDI exports. Audio, model, and MIDI hashes identify exactly what was compared.";
+    byId("reproduce-command").textContent = "python scripts/add_chordify_crosscheck.py --midi TRACK_ID=/path/export.mid";
     byId("model-hash").textContent = Object.entries(proof.modelSha256).map(([name, hash]) => `${name}: ${hash}`).join(" · ");
     byId("footer-status").textContent = "Experimental localhost listening test. Readiness is NO-GO; this is not deployed and does not select an operating threshold.";
     renderLocalSuite();

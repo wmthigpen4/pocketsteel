@@ -81,6 +81,35 @@
       </div>
     </section>
 
+    <section class="public-proof" id="crosscheck-section" aria-labelledby="crosscheck-heading" hidden>
+      <div class="section-heading">
+        <p class="eyebrow">Independent machine cross-check</p>
+        <h2 id="crosscheck-heading">Chordify comparison</h2>
+        <p id="crosscheck-disclosure" class="muted"></p>
+      </div>
+      <div class="score-grid crosscheck-scores">
+        <article class="score-card challenger"><p>Product agreement</p><strong id="crosscheck-exact">—</strong><span>root + major/minor</span></article>
+        <article class="score-card"><p>Root agreement</p><strong id="crosscheck-root">—</strong><span>quality ignored</span></article>
+        <article class="score-card"><p>Compared audio</p><strong id="crosscheck-covered">—</strong><span>Chordify-covered time</span></article>
+        <article class="score-card"><p>Chordify tempo</p><strong id="crosscheck-bpm">—</strong><span>exported MIDI</span></article>
+      </div>
+      <div class="honesty-note">
+        <h3>Start human review here</h3>
+        <p>These are the longest disagreements between the two systems. Click a row to hear that moment; the reviewer decides which chord is correct.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Our engine</th><th>Chordify</th><th>Our confidence</th><th>Length</th></tr></thead>
+          <tbody id="crosscheck-body"></tbody>
+        </table>
+      </div>
+      <div class="data-disclosure methodology-note">
+        <h3 id="methodology-title">Technical due diligence</h3>
+        <p id="methodology-summary"></p>
+        <p id="methodology-links"></p>
+      </div>
+    </section>
+
     <section class="public-proof" id="suite-section" aria-labelledby="suite-heading">
       <div class="section-heading">
         <p class="eyebrow">Public-domain proof suite</p>

@@ -96,6 +96,13 @@ audio { width: 100%; margin: 24px 0; accent-color: var(--green); }
 .local-mode .current-chord.hybrid { display: none; }
 .local-mode .current-chord.student { border-color: var(--blue); background: #121b25; }
 .local-mode .legend .reference-only { display: none; }
+.local-mode.has-crosscheck .now-playing { grid-template-columns: .55fr 1fr 1fr; }
+.local-mode.has-crosscheck .current-chord.hybrid { display: block; border-color: var(--green); }
+.crosscheck-scores { margin-bottom: 18px; }
+.review-window { cursor: pointer; }
+.review-window:hover, .review-window:focus { background: #1a2114; outline: 1px solid var(--green); }
+.methodology-note { margin-top: 24px; }
+.methodology-note h3 { margin-bottom: 8px; }
 
 .results, .public-proof, .reproduction { margin-top: 24px; padding: clamp(24px, 5vw, 52px); }
 .section-heading { max-width: 790px; margin-bottom: 26px; }
