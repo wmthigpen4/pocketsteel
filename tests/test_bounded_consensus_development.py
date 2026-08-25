@@ -64,6 +64,12 @@ def test_sealed_feature_binding_uses_track_identity_not_historical_role() -> Non
     assert paths["development-example"] == Path("/cache/example.npz")
 
 
+def test_explicit_null_feature_is_forwarded_to_the_frozen_imputer() -> None:
+    assert np.isnan(MODULE._numeric_feature_value(None))
+    assert MODULE._numeric_feature_value(0) == 0.0
+    assert MODULE._numeric_feature_value(0.25) == 0.25
+
+
 def test_bar_evidence_features_capture_checker_consensus() -> None:
     example = {
         "barSummary": {

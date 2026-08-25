@@ -301,6 +301,12 @@ def _sealed_feature_paths_by_id(sealed: Mapping[str, Any]) -> dict[str, Path]:
     return paths
 
 
+def _numeric_feature_value(value: Any) -> float:
+    """Translate the feature contract's explicit missing value for imputation."""
+
+    return np.nan if value is None else float(value)
+
+
 def _metrics(probabilities: np.ndarray, labels: np.ndarray) -> dict[str, Any]:
     from sklearn.metrics import brier_score_loss, roc_auc_score
 
@@ -435,7 +441,7 @@ def evaluate(*, examples_path: Path, cache: Path, output_path: Path) -> dict[str
         combined = {**core, **external}
         for candidate in CANDIDATES:
             names = _candidate_features(core_names, candidate)
-            matrices[candidate].append([float(combined[name]) for name in names])
+            matrices[candidate].append([_numeric_feature_value(combined[name]) for name in names])
         labels.append(int(bool(example["outcome"]["correct"])))
         roles.append(assignments[str(example["confidenceGroupId"])])
         datasets.append(str(example["confidenceGroupId"]).split(":", 2)[1])
