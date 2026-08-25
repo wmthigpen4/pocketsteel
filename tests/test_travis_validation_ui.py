@@ -17,19 +17,29 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "Chord Reader — Travis Validation" in html
     assert '<audio id="audio" controls' in html
     assert 'id="chord-grid"' in html
-    assert 'data-status="confirmed"' in html
-    assert 'data-status="corrected"' in html
     assert 'data-status="timing"' in html
     assert 'data-status="unsure"' in html
+    assert 'id="finish-track"' in html
+    assert "Right chord (only if different)" in html
+    assert "Split/slash chord" in html
+    assert 'class="rail-labels"' in html
     assert 'id="song-notes"' in html
     assert 'id="export-feedback"' in html
     assert 'const DATA_URL = "./local-data/proof.json"' in script
     assert 'get("session") || "default"' in script
     assert "localStorage.setItem" in script
     assert 'schemaVersion: "chord_reader_travis_feedback_v1"' in script
-    assert 'status: "unreviewed"' in script
+    assert 'status: "assumed_correct"' in script
+    assert '"pending_assumed_correct"' in script
+    assert "record.reviewComplete" in script
+    assert "highestConfidence" in script
+    assert "Highest-confidence starting track" in script
+    assert "scrollIntoView" in script
     assert "modelConfidence" in script
     assert ".chord-card.corrected" in css
+    assert ".chord-grid {" in css
+    assert "display: flex" in css
+    assert "overflow: hidden" in css
 
 
 def test_local_builder_creates_browser_ready_output_urls_and_clean_titles(tmp_path: Path) -> None:

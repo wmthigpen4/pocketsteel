@@ -1,98 +1,160 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chord Reader — Travis Validation</title>
-  <link rel="stylesheet" href="./validation.css?v=2">
-</head>
-<body>
-  <main class="shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">Private human-review pilot</p>
-        <h1>Chord Reader — Travis Validation</h1>
-        <p class="lede">Listen through each track, confirm what the reader got right, and correct what it got wrong. Every decision stays in this browser until you download the feedback file.</p>
-      </div>
-      <div class="pilot-count"><strong id="track-total">15</strong><span>review tracks</span></div>
-    </header>
-
-    <section class="notice" aria-label="Accuracy disclosure">
-      <strong>What the numbers mean</strong>
-      <span>The research selector measured 99.6% precision on 39.8% of held-out bars and 79.9% overall. This page is where we test whether those results carry over to real country backing tracks. Model confidence is not human validation.</span>
-    </section>
-
-    <section class="workspace">
-      <aside class="track-panel">
-        <div class="panel-head">
-          <p class="eyebrow">Songs</p>
-          <strong id="overall-progress">0 of 15 reviewed</strong>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chord Reader — Travis Validation</title>
+    <link rel="stylesheet" href="./validation.css?v=3" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Private human-review pilot</p>
+          <h1>Chord Reader — Travis Validation</h1>
+          <p class="lede">
+            Listen once, leave the predicted chords alone when they are right,
+            and only enter corrections or comments where they are needed.
+          </p>
         </div>
-        <nav id="track-list" aria-label="Validation songs"></nav>
-      </aside>
+        <div class="pilot-count">
+          <strong id="track-total">15</strong><span>review tracks</span>
+        </div>
+      </header>
 
-      <div class="review-panel">
-        <div class="song-head">
-          <div>
-            <p class="eyebrow" id="song-position">Song 1 of 15</p>
-            <h2 id="song-title">Loading predictions…</h2>
-            <p class="muted" id="song-summary"></p>
+      <section class="notice" aria-label="Accuracy disclosure">
+        <strong>What the numbers mean</strong>
+        <span
+          >The research selector measured 99.6% precision on 39.8% of held-out
+          bars and 79.9% overall. This page is where we test whether those
+          results carry over to real country backing tracks. Model confidence is
+          not human validation.</span
+        >
+      </section>
+
+      <section class="workspace">
+        <aside class="track-panel">
+          <div class="panel-head">
+            <p class="eyebrow">Songs</p>
+            <strong id="overall-progress">0 of 15 reviewed</strong>
           </div>
-          <div class="song-actions">
-            <button type="button" class="secondary" id="confirm-track">Confirm all unreviewed</button>
-            <button type="button" class="primary" id="export-feedback">Download feedback</button>
+          <nav id="track-list" aria-label="Validation songs"></nav>
+        </aside>
+
+        <div class="review-panel">
+          <div class="song-head">
+            <div>
+              <p class="eyebrow" id="song-position">Song 1 of 15</p>
+              <h2 id="song-title">Loading predictions…</h2>
+              <p class="muted" id="song-summary"></p>
+            </div>
+            <div class="song-actions">
+              <button type="button" class="secondary" id="finish-track">
+                Finish song review
+              </button>
+              <button type="button" class="primary" id="export-feedback">
+                Download feedback
+              </button>
+            </div>
           </div>
+
+          <audio id="audio" controls preload="metadata"></audio>
+
+          <div class="now-playing" aria-live="polite">
+            <div>
+              <span>Current chord</span><strong id="current-chord">—</strong>
+            </div>
+            <div>
+              <span>Model confidence</span
+              ><strong id="current-confidence">—</strong>
+            </div>
+            <div>
+              <span>Review status</span
+              ><strong id="track-progress">Pending</strong>
+            </div>
+          </div>
+
+          <div class="filter-row" role="group" aria-label="Filter chord boxes">
+            <button type="button" class="filter active" data-filter="all">
+              All
+            </button>
+            <button type="button" class="filter" data-filter="flagged">
+              Corrections & comments
+            </button>
+            <span
+              >Playback keeps the current chord centered; past chords move left
+              and upcoming chords stay to the right.</span
+            >
+          </div>
+
+          <div class="rail-labels" aria-hidden="true">
+            <span>← Past chords</span><span>Upcoming chords →</span>
+          </div>
+          <div
+            id="chord-grid"
+            class="chord-grid"
+            aria-label="Editable chord predictions"
+          ></div>
+
+          <section class="song-notes">
+            <label for="song-notes"
+              ><strong>Whole-song feedback</strong
+              ><span
+                >Arrangement, timing, recurring mistakes, or anything the
+                individual boxes do not capture.</span
+              ></label
+            >
+            <textarea
+              id="song-notes"
+              rows="2"
+              placeholder="Notes about this song…"
+            ></textarea>
+          </section>
         </div>
+      </section>
 
-        <audio id="audio" controls preload="metadata"></audio>
+      <footer>
+        <p>
+          Predictions are assumed correct. “Finish song review” records
+          untouched boxes as accepted after listening.
+        </p>
+        <p id="save-status" aria-live="polite">
+          Feedback saves automatically in this browser.
+        </p>
+      </footer>
+    </main>
 
-        <div class="now-playing" aria-live="polite">
-          <div><span>Current chord</span><strong id="current-chord">—</strong></div>
-          <div><span>Model confidence</span><strong id="current-confidence">—</strong></div>
-          <div><span>Track progress</span><strong id="track-progress">0%</strong></div>
+    <template id="chord-template">
+      <article class="chord-card">
+        <button type="button" class="seek-area">
+          <span class="time-range"></span>
+          <strong class="predicted-chord"></strong>
+          <span class="confidence"></span>
+        </button>
+        <div class="decision-row" role="group" aria-label="Review decision">
+          <button type="button" data-status="timing">Timing issue</button>
+          <button type="button" data-status="unsure">Unsure</button>
         </div>
+        <label class="correction-field"
+          >Right chord (only if different)<input
+            type="text"
+            class="corrected-chord"
+            maxlength="24"
+            autocomplete="off"
+            placeholder="e.g. G7"
+        /></label>
+        <label class="segment-note-field"
+          >Comment<input
+            type="text"
+            class="segment-note"
+            maxlength="240"
+            autocomplete="off"
+            placeholder="Split/slash chord, inversion, timing detail…"
+        /></label>
+        <span class="review-state">Assumed correct</span>
+      </article>
+    </template>
 
-        <div class="filter-row" role="group" aria-label="Filter chord boxes">
-          <button type="button" class="filter active" data-filter="all">All</button>
-          <button type="button" class="filter" data-filter="unreviewed">Unreviewed</button>
-          <button type="button" class="filter" data-filter="flagged">Corrections & flags</button>
-          <span>Click a chord box to seek. Use the buttons inside it to record the review.</span>
-        </div>
-
-        <div id="chord-grid" class="chord-grid" aria-label="Editable chord predictions"></div>
-
-        <section class="song-notes">
-          <label for="song-notes"><strong>Whole-song feedback</strong><span>Arrangement, timing, recurring mistakes, or anything the individual boxes do not capture.</span></label>
-          <textarea id="song-notes" rows="5" placeholder="Notes about this song…"></textarea>
-        </section>
-      </div>
-    </section>
-
-    <footer>
-      <p>Private localhost review. Audio and generated predictions are ignored by Git. Untouched boxes do not count as human-validated.</p>
-      <p id="save-status" aria-live="polite">Feedback saves automatically in this browser.</p>
-    </footer>
-  </main>
-
-  <template id="chord-template">
-    <article class="chord-card">
-      <button type="button" class="seek-area">
-        <span class="time-range"></span>
-        <strong class="predicted-chord"></strong>
-        <span class="confidence"></span>
-      </button>
-      <div class="decision-row" role="group" aria-label="Review decision">
-        <button type="button" data-status="confirmed">Correct</button>
-        <button type="button" data-status="corrected">Wrong chord</button>
-        <button type="button" data-status="timing">Timing issue</button>
-        <button type="button" data-status="unsure">Unsure</button>
-      </div>
-      <label class="correction-field">Right chord<input type="text" class="corrected-chord" maxlength="24" autocomplete="off" placeholder="e.g. G7"></label>
-      <label class="segment-note-field">Note<input type="text" class="segment-note" maxlength="240" autocomplete="off" placeholder="Optional note"></label>
-      <span class="review-state">Not reviewed</span>
-    </article>
-  </template>
-
-  <script src="./validation.js?v=2"></script>
-</body>
+    <script src="./validation.js?v=3"></script>
+  </body>
 </html>
