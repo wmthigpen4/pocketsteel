@@ -27,6 +27,7 @@ from typing import Any, Iterable, Mapping, Sequence
 import numpy as np
 
 from steel_guitar_rag.chord_reader.btc import BTCRecognizer
+from steel_guitar_rag.chord_reader.factorized import factorized_components, product_symbol
 from steel_guitar_rag.chord_reader.labels import normalize_chord
 
 
@@ -37,6 +38,18 @@ SELECTOR_THRESHOLD = 0.98
 REPORTING_THRESHOLDS = (0.5, 0.8, 0.9, 0.95, 0.98)
 MAX_CANDIDATE_FITS = 3
 FRAME_SECONDS = 0.1
+CORRECTION_SCHEMA = "chord_bounded_correction_fusion_development_v1"
+CORRECTION_CANDIDATES = ("engine-unchanged", "fixed-checker-consensus", "one-fit-source-selector")
+CORRECTION_MAX_FITS = 1
+CORRECTION_DOMINANCE = 0.75
+CORRECTION_COVERAGE = 0.75
+REFERENCE_MANIFESTS = (
+    "tiny-aam-manifest.json",
+    "guitarset-manifest.json",
+    "idmt-guitar-manifest.json",
+    "nrgcp-manifest.json",
+    "winterreise-manifest.json",
+)
 
 CORE_CANDIDATE = "engine-only"
 BTC_CANDIDATE = "engine-plus-btc"
@@ -307,6 +320,53 @@ def _numeric_feature_value(value: Any) -> float:
     return np.nan if value is None else float(value)
 
 
+def _canonical_product(value: str | None) -> str:
+    components = factorized_components(value)
+    return product_symbol(int(components["root"]), int(components["product"]))
+
+
+def _manifest_rows(value: Any) -> list[Mapping[str, Any]]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, Mapping):
+        for key in ("tracks", "items", "recordings"):
+            rows = value.get(key)
+            if isinstance(rows, list):
+                return rows
+    raise ValueError("A processed dataset manifest has no track rows.")
+
+
+def _reference_paths(processed_dir: Path) -> dict[str, Path]:
+    paths: dict[str, Path] = {}
+    for name in REFERENCE_MANIFESTS:
+        manifest = _read_json(processed_dir / name)
+        for row in _manifest_rows(manifest):
+            track_id = str(row["id"])
+            path = Path(row["referencePath"])
+            if track_id in paths and paths[track_id] != path:
+                raise ValueError(f"Conflicting reference paths for {track_id}.")
+            paths[track_id] = path
+    return paths
+
+
+def _reference_bar(segments: Sequence[Mapping[str, Any]], start: float, end: float) -> dict[str, Any]:
+    duration = max(1e-9, end - start)
+    masses: dict[str, float] = defaultdict(float)
+    covered = 0.0
+    for segment in segments:
+        overlap = _overlap(start, end, float(segment["start"]), float(segment["end"]))
+        if overlap <= 0:
+            continue
+        masses[_canonical_product(str(segment["label"]))] += overlap
+        covered += overlap
+    product = max(masses, key=masses.get) if masses else "N.C."
+    return {
+        "product": product,
+        "coverage": min(1.0, covered / duration),
+        "dominance": masses.get(product, 0.0) / covered if covered else 0.0,
+    }
+
+
 def _metrics(probabilities: np.ndarray, labels: np.ndarray) -> dict[str, Any]:
     from sklearn.metrics import brier_score_loss, roc_auc_score
 
@@ -530,6 +590,341 @@ def evaluate(*, examples_path: Path, cache: Path, output_path: Path) -> dict[str
     return report
 
 
+def _correction_metrics(
+    *,
+    predictions: np.ndarray,
+    references: np.ndarray,
+    engine: np.ndarray,
+    confidence: np.ndarray,
+    selectively_eligible: np.ndarray,
+) -> dict[str, Any]:
+    changed = predictions != engine
+    engine_correct = engine == references
+    prediction_correct = predictions == references
+    curve: list[dict[str, Any]] = []
+    for threshold in REPORTING_THRESHOLDS:
+        accepted = selectively_eligible & (confidence >= threshold)
+        count = int(accepted.sum())
+        correct = int(prediction_correct[accepted].sum()) if count else 0
+        curve.append(
+            {
+                "minimumConfidence": threshold,
+                "acceptedCount": count,
+                "correctCount": correct,
+                "precision": correct / count if count else None,
+                "coverage": count / len(references),
+            }
+        )
+    return {
+        "exampleCount": int(len(references)),
+        "fullCoverageCorrectCount": int(prediction_correct.sum()),
+        "fullCoverageAccuracy": float(prediction_correct.mean()),
+        "changedCount": int(changed.sum()),
+        "helpfulCorrectionCount": int((changed & ~engine_correct & prediction_correct).sum()),
+        "harmfulCorrectionCount": int((changed & engine_correct & ~prediction_correct).sum()),
+        "changedWrongToDifferentWrongCount": int((changed & ~engine_correct & ~prediction_correct).sum()),
+        "netCorrectGain": int(prediction_correct.sum() - engine_correct.sum()),
+        "selectiveCurve": curve,
+        "primaryOperatingPoint": next(row for row in curve if row["minimumConfidence"] == SELECTOR_THRESHOLD),
+    }
+
+
+def _correction_result(
+    *,
+    candidate: str,
+    predictions: np.ndarray,
+    references: np.ndarray,
+    engine: np.ndarray,
+    confidence: np.ndarray,
+    selectively_eligible: np.ndarray,
+    datasets: np.ndarray,
+    fit_count: int,
+) -> dict[str, Any]:
+    result = {
+        "candidate": candidate,
+        "fitCount": fit_count,
+        "parameterSearchCount": 0,
+        "metrics": _correction_metrics(
+            predictions=predictions,
+            references=references,
+            engine=engine,
+            confidence=confidence,
+            selectively_eligible=selectively_eligible,
+        ),
+        "strata": {},
+    }
+    for dataset in sorted(set(datasets.tolist())):
+        mask = datasets == dataset
+        result["strata"][dataset] = _correction_metrics(
+            predictions=predictions[mask],
+            references=references[mask],
+            engine=engine[mask],
+            confidence=confidence[mask],
+            selectively_eligible=selectively_eligible[mask],
+        )
+    return result
+
+
+def evaluate_correction_fusion(
+    *,
+    examples_path: Path,
+    cache: Path,
+    processed_dir: Path,
+    benchmark_path: Path,
+    output_path: Path,
+) -> dict[str, Any]:
+    """Run the one-fit, three-candidate correction comparison and stop."""
+
+    if output_path.exists():
+        raise FileExistsError("The bounded correction report already exists; no retry is permitted.")
+    examples = _read_json(examples_path)
+    if examples.get("split") != "development" or not examples.get("developmentOnly"):
+        raise ValueError("Correction fusion accepts only development-only examples.")
+    cache_manifest = _read_json(cache / "manifest.json")
+    if (
+        cache_manifest.get("schemaVersion") != CACHE_SCHEMA
+        or cache_manifest.get("btcInferencePassCount") != 1
+        or cache_manifest.get("nnlsFeaturePassCount") != 1
+        or cache_manifest.get("fitCount") != 0
+    ):
+        raise ValueError("Correction fusion requires the completed one-pass feature cache.")
+    benchmark = _read_json(benchmark_path)
+    if benchmark.get("split") != "development" or benchmark.get("promotionEligible"):
+        raise ValueError("Correction fusion requires the development-only benchmark.")
+    benchmark_by_id = {str(row["id"]): row for row in benchmark["tracks"]}
+    reference_paths = _reference_paths(processed_dir)
+    rows = list(examples["examples"])
+    assignments = _split_groups(rows)
+    core_names = tuple(examples["sharedBindings"]["featureNames"])
+    feature_names = _candidate_features(core_names, NNLS_CANDIDATE)
+
+    evidence_by_track: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+    references_by_track: dict[str, list[Mapping[str, Any]]] = {}
+    reference_receipts: dict[str, str] = {}
+    matrix: list[list[float]] = []
+    engine_products: list[str] = []
+    btc_products: list[str] = []
+    nnls_products: list[str] = []
+    reference_products: list[str] = []
+    engine_confidence: list[float] = []
+    consensus_confidence: list[float] = []
+    fixed_predictions: list[str] = []
+    roles: list[str] = []
+    datasets: list[str] = []
+    outcome_reproduction_count = 0
+
+    for example in rows:
+        track_id = str(example["trackId"])
+        if track_id not in evidence_by_track:
+            evidence_by_track[track_id] = (
+                _read_json(cache / "btc" / f"{track_id}.json"),
+                _load_nnls(cache / "nnls" / f"{track_id}.npz"),
+            )
+            reference_path = reference_paths.get(track_id)
+            benchmark_row = benchmark_by_id.get(track_id)
+            if reference_path is None or benchmark_row is None:
+                raise ValueError(f"Missing development reference binding for {track_id}.")
+            reference_sha = _sha256(reference_path)
+            if reference_sha != benchmark_row["referenceSha256"]:
+                raise ValueError(f"Development reference hash changed for {track_id}.")
+            reference = _read_json(reference_path)
+            if reference.get("id") != track_id or reference.get("schemaVersion") != "chord_reference_v1":
+                raise ValueError(f"Invalid development reference for {track_id}.")
+            references_by_track[track_id] = list(reference["segments"])
+            reference_receipts[track_id] = reference_sha
+
+        btc, nnls = evidence_by_track[track_id]
+        summary = example["barSummary"]
+        start, end = float(summary["start"]), float(summary["end"])
+        engine_product = _canonical_product(str(summary.get("predictionProduct") or "N.C."))
+        btc_bar = _dominant_segments(btc["segments"], start, end)
+        nnls_bar = _dominant_frames(nnls, start, end)
+        btc_product = _canonical_product(str(btc_bar["product"]))
+        nnls_product = _canonical_product(str(nnls_bar["product"]))
+        reference_bar = _reference_bar(references_by_track[track_id], start, end)
+        if reference_bar["coverage"] < CORRECTION_COVERAGE or reference_bar["dominance"] < CORRECTION_DOMINANCE:
+            raise ValueError(f"Reference bar is indeterminate for {track_id}:{example['barIndex']}.")
+        reference_product = str(reference_bar["product"])
+        reproduced = (engine_product == reference_product) == bool(example["outcome"]["correct"])
+        if not reproduced:
+            raise ValueError(f"Reference join did not reproduce {track_id}:{example['barIndex']}.")
+        outcome_reproduction_count += 1
+
+        external = _evidence_features(example, btc, nnls)
+        combined = {**summary["featureValues"], **external}
+        matrix.append([_numeric_feature_value(combined[name]) for name in feature_names])
+        engine_products.append(engine_product)
+        btc_products.append(btc_product)
+        nnls_products.append(nnls_product)
+        reference_products.append(reference_product)
+        raw_engine_confidence = float(summary["featureValues"].get("productSelectedProbabilityMean") or 0.0)
+        engine_confidence.append(raw_engine_confidence)
+        checker_agreement = (
+            btc_product == nnls_product
+            and btc_product != engine_product
+            and float(btc_bar["coverage"]) >= CORRECTION_COVERAGE
+            and float(nnls_bar["coverage"]) >= CORRECTION_COVERAGE
+            and float(btc_bar["dominance"]) >= CORRECTION_DOMINANCE
+            and float(nnls_bar["dominance"]) >= CORRECTION_DOMINANCE
+        )
+        if checker_agreement:
+            fixed_predictions.append(btc_product)
+            consensus_confidence.append(min(float(btc_bar["dominance"]), float(nnls_bar["dominance"])))
+        else:
+            fixed_predictions.append(engine_product)
+            consensus_confidence.append(raw_engine_confidence)
+        roles.append(assignments[str(example["confidenceGroupId"])])
+        datasets.append(str(example["confidenceGroupId"]).split(":", 2)[1])
+
+    values = np.asarray(matrix, dtype=np.float64)
+    if np.isinf(values).any():
+        raise ValueError("Correction matrix contains infinite values.")
+    engine_array = np.asarray(engine_products)
+    btc_array = np.asarray(btc_products)
+    nnls_array = np.asarray(nnls_products)
+    reference_array = np.asarray(reference_products)
+    fixed_array = np.asarray(fixed_predictions)
+    role_array = np.asarray(roles)
+    dataset_array = np.asarray(datasets)
+    fit_mask = role_array == "fit"
+    eval_mask = role_array == "evaluation"
+
+    action_targets = np.full(len(rows), 3, dtype=np.int64)
+    action_targets[engine_array == reference_array] = 0
+    action_targets[(engine_array != reference_array) & (btc_array == reference_array)] = 1
+    action_targets[
+        (engine_array != reference_array) & (btc_array != reference_array) & (nnls_array == reference_array)
+    ] = 2
+    if set(action_targets[fit_mask].tolist()) != {0, 1, 2, 3}:
+        raise ValueError("The one-fit source-selector training role lacks a frozen action class.")
+
+    from sklearn.impute import SimpleImputer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    model = make_pipeline(
+        SimpleImputer(strategy="median"),
+        StandardScaler(),
+        LogisticRegression(
+            C=1.0,
+            class_weight="balanced",
+            max_iter=1000,
+            random_state=20260825,
+            solver="lbfgs",
+        ),
+    )
+    model.fit(values[fit_mask], action_targets[fit_mask])
+    fit_count = 1
+    probabilities = model.predict_proba(values[eval_mask])
+    actions = np.asarray(model.classes_)[np.argmax(probabilities, axis=1)]
+    selector_confidence = probabilities.max(axis=1)
+    eval_engine = engine_array[eval_mask]
+    eval_btc = btc_array[eval_mask]
+    eval_nnls = nnls_array[eval_mask]
+    selector_predictions = eval_engine.copy()
+    selector_predictions[actions == 1] = eval_btc[actions == 1]
+    selector_predictions[actions == 2] = eval_nnls[actions == 2]
+    selector_eligible = actions != 3
+
+    eval_reference = reference_array[eval_mask]
+    eval_datasets = dataset_array[eval_mask]
+    results = [
+        _correction_result(
+            candidate=CORRECTION_CANDIDATES[0],
+            predictions=eval_engine,
+            references=eval_reference,
+            engine=eval_engine,
+            confidence=np.asarray(engine_confidence)[eval_mask],
+            selectively_eligible=np.ones(int(eval_mask.sum()), dtype=bool),
+            datasets=eval_datasets,
+            fit_count=0,
+        ),
+        _correction_result(
+            candidate=CORRECTION_CANDIDATES[1],
+            predictions=fixed_array[eval_mask],
+            references=eval_reference,
+            engine=eval_engine,
+            confidence=np.asarray(consensus_confidence)[eval_mask],
+            selectively_eligible=np.ones(int(eval_mask.sum()), dtype=bool),
+            datasets=eval_datasets,
+            fit_count=0,
+        ),
+        _correction_result(
+            candidate=CORRECTION_CANDIDATES[2],
+            predictions=selector_predictions,
+            references=eval_reference,
+            engine=eval_engine,
+            confidence=selector_confidence,
+            selectively_eligible=selector_eligible,
+            datasets=eval_datasets,
+            fit_count=1,
+        ),
+    ]
+    if fit_count != CORRECTION_MAX_FITS or sum(row["fitCount"] for row in results) != 1:
+        raise RuntimeError("The frozen one-fit correction cap was not satisfied exactly.")
+
+    reference_rows = [
+        {"trackId": track_id, "referenceSha256": digest} for track_id, digest in sorted(reference_receipts.items())
+    ]
+    report = {
+        "schemaVersion": CORRECTION_SCHEMA,
+        "developmentOnly": True,
+        "promotionEligible": False,
+        "sealedEvaluationOpened": False,
+        "deploymentChanged": False,
+        "candidateCount": len(CORRECTION_CANDIDATES),
+        "candidateFitCount": fit_count,
+        "maximumCandidateFits": CORRECTION_MAX_FITS,
+        "parameterSearchCount": 0,
+        "automaticRetryCount": 0,
+        "newFeatureInferenceCount": 0,
+        "selectorThreshold": SELECTOR_THRESHOLD,
+        "reportingThresholds": list(REPORTING_THRESHOLDS),
+        "fixedConsensusRule": {
+            "btcAndNnlsProductsMustAgree": True,
+            "mustDifferFromEngine": True,
+            "minimumCoverage": CORRECTION_COVERAGE,
+            "minimumDominance": CORRECTION_DOMINANCE,
+        },
+        "sourceSelector": {
+            "actions": ["engine", "btc", "nnls", "abstain"],
+            "targetPrecedence": ["engine-if-correct", "btc-if-correct", "nnls-if-correct", "abstain"],
+            "featureCount": len(feature_names),
+            "featureNamesSha256": _canonical_sha256(feature_names),
+            "estimator": "median-imputed standardized balanced logistic regression",
+            "C": 1.0,
+            "solver": "lbfgs",
+            "maxIterations": 1000,
+            "randomState": 20260825,
+            "fitActionCounts": {str(action): int((action_targets[fit_mask] == action).sum()) for action in range(4)},
+        },
+        "split": {
+            "id": SPLIT_ID,
+            "fitExampleCount": int(fit_mask.sum()),
+            "evaluationExampleCount": int(eval_mask.sum()),
+            "groupAssignmentsSha256": _canonical_sha256(
+                [{"confidenceGroupId": group, "role": role} for group, role in sorted(assignments.items())]
+            ),
+        },
+        "referenceAdmission": {
+            "trackCount": len(reference_rows),
+            "exampleCount": len(rows),
+            "outcomeReproductionCount": outcome_reproduction_count,
+            "referenceRowsSha256": _canonical_sha256(reference_rows),
+        },
+        "source": {
+            "examplesSha256": _sha256(examples_path),
+            "featureCacheManifestSha256": _sha256(cache / "manifest.json"),
+            "benchmarkSha256": _sha256(benchmark_path),
+        },
+        "candidates": results,
+    }
+    report["artifactSha256"] = _canonical_sha256(report)
+    _atomic_json(output_path, report)
+    return report
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -542,6 +937,12 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--examples", type=Path, required=True)
     run.add_argument("--cache", type=Path, required=True)
     run.add_argument("--output", type=Path, required=True)
+    correct = commands.add_parser("correct")
+    correct.add_argument("--examples", type=Path, required=True)
+    correct.add_argument("--cache", type=Path, required=True)
+    correct.add_argument("--processed-dir", type=Path, required=True)
+    correct.add_argument("--benchmark", type=Path, required=True)
+    correct.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -555,6 +956,27 @@ def main(argv: Iterable[str] | None = None) -> int:
             output=args.output,
         )
         print(json.dumps({"trackCount": receipt["trackCount"], "artifactSha256": receipt["artifactSha256"]}))
+        return 0
+    if args.command == "correct":
+        report = evaluate_correction_fusion(
+            examples_path=args.examples,
+            cache=args.cache,
+            processed_dir=args.processed_dir,
+            benchmark_path=args.benchmark,
+            output_path=args.output,
+        )
+        print(
+            json.dumps(
+                {
+                    "candidateFitCount": report["candidateFitCount"],
+                    "artifactSha256": report["artifactSha256"],
+                    "candidates": [
+                        {"candidate": row["candidate"], "metrics": row["metrics"]} for row in report["candidates"]
+                    ],
+                },
+                indent=2,
+            )
+        )
         return 0
     report = evaluate(examples_path=args.examples, cache=args.cache, output_path=args.output)
     print(

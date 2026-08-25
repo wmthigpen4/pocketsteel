@@ -27,6 +27,12 @@ def test_candidate_contract_is_exactly_three_and_monotonic() -> None:
     assert names[1][:2] == core
     assert names[2][: len(names[1])] == names[1]
     assert len(names[0]) < len(names[1]) < len(names[2])
+    assert MODULE.CORRECTION_CANDIDATES == (
+        "engine-unchanged",
+        "fixed-checker-consensus",
+        "one-fit-source-selector",
+    )
+    assert MODULE.CORRECTION_MAX_FITS == 1
 
 
 def test_retained_confidence_contract_matches_frozen_feature_lists() -> None:
@@ -91,6 +97,44 @@ def test_explicit_null_feature_is_forwarded_to_the_frozen_imputer() -> None:
     assert np.isnan(MODULE._numeric_feature_value(None))
     assert MODULE._numeric_feature_value(0) == 0.0
     assert MODULE._numeric_feature_value(0.25) == 0.25
+
+
+def test_reference_bar_canonicalizes_enharmonic_products() -> None:
+    reference = MODULE._reference_bar(
+        [
+            {"start": 0.0, "end": 0.8, "label": "Gb:min"},
+            {"start": 0.8, "end": 1.0, "label": "A:maj"},
+        ],
+        0.0,
+        1.0,
+    )
+    assert reference == {"product": "F#m", "coverage": 1.0, "dominance": 0.8}
+    assert MODULE._canonical_product("Ab:min") == "G#m"
+
+
+def test_correction_metrics_count_help_and_harm_without_hiding_full_coverage() -> None:
+    engine = np.asarray(["C", "D", "E", "F"])
+    reference = np.asarray(["C", "G", "E", "A"])
+    prediction = np.asarray(["C", "G", "A", "G"])
+    metrics = MODULE._correction_metrics(
+        predictions=prediction,
+        references=reference,
+        engine=engine,
+        confidence=np.asarray([0.99, 0.99, 0.99, 0.2]),
+        selectively_eligible=np.asarray([True, True, True, False]),
+    )
+    assert metrics["fullCoverageCorrectCount"] == 2
+    assert metrics["helpfulCorrectionCount"] == 1
+    assert metrics["harmfulCorrectionCount"] == 1
+    assert metrics["changedWrongToDifferentWrongCount"] == 1
+    assert metrics["netCorrectGain"] == 0
+    assert metrics["primaryOperatingPoint"] == {
+        "minimumConfidence": 0.98,
+        "acceptedCount": 3,
+        "correctCount": 2,
+        "precision": 2 / 3,
+        "coverage": 0.75,
+    }
 
 
 def test_bar_evidence_features_capture_checker_consensus() -> None:
