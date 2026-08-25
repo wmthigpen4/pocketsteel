@@ -224,6 +224,10 @@
     return selected.prediction.segments || [];
   }
 
+  function segmentAt(segments, time) {
+    return (segments || []).find((item) => time >= Number(item.start) && time < Number(item.end));
+  }
+
   function updateLocalPlayback() {
     if (!selected) return;
     const time = byId("audio").currentTime;
@@ -234,6 +238,7 @@
     document.querySelectorAll(".measure.active").forEach((item) => item.classList.remove("active"));
     if (index < 0) {
       byId("current-bar").textContent = "—";
+      byId("current-v2").textContent = "N.C.";
       byId("current-student").textContent = "N.C.";
       byId("current-hybrid").textContent = "N.C.";
       return;
@@ -241,9 +246,9 @@
     const segment = segments[index];
     byId("current-bar").textContent = String(index + 1);
     byId("current-student").textContent = segment.productLabel || segment.label || "N.C.";
-    const reference = selected.crossCheck?.segments?.find(
-      (item) => time >= Number(item.start) && time < Number(item.end),
-    );
+    const reference = segmentAt(selected.crossCheck?.segments, time);
+    const btc = segmentAt(selected.openSourceCrossCheck?.prediction?.segments, time);
+    byId("current-v2").textContent = btc?.productLabel || btc?.label || "N.C.";
     byId("current-hybrid").textContent = reference?.productLabel || reference?.label || "N.C.";
     document.querySelector(`.measure[data-bar="${index + 1}"]`)?.classList.add("active");
   }
@@ -311,23 +316,73 @@
   function renderCrossCheck() {
     const section = byId("crosscheck-section");
     const crossCheck = selected.crossCheck;
+    const openSource = selected.openSourceCrossCheck;
     section.hidden = !crossCheck;
     document.body.classList.toggle("has-crosscheck", Boolean(crossCheck));
+    document.body.classList.toggle("has-open-source", Boolean(openSource));
     if (!crossCheck) return;
-    byId("crosscheck-heading").textContent = `${selected.track.title}: our engine vs ${crossCheck.provider}`;
-    byId("crosscheck-disclosure").textContent = crossCheck.disclosure;
-    byId("crosscheck-exact").textContent = percent(crossCheck.exactAgreementFraction);
-    byId("crosscheck-root").textContent = percent(crossCheck.rootAgreementFraction);
-    byId("crosscheck-covered").textContent = duration(crossCheck.coveredSeconds);
-    byId("crosscheck-bpm").textContent = crossCheck.bpm == null ? "—" : String(Math.round(crossCheck.bpm));
+    byId("crosscheck-heading").textContent = openSource
+      ? `${selected.track.title}: three-system consensus`
+      : `${selected.track.title}: our engine vs ${crossCheck.provider}`;
+    byId("crosscheck-disclosure").textContent = openSource
+      ? `${crossCheck.disclosure} ${openSource.disclosure} Across direct disagreements, BTC backs our side ${percent(openSource.consensus.btcSupportsOurFraction)}, Chordify's side ${percent(openSource.consensus.btcSupportsChordifyFraction)}, and neither ${percent(openSource.consensus.btcSupportsNeitherFraction)}.`
+      : crossCheck.disclosure;
+    const pairVotes = openSource?.consensus?.pairVotes || [];
+    const topPair = pairVotes.find((item) => item.ourChord === "D" && item.chordifyChord === "G") || pairVotes[0];
+    const topPairNote = topPair
+      ? ` Highlighted recurring split: our ${topPair.ourChord} versus Chordify ${topPair.chordifyChord}; BTC backs our side for ${percent(topPair.btcSupportsOurSeconds / topPair.seconds)} of that disputed time.`
+      : "";
+    section.querySelector(".honesty-note p").textContent = openSource
+      ? `The queue puts all-disagree regions first, followed by places where Chordify and BTC agree against our engine. Click a row to hear it; the reviewer still decides which chord is correct.${topPairNote}`
+      : "These are the longest disagreements between the two systems. Click a row to hear that moment; the reviewer decides which chord is correct.";
+    const scoreCards = byId("crosscheck-section").querySelectorAll(".crosscheck-scores .score-card");
+    if (openSource) {
+      const consensus = openSource.consensus;
+      const values = [
+        ["Our vs Chordify", percent(crossCheck.exactAgreementFraction), "root + major/minor"],
+        ["BTC backs our side", percent(consensus.btcSupportsOurFraction), "of our-vs-Chordify disagreement"],
+        ["All three agree", percent(consensus.allAgreeFraction), "strongest machine consensus"],
+        ["Priority review", duration(consensus.priorityReviewSeconds), "all-disagree + our-outlier time"],
+      ];
+      scoreCards.forEach((card, index) => {
+        const [label, value, note] = values[index];
+        card.querySelector("p").textContent = label;
+        card.querySelector("strong").textContent = value;
+        card.querySelector("span").textContent = note;
+      });
+    } else {
+      byId("crosscheck-exact").textContent = percent(crossCheck.exactAgreementFraction);
+      byId("crosscheck-root").textContent = percent(crossCheck.rootAgreementFraction);
+      byId("crosscheck-covered").textContent = duration(crossCheck.coveredSeconds);
+      byId("crosscheck-bpm").textContent = crossCheck.bpm == null ? "—" : String(Math.round(crossCheck.bpm));
+    }
     const body = byId("crosscheck-body");
     body.replaceChildren();
-    crossCheck.reviewWindows.forEach((window) => {
+    const head = byId("crosscheck-head");
+    const headings = openSource
+      ? ["Time", "Our engine", "Chordify", "Open-source BTC", "Consensus", "Length"]
+      : ["Time", "Our engine", "Chordify", "Our confidence", "Length"];
+    const header = document.createElement("tr");
+    headings.forEach((value) => { const cell = document.createElement("th"); cell.textContent = value; header.append(cell); });
+    head.replaceChildren(header);
+    const reviewWindows = openSource?.consensus?.reviewWindows || crossCheck.reviewWindows;
+    reviewWindows.forEach((window) => {
       const row = document.createElement("tr");
-      row.className = "review-window";
-      [duration(window.start), window.ourChord, window.referenceChord, percent(window.ourConfidence), `${window.seconds.toFixed(1)}s`].forEach((value) => {
+      row.className = `review-window ${String(window.category || "").replaceAll("_", "-")}`.trim();
+      const values = openSource
+        ? [
+          duration(window.start),
+          window.ourChord,
+          window.chordifyChord,
+          window.btcChord,
+          window.category.replaceAll("_", " "),
+          `${window.seconds.toFixed(1)}s`,
+        ]
+        : [duration(window.start), window.ourChord, window.referenceChord, percent(window.ourConfidence), `${window.seconds.toFixed(1)}s`];
+      values.forEach((value, index) => {
         const cell = document.createElement("td");
         cell.textContent = value;
+        if (openSource && index === 4) cell.className = "consensus-label";
         row.append(cell);
       });
       row.tabIndex = 0;
@@ -337,7 +392,7 @@
       });
       body.append(row);
     });
-    const methodology = proof.crossCheckMethodology;
+    const methodology = proof.openSourceMethodology || proof.crossCheckMethodology;
     byId("methodology-title").textContent = methodology.title;
     byId("methodology-summary").textContent = methodology.summary;
     const links = byId("methodology-links");
@@ -412,8 +467,11 @@
     document.title = "Local Chord Reader Test · Steel Guitar RAG";
     byId("hero-eyebrow").textContent = "Chord Reader · local experimental run";
     byId("hero-title").textContent = "Listen to what the model heard.";
-    byId("hero-lede").textContent = "Three user-supplied songs were analyzed by the frozen domain-gated root, quality, and boundary ensemble. This is a listening test: confidence is not accuracy, and readiness remains NO-GO.";
+    byId("hero-lede").textContent = proof.tracks.some((item) => item.openSourceCrossCheck)
+      ? "Three user-supplied songs were analyzed by our frozen ensemble, Chordify, and the open-source BTC model. Consensus orders the human review queue; it is not ground-truth accuracy, and readiness remains NO-GO."
+      : "Three user-supplied songs were analyzed by the frozen domain-gated root, quality, and boundary ensemble. This is a listening test: confidence is not accuracy, and readiness remains NO-GO.";
     byId("student-label").textContent = "Experimental ensemble";
+    byId("v2-label").textContent = "Open-source BTC";
     byId("hybrid-label").textContent = "Chordify";
     byId("current-bar").previousElementSibling.textContent = "SEGMENT";
     byId("selected-results").querySelector(".eyebrow").textContent = "Selected-song model behavior";
@@ -427,8 +485,8 @@
     });
     byId("benchmark-section").hidden = true;
     byId("reproduce-heading").textContent = "Rebuild this private local test";
-    byId("reproduce-copy").textContent = "The ignored test bundle was emitted by the frozen Python ensemble, then augmented from user-authorized Chordify MIDI exports. Audio, model, and MIDI hashes identify exactly what was compared.";
-    byId("reproduce-command").textContent = "python scripts/add_chordify_crosscheck.py --midi TRACK_ID=/path/export.mid";
+    byId("reproduce-copy").textContent = "The ignored test bundle was emitted by the frozen Python ensemble, augmented from user-authorized Chordify MIDI exports, and cross-checked locally with the pinned open-source BTC model. Audio, model, MIDI, and BTC revisions identify exactly what was compared.";
+    byId("reproduce-command").textContent = "python scripts/add_open_source_consensus.py --local-files-only";
     byId("model-hash").textContent = Object.entries(proof.modelSha256).map(([name, hash]) => `${name}: ${hash}`).join(" · ");
     byId("footer-status").textContent = "Experimental localhost listening test. Readiness is NO-GO; this is not deployed and does not select an operating threshold.";
     renderLocalSuite();

@@ -138,7 +138,16 @@ def test_visual_proof_supports_ignored_local_v9_listening_bundle() -> None:
     assert "renderCrossCheck" in script
     assert "Agreement is not accuracy" in script
     assert ".local-mode.has-crosscheck" in css
+    assert "three-system consensus" in script
+    assert "Open-source BTC" in script
+    assert 'id="crosscheck-head"' in html
+    assert ".local-mode.has-open-source" in css
+    assert "add_open_source_consensus.py --local-files-only" in script
     comparator = (ROOT / "scripts/add_chordify_crosscheck.py").read_text(encoding="utf-8")
     assert "user-authorized premium time-aligned MIDI export" in comparator
     assert "It is not ground-truth accuracy" in comparator
     assert "mido" not in comparator
+    open_source = (ROOT / "scripts/add_open_source_consensus.py").read_text(encoding="utf-8")
+    assert "product_viterbi=True" in open_source
+    assert "fitCount" not in open_source
+    assert "chord-extractor" in open_source

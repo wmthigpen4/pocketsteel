@@ -98,9 +98,14 @@ audio { width: 100%; margin: 24px 0; accent-color: var(--green); }
 .local-mode .legend .reference-only { display: none; }
 .local-mode.has-crosscheck .now-playing { grid-template-columns: .55fr 1fr 1fr; }
 .local-mode.has-crosscheck .current-chord.hybrid { display: block; border-color: var(--green); }
+.local-mode.has-crosscheck.has-open-source .now-playing { grid-template-columns: .55fr repeat(3, 1fr); }
+.local-mode.has-open-source .current-chord.v2 { display: block; border-color: var(--gold); background: #211c11; }
 .crosscheck-scores { margin-bottom: 18px; }
 .review-window { cursor: pointer; }
 .review-window:hover, .review-window:focus { background: #1a2114; outline: 1px solid var(--green); }
+.review-window.all-disagree { background: #2b1714; }
+.review-window.our-engine-outlier { background: #2a2413; }
+.review-window .consensus-label { color: var(--gold); font-weight: 750; text-transform: capitalize; }
 .methodology-note { margin-top: 24px; }
 .methodology-note h3 { margin-bottom: 8px; }
 
