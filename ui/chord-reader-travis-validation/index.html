@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chord Reader — Travis Validation</title>
-    <link rel="stylesheet" href="./validation.css?v=3" />
+    <link rel="stylesheet" href="./validation.css?v=4" />
   </head>
   <body>
     <main class="shell">
@@ -47,6 +47,32 @@
               <p class="eyebrow" id="song-position">Song 1 of 15</p>
               <h2 id="song-title">Loading predictions…</h2>
               <p class="muted" id="song-summary"></p>
+              <div class="notation-controls">
+                <label class="key-picker" for="song-key">
+                  <span id="key-source">Song key · suggested</span>
+                  <select id="song-key" aria-label="Song key"></select>
+                </label>
+                <div class="notation-toggle">
+                  <span>Chord display</span>
+                  <div role="group" aria-label="Chord display">
+                    <button
+                      type="button"
+                      class="active"
+                      data-notation="chords"
+                      aria-pressed="true"
+                    >
+                      Chords
+                    </button>
+                    <button
+                      type="button"
+                      data-notation="nns"
+                      aria-pressed="false"
+                    >
+                      NNS
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="song-actions">
               <button type="button" class="secondary" id="finish-track">
@@ -155,6 +181,6 @@
       </article>
     </template>
 
-    <script src="./validation.js?v=3"></script>
+    <script src="./validation.js?v=4"></script>
   </body>
 </html>

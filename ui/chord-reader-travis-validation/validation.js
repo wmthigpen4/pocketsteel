@@ -6,6 +6,44 @@
   const STORAGE_SESSION =
     new URLSearchParams(window.location.search).get("session") || "default";
   const byId = (id) => document.getElementById(id);
+  const KEY_NAMES = [
+    "C",
+    "Db",
+    "D",
+    "Eb",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "Ab",
+    "A",
+    "Bb",
+    "B",
+  ];
+  const NOTE_PITCH_CLASSES = {
+    C: 0,
+    "B#": 0,
+    "C#": 1,
+    Db: 1,
+    D: 2,
+    "D#": 3,
+    Eb: 3,
+    E: 4,
+    Fb: 4,
+    "E#": 5,
+    F: 5,
+    "F#": 6,
+    Gb: 6,
+    G: 7,
+    "G#": 8,
+    Ab: 8,
+    A: 9,
+    "A#": 10,
+    Bb: 10,
+    B: 11,
+    Cb: 11,
+  };
+  const NNS_INTERVALS = ["1", "b2", "2", "b3", "3", "4", "#4", "5", "b6", "6", "b7", "7"];
   const pct = (value) => `${(Number(value || 0) * 100).toFixed(0)}%`;
   const clock = (seconds) => {
     const value = Math.max(0, Number(seconds) || 0);
@@ -18,6 +56,80 @@
   let feedback;
   let activeSegment = -1;
   let activeFilter = "all";
+
+  function parseChord(symbol) {
+    const value = String(symbol || "").trim();
+    if (!value || /^(N\.?C\.?|N)$/i.test(value)) return null;
+    const match = value.match(/^([A-G](?:#|b)?)([^/]*)(?:\/([A-G](?:#|b)?))?$/);
+    if (!match) return null;
+    return { root: match[1], quality: match[2] || "", bass: match[3] || "" };
+  }
+
+  function chordQuality(quality) {
+    if (/^(m|min)(?!aj)/i.test(quality)) return "minor";
+    if (/^(dim|°)/i.test(quality)) return "diminished";
+    return "major";
+  }
+
+  function inferKey(track) {
+    const degreeWeights = [2.7, -0.6, 0.8, -0.5, 0.7, 1.25, -0.7, 1.8, -0.5, 0.65, -0.4, 0.35];
+    const expectedQualities = ["major", null, "minor", null, "minor", "major", null, "major", null, "minor", null, "diminished"];
+    let bestPitchClass = 0;
+    let bestScore = -Infinity;
+    KEY_NAMES.forEach((_name, tonic) => {
+      let score = 0;
+      (track.summary.dominantChords || []).forEach((entry) => {
+        const chord = parseChord(entry.symbol);
+        if (!chord) return;
+        const root = NOTE_PITCH_CLASSES[chord.root];
+        if (root === undefined) return;
+        const interval = (root - tonic + 12) % 12;
+        const expected = expectedQualities[interval];
+        const qualityBonus = expected
+          ? chordQuality(chord.quality) === expected
+            ? 0.9
+            : -0.25
+          : 0;
+        score += Number(entry.seconds || 0) * (degreeWeights[interval] + qualityBonus);
+      });
+      if (score > bestScore) {
+        bestScore = score;
+        bestPitchClass = tonic;
+      }
+    });
+    return KEY_NAMES[bestPitchClass];
+  }
+
+  function nnsQuality(quality) {
+    if (!quality) return "";
+    if (/^maj$/i.test(quality)) return "";
+    return quality
+      .replace(/^(min)(?!aj)/i, "m")
+      .replace(/^dim/i, "°")
+      .replace(/^aug/i, "+");
+  }
+
+  function chordToNns(symbol, key) {
+    const chord = parseChord(symbol);
+    if (!chord) return /^(N\.?C\.?|N)$/i.test(String(symbol || "").trim()) ? "N.C." : symbol || "—";
+    const tonic = NOTE_PITCH_CLASSES[key];
+    const root = NOTE_PITCH_CLASSES[chord.root];
+    if (tonic === undefined || root === undefined) return symbol;
+    const degree = NNS_INTERVALS[(root - tonic + 12) % 12];
+    const bassPitch = NOTE_PITCH_CLASSES[chord.bass];
+    const bass = bassPitch === undefined ? "" : `/${NNS_INTERVALS[(bassPitch - tonic + 12) % 12]}`;
+    return `${degree}${nnsQuality(chord.quality)}${bass}`;
+  }
+
+  function chordSymbol(segment) {
+    return segment?.productLabel || segment?.label || "N.C.";
+  }
+
+  function displayChord(segment) {
+    const symbol = chordSymbol(segment);
+    const record = trackFeedback();
+    return record.displayMode === "nns" ? chordToNns(symbol, record.songKey) : symbol;
+  }
 
   function storageKey() {
     const hashes = Object.values(proof.modelSha256 || {}).join(":");
@@ -51,6 +163,10 @@
         title: track.track.title,
         audioSha256: track.track.audioSha256,
         songNotes: "",
+        suggestedKey: inferKey(track),
+        songKey: inferKey(track),
+        keySource: "suggested",
+        displayMode: "chords",
         reviewComplete: false,
         reviewedAt: null,
         segments: {},
@@ -60,6 +176,10 @@
     if (typeof record.reviewComplete !== "boolean")
       record.reviewComplete = false;
     if (!("reviewedAt" in record)) record.reviewedAt = null;
+    if (!record.suggestedKey) record.suggestedKey = inferKey(track);
+    if (!record.songKey) record.songKey = record.suggestedKey;
+    if (!record.keySource) record.keySource = "suggested";
+    if (!record.displayMode) record.displayMode = "chords";
     Object.values(record.segments).forEach((segment) => {
       if (segment.status === "unreviewed") segment.status = "assumed_correct";
       if (segment.status === "confirmed") segment.status = "assumed_correct";
@@ -175,8 +295,8 @@
       card.hidden = !shouldShow(index);
       card.querySelector(".time-range").textContent =
         `${clock(segment.start)}–${clock(segment.end)}`;
-      card.querySelector(".predicted-chord").textContent =
-        segment.productLabel || segment.label || "N.C.";
+      card.querySelector(".predicted-chord").textContent = displayChord(segment);
+      card.querySelector(".predicted-chord").title = chordSymbol(segment);
       card.querySelector(".confidence").textContent =
         `${pct(segment.confidence)} confidence`;
       card.querySelector(".seek-area").addEventListener("click", () => {
@@ -249,6 +369,7 @@
     byId("song-summary").textContent =
       `${confidencePrefix}${clock(selected.track.durationSeconds)} · ${selected.prediction.segments.length} chord boxes · ${pct(selected.summary.meanConfidence)} mean model confidence`;
     byId("song-notes").value = trackFeedback().songNotes || "";
+    renderNotationControls();
     const finish = byId("finish-track");
     finish.textContent = trackFeedback().reviewComplete
       ? "Song reviewed ✓"
@@ -266,20 +387,19 @@
     renderTrack();
   }
 
-  function updatePlayback() {
+  function updatePlayback(force = false) {
     if (!selected) return;
     const time = byId("audio").currentTime;
     const index = selected.prediction.segments.findIndex(
       (segment) => time >= Number(segment.start) && time < Number(segment.end),
     );
-    if (index === activeSegment) return;
+    if (index === activeSegment && !force) return;
     activeSegment = index;
     document
       .querySelectorAll(".chord-card.active")
       .forEach((card) => card.classList.remove("active"));
     const segment = selected.prediction.segments[index];
-    byId("current-chord").textContent =
-      segment?.productLabel || segment?.label || "—";
+    byId("current-chord").textContent = segment ? displayChord(segment) : "—";
     byId("current-confidence").textContent = segment
       ? pct(segment.confidence)
       : "—";
@@ -292,6 +412,27 @@
         inline: "center",
       });
     }
+  }
+
+  function renderNotationControls() {
+    const record = trackFeedback();
+    byId("song-key").value = record.songKey;
+    byId("key-source").textContent = `Song key · ${record.keySource === "reviewer" ? "reviewer selected" : "suggested"}`;
+    document.querySelectorAll("[data-notation]").forEach((button) => {
+      const active = button.dataset.notation === record.displayMode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+
+  function populateKeyOptions() {
+    const select = byId("song-key");
+    KEY_NAMES.forEach((key) => {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = key === "F#" ? "F# / Gb" : key;
+      select.append(option);
+    });
   }
 
   function finishTrack() {
@@ -320,6 +461,7 @@
           start: segment.start,
           end: segment.end,
           predictedChord: segment.productLabel || segment.label || "N.C.",
+          predictedNns: chordToNns(segment.productLabel || segment.label || "N.C.", record.songKey),
           modelConfidence: segment.confidence,
           ...(record.segments[index] || {
             status: record.reviewComplete
@@ -350,6 +492,24 @@
       trackFeedback().songNotes = event.target.value;
       saveFeedback();
     });
+    byId("song-key").addEventListener("change", (event) => {
+      const record = trackFeedback();
+      record.songKey = event.target.value;
+      record.keySource = "reviewer";
+      saveFeedback();
+      renderNotationControls();
+      renderSegments();
+      updatePlayback(true);
+    });
+    document.querySelectorAll("[data-notation]").forEach((button) => {
+      button.addEventListener("click", () => {
+        trackFeedback().displayMode = button.dataset.notation;
+        saveFeedback();
+        renderNotationControls();
+        renderSegments();
+        updatePlayback(true);
+      });
+    });
     document.querySelectorAll(".filter").forEach((button) => {
       button.addEventListener("click", () => {
         activeFilter = button.dataset.filter;
@@ -373,6 +533,7 @@
       proof = value;
       feedback = loadFeedback();
       byId("track-total").textContent = String(proof.tracks.length);
+      populateKeyOptions();
       bindControls();
       const highestConfidence = proof.tracks.reduce(
         (best, item) =>

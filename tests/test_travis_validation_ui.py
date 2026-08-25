@@ -20,6 +20,9 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'data-status="timing"' in html
     assert 'data-status="unsure"' in html
     assert 'id="finish-track"' in html
+    assert 'id="song-key"' in html
+    assert 'data-notation="chords"' in html
+    assert 'data-notation="nns"' in html
     assert "Right chord (only if different)" in html
     assert "Split/slash chord" in html
     assert 'class="rail-labels"' in html
@@ -35,6 +38,10 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "highestConfidence" in script
     assert "Highest-confidence starting track" in script
     assert "scrollIntoView" in script
+    assert "function inferKey" in script
+    assert "function chordToNns" in script
+    assert "predictedNns" in script
+    assert 'keySource = "reviewer"' in script
     assert "modelConfidence" in script
     assert ".chord-card.corrected" in css
     assert ".chord-grid {" in css

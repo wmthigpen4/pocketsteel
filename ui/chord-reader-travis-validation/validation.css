@@ -214,6 +214,57 @@ h2 {
   justify-content: end;
   gap: 8px;
 }
+.notation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.key-picker,
+.notation-toggle {
+  display: grid;
+  gap: 3px;
+}
+.key-picker span,
+.notation-toggle > span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.key-picker select,
+.notation-toggle button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  background: #111411;
+  color: var(--ink);
+}
+.key-picker select {
+  min-width: 112px;
+  padding: 5px 30px 5px 9px;
+  border-radius: 8px;
+}
+.notation-toggle > div {
+  display: flex;
+}
+.notation-toggle button {
+  padding: 5px 10px;
+}
+.notation-toggle button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.notation-toggle button:last-child {
+  margin-left: -1px;
+  border-radius: 0 8px 8px 0;
+}
+.notation-toggle button.active {
+  z-index: 1;
+  border-color: var(--green);
+  background: var(--green-dark);
+  color: var(--green);
+}
 .primary,
 .secondary,
 .filter {
