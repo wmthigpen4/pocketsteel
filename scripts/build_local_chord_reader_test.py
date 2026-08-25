@@ -60,6 +60,18 @@ def _identifier(path: Path, used: set[str]) -> str:
     return candidate
 
 
+def _display_title(path: Path) -> str:
+    return re.sub(r"^\d+\s*-\s*", "", path.stem).strip()
+
+
+def _audio_url(destination: Path) -> str:
+    try:
+        relative = destination.resolve().relative_to(REPO_ROOT)
+    except ValueError as exc:
+        raise ValueError("Browser-ready local output must stay inside the repository.") from exc
+    return f"/{relative.as_posix()}"
+
+
 def _summary(prediction: Mapping[str, Any]) -> dict[str, Any]:
     segments = list(prediction["segments"])
     duration = float(prediction["durationSeconds"])
@@ -129,8 +141,8 @@ def build(audio_paths: Sequence[Path], output_root: Path = OUTPUT_ROOT) -> dict[
             {
                 "track": {
                     "id": identifier,
-                    "title": source.stem,
-                    "audioUrl": f"/ui/chord-reader-proof/local-tests/audio/{destination.name}",
+                    "title": _display_title(source),
+                    "audioUrl": _audio_url(destination),
                     "audioSha256": _sha256(source),
                     "durationSeconds": prediction["durationSeconds"],
                     "recordingType": "user-supplied local recording",

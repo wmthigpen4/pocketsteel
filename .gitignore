@@ -46,6 +46,7 @@ reports/generated/
 smoke-output/
 tmp/
 ui/chord-reader-proof/local-tests/
+ui/chord-reader-travis-validation/local-data/
 
 # Local visual-design sources and redundant master exports
 Neon Sign/
