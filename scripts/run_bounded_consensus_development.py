@@ -288,6 +288,19 @@ def _candidate_features(core_names: Sequence[str], candidate: str) -> tuple[str,
     raise ValueError(f"Unknown frozen candidate {candidate!r}.")
 
 
+def _sealed_feature_paths_by_id(sealed: Mapping[str, Any]) -> dict[str, Path]:
+    """Bind label-blind feature arrays by identity, not their historical cache role."""
+
+    paths: dict[str, Path] = {}
+    for row in sealed["tracks"]:
+        track_id = str(row["id"])
+        path = Path(row["path"])
+        if track_id in paths and paths[track_id] != path:
+            raise ValueError(f"Sealed cache has conflicting feature paths for {track_id}.")
+        paths[track_id] = path
+    return paths
+
+
 def _metrics(probabilities: np.ndarray, labels: np.ndarray) -> dict[str, Any]:
     from sklearn.metrics import brier_score_loss, roc_auc_score
 
@@ -333,9 +346,7 @@ def prepare_features(
         raise ValueError("Runtime audio must be development-only.")
     audio_by_id = {str(row["id"]): Path(row["audioPath"]) for row in runtime["tracks"]}
     sealed = _read_json(sealed_cache_path)
-    features_by_id = {
-        str(row["id"]): Path(row["path"]) for row in sealed["tracks"] if row.get("split") == "development"
-    }
+    features_by_id = _sealed_feature_paths_by_id(sealed)
     if set(track_ids) - set(audio_by_id) or set(track_ids) - set(features_by_id):
         raise ValueError("Feature preparation could not bind every development track.")
 

@@ -53,6 +53,17 @@ def test_group_split_is_deterministic_and_holds_out_each_dataset() -> None:
         assert roles == {"fit", "evaluation"}
 
 
+def test_sealed_feature_binding_uses_track_identity_not_historical_role() -> None:
+    sealed = {
+        "tracks": [
+            {"id": "development-example", "split": "train", "path": "/cache/example.npz"},
+            {"id": "other", "split": "development", "path": "/cache/other.npz"},
+        ]
+    }
+    paths = MODULE._sealed_feature_paths_by_id(sealed)
+    assert paths["development-example"] == Path("/cache/example.npz")
+
+
 def test_bar_evidence_features_capture_checker_consensus() -> None:
     example = {
         "barSummary": {
