@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "chord_confidence_feature_contract_v1",
+  "id": "chord-consensus-confidence-v1",
+  "status": "retained-development-confidence-features",
+  "retentionDecision": {
+    "approved": true,
+    "approvedOn": "2026-08-25",
+    "scope": "confidence selection and human-review prioritization only"
+  },
+  "baseEngine": {
+    "modelOrEnsembleSha256": "da73df511651230a5e8ef827c05aefb117710770ee4f994507354747058baedd",
+    "barFeatureContractSha256": "09e43a50baa00398b16878c381a36335cbe5f217c28e428a5f248e4643ecc8ad",
+    "sourceFeatureSpecSha256": "938318c3269e10ad9ada30d8de7553819f174617eb72c73d0b3d44558e9dcf65",
+    "featureCount": 48
+  },
+  "retainedFeatures": {
+    "btc": [
+      "btcCoverage",
+      "btcProductAgreement",
+      "btcRootAgreement",
+      "btcDominance",
+      "btcConfidence",
+      "btcTransitionRate"
+    ],
+    "nnlsChroma": [
+      "nnlsCoverage",
+      "nnlsProductAgreement",
+      "nnlsRootAgreement",
+      "nnlsDominance",
+      "nnlsConfidence",
+      "nnlsMargin"
+    ],
+    "consensus": [
+      "btcNnlsRootAgreement",
+      "allThreeRootAgreement",
+      "checkersAgainstEngineRootShare",
+      "checkerProductAgreement"
+    ],
+    "totalFeatureCount": 64,
+    "orderedFeatureNamesSha256": "5654bdf1fbbb00f5c339daff5e611bc004e6fd5a178f8323bc07b231a804895f"
+  },
+  "sources": {
+    "btc": {
+      "registry": "chord_reader/models/btc-ismir19.json",
+      "role": "independent pinned pretrained confidence evidence",
+      "license": "MIT"
+    },
+    "nnlsChroma": {
+      "implementation": "scripts/run_bounded_consensus_development.py",
+      "role": "independent clean-room confidence evidence",
+      "method": "non-negative least-squares chord-template activation over cached multiband chroma",
+      "chordinoCodeCopied": false,
+      "runtimeDependencyAdded": false
+    }
+  },
+  "developmentEvidence": {
+    "reportArtifactSha256": "0d1f9ab9fe82e94dffb9e2d40f08dde516e423f3f3db1f4a995796437e853ece",
+    "featureCacheArtifactSha256": "119f2972288be587bb7ff95be11af856bbb6c2f5ef55d22e4e3804bead11ac32",
+    "fitExampleCount": 962,
+    "evaluationExampleCount": 623,
+    "minimumConfidence": 0.98,
+    "acceptedCount": 248,
+    "correctCount": 247,
+    "empiricalPrecision": 0.9959677419354839,
+    "coverage": 0.39807383627608345,
+    "oneSidedWilson95LowerBound": 0.9821308761641669
+  },
+  "policy": {
+    "confidenceOnly": true,
+    "mayAbstain": true,
+    "mayPrioritizeHumanReview": true,
+    "mayRewriteChordLabels": false,
+    "productionEnabled": false,
+    "localhostProofEnabled": false,
+    "promotionEligible": false,
+    "calibrationMayOpen": false,
+    "confirmationMayOpen": false,
+    "newEvaluationAuthorized": false
+  },
+  "limitations": [
+    "This contract retains feature definitions, not a promoted fitted model.",
+    "The development result improves selective coverage and does not establish 98% end-to-end chord transcription accuracy.",
+    "AAM and GuitarSet accepted support remain below promotion minimums, and IDMT Guitar selective precision remains below 98%.",
+    "Any runtime integration, new fit, threshold change, calibration, confirmation, or deployment requires new explicit approval."
+  ]
+}

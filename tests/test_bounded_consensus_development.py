@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import numpy as np
@@ -26,6 +27,28 @@ def test_candidate_contract_is_exactly_three_and_monotonic() -> None:
     assert names[1][:2] == core
     assert names[2][: len(names[1])] == names[1]
     assert len(names[0]) < len(names[1]) < len(names[2])
+
+
+def test_retained_confidence_contract_matches_frozen_feature_lists() -> None:
+    path = Path(__file__).resolve().parents[1] / "chord_reader/models/chord-consensus-confidence-v1.json"
+    contract = json.loads(path.read_text(encoding="utf-8"))
+    assert contract["status"] == "retained-development-confidence-features"
+    assert contract["retainedFeatures"]["btc"] == list(MODULE.BTC_FEATURES)
+    assert contract["retainedFeatures"]["nnlsChroma"] == list(MODULE.NNLS_FEATURES)
+    assert contract["retainedFeatures"]["consensus"] == list(MODULE.CONSENSUS_FEATURES)
+    assert contract["retainedFeatures"]["totalFeatureCount"] == 64
+    assert contract["policy"] == {
+        "confidenceOnly": True,
+        "mayAbstain": True,
+        "mayPrioritizeHumanReview": True,
+        "mayRewriteChordLabels": False,
+        "productionEnabled": False,
+        "localhostProofEnabled": False,
+        "promotionEligible": False,
+        "calibrationMayOpen": False,
+        "confirmationMayOpen": False,
+        "newEvaluationAuthorized": False,
+    }
 
 
 def test_nnls_chroma_evidence_recovers_clear_major_and_minor_templates() -> None:
