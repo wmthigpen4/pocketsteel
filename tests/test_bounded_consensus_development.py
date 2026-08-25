@@ -1,0 +1,74 @@
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+import numpy as np
+
+
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/run_bounded_consensus_development.py"
+SPEC = importlib.util.spec_from_file_location("bounded_consensus", SCRIPT)
+assert SPEC and SPEC.loader
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+def test_candidate_contract_is_exactly_three_and_monotonic() -> None:
+    core = ("one", "two")
+    names = [MODULE._candidate_features(core, candidate) for candidate in MODULE.CANDIDATES]
+    assert MODULE.CANDIDATES == (
+        "engine-only",
+        "engine-plus-btc",
+        "engine-plus-btc-plus-nnls",
+    )
+    assert MODULE.MAX_CANDIDATE_FITS == 3
+    assert names[0] == core
+    assert names[1][:2] == core
+    assert names[2][: len(names[1])] == names[1]
+    assert len(names[0]) < len(names[1]) < len(names[2])
+
+
+def test_nnls_chroma_evidence_recovers_clear_major_and_minor_templates() -> None:
+    features = np.zeros((2, 61), dtype=np.float32)
+    features[0, [0, 4, 7]] = [1.0, 0.75, 0.6]
+    features[0, [24, 28, 31]] = [1.0, 0.75, 0.6]
+    features[1, [9, 0, 4]] = [1.0, 0.75, 0.6]
+    features[1, [33, 24, 28]] = [1.0, 0.75, 0.6]
+    evidence = MODULE.nnls_chroma_evidence(features)
+    assert evidence["products"] == ["C", "Am"]
+    assert all(value > 0.99 for value in evidence["confidences"])
+
+
+def test_group_split_is_deterministic_and_holds_out_each_dataset() -> None:
+    examples = [
+        {"confidenceGroupId": f"composition:{dataset}:{index}"}
+        for dataset in ("aam", "guitarset", "idmt_guitar")
+        for index in range(5)
+    ]
+    first = MODULE._split_groups(examples)
+    second = MODULE._split_groups(list(reversed(examples)))
+    assert first == second
+    for dataset in ("aam", "guitarset", "idmt_guitar"):
+        roles = {role for group, role in first.items() if group.startswith(f"composition:{dataset}:")}
+        assert roles == {"fit", "evaluation"}
+
+
+def test_bar_evidence_features_capture_checker_consensus() -> None:
+    example = {
+        "barSummary": {
+            "start": 0.0,
+            "end": 1.0,
+            "predictionProduct": "C",
+        }
+    }
+    btc = {"segments": [{"start": 0.0, "end": 1.0, "productLabel": "G", "confidence": 0.9}]}
+    nnls = {
+        "products": ["G"] * 10,
+        "confidences": [0.8] * 10,
+        "margins": [0.6] * 10,
+    }
+    values = MODULE._evidence_features(example, btc, nnls)
+    assert values["btcRootAgreement"] == 0.0
+    assert values["nnlsRootAgreement"] == 0.0
+    assert values["btcNnlsRootAgreement"] == 1.0
+    assert values["checkersAgainstEngineRootShare"] == 1.0
