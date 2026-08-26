@@ -201,10 +201,6 @@
     return `${storageKey()}:completion-dismissed`;
   }
 
-  function introSeenKey() {
-    return `${storageKey()}:intro-seen`;
-  }
-
   function completedTrackCount() {
     if (!proof || !feedback) return 0;
     return proof.tracks.filter((item) => trackFeedback(item).reviewComplete)
@@ -283,10 +279,14 @@
   }
 
   function showIntro({ force = false } = {}) {
-    if (!force && localStorage.getItem(introSeenKey())) return;
-    if (allTracksReviewed() && !force) return;
+    const url = new URL(window.location.href);
+    if (!force && url.searchParams.get("review") === "1") return;
     const intro = byId("review-intro");
     if (!intro || !intro.hidden) return;
+    if (force && url.searchParams.has("review")) {
+      url.searchParams.delete("review");
+      window.history.replaceState({}, "", url);
+    }
     intro.hidden = false;
     document.body.classList.add("intro-open");
     requestAnimationFrame(() => byId("start-review").focus());
@@ -297,7 +297,9 @@
     if (!intro || intro.hidden) return;
     intro.hidden = true;
     document.body.classList.remove("intro-open");
-    localStorage.setItem(introSeenKey(), new Date().toISOString());
+    const url = new URL(window.location.href);
+    url.searchParams.set("review", "1");
+    window.history.replaceState({}, "", url);
     document.querySelector("#track-list button.active")?.focus();
   }
 

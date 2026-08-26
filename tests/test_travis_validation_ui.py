@@ -115,7 +115,9 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "function showCompletionCelebration" in script
     assert "function showIntro" in script
     assert "function hideIntro" in script
-    assert "localStorage.setItem(introSeenKey()" in script
+    assert 'url.searchParams.get("review") === "1"' in script
+    assert 'url.searchParams.set("review", "1")' in script
+    assert "window.history.replaceState" in script
     assert "function hideCompletionCelebration" in script
     assert "All feedback is captured and saved securely." in script
     assert "sessionStorage.setItem(completionDismissKey()" in script
