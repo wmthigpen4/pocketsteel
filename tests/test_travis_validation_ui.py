@@ -15,6 +15,11 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     css = (VALIDATION_ROOT / "validation.css").read_text(encoding="utf-8")
 
     assert "Chord Reader — Travis Validation" in html
+    assert "displayed chord decisions were 79.8%" in html
+    assert "At 90% or higher confidence, 98.1% were correct" in html
+    assert "43.3% of the bars" in html
+    assert "world-best claim" in html
+    assert "99.6% precision on 39.8%" not in html
     assert '<audio id="audio" controls' in html
     assert 'id="chord-grid"' in html
     assert 'data-status="timing"' in html
