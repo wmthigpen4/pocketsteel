@@ -179,6 +179,7 @@ function r2Key(pathname: string): string | null {
   if (pathname === APP_BASE || pathname === `${APP_BASE}/`)
     return "app/index.html";
   if (pathname === `${APP_BASE}/validation.css`) return "app/validation.css";
+  if (pathname === `${APP_BASE}/phase-anchor.js`) return "app/phase-anchor.js";
   if (pathname === `${APP_BASE}/validation.js`) return "app/validation.js";
   if (pathname === `${APP_BASE}/local-data/proof.json`)
     return "proof/proof.json";

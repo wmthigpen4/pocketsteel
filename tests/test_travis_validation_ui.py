@@ -34,6 +34,10 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'id="song-tempo"' in html
     assert 'id="grid-earlier"' in html
     assert 'id="grid-later"' in html
+    assert 'id="downbeat-phase"' in html
+    assert 'id="set-downbeat-here"' in html
+    assert 'id="click-track"' in html
+    assert 'src="./phase-anchor.js?v=8"' in html
     assert 'class="beat-grid"' in html
     assert 'class="merge-select"' in html
     assert 'class="unmerge-button"' in html
@@ -62,6 +66,11 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "possible half-bar split — verify" in script
     assert "function displayItemChordAt" in script
     assert "timingOffsetSeconds" in script
+    assert "downbeatOffsetBeats" in script
+    assert "downbeatPhaseSource" in script
+    assert "function auditionBeatAt" in script
+    assert "function playGridClick" in script
+    assert 'windowItem("pickup"' in script
     assert "unstable raw changes collapsed" in script
     assert "requestAnimationFrame" in script
     assert "beat-aligned bars" in script
@@ -90,3 +99,11 @@ def test_local_builder_creates_browser_ready_output_urls_and_clean_titles(tmp_pa
 def test_validation_generated_data_is_git_ignored() -> None:
     ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "ui/chord-reader-travis-validation/local-data/" in ignore
+
+
+def test_protected_worker_routes_the_phase_anchor_asset() -> None:
+    worker = (
+        ROOT / "workers/chord-reader-validation/src/index.ts"
+    ).read_text(encoding="utf-8")
+    assert '`${APP_BASE}/phase-anchor.js`' in worker
+    assert 'return "app/phase-anchor.js"' in worker

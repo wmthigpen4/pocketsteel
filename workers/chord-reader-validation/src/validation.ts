@@ -44,6 +44,8 @@ export type StoredTrack = {
   meterSource: "detected" | "reviewer";
   tempoBpm: number;
   timingOffsetSeconds: number;
+  downbeatOffsetBeats: number;
+  downbeatPhaseSource: "anchored" | "unresolved" | "reviewer";
   reviewComplete: boolean;
   reviewedAt: string | null;
   segments: Record<
@@ -109,6 +111,19 @@ export function normalizeTrackPayload(
     timingOffsetSeconds > 2
   )
     throw new HttpError("timingOffsetSeconds is invalid.");
+  const downbeatOffsetBeats = Number(input.downbeatOffsetBeats);
+  if (
+    !Number.isSafeInteger(downbeatOffsetBeats) ||
+    downbeatOffsetBeats < 0 ||
+    downbeatOffsetBeats > 5
+  )
+    throw new HttpError("downbeatOffsetBeats is invalid.");
+  if (
+    input.downbeatPhaseSource !== "anchored" &&
+    input.downbeatPhaseSource !== "unresolved" &&
+    input.downbeatPhaseSource !== "reviewer"
+  )
+    throw new HttpError("downbeatPhaseSource is invalid.");
   if (typeof input.reviewComplete !== "boolean")
     throw new HttpError("reviewComplete is invalid.");
 
@@ -181,6 +196,8 @@ export function normalizeTrackPayload(
     meterSource: input.meterSource,
     tempoBpm,
     timingOffsetSeconds,
+    downbeatOffsetBeats,
+    downbeatPhaseSource: input.downbeatPhaseSource,
     reviewComplete: input.reviewComplete,
     reviewedAt: nullableIso(input.reviewedAt),
     segments,

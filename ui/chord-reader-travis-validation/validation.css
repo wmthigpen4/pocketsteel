@@ -197,17 +197,26 @@ h2 {
 }
 .review-panel {
   display: grid;
-  grid-template-rows: auto auto auto auto auto minmax(260px, 1fr) auto;
+  grid-template-rows: auto auto auto auto auto auto minmax(260px, 1fr) auto;
   min-height: 0;
   overflow: hidden;
   padding: 14px 16px;
 }
 .song-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 22px;
+  position: relative;
+  display: block;
+}
+.song-head > div:first-child {
+  min-width: 0;
+}
+.song-head h2,
+.song-head .muted {
+  padding-right: 270px;
 }
 .song-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   flex-wrap: wrap;
   align-content: start;
@@ -222,11 +231,15 @@ h2 {
   margin-top: 8px;
 }
 .rhythm-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: 170px 120px 270px minmax(330px, 1fr);
+  flex: 1 0 100%;
+  width: 100%;
   align-items: end;
   gap: 8px;
 }
 .rhythm-controls label {
+  min-width: 0;
   display: grid;
   gap: 3px;
   color: var(--muted);
@@ -234,11 +247,24 @@ h2 {
 }
 
 .timing-controls {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.downbeat-controls {
+  min-width: 0;
   display: grid;
   gap: 0.3rem;
 }
 
 .timing-controls > div {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.downbeat-controls > div {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -252,6 +278,35 @@ h2 {
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
+}
+
+.downbeat-controls button {
+  min-height: 2rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--gold);
+  border-radius: 0.45rem;
+  background: #272112;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+
+.grid-audition {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.grid-audition label {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.grid-audition input {
+  accent-color: var(--gold);
 }
 
 #grid-offset {
@@ -447,11 +502,19 @@ audio {
   border-style: dashed;
   opacity: 0.82;
 }
+.chord-card.pickup {
+  flex-basis: 210px;
+  border-style: dashed;
+  border-color: var(--blue);
+}
 .chord-card.lead-in .decision-row,
 .chord-card.lead-in .correction-field,
 .chord-card.lead-in .segment-note-field,
 .chord-card.lead-in .merge-selector,
 .chord-card.lead-in .review-state {
+  display: none;
+}
+.chord-card.pickup .merge-selector {
   display: none;
 }
 .box-tools {

@@ -22,8 +22,9 @@ that header and requires `ctx.access` from Cloudflare Access.
 1. Provision the production D1 database and private R2 bucket named in
    `wrangler.jsonc`.
 2. Apply D1 migrations remotely.
-3. Upload `app/index.html`, `app/validation.css`, `app/validation.js`,
-   `proof/proof.json`, and the fixed `audio/*.mp3` pilot objects to R2.
+3. Upload `app/index.html`, `app/validation.css`, `app/phase-anchor.js`,
+   `app/validation.js`, `proof/proof.json`, and the fixed `audio/*.mp3` pilot
+   objects to R2.
 4. Set `TRAVIS_EMAIL` with `wrangler secret put`; never commit the address.
 5. Deploy the production Worker to
    `https://travis-validation.steelguitarrag.com`.

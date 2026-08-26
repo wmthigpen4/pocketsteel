@@ -16,6 +16,8 @@ function fixture() {
     meterSource: "detected" as const,
     tempoBpm: 118,
     timingOffsetSeconds: 0.1,
+    downbeatOffsetBeats: 2,
+    downbeatPhaseSource: "anchored" as const,
     reviewComplete: false,
     reviewedAt: null,
     segments: {
@@ -77,6 +79,21 @@ describe("Travis validation backend", () => {
         fixture().trackId,
       ),
     ).toThrow(/timingOffsetSeconds/u);
+  });
+
+  it("rejects an invalid downbeat phase", () => {
+    expect(() =>
+      normalizeTrackPayload(
+        { ...fixture(), downbeatOffsetBeats: 6 },
+        fixture().trackId,
+      ),
+    ).toThrow(/downbeatOffsetBeats/u);
+    expect(() =>
+      normalizeTrackPayload(
+        { ...fixture(), downbeatPhaseSource: "guessed" },
+        fixture().trackId,
+      ),
+    ).toThrow(/downbeatPhaseSource/u);
   });
 
   it("rejects overlapping or inverted structural merges", () => {

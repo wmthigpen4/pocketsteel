@@ -8,6 +8,12 @@ const { spawnSync } = require("child_process");
 const analyzer = require(
   path.resolve(__dirname, "../ui/practice-analysis-worker.js"),
 );
+const phaseAnchor = require(
+  path.resolve(
+    __dirname,
+    "../ui/chord-reader-travis-validation/phase-anchor.js",
+  ),
+);
 const repoRoot = path.resolve(__dirname, "..");
 
 function argumentsFrom(argv) {
@@ -60,6 +66,7 @@ function main() {
   const options = argumentsFrom(process.argv.slice(2));
   const proof = JSON.parse(fs.readFileSync(options.proof, "utf8"));
   proof.tracks.forEach((item, index) => {
+    const existingRhythm = item.track.rhythm || {};
     const audioPath = path.join(
       repoRoot,
       item.track.audioUrl.replace(/^\//u, ""),
@@ -81,13 +88,20 @@ function main() {
       decoded.durationMs,
       { meter: "4/4", tempo: tempoHint, tempoHint },
     );
+    const beatTimesSeconds = rhythm.beatTimesMs.map(roundSeconds);
+    const gridOffsetSeconds = Number(existingRhythm.gridOffsetSeconds || 0);
+    const phase = phaseAnchor.inferPhase(
+      item.prediction.segments,
+      beatTimesSeconds.map((time) => time + gridOffsetSeconds),
+      rhythm.beatsPerBar,
+    );
     item.track.rhythm = {
       tempoBpm: rhythm.tempo,
       tempoConfidence: rhythm.tempoConfidence,
       meter: rhythm.meter,
       meterConfidence: rhythm.meterConfidence,
       beatsPerBar: rhythm.beatsPerBar,
-      beatTimesSeconds: rhythm.beatTimesMs.map(roundSeconds),
+      beatTimesSeconds,
       barStartsSeconds: rhythm.barStartsMs.map(roundSeconds),
       alternatives: rhythm.rhythmAlternatives,
       detectedTempoBpm: detected.tempo,
@@ -95,6 +109,8 @@ function main() {
       detectedMeterConfidence: detected.meterConfidence,
       meterSource: "pilot-provisional-4-4",
       source: "practice-analysis-v2",
+      gridOffsetSeconds,
+      phase,
     };
   });
   const temporary = `${options.proof}.tmp`;

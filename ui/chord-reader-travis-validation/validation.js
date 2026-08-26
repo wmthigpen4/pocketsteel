@@ -74,7 +74,11 @@
   let activeSegment = -1;
   let activeFilter = "all";
   let currentDisplayItems = [];
+  let currentBeatGrid = null;
   let playbackFrame = 0;
+  let clickTrackEnabled = false;
+  let clickAudioContext = null;
+  let lastClickedBeat = -1;
   const selectedBoxKeys = new Set();
   let remoteSaveSequence = Promise.resolve();
   const remoteSaveTimers = new Map();
@@ -238,6 +242,13 @@
         meterSource: "detected",
         tempoBpm: Math.round(Number(track.track.rhythm?.tempoBpm) || 100),
         timingOffsetSeconds: Number(track.track.rhythm?.gridOffsetSeconds || 0),
+        downbeatOffsetBeats: Number(
+          track.track.rhythm?.phase?.downbeatOffsetBeats || 0,
+        ),
+        downbeatPhaseSource:
+          track.track.rhythm?.phase?.status === "anchored"
+            ? "anchored"
+            : "unresolved",
         reviewComplete: false,
         reviewedAt: null,
         segments: {},
@@ -261,6 +272,19 @@
       record.timingOffsetSeconds = Number(
         track.track.rhythm?.gridOffsetSeconds || 0,
       );
+    if (!Number.isSafeInteger(Number(record.downbeatOffsetBeats)))
+      record.downbeatOffsetBeats = Number(
+        track.track.rhythm?.phase?.downbeatOffsetBeats || 0,
+      );
+    record.downbeatOffsetBeats = ChordPhaseAnchor.mod(
+      Number(record.downbeatOffsetBeats),
+      Number(record.songMeter.split("/")[0]) || 4,
+    );
+    if (!record.downbeatPhaseSource)
+      record.downbeatPhaseSource =
+        track.track.rhythm?.phase?.status === "anchored"
+          ? "anchored"
+          : "unresolved";
     if (!Array.isArray(record.boxMerges)) record.boxMerges = [];
     Object.values(record.segments).forEach((segment) => {
       if (segment.status === "unreviewed") segment.status = "assumed_correct";
@@ -450,18 +474,66 @@
   }
 
   function rhythmicDisplayItems() {
+    currentBeatGrid = null;
     const rhythm = selected.track.rhythm;
-    const offset = Number(trackFeedback().timingOffsetSeconds || 0);
-    const beats = (rhythm?.beatTimesSeconds || [])
+    const record = trackFeedback();
+    const offset = Number(record.timingOffsetSeconds || 0);
+    const rawBeats = (rhythm?.beatTimesSeconds || [])
       .map((time) => Number(time) + offset)
       .filter((time) => time >= 0);
-    if (beats.length < 2) return null;
-    const beatsPerBar = Number(trackFeedback().songMeter.split("/")[0]) || 4;
-    const barStarts = beats.filter((_time, index) => index % beatsPerBar === 0);
-    if (!barStarts.length) return null;
+    if (rawBeats.length < 2) return null;
+    const beatsPerBar = Number(record.songMeter.split("/")[0]) || 4;
+    const completed = ChordPhaseAnchor.completeBeatGrid(
+      rawBeats,
+      Number(selected.track.durationSeconds),
+    );
+    const beats = completed.beats;
+    const downbeats = ChordPhaseAnchor.downbeatTimes(
+      beats,
+      completed.prependedCount,
+      record.downbeatOffsetBeats,
+      beatsPerBar,
+    );
+    if (!downbeats.length) return null;
+    const phaseIndex = ChordPhaseAnchor.mod(
+      completed.prependedCount + Number(record.downbeatOffsetBeats),
+      beatsPerBar,
+    );
+    const beatNumberAt = (time) => {
+      const index = beats.indexOf(time);
+      return ChordPhaseAnchor.mod(index - phaseIndex, beatsPerBar) + 1;
+    };
+    currentBeatGrid = {
+      beats,
+      beatNumbers: beats.map(beatNumberAt),
+      prependedCount: completed.prependedCount,
+      period: completed.period,
+    };
+    const meaningful = selected.prediction.segments.find((segment) => {
+      const duration = Number(segment.end) - Number(segment.start);
+      return (
+        !/^(N\.?C\.?|N)$/iu.test(chordSymbol(segment)) &&
+        duration >= Math.max(0.35, completed.period * 0.5) &&
+        Number(segment.confidence) >= 0.2
+      );
+    });
+    const musicStart = Number(meaningful?.start || 0);
+    const firstBarStart =
+      downbeats.find(
+        (time) => time >= musicStart - completed.period * 0.25,
+      ) || downbeats[0];
     const items = [];
-    if (barStarts[0] > 0.1) {
-      const leadIndex = segmentIndexAt(Math.max(0, barStarts[0] / 2));
+    const pickupNeeded =
+      firstBarStart - musicStart > completed.period * 0.25;
+    const pickupStart = pickupNeeded
+      ? [...beats]
+          .reverse()
+          .find((time) => time <= musicStart + completed.period * 0.15) ||
+        musicStart
+      : firstBarStart;
+    const leadEnd = pickupNeeded ? pickupStart : firstBarStart;
+    if (leadEnd > 0.1) {
+      const leadIndex = segmentIndexAt(Math.max(0, leadEnd / 2));
       const segment = selected.prediction.segments[leadIndex];
       items.push({
         kind: "lead-in",
@@ -469,16 +541,12 @@
         boxNumbers: [],
         segment,
         start: 0,
-        end: barStarts[0],
+        end: leadEnd,
         confidence: Number(segment.confidence),
       });
     }
-    barStarts.forEach((start, barIndex) => {
-      const end = Math.min(
-        Number(selected.track.durationSeconds),
-        barStarts[barIndex + 1] || Number(selected.track.durationSeconds),
-      );
-      if (end - start < 0.2) return;
+
+    const windowItem = (kind, start, end, boxNumber = null) => {
       const sourceIndices = selected.prediction.segments
         .map((_segment, index) => index)
         .filter((index) => {
@@ -486,8 +554,6 @@
           return Number(segment.end) > start && Number(segment.start) < end;
         });
       if (!sourceIndices.length) sourceIndices.push(segmentIndexAt(start));
-      const beatTimes = beats.filter((time) => time >= start && time < end);
-      const chordDecision = chordDecisionForBar(sourceIndices, start, end);
       const overlapByIndex = sourceIndices.map((index) => {
         const segment = selected.prediction.segments[index];
         return {
@@ -502,19 +568,34 @@
       const reviewIndex = overlapByIndex.sort(
         (left, right) => right.overlap - left.overlap,
       )[0].index;
-      items.push({
-        kind: "box",
+      const beatTimes = beats.filter((time) => time >= start && time < end);
+      return {
+        kind,
         sourceIndices,
-        boxNumbers: [barIndex + 1],
+        boxNumbers: boxNumber === null ? [] : [boxNumber],
         segment: selected.prediction.segments[reviewIndex],
         reviewIndex,
         start,
         end,
         confidence: barConfidence(sourceIndices, start, end),
         beatTimes,
-        ...chordDecision,
-        isBar: true,
-      });
+        beatNumbers: beatTimes.map(beatNumberAt),
+        ...chordDecisionForBar(sourceIndices, start, end),
+        isBar: kind === "box",
+      };
+    };
+
+    if (pickupNeeded && firstBarStart - pickupStart > 0.15)
+      items.push(windowItem("pickup", pickupStart, firstBarStart));
+
+    const barStarts = downbeats.filter((time) => time >= firstBarStart - 0.001);
+    barStarts.forEach((start, barIndex) => {
+      const end = Math.min(
+        Number(selected.track.durationSeconds),
+        barStarts[barIndex + 1] || Number(selected.track.durationSeconds),
+      );
+      if (end - start < 0.2) return;
+      items.push(windowItem("box", start, end, barIndex + 1));
     });
     return items;
   }
@@ -579,7 +660,7 @@
     const items = [];
     for (let index = 0; index < baseItems.length; index += 1) {
       const item = baseItems[index];
-      if (item.kind === "lead-in") {
+      if (item.kind !== "box") {
         items.push(item);
         continue;
       }
@@ -593,7 +674,7 @@
       const grouped = [item];
       while (index + 1 < baseItems.length) {
         const next = baseItems[index + 1];
-        if (next.kind === "lead-in") break;
+        if (next.kind !== "box") break;
         if (next.boxNumbers.at(-1) > merge.endBox) break;
         grouped.push(next);
         index += 1;
@@ -635,6 +716,8 @@
 
   function boxLabel(item) {
     if (item.kind === "lead-in") return "Lead-in · N.C.";
+    if (item.kind === "pickup")
+      return `Pickup · beats ${item.beatNumbers?.join("–") || "before Bar 1"}`;
     const first = item.boxNumbers[0];
     const last = item.boxNumbers.at(-1);
     if (item.isBar)
@@ -855,6 +938,7 @@
       card.dataset.index = String(viewIndex);
       card.hidden = !shouldShow(item);
       card.classList.toggle("lead-in", item.kind === "lead-in");
+      card.classList.toggle("pickup", item.kind === "pickup");
       card.classList.toggle("manual-merge", Boolean(item.manualMerge));
       card.querySelector(".box-number").textContent = boxLabel(item);
       card.querySelector(".time-range").textContent =
@@ -882,11 +966,12 @@
           : `${pct(item.confidence)} confidence${item.splitSupported ? " · supported half-bar split" : ""}${item.splitUncertain ? " · possible half-bar split — verify" : ""}${item.aggregationUnstable ? " · unstable raw changes collapsed" : ""}${item.autoGrouped ? " · transient grouped" : ""}`;
       const beatGrid = card.querySelector(".beat-grid");
       (item.beatTimes || []).forEach((time, beatIndex) => {
+        const beatNumber = item.beatNumbers?.[beatIndex] || beatIndex + 1;
         const marker = document.createElement("span");
         marker.className = "beat-marker";
         marker.dataset.beatIndex = String(beatIndex);
-        marker.title = `${clock(time)} · beat ${beatIndex + 1}`;
-        marker.textContent = String(beatIndex + 1);
+        marker.title = `${clock(time)} · beat ${beatNumber}`;
+        marker.textContent = String(beatNumber);
         beatGrid.append(marker);
       });
       card.querySelector(".seek-area").addEventListener("click", () => {
@@ -897,15 +982,19 @@
         updatePlayback();
       });
       const mergeSelect = card.querySelector(".merge-select");
-      const key = boxKey(item);
-      mergeSelect.checked = selectedBoxKeys.has(key);
-      card.classList.toggle("selected-for-merge", mergeSelect.checked);
-      mergeSelect.addEventListener("change", () => {
-        if (mergeSelect.checked) selectedBoxKeys.add(key);
-        else selectedBoxKeys.delete(key);
+      if (item.kind === "box") {
+        const key = boxKey(item);
+        mergeSelect.checked = selectedBoxKeys.has(key);
         card.classList.toggle("selected-for-merge", mergeSelect.checked);
-        updateMergeControls();
-      });
+        mergeSelect.addEventListener("change", () => {
+          if (mergeSelect.checked) selectedBoxKeys.add(key);
+          else selectedBoxKeys.delete(key);
+          card.classList.toggle("selected-for-merge", mergeSelect.checked);
+          updateMergeControls();
+        });
+      } else {
+        mergeSelect.closest(".merge-selector").hidden = true;
+      }
       const unmerge = card.querySelector(".unmerge-button");
       unmerge.hidden = !item.manualMerge;
       unmerge.addEventListener("click", () => undoMerge(item));
@@ -953,6 +1042,7 @@
 
   function renderTrack() {
     activeSegment = -1;
+    lastClickedBeat = -1;
     selectedBoxKeys.clear();
     const index = proof.tracks.findIndex(
       (item) => item.track.id === selected.track.id,
@@ -999,6 +1089,7 @@
   function updatePlayback(force = false) {
     if (!selected) return;
     const time = byId("audio").currentTime;
+    auditionBeatAt(time);
     const index = currentDisplayItems.findIndex(
       (item) => time >= item.start && time < item.end,
     );
@@ -1058,6 +1149,41 @@
     }
   }
 
+  function playGridClick(accent) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    clickAudioContext ||= new AudioContext();
+    if (clickAudioContext.state === "suspended") clickAudioContext.resume();
+    const oscillator = clickAudioContext.createOscillator();
+    const gain = clickAudioContext.createGain();
+    oscillator.frequency.value = accent ? 1320 : 880;
+    gain.gain.setValueAtTime(0.0001, clickAudioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+      accent ? 0.15 : 0.08,
+      clickAudioContext.currentTime + 0.003,
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      clickAudioContext.currentTime + 0.045,
+    );
+    oscillator.connect(gain).connect(clickAudioContext.destination);
+    oscillator.start();
+    oscillator.stop(clickAudioContext.currentTime + 0.05);
+  }
+
+  function auditionBeatAt(time) {
+    if (!clickTrackEnabled || byId("audio").paused || !currentBeatGrid) return;
+    const index = currentBeatGrid.beats.reduce(
+      (current, beatTime, candidate) => (time >= beatTime ? candidate : current),
+      -1,
+    );
+    if (index < 0 || index === lastClickedBeat) return;
+    const distance = Math.abs(time - currentBeatGrid.beats[index]);
+    if (distance > 0.12) return;
+    lastClickedBeat = index;
+    playGridClick(currentBeatGrid.beatNumbers[index] === 1);
+  }
+
   function renderNotationControls() {
     const record = trackFeedback();
     byId("song-key").value = record.songKey;
@@ -1076,6 +1202,14 @@
     byId("song-tempo").value = String(Math.round(record.tempoBpm));
     byId("grid-offset").textContent =
       `${record.timingOffsetSeconds >= 0 ? "+" : ""}${Number(record.timingOffsetSeconds).toFixed(2)}s`;
+    byId("downbeat-phase").value = String(record.downbeatOffsetBeats);
+    const phase = selected.track.rhythm?.phase;
+    byId("phase-confidence").textContent =
+      record.downbeatPhaseSource === "reviewer"
+        ? "Reviewer-set bar start"
+        : phase?.status === "anchored"
+          ? `Backsolved from ${phase.anchorCount} sustained chord changes · ${pct(phase.confidence)} phase margin`
+          : `Phase unresolved · ${phase?.anchorCount || 0} reliable anchors; use clicks and set Beat 1`;
     const rhythm = selected.track.rhythm;
     byId("rhythm-confidence").textContent = rhythm
       ? `${pct(rhythm.meterConfidence)} meter · ${pct(rhythm.tempoConfidence)} tempo confidence${provisional ? " · automatic meter guess was not decisive" : ""}`
@@ -1190,6 +1324,10 @@
       record.songMeter = event.target.value;
       record.meterSource = "reviewer";
       record.boxMerges = [];
+      record.downbeatOffsetBeats = ChordPhaseAnchor.mod(
+        record.downbeatOffsetBeats,
+        Number(record.songMeter.split("/")[0]) || 4,
+      );
       selectedBoxKeys.clear();
       saveFeedback();
       renderNotationControls();
@@ -1223,6 +1361,47 @@
       renderNotationControls();
       renderSegments();
       updatePlayback(true);
+    });
+    byId("downbeat-phase").addEventListener("change", (event) => {
+      const record = trackFeedback();
+      record.downbeatOffsetBeats = Number(event.target.value);
+      record.downbeatPhaseSource = "reviewer";
+      record.boxMerges = [];
+      selectedBoxKeys.clear();
+      saveFeedback();
+      renderNotationControls();
+      renderSegments();
+      updatePlayback(true);
+    });
+    byId("set-downbeat-here").addEventListener("click", () => {
+      if (!currentBeatGrid?.beats.length) return;
+      const nearest = ChordPhaseAnchor.nearestBeatIndex(
+        currentBeatGrid.beats,
+        byId("audio").currentTime,
+      );
+      if (nearest.index < 0) return;
+      const beatsPerBar = Number(trackFeedback().songMeter.split("/")[0]) || 4;
+      const record = trackFeedback();
+      record.downbeatOffsetBeats = ChordPhaseAnchor.mod(
+        nearest.index - currentBeatGrid.prependedCount,
+        beatsPerBar,
+      );
+      record.downbeatPhaseSource = "reviewer";
+      record.boxMerges = [];
+      selectedBoxKeys.clear();
+      saveFeedback();
+      renderNotationControls();
+      renderSegments();
+      updatePlayback(true);
+    });
+    byId("click-track").addEventListener("change", (event) => {
+      clickTrackEnabled = event.target.checked;
+      lastClickedBeat = -1;
+      if (clickTrackEnabled) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) clickAudioContext ||= new AudioContext();
+        clickAudioContext?.resume();
+      }
     });
     document.querySelectorAll("[data-notation]").forEach((button) => {
       button.addEventListener("click", () => {
