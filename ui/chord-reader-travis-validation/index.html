@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chord Reader — Travis Validation</title>
-    <link rel="stylesheet" href="./validation.css?v=4" />
+    <link rel="stylesheet" href="./validation.css?v=6" />
   </head>
   <body>
     <main class="shell">
@@ -72,6 +72,27 @@
                     </button>
                   </div>
                 </div>
+                <div class="rhythm-controls">
+                  <label for="song-meter"
+                    ><span id="meter-source">Time signature · detected</span
+                    ><select id="song-meter" aria-label="Time signature">
+                      <option>2/4</option>
+                      <option>3/4</option>
+                      <option>4/4</option>
+                      <option>6/8</option>
+                    </select></label
+                  >
+                  <label for="song-tempo"
+                    ><span>Tempo</span
+                    ><input
+                      id="song-tempo"
+                      aria-label="Tempo in BPM"
+                      type="number"
+                      min="40"
+                      max="240"
+                      step="1" /><small id="rhythm-confidence"></small
+                  ></label>
+                </div>
               </div>
             </div>
             <div class="song-actions">
@@ -107,7 +128,23 @@
             <button type="button" class="filter" data-filter="flagged">
               Corrections & comments
             </button>
-            <span
+            <button
+              type="button"
+              class="merge-action"
+              id="merge-selected"
+              disabled
+            >
+              Merge selected boxes
+            </button>
+            <button
+              type="button"
+              class="merge-clear"
+              id="clear-box-selection"
+              hidden
+            >
+              Clear selection
+            </button>
+            <span id="merge-help"
               >Playback keeps the current chord centered; past chords move left
               and upcoming chords stay to the right.</span
             >
@@ -153,11 +190,22 @@
 
     <template id="chord-template">
       <article class="chord-card">
+        <div class="box-tools">
+          <strong class="box-number"></strong>
+          <label class="merge-selector"
+            ><input type="checkbox" class="merge-select" /> Select to
+            merge</label
+          >
+          <button type="button" class="unmerge-button" hidden>
+            Undo merge
+          </button>
+        </div>
         <button type="button" class="seek-area">
           <span class="time-range"></span>
           <strong class="predicted-chord"></strong>
           <span class="confidence"></span>
         </button>
+        <div class="beat-grid" aria-label="Beats in this bar"></div>
         <div class="decision-row" role="group" aria-label="Review decision">
           <button type="button" data-status="timing">Timing issue</button>
           <button type="button" data-status="unsure">Unsure</button>
@@ -182,6 +230,6 @@
       </article>
     </template>
 
-    <script src="./validation.js?v=4"></script>
+    <script src="./validation.js?v=6"></script>
   </body>
 </html>

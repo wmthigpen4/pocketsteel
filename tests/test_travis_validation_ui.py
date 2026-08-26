@@ -28,6 +28,13 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'class="rail-labels"' in html
     assert 'id="song-notes"' in html
     assert 'id="export-feedback"' in html
+    assert 'class="box-number"' in html
+    assert 'id="merge-selected"' in html
+    assert 'id="song-meter"' in html
+    assert 'id="song-tempo"' in html
+    assert 'class="beat-grid"' in html
+    assert 'class="merge-select"' in html
+    assert 'class="unmerge-button"' in html
     assert 'const DATA_URL = "./local-data/proof.json"' in script
     assert 'get("session") || "default"' in script
     assert "localStorage.setItem" in script
@@ -44,10 +51,24 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "scrollIntoView" in script
     assert "function inferKey" in script
     assert "function chordToNns" in script
+    assert 'replace(/7/g, "⁷")' in script
+    assert "function isLowConfidenceTransient" in script
+    assert "function mergeSelectedBoxes" in script
+    assert "function rhythmicDisplayItems" in script
+    assert "function chordDecisionForBar" in script
+    assert "supported half-bar split" in script
+    assert "unstable raw changes collapsed" in script
+    assert "requestAnimationFrame" in script
+    assert "beat-aligned bars" in script
+    assert "provisional — please confirm" in script
+    assert "boxMerges" in script
+    assert 'return "Lead-in · N.C."' in script
     assert "predictedNns" in script
     assert 'keySource = "reviewer"' in script
     assert "modelConfidence" in script
     assert ".chord-card.corrected" in css
+    assert ".chord-card.selected-for-merge" in css
+    assert ".chord-card.manual-merge" in css
     assert ".chord-grid {" in css
     assert "display: flex" in css
     assert "overflow: hidden" in css

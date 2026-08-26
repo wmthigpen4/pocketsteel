@@ -12,11 +12,24 @@ function fixture() {
     songKey: "G",
     keySource: "reviewer",
     displayMode: "nns",
+    songMeter: "4/4" as const,
+    meterSource: "detected" as const,
+    tempoBpm: 118,
     reviewComplete: false,
     reviewedAt: null,
     segments: {
       4: { status: "corrected", correctedChord: "D7", note: "split chord" },
     },
+    boxMerges: [
+      {
+        startBox: 5,
+        endBox: 6,
+        status: "merged",
+        correctedChord: "G7",
+        note: "One musical bar",
+        createdAt: "2026-08-26T12:00:00.000Z",
+      },
+    ],
   };
 }
 
@@ -54,6 +67,30 @@ describe("Travis validation backend", () => {
         fixture().trackId,
       ),
     ).toThrow(/status/u);
+  });
+
+  it("rejects overlapping or inverted structural merges", () => {
+    expect(() =>
+      normalizeTrackPayload(
+        {
+          ...fixture(),
+          boxMerges: [
+            fixture().boxMerges[0],
+            { ...fixture().boxMerges[0], startBox: 6, endBox: 8 },
+          ],
+        },
+        fixture().trackId,
+      ),
+    ).toThrow(/overlap/u);
+    expect(() =>
+      normalizeTrackPayload(
+        {
+          ...fixture(),
+          boxMerges: [{ ...fixture().boxMerges[0], startBox: 9, endBox: 8 }],
+        },
+        fixture().trackId,
+      ),
+    ).toThrow(/range/u);
   });
 
   it("parses bounded audio byte ranges", () => {

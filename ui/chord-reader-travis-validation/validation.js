@@ -73,6 +73,9 @@
   let feedback;
   let activeSegment = -1;
   let activeFilter = "all";
+  let currentDisplayItems = [];
+  let playbackFrame = 0;
+  const selectedBoxKeys = new Set();
   let remoteSaveSequence = Promise.resolve();
   const remoteSaveTimers = new Map();
   const clientVersions = new Map();
@@ -142,7 +145,15 @@
     return quality
       .replace(/^(min)(?!aj)/i, "m")
       .replace(/^dim/i, "°")
-      .replace(/^aug/i, "+");
+      .replace(/^aug/i, "+")
+      .replace(/^maj7$/i, "Δ⁷")
+      .replace(/13/g, "¹³")
+      .replace(/11/g, "¹¹")
+      .replace(/9/g, "⁹")
+      .replace(/7/g, "⁷")
+      .replace(/6/g, "⁶")
+      .replace(/4/g, "⁴")
+      .replace(/2/g, "²");
   }
 
   function chordToNns(symbol, key) {
@@ -223,9 +234,13 @@
         songKey: inferKey(track),
         keySource: "suggested",
         displayMode: "chords",
+        songMeter: track.track.rhythm?.meter || "4/4",
+        meterSource: "detected",
+        tempoBpm: Math.round(Number(track.track.rhythm?.tempoBpm) || 100),
         reviewComplete: false,
         reviewedAt: null,
         segments: {},
+        boxMerges: [],
       };
     }
     const record = feedback.tracks[id];
@@ -236,6 +251,12 @@
     if (!record.songKey) record.songKey = record.suggestedKey;
     if (!record.keySource) record.keySource = "suggested";
     if (!record.displayMode) record.displayMode = "chords";
+    if (!record.songMeter)
+      record.songMeter = track.track.rhythm?.meter || "4/4";
+    if (!record.meterSource) record.meterSource = "detected";
+    if (!Number.isFinite(Number(record.tempoBpm)))
+      record.tempoBpm = Math.round(Number(track.track.rhythm?.tempoBpm) || 100);
+    if (!Array.isArray(record.boxMerges)) record.boxMerges = [];
     Object.values(record.segments).forEach((segment) => {
       if (segment.status === "unreviewed") segment.status = "assumed_correct";
       if (segment.status === "confirmed") segment.status = "assumed_correct";
@@ -299,6 +320,338 @@
       `Saved securely at ${new Date(result.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
   }
 
+  function isLeadIn(segment, index) {
+    return (
+      index === 0 &&
+      Number(segment.start) === 0 &&
+      /^(N\.?C\.?|N)$/i.test(chordSymbol(segment))
+    );
+  }
+
+  function isLowConfidenceTransient(segment) {
+    return (
+      Number(segment.end) - Number(segment.start) <= 0.25 &&
+      Number(segment.confidence) < 0.5
+    );
+  }
+
+  function itemConfidence(sourceIndices) {
+    let weighted = 0;
+    let duration = 0;
+    sourceIndices.forEach((index) => {
+      const segment = selected.prediction.segments[index];
+      const seconds = Math.max(
+        0.001,
+        Number(segment.end) - Number(segment.start),
+      );
+      weighted += Number(segment.confidence) * seconds;
+      duration += seconds;
+    });
+    return duration ? weighted / duration : 0;
+  }
+
+  function segmentIndexAt(seconds) {
+    const index = selected.prediction.segments.findIndex(
+      (segment) =>
+        seconds >= Number(segment.start) && seconds < Number(segment.end),
+    );
+    return index >= 0 ? index : selected.prediction.segments.length - 1;
+  }
+
+  function barConfidence(sourceIndices, start, end) {
+    let weighted = 0;
+    let duration = 0;
+    sourceIndices.forEach((index) => {
+      const segment = selected.prediction.segments[index];
+      const overlap = Math.max(
+        0,
+        Math.min(end, Number(segment.end)) -
+          Math.max(start, Number(segment.start)),
+      );
+      weighted += Number(segment.confidence) * overlap;
+      duration += overlap;
+    });
+    return duration ? weighted / duration : 0;
+  }
+
+  function strongestChordInWindow(sourceIndices, start, end) {
+    const bySymbol = new Map();
+    sourceIndices.forEach((index) => {
+      const segment = selected.prediction.segments[index];
+      const overlap = Math.max(
+        0,
+        Math.min(end, Number(segment.end)) -
+          Math.max(start, Number(segment.start)),
+      );
+      if (!overlap) return;
+      const symbol = chordSymbol(segment);
+      const current = bySymbol.get(symbol) || {
+        symbol,
+        overlap: 0,
+        weightedConfidence: 0,
+      };
+      current.overlap += overlap;
+      current.weightedConfidence += overlap * Number(segment.confidence);
+      bySymbol.set(symbol, current);
+    });
+    const winner = [...bySymbol.values()].sort(
+      (left, right) =>
+        right.weightedConfidence - left.weightedConfidence ||
+        right.overlap - left.overlap,
+    )[0];
+    if (!winner) return null;
+    return {
+      ...winner,
+      confidence: winner.weightedConfidence / winner.overlap,
+      coverage: winner.overlap / Math.max(0.001, end - start),
+    };
+  }
+
+  function chordDecisionForBar(sourceIndices, start, end) {
+    const midpoint = start + (end - start) / 2;
+    const full = strongestChordInWindow(sourceIndices, start, end);
+    const first = strongestChordInWindow(sourceIndices, start, midpoint);
+    const second = strongestChordInWindow(sourceIndices, midpoint, end);
+    const supportedSplit =
+      first &&
+      second &&
+      first.symbol !== second.symbol &&
+      first.coverage >= 0.6 &&
+      second.coverage >= 0.6 &&
+      first.confidence >= 0.64 &&
+      second.confidence >= 0.64;
+    const rawSymbols = new Set(
+      sourceIndices.map((index) =>
+        chordSymbol(selected.prediction.segments[index]),
+      ),
+    );
+    const chordSymbols = supportedSplit
+      ? [first.symbol, second.symbol]
+      : [full?.symbol || "N.C."];
+    return {
+      chordSymbols,
+      splitSupported: Boolean(supportedSplit),
+      aggregationUnstable: rawSymbols.size > chordSymbols.length,
+    };
+  }
+
+  function rhythmicDisplayItems() {
+    const rhythm = selected.track.rhythm;
+    const beats = (rhythm?.beatTimesSeconds || []).map(Number);
+    if (beats.length < 2) return null;
+    const beatsPerBar = Number(trackFeedback().songMeter.split("/")[0]) || 4;
+    const barStarts = beats.filter((_time, index) => index % beatsPerBar === 0);
+    if (!barStarts.length) return null;
+    const items = [];
+    if (barStarts[0] > 0.1) {
+      const leadIndex = segmentIndexAt(Math.max(0, barStarts[0] / 2));
+      const segment = selected.prediction.segments[leadIndex];
+      items.push({
+        kind: "lead-in",
+        sourceIndices: [leadIndex],
+        boxNumbers: [],
+        segment,
+        start: 0,
+        end: barStarts[0],
+        confidence: Number(segment.confidence),
+      });
+    }
+    barStarts.forEach((start, barIndex) => {
+      const end = Math.min(
+        Number(selected.track.durationSeconds),
+        barStarts[barIndex + 1] || Number(selected.track.durationSeconds),
+      );
+      if (end - start < 0.2) return;
+      const sourceIndices = selected.prediction.segments
+        .map((_segment, index) => index)
+        .filter((index) => {
+          const segment = selected.prediction.segments[index];
+          return Number(segment.end) > start && Number(segment.start) < end;
+        });
+      if (!sourceIndices.length) sourceIndices.push(segmentIndexAt(start));
+      const beatTimes = beats.filter((time) => time >= start && time < end);
+      const chordDecision = chordDecisionForBar(sourceIndices, start, end);
+      const overlapByIndex = sourceIndices.map((index) => {
+        const segment = selected.prediction.segments[index];
+        return {
+          index,
+          overlap: Math.max(
+            0,
+            Math.min(end, Number(segment.end)) -
+              Math.max(start, Number(segment.start)),
+          ),
+        };
+      });
+      const reviewIndex = overlapByIndex.sort(
+        (left, right) => right.overlap - left.overlap,
+      )[0].index;
+      items.push({
+        kind: "box",
+        sourceIndices,
+        boxNumbers: [barIndex + 1],
+        segment: selected.prediction.segments[reviewIndex],
+        reviewIndex,
+        start,
+        end,
+        confidence: barConfidence(sourceIndices, start, end),
+        beatTimes,
+        ...chordDecision,
+        isBar: true,
+      });
+    });
+    return items;
+  }
+
+  function baseDisplayItems() {
+    const rhythmic = rhythmicDisplayItems();
+    if (rhythmic) return rhythmic;
+    const items = [];
+    let pendingTransientIndexes = [];
+    let boxNumber = 0;
+    selected.prediction.segments.forEach((segment, index) => {
+      if (isLeadIn(segment, index)) {
+        items.push({
+          kind: "lead-in",
+          sourceIndices: [index],
+          boxNumbers: [],
+          segment,
+          start: Number(segment.start),
+          end: Number(segment.end),
+          confidence: Number(segment.confidence),
+        });
+        return;
+      }
+      if (isLowConfidenceTransient(segment)) {
+        pendingTransientIndexes.push(index);
+        return;
+      }
+      boxNumber += 1;
+      const sourceIndices = [...pendingTransientIndexes, index];
+      pendingTransientIndexes = [];
+      items.push({
+        kind: "box",
+        sourceIndices,
+        boxNumbers: [boxNumber],
+        segment,
+        reviewIndex: index,
+        start: Number(selected.prediction.segments[sourceIndices[0]].start),
+        end: Number(segment.end),
+        confidence:
+          grouped.reduce(
+            (sum, entry) => sum + entry.confidence * (entry.end - entry.start),
+            0,
+          ) /
+          (grouped.at(-1).end - grouped[0].start),
+        autoGrouped: sourceIndices.length > 1,
+      });
+    });
+    if (pendingTransientIndexes.length) {
+      const previous = [...items].reverse().find((item) => item.kind === "box");
+      if (previous) {
+        previous.sourceIndices.push(...pendingTransientIndexes);
+        previous.end = Number(
+          selected.prediction.segments[pendingTransientIndexes.at(-1)].end,
+        );
+        previous.confidence = itemConfidence(previous.sourceIndices);
+        previous.autoGrouped = true;
+      }
+    }
+    return items;
+  }
+
+  function buildDisplayItems() {
+    const baseItems = baseDisplayItems();
+    const merges = [...trackFeedback().boxMerges].sort(
+      (left, right) => left.startBox - right.startBox,
+    );
+    const items = [];
+    for (let index = 0; index < baseItems.length; index += 1) {
+      const item = baseItems[index];
+      if (item.kind === "lead-in") {
+        items.push(item);
+        continue;
+      }
+      const merge = merges.find(
+        (candidate) => candidate.startBox === item.boxNumbers[0],
+      );
+      if (!merge) {
+        items.push(item);
+        continue;
+      }
+      const grouped = [item];
+      while (index + 1 < baseItems.length) {
+        const next = baseItems[index + 1];
+        if (next.kind === "lead-in") break;
+        if (next.boxNumbers.at(-1) > merge.endBox) break;
+        grouped.push(next);
+        index += 1;
+        if (next.boxNumbers.at(-1) === merge.endBox) break;
+      }
+      const sourceIndices = grouped.flatMap((entry) => entry.sourceIndices);
+      const mergedSymbols = grouped
+        .flatMap((entry) => entry.chordSymbols || [])
+        .filter(
+          (symbol, symbolIndex, symbols) =>
+            symbolIndex === 0 || symbol !== symbols[symbolIndex - 1],
+        );
+      items.push({
+        kind: "box",
+        sourceIndices,
+        boxNumbers: grouped.flatMap((entry) => entry.boxNumbers),
+        segment: grouped[0].segment,
+        reviewIndex: grouped[0].reviewIndex,
+        start: grouped[0].start,
+        end: grouped.at(-1).end,
+        confidence: itemConfidence(sourceIndices),
+        beatTimes: grouped.flatMap((entry) => entry.beatTimes || []),
+        chordSymbols: mergedSymbols.slice(0, 2),
+        splitSupported: grouped.some((entry) => entry.splitSupported),
+        aggregationUnstable: grouped.some(
+          (entry) => entry.aggregationUnstable,
+        ) || mergedSymbols.length > 2,
+        isBar: grouped.every((entry) => entry.isBar),
+        manualMerge: merge,
+      });
+    }
+    return items;
+  }
+
+  function boxKey(item) {
+    return `${item.boxNumbers[0]}-${item.boxNumbers.at(-1)}`;
+  }
+
+  function boxLabel(item) {
+    if (item.kind === "lead-in") return "Lead-in · N.C.";
+    const first = item.boxNumbers[0];
+    const last = item.boxNumbers.at(-1);
+    if (item.isBar)
+      return first === last
+        ? `Bar ${first} · Box ${first}`
+        : `Bars ${first}–${last} · Boxes ${first}–${last}`;
+    return first === last ? `Box ${first}` : `Boxes ${first}–${last}`;
+  }
+
+  function itemFeedback(item) {
+    return item.manualMerge || segmentFeedback(item.reviewIndex);
+  }
+
+  function displayItemChord(item) {
+    if (item.kind === "lead-in") return "N.C.";
+    const symbols = item.manualMerge?.correctedChord
+      ? [item.manualMerge.correctedChord]
+      : item.chordSymbols?.length
+        ? item.chordSymbols
+        : [chordSymbol(item.segment)];
+    const record = trackFeedback();
+    return symbols
+      .map((symbol) =>
+        record.displayMode === "nns"
+          ? chordToNns(symbol, record.songKey)
+          : symbol,
+      )
+      .join(" / ");
+  }
+
   function segmentFeedback(index) {
     const track = trackFeedback();
     if (!track.segments[index]) {
@@ -313,9 +666,10 @@
 
   function flagCount(item) {
     const record = trackFeedback(item);
-    return Object.values(record.segments).filter((value) =>
+    const segmentFlags = Object.values(record.segments).filter((value) =>
       ["corrected", "timing", "unsure", "comment"].includes(value.status),
     ).length;
+    return segmentFlags + record.boxMerges.length;
   }
 
   function renderTrackList() {
@@ -347,23 +701,25 @@
     });
   }
 
-  function setStatus(card, index, status) {
-    const record = segmentFeedback(index);
+  function setStatus(card, item, status) {
+    const record = itemFeedback(item);
     record.status =
-      record.status === status ? defaultSegmentStatus(record) : status;
+      record.status === status ? defaultSegmentStatus(record, item) : status;
     saveFeedback();
-    decorateCard(card, index);
+    decorateCard(card, item);
   }
 
-  function defaultSegmentStatus(record) {
+  function defaultSegmentStatus(record, item) {
     if (record.correctedChord) return "corrected";
     if (record.note) return "comment";
+    if (item?.manualMerge) return "merged";
     return "assumed_correct";
   }
 
-  function decorateCard(card, index) {
-    const record = segmentFeedback(index);
-    card.classList.remove("corrected", "timing", "unsure", "comment");
+  function decorateCard(card, item) {
+    if (item.kind === "lead-in") return;
+    const record = itemFeedback(item);
+    card.classList.remove("corrected", "timing", "unsure", "comment", "merged");
     if (record.status !== "assumed_correct") card.classList.add(record.status);
     card.querySelectorAll("[data-status]").forEach((button) => {
       button.classList.toggle(
@@ -373,69 +729,182 @@
     });
     card.querySelector(".corrected-chord").value = record.correctedChord || "";
     card.querySelector(".segment-note").value = record.note || "";
+    card.querySelector(".segment-note").placeholder =
+      `Comment about ${boxLabel(item)}…`;
     card.querySelector(".review-state").textContent =
       {
         corrected: "Correction recorded",
         timing: "Timing flagged",
         unsure: "Marked unsure",
         comment: "Comment added",
+        merged: "Structural correction · boxes merged",
       }[record.status] || "Assumed correct";
   }
 
-  function shouldShow(index) {
-    const status = segmentFeedback(index).status;
+  function shouldShow(item) {
+    if (item.kind === "lead-in") return activeFilter === "all";
+    const status = itemFeedback(item).status;
     if (activeFilter === "flagged")
-      return ["corrected", "timing", "unsure", "comment"].includes(status);
+      return ["corrected", "timing", "unsure", "comment", "merged"].includes(
+        status,
+      );
     return true;
+  }
+
+  function updateMergeControls() {
+    const selectedItems = currentDisplayItems.filter(
+      (item) => item.kind === "box" && selectedBoxKeys.has(boxKey(item)),
+    );
+    const numbers = selectedItems.flatMap((item) => item.boxNumbers);
+    const adjacent =
+      numbers.length >= 2 &&
+      numbers.every(
+        (number, index) => index === 0 || number === numbers[index - 1] + 1,
+      );
+    const mergeButton = byId("merge-selected");
+    mergeButton.disabled = !adjacent;
+    mergeButton.textContent = selectedItems.length
+      ? `Merge ${selectedItems.length} selected ${selectedItems.length === 1 ? "box" : "boxes"}`
+      : "Merge selected boxes";
+    byId("clear-box-selection").hidden = selectedItems.length === 0;
+    byId("merge-help").textContent = selectedItems.length
+      ? adjacent
+        ? "Adjacent boxes selected. Merging preserves every original model segment."
+        : "Select two or more adjacent boxes to merge."
+      : "Numbered boxes can be cited in comments or selected for a structural merge.";
+  }
+
+  function clearBoxSelection() {
+    selectedBoxKeys.clear();
+    document
+      .querySelectorAll(".merge-select")
+      .forEach((input) => (input.checked = false));
+    document
+      .querySelectorAll(".chord-card.selected-for-merge")
+      .forEach((card) => card.classList.remove("selected-for-merge"));
+    updateMergeControls();
+  }
+
+  function mergeSelectedBoxes() {
+    const selectedItems = currentDisplayItems.filter(
+      (item) => item.kind === "box" && selectedBoxKeys.has(boxKey(item)),
+    );
+    if (selectedItems.length < 2) return;
+    const numbers = selectedItems.flatMap((item) => item.boxNumbers);
+    if (
+      !numbers.every(
+        (number, index) => index === 0 || number === numbers[index - 1] + 1,
+      )
+    )
+      return;
+    const startBox = Math.min(...numbers);
+    const endBox = Math.max(...numbers);
+    const record = trackFeedback();
+    record.boxMerges = record.boxMerges.filter(
+      (merge) => merge.endBox < startBox || merge.startBox > endBox,
+    );
+    record.boxMerges.push({
+      startBox,
+      endBox,
+      status: "merged",
+      correctedChord: "",
+      note: "",
+      createdAt: new Date().toISOString(),
+    });
+    record.boxMerges.sort((left, right) => left.startBox - right.startBox);
+    selectedBoxKeys.clear();
+    saveFeedback();
+    renderSegments();
+    updatePlayback(true);
+  }
+
+  function undoMerge(item) {
+    const target = item.manualMerge;
+    const record = trackFeedback();
+    record.boxMerges = record.boxMerges.filter((merge) => merge !== target);
+    selectedBoxKeys.clear();
+    saveFeedback();
+    renderSegments();
+    updatePlayback(true);
   }
 
   function renderSegments() {
     const grid = byId("chord-grid");
     const template = byId("chord-template");
     grid.replaceChildren();
-    selected.prediction.segments.forEach((segment, index) => {
+    currentDisplayItems = buildDisplayItems();
+    currentDisplayItems.forEach((item, viewIndex) => {
       const card = template.content.firstElementChild.cloneNode(true);
-      card.dataset.index = String(index);
-      card.hidden = !shouldShow(index);
+      card.dataset.index = String(viewIndex);
+      card.hidden = !shouldShow(item);
+      card.classList.toggle("lead-in", item.kind === "lead-in");
+      card.classList.toggle("manual-merge", Boolean(item.manualMerge));
+      card.querySelector(".box-number").textContent = boxLabel(item);
       card.querySelector(".time-range").textContent =
-        `${clock(segment.start)}–${clock(segment.end)}`;
+        `${clock(item.start)}–${clock(item.end)}`;
       card.querySelector(".predicted-chord").textContent =
-        displayChord(segment);
-      card.querySelector(".predicted-chord").title = chordSymbol(segment);
+        displayItemChord(item);
+      card.querySelector(".predicted-chord").title =
+        item.kind === "lead-in" ? "Lead-in silence" : chordSymbol(item.segment);
       card.querySelector(".confidence").textContent =
-        `${pct(segment.confidence)} confidence`;
+        item.kind === "lead-in"
+          ? "Not a chord box"
+          : `${pct(item.confidence)} confidence${item.splitSupported ? " · supported half-bar split" : ""}${item.aggregationUnstable ? " · unstable raw changes collapsed" : ""}${item.autoGrouped ? " · transient grouped" : ""}`;
+      const beatGrid = card.querySelector(".beat-grid");
+      (item.beatTimes || []).forEach((time, beatIndex) => {
+        const marker = document.createElement("span");
+        marker.className = "beat-marker";
+        marker.dataset.beatIndex = String(beatIndex);
+        marker.title = `${clock(time)} · beat ${beatIndex + 1}`;
+        marker.textContent = String(beatIndex + 1);
+        beatGrid.append(marker);
+      });
       card.querySelector(".seek-area").addEventListener("click", () => {
-        byId("audio").currentTime = Number(segment.start);
+        byId("audio").currentTime = Number(item.start);
         byId("audio")
           .play()
           .catch(() => {});
         updatePlayback();
       });
+      const mergeSelect = card.querySelector(".merge-select");
+      const key = boxKey(item);
+      mergeSelect.checked = selectedBoxKeys.has(key);
+      card.classList.toggle("selected-for-merge", mergeSelect.checked);
+      mergeSelect.addEventListener("change", () => {
+        if (mergeSelect.checked) selectedBoxKeys.add(key);
+        else selectedBoxKeys.delete(key);
+        card.classList.toggle("selected-for-merge", mergeSelect.checked);
+        updateMergeControls();
+      });
+      const unmerge = card.querySelector(".unmerge-button");
+      unmerge.hidden = !item.manualMerge;
+      unmerge.addEventListener("click", () => undoMerge(item));
       card.querySelectorAll("[data-status]").forEach((button) => {
         button.addEventListener("click", () =>
-          setStatus(card, index, button.dataset.status),
+          setStatus(card, item, button.dataset.status),
         );
       });
       card
         .querySelector(".corrected-chord")
         .addEventListener("input", (event) => {
-          const record = segmentFeedback(index);
+          const record = itemFeedback(item);
           record.correctedChord = event.target.value.trim();
-          record.status = defaultSegmentStatus(record);
+          record.status = defaultSegmentStatus(record, item);
           saveFeedback();
-          decorateCard(card, index);
+          decorateCard(card, item);
         });
       card.querySelector(".segment-note").addEventListener("input", (event) => {
-        const record = segmentFeedback(index);
+        const record = itemFeedback(item);
         record.note = event.target.value.trim();
         if (!["timing", "unsure"].includes(record.status))
-          record.status = defaultSegmentStatus(record);
+          record.status = defaultSegmentStatus(record, item);
         saveFeedback();
-        decorateCard(card, index);
+        decorateCard(card, item);
       });
-      decorateCard(card, index);
+      decorateCard(card, item);
       grid.append(card);
     });
+    updateMergeControls();
   }
 
   function renderProgress() {
@@ -454,6 +923,7 @@
 
   function renderTrack() {
     activeSegment = -1;
+    selectedBoxKeys.clear();
     const index = proof.tracks.findIndex(
       (item) => item.track.id === selected.track.id,
     );
@@ -471,8 +941,12 @@
       Number(selected.summary.meanConfidence) === highestConfidence
         ? "Highest-confidence starting track · "
         : "";
+    const meaningfulBoxCount = baseDisplayItems().filter(
+      (item) => item.kind === "box",
+    ).length;
+    const boxKind = selected.track.rhythm ? "beat-aligned bars" : "chord boxes";
     byId("song-summary").textContent =
-      `${confidencePrefix}${clock(selected.track.durationSeconds)} · ${selected.prediction.segments.length} chord boxes · ${pct(selected.summary.meanConfidence)} mean model confidence`;
+      `${confidencePrefix}${clock(selected.track.durationSeconds)} · ${meaningfulBoxCount} numbered ${boxKind} · ${pct(selected.summary.meanConfidence)} mean model confidence`;
     byId("song-notes").value = trackFeedback().songNotes || "";
     renderNotationControls();
     const finish = byId("finish-track");
@@ -495,18 +969,36 @@
   function updatePlayback(force = false) {
     if (!selected) return;
     const time = byId("audio").currentTime;
-    const index = selected.prediction.segments.findIndex(
-      (segment) => time >= Number(segment.start) && time < Number(segment.end),
+    const index = currentDisplayItems.findIndex(
+      (item) => time >= item.start && time < item.end,
     );
+    document
+      .querySelectorAll(".beat-marker.active")
+      .forEach((marker) => marker.classList.remove("active"));
+    const beatItem = currentDisplayItems[index];
+    if (beatItem?.beatTimes?.length) {
+      const beatIndex = beatItem.beatTimes.reduce(
+        (current, beatTime, candidate) =>
+          time >= beatTime ? candidate : current,
+        0,
+      );
+      document
+        .querySelector(
+          `.chord-card[data-index="${index}"] .beat-marker[data-beat-index="${beatIndex}"]`,
+        )
+        ?.classList.add("active");
+    }
     if (index === activeSegment && !force) return;
     activeSegment = index;
     document
       .querySelectorAll(".chord-card.active")
       .forEach((card) => card.classList.remove("active"));
-    const segment = selected.prediction.segments[index];
-    byId("current-chord").textContent = segment ? displayChord(segment) : "—";
-    byId("current-confidence").textContent = segment
-      ? pct(segment.confidence)
+    const item = currentDisplayItems[index];
+    byId("current-chord").textContent = item ? displayItemChord(item) : "—";
+    byId("current-confidence").textContent = item
+      ? item.kind === "lead-in"
+        ? "Lead-in"
+        : pct(item.confidence)
       : "—";
     if (index >= 0) {
       const card = document.querySelector(`.chord-card[data-index="${index}"]`);
@@ -524,6 +1016,21 @@
     byId("song-key").value = record.songKey;
     byId("key-source").textContent =
       `Song key · ${record.keySource === "reviewer" ? "reviewer selected" : "suggested"}`;
+    byId("song-meter").value = record.songMeter;
+    const provisional =
+      selected.track.rhythm?.meterSource === "pilot-provisional-4-4";
+    byId("meter-source").textContent = `Time signature · ${
+      record.meterSource === "reviewer"
+        ? "reviewer selected"
+        : provisional
+          ? "provisional — please confirm"
+          : "detected"
+    }`;
+    byId("song-tempo").value = String(Math.round(record.tempoBpm));
+    const rhythm = selected.track.rhythm;
+    byId("rhythm-confidence").textContent = rhythm
+      ? `${pct(rhythm.meterConfidence)} meter · ${pct(rhythm.tempoConfidence)} tempo confidence${provisional ? " · automatic meter guess was not decisive" : ""}`
+      : "Beat grid unavailable";
     document.querySelectorAll("[data-notation]").forEach((button) => {
       const active = button.dataset.notation === record.displayMode;
       button.classList.toggle("active", active);
@@ -539,6 +1046,16 @@
       option.textContent = key === "F#" ? "F# / Gb" : key;
       select.append(option);
     });
+  }
+
+  function startPlaybackTracking() {
+    cancelAnimationFrame(playbackFrame);
+    const tick = () => {
+      updatePlayback();
+      if (!byId("audio").paused && !byId("audio").ended)
+        playbackFrame = requestAnimationFrame(tick);
+    };
+    playbackFrame = requestAnimationFrame(tick);
   }
 
   function finishTrack() {
@@ -595,8 +1112,17 @@
   function bindControls() {
     byId("audio").addEventListener("timeupdate", updatePlayback);
     byId("audio").addEventListener("seeked", updatePlayback);
+    byId("audio").addEventListener("play", startPlaybackTracking);
+    byId("audio").addEventListener("pause", () =>
+      cancelAnimationFrame(playbackFrame),
+    );
+    byId("audio").addEventListener("ended", () =>
+      cancelAnimationFrame(playbackFrame),
+    );
     byId("finish-track").addEventListener("click", finishTrack);
     byId("export-feedback").addEventListener("click", exportFeedback);
+    byId("merge-selected").addEventListener("click", mergeSelectedBoxes);
+    byId("clear-box-selection").addEventListener("click", clearBoxSelection);
     byId("song-notes").addEventListener("input", (event) => {
       trackFeedback().songNotes = event.target.value;
       saveFeedback();
@@ -609,6 +1135,23 @@
       renderNotationControls();
       renderSegments();
       updatePlayback(true);
+    });
+    byId("song-meter").addEventListener("change", (event) => {
+      const record = trackFeedback();
+      record.songMeter = event.target.value;
+      record.meterSource = "reviewer";
+      record.boxMerges = [];
+      selectedBoxKeys.clear();
+      saveFeedback();
+      renderNotationControls();
+      renderSegments();
+      updatePlayback(true);
+    });
+    byId("song-tempo").addEventListener("change", (event) => {
+      const nextTempo = Math.max(40, Math.min(240, Number(event.target.value)));
+      trackFeedback().tempoBpm = Math.round(nextTempo || 100);
+      saveFeedback();
+      renderNotationControls();
     });
     document.querySelectorAll("[data-notation]").forEach((button) => {
       button.addEventListener("click", () => {

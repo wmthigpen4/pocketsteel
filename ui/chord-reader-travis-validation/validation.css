@@ -221,6 +221,31 @@ h2 {
   gap: 8px;
   margin-top: 8px;
 }
+.rhythm-controls {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+.rhythm-controls label {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 0.67rem;
+}
+.rhythm-controls select,
+.rhythm-controls input {
+  min-width: 82px;
+  padding: 7px 8px;
+  border: 1px solid #4a5049;
+  border-radius: 8px;
+  background: #0d100d;
+  color: var(--ink);
+}
+.rhythm-controls small {
+  max-width: 130px;
+  color: var(--muted);
+  font-size: 0.6rem;
+}
 .key-picker,
 .notation-toggle {
   display: grid;
@@ -331,6 +356,23 @@ audio {
   color: var(--muted);
   font-size: 0.78rem;
 }
+.merge-action,
+.merge-clear {
+  padding: 7px 10px;
+  border: 1px solid #4a5049;
+  border-radius: 8px;
+  background: #171b17;
+  color: var(--ink);
+  font-size: 0.75rem;
+}
+.merge-action:not(:disabled) {
+  border-color: var(--green);
+  color: var(--green);
+}
+.merge-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
 .rail-labels {
   display: flex;
   justify-content: space-between;
@@ -366,6 +408,56 @@ audio {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
+.chord-card.selected-for-merge {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.chord-card.manual-merge {
+  border-color: var(--blue);
+}
+.chord-card.lead-in {
+  flex-basis: 190px;
+  border-style: dashed;
+  opacity: 0.82;
+}
+.chord-card.lead-in .decision-row,
+.chord-card.lead-in .correction-field,
+.chord-card.lead-in .segment-note-field,
+.chord-card.lead-in .merge-selector,
+.chord-card.lead-in .review-state {
+  display: none;
+}
+.box-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--line);
+  background: #171a17;
+}
+.box-number {
+  color: var(--gold);
+  font-size: 0.76rem;
+}
+.merge-selector {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+.merge-selector input {
+  accent-color: var(--blue);
+}
+.unmerge-button {
+  padding: 3px 6px;
+  border: 1px solid #4a5049;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.66rem;
+}
 .chord-card.corrected,
 .chord-card.timing {
   border-color: var(--coral);
@@ -399,6 +491,30 @@ audio {
 .confidence {
   color: var(--blue);
   font-size: 0.8rem;
+}
+.beat-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 6px 8px 0;
+}
+.beat-marker {
+  padding: 3px 0;
+  border-top: 2px solid #3f453f;
+  color: var(--muted);
+  font-size: 0.66rem;
+  text-align: center;
+}
+.beat-marker:first-child {
+  border-color: var(--gold);
+}
+.beat-marker.active {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.chord-card.lead-in .beat-grid {
+  display: none;
 }
 .decision-row {
   display: grid;

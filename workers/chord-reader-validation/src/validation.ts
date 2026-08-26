@@ -40,12 +40,23 @@ export type StoredTrack = {
   songKey: string;
   keySource: "suggested" | "reviewer";
   displayMode: "chords" | "nns";
+  songMeter: "2/4" | "3/4" | "4/4" | "6/8";
+  meterSource: "detected" | "reviewer";
+  tempoBpm: number;
   reviewComplete: boolean;
   reviewedAt: string | null;
   segments: Record<
     string,
     { status: string; correctedChord: string; note: string }
   >;
+  boxMerges: Array<{
+    startBox: number;
+    endBox: number;
+    status: string;
+    correctedChord: string;
+    note: string;
+    createdAt: string;
+  }>;
 };
 
 function text(value: unknown, field: string, limit: number): string {
@@ -83,6 +94,13 @@ export function normalizeTrackPayload(
     throw new HttpError("keySource is invalid.");
   if (input.displayMode !== "chords" && input.displayMode !== "nns")
     throw new HttpError("displayMode is invalid.");
+  if (!["2/4", "3/4", "4/4", "6/8"].includes(String(input.songMeter)))
+    throw new HttpError("songMeter is invalid.");
+  if (input.meterSource !== "detected" && input.meterSource !== "reviewer")
+    throw new HttpError("meterSource is invalid.");
+  const tempoBpm = Number(input.tempoBpm);
+  if (!Number.isFinite(tempoBpm) || tempoBpm < 40 || tempoBpm > 240)
+    throw new HttpError("tempoBpm is invalid.");
   if (typeof input.reviewComplete !== "boolean")
     throw new HttpError("reviewComplete is invalid.");
 
@@ -104,6 +122,44 @@ export function normalizeTrackPayload(
     };
   }
 
+  const mergeInput = input.boxMerges ?? [];
+  if (!Array.isArray(mergeInput)) throw new HttpError("boxMerges is invalid.");
+  if (mergeInput.length > 100) throw new HttpError("Too many box merges.");
+  const boxMerges: StoredTrack["boxMerges"] = [];
+  for (const rawMerge of mergeInput) {
+    const merge = plainObject(rawMerge);
+    const startBox = Number(merge.startBox);
+    const endBox = Number(merge.endBox);
+    if (
+      !Number.isSafeInteger(startBox) ||
+      !Number.isSafeInteger(endBox) ||
+      startBox < 1 ||
+      endBox <= startBox ||
+      endBox > 9999
+    )
+      throw new HttpError("Box merge range is invalid.");
+    const status = text(merge.status ?? "merged", "box merge status", 32);
+    if (!["merged", ...STATUSES].includes(status))
+      throw new HttpError("Box merge status is invalid.");
+    boxMerges.push({
+      startBox,
+      endBox,
+      status,
+      correctedChord: text(
+        merge.correctedChord ?? "",
+        "box merge correctedChord",
+        24,
+      ),
+      note: text(merge.note ?? "", "box merge note", 240),
+      createdAt: text(merge.createdAt ?? "", "box merge createdAt", 40),
+    });
+  }
+  boxMerges.sort((left, right) => left.startBox - right.startBox);
+  for (let index = 1; index < boxMerges.length; index += 1) {
+    if (boxMerges[index - 1]!.endBox >= boxMerges[index]!.startBox)
+      throw new HttpError("Box merges cannot overlap.");
+  }
+
   return {
     trackId,
     title: text(input.title, "title", 240),
@@ -113,9 +169,13 @@ export function normalizeTrackPayload(
     songKey,
     keySource: input.keySource,
     displayMode: input.displayMode,
+    songMeter: input.songMeter as StoredTrack["songMeter"],
+    meterSource: input.meterSource,
+    tempoBpm,
     reviewComplete: input.reviewComplete,
     reviewedAt: nullableIso(input.reviewedAt),
     segments,
+    boxMerges,
   };
 }
 
