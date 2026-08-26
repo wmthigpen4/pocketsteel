@@ -133,7 +133,10 @@
     }
     activeItemId = item?.id || "";
     activeChordIndex = chordIndex;
-    document.querySelectorAll(".bar-card.active").forEach((item) => item.classList.remove("active"));
+    document.querySelectorAll(".bar-card.active").forEach((card) => {
+      card.classList.remove("active");
+      card.removeAttribute("aria-current");
+    });
     document.querySelectorAll(".bar-card .active-part").forEach((part) => part.classList.remove("active-part"));
     byId("current-bar").textContent = item?.position || "—";
     byId("current-chord").textContent = item ? shownChord(OwnerChordTiming.chordAt(item, time)) : "N.C.";
@@ -141,6 +144,7 @@
     syncTransport();
     const active = document.querySelector(`.bar-card[data-item-id="${activeItemId}"]`);
     active?.classList.add("active");
+    active?.setAttribute("aria-current", "true");
     active?.querySelector(`[data-chord-part="${chordIndex}"]`)?.classList.add("active-part");
     active?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
   }

@@ -26,6 +26,7 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     assert 'id="transport-toggle"' in html
     assert 'id="timing-mode"' in html
     assert 'src="./timing.js?v=2"' in html
+    assert 'src="./owner-test.js?v=3"' in html
     assert 'aria-label="Persistent playback controls"' in html
     assert 'addEventListener("drop"' in script
     assert "fetch(`${API}/analyze`" in script
@@ -40,11 +41,15 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     assert 'let displayMode = "nns"' in script
     assert "function chordToNns" in script
     assert 'addEventListener("play", syncTransport)' in script
+    assert 'setAttribute("aria-current", "true")' in script
     assert "OwnerChordTiming.itemsForTrack" in script
     assert 'phaseAnchored = track.rhythm?.phase?.status === "anchored"' in timing
     assert 'mode: "exact-model-transitions"' in timing
     assert "chordIndexAt" in timing
-    assert "position: sticky" in (PAGE_ROOT / "owner-test.css").read_text(encoding="utf-8")
+    styles = (PAGE_ROOT / "owner-test.css").read_text(encoding="utf-8")
+    assert "position: sticky" in styles
+    assert 'content: "NOW"' in styles
+    assert ".bar-card.active" in styles
 
 
 def test_owner_test_generated_library_is_ignored() -> None:

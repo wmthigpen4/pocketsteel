@@ -80,10 +80,13 @@ audio { width: 100%; margin: 8px 0 18px; }
 .now-playing strong { margin-top: 4px; font-size: 1.55rem; }
 .legend { display: flex; flex-wrap: wrap; gap: 12px 22px; padding: 14px 2px; font-size: .82rem; }
 .bar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 9px; max-height: 470px; overflow: auto; padding: 2px; scroll-behavior: smooth; }
-.bar-card { min-height: 106px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-2); text-align: left; cursor: pointer; }
+.bar-card { position: relative; min-height: 106px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-2); text-align: left; cursor: pointer; transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease; }
 .bar-card.high-confidence { box-shadow: inset 0 -3px 0 var(--gold); }
 .bar-card.uncertain { border-style: dashed; }
-.bar-card.active { border-color: var(--blue); background: rgba(145,207,255,.1); }
+.bar-card.active { z-index: 2; border-color: #dff3ff; background: var(--blue); color: #08141b; box-shadow: 0 0 0 3px #dff3ff, 0 0 0 7px rgba(145,207,255,.28), 0 10px 28px rgba(0,0,0,.42); transform: scale(1.025); }
+.bar-card.active::after { content: "NOW"; position: absolute; top: 8px; right: 8px; padding: 3px 6px; border-radius: 999px; background: #08141b; color: #fff; font-size: .58rem; font-weight: 900; letter-spacing: .09em; }
+.bar-card.active .bar-number, .bar-card.active > span:last-child { color: rgba(8,20,27,.72); }
+.bar-card.active strong, .bar-card.active strong span.active-part { color: #08141b; }
 .bar-card span, .bar-card strong { display: block; }
 .bar-card .bar-number { color: var(--muted); font-size: .68rem; font-weight: 800; letter-spacing: .07em; }
 .bar-card strong { margin: 11px 0 8px; font-size: 1.28rem; }
