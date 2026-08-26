@@ -21,6 +21,10 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "world-best claim" in html
     assert "99.6% precision on 39.8%" not in html
     assert '<audio id="audio" controls' in html
+    assert 'id="audio-seek"' in html
+    assert 'aria-label="Song position"' in html
+    assert 'id="audio-elapsed"' in html
+    assert 'id="audio-duration"' in html
     assert 'id="chord-grid"' in html
     assert 'data-status="timing"' in html
     assert 'data-status="unsure"' in html
@@ -80,6 +84,11 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'windowItem("pickup"' in script
     assert "unstable raw changes collapsed" in script
     assert "requestAnimationFrame" in script
+    assert "function syncSeekControls" in script
+    assert "function seekFromControl" in script
+    assert 'seek.addEventListener("pointerdown"' in script
+    assert 'seek.addEventListener("input", seekFromControl)' in script
+    assert 'seek.addEventListener("pointerup", finishSeek)' in script
     assert "beat-aligned bars" in script
     assert "provisional — please confirm" in script
     assert "boxMerges" in script
@@ -95,6 +104,8 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert ".chord-grid {" in css
     assert "display: flex" in css
     assert "overflow: hidden" in css
+    assert ".audio-scrubber" in css
+    assert "#audio-seek" in css
 
 
 def test_local_builder_creates_browser_ready_output_urls_and_clean_titles(tmp_path: Path) -> None:

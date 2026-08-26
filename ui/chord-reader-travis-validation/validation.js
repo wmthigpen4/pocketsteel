@@ -76,6 +76,7 @@
   let currentDisplayItems = [];
   let currentBeatGrid = null;
   let playbackFrame = 0;
+  let scrubberActive = false;
   let clickTrackEnabled = false;
   let clickAudioContext = null;
   let lastClickedBeat = -1;
@@ -1051,6 +1052,11 @@
     audio.pause();
     audio.src = selected.track.audioUrl;
     audio.load();
+    const seek = byId("audio-seek");
+    seek.value = "0";
+    seek.max = String(Number(selected.track.durationSeconds) || 0);
+    byId("audio-elapsed").textContent = "0:00";
+    byId("audio-duration").textContent = clock(selected.track.durationSeconds);
     byId("song-position").textContent =
       `Song ${index + 1} of ${proof.tracks.length}`;
     byId("song-title").textContent = selected.track.title;
@@ -1086,8 +1092,42 @@
     renderTrack();
   }
 
+  function playableDuration() {
+    const audio = byId("audio");
+    return Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : Number(selected?.track.durationSeconds) || 0;
+  }
+
+  function syncSeekControls(force = false) {
+    const audio = byId("audio");
+    const seek = byId("audio-seek");
+    const duration = playableDuration();
+    seek.max = String(duration);
+    if (!scrubberActive || force) seek.value = String(audio.currentTime || 0);
+    const displayedTime = scrubberActive
+      ? Number(seek.value)
+      : Number(audio.currentTime || 0);
+    byId("audio-elapsed").textContent = clock(displayedTime);
+    byId("audio-duration").textContent = clock(duration);
+    seek.setAttribute(
+      "aria-valuetext",
+      `${clock(displayedTime)} of ${clock(duration)}`,
+    );
+  }
+
+  function seekFromControl() {
+    const audio = byId("audio");
+    const duration = playableDuration();
+    const requested = Number(byId("audio-seek").value);
+    audio.currentTime = Math.max(0, Math.min(duration, requested));
+    byId("audio-elapsed").textContent = clock(audio.currentTime);
+    updatePlayback(true);
+  }
+
   function updatePlayback(force = false) {
     if (!selected) return;
+    syncSeekControls();
     const time = byId("audio").currentTime;
     auditionBeatAt(time);
     const index = currentDisplayItems.findIndex(
@@ -1295,6 +1335,12 @@
   function bindControls() {
     byId("audio").addEventListener("timeupdate", updatePlayback);
     byId("audio").addEventListener("seeked", updatePlayback);
+    byId("audio").addEventListener("loadedmetadata", () =>
+      syncSeekControls(true),
+    );
+    byId("audio").addEventListener("durationchange", () =>
+      syncSeekControls(true),
+    );
     byId("audio").addEventListener("play", startPlaybackTracking);
     byId("audio").addEventListener("pause", () =>
       cancelAnimationFrame(playbackFrame),
@@ -1302,6 +1348,23 @@
     byId("audio").addEventListener("ended", () =>
       cancelAnimationFrame(playbackFrame),
     );
+    const seek = byId("audio-seek");
+    seek.addEventListener("pointerdown", () => {
+      scrubberActive = true;
+    });
+    seek.addEventListener("input", seekFromControl);
+    const finishSeek = () => {
+      seekFromControl();
+      scrubberActive = false;
+      syncSeekControls(true);
+    };
+    seek.addEventListener("pointerup", finishSeek);
+    seek.addEventListener("pointercancel", finishSeek);
+    seek.addEventListener("change", finishSeek);
+    seek.addEventListener("blur", () => {
+      scrubberActive = false;
+      syncSeekControls(true);
+    });
     byId("finish-track").addEventListener("click", finishTrack);
     byId("export-feedback").addEventListener("click", exportFeedback);
     byId("merge-selected").addEventListener("click", mergeSelectedBoxes);
