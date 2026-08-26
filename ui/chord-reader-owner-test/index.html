@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>My Chord Reader Test</title>
-    <link rel="stylesheet" href="./owner-test.css?v=3" />
+    <link rel="stylesheet" href="./owner-test.css?v=4" />
   </head>
   <body>
     <main class="shell">
@@ -46,9 +46,10 @@
         <div class="reader-card">
           <div class="sticky-transport" aria-label="Persistent playback controls">
             <button id="transport-toggle" type="button" aria-label="Play song">▶ <span>Play</span></button>
-            <div><span id="transport-position-label">Change</span><strong id="transport-bar">—</strong></div>
+            <div class="transport-position"><span id="transport-position-label">Change</span><strong id="transport-bar">—</strong></div>
             <div class="transport-chord"><span>Chord</span><strong id="transport-chord">N.C.</strong></div>
-            <div><span>Time</span><strong id="transport-time">0:00</strong></div>
+            <div class="transport-next"><span>Next</span><strong id="transport-next-chord">—</strong></div>
+            <div class="transport-time"><span>Time</span><strong id="transport-time">0:00</strong></div>
           </div>
           <div class="song-head">
             <div><p class="eyebrow">Unscored listening test</p><h2 id="selected-title">Choose a song</h2><p id="selected-meta"></p>
@@ -76,6 +77,6 @@
       </section>
     </main>
     <script src="./timing.js?v=2"></script>
-    <script src="./owner-test.js?v=4"></script>
+    <script src="./owner-test.js?v=5"></script>
   </body>
 </html>

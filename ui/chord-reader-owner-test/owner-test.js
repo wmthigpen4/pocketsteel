@@ -119,6 +119,11 @@
     button.setAttribute("aria-label", playing ? "Pause song" : "Play song");
     byId("transport-bar").textContent = byId("current-bar").textContent;
     byId("transport-chord").textContent = byId("current-chord").textContent;
+    const currentIndex = timeline.items.findIndex((item) => item.id === activeItemId);
+    const current = timeline.items[currentIndex];
+    const nextChord = current?.chordSymbols?.[activeChordIndex + 1]
+      || timeline.items[currentIndex + 1]?.chordSymbols?.[0];
+    byId("transport-next-chord").textContent = nextChord ? shownChord(nextChord) : "—";
     byId("transport-time").textContent = clock(audio.currentTime);
   }
 

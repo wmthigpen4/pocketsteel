@@ -25,9 +25,11 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     assert 'id="song-key"' in html
     assert 'data-notation="nns"' in html
     assert 'id="transport-toggle"' in html
+    assert 'id="transport-next-chord"' in html
     assert 'id="timing-mode"' in html
     assert 'src="./timing.js?v=2"' in html
-    assert 'src="./owner-test.js?v=4"' in html
+    assert 'href="./owner-test.css?v=4"' in html
+    assert 'src="./owner-test.js?v=5"' in html
     assert 'aria-label="Persistent playback controls"' in html
     assert 'addEventListener("drop"' in script
     assert "fetch(`${API}/analyze`" in script
@@ -47,6 +49,7 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     assert "function keepUpcomingChangesVisible" in script
     assert "grid.scrollTo" in script
     assert "scrollIntoView" not in script
+    assert 'byId("transport-next-chord").textContent' in script
     assert "OwnerChordTiming.itemsForTrack" in script
     assert 'phaseAnchored = track.rhythm?.phase?.status === "anchored"' in timing
     assert 'mode: "exact-model-transitions"' in timing
@@ -55,6 +58,8 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     assert "position: sticky" in styles
     assert 'content: "NOW"' in styles
     assert ".bar-card.active" in styles
+    assert ".bar-grid { order: 1; grid-template-columns: 1fr" in styles
+    assert ".song-head { order: 2" in styles
 
 
 def test_owner_test_generated_library_is_ignored() -> None:
