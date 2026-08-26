@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chord Reader — Travis Validation</title>
-    <link rel="stylesheet" href="./validation.css?v=12" />
+    <link rel="stylesheet" href="./validation.css?v=13" />
   </head>
   <body>
     <main class="shell">
@@ -124,12 +124,24 @@
               </div>
             </div>
             <div class="song-actions">
-              <button type="button" class="secondary" id="finish-track">
-                Finish song review
+              <button
+                type="button"
+                class="secondary"
+                id="finish-track"
+                aria-describedby="song-save-note">
+                Mark this song reviewed
               </button>
-              <button type="button" class="primary" id="export-feedback">
-                Download backup
+              <button
+                type="button"
+                class="primary"
+                id="export-feedback"
+                title="Optional offline copy of all feedback">
+                Download feedback backup
               </button>
+              <small id="song-save-note"
+                >Corrections and comments save automatically. The review button
+                applies only to this song.</small
+              >
             </div>
           </div>
 
@@ -225,12 +237,11 @@
 
       <footer>
         <p>
-          Predictions are assumed correct. “Finish song review” records
-          untouched boxes as accepted after listening.
+          Changes save automatically. “Mark this song reviewed” records
+          untouched boxes in this song as accepted.
         </p>
         <p id="save-status" aria-live="polite">
-          Feedback saves automatically. The protected site uses secure server
-          storage.
+          “Download feedback backup” is an optional offline copy.
         </p>
       </footer>
     </main>
@@ -278,6 +289,6 @@
     </template>
 
     <script src="./phase-anchor.js?v=8"></script>
-    <script src="./validation.js?v=11"></script>
+    <script src="./validation.js?v=13"></script>
   </body>
 </html>

@@ -211,7 +211,7 @@ h2 {
 }
 .song-head h2,
 .song-head .muted {
-  padding-right: 270px;
+  padding-right: 410px;
 }
 .song-actions {
   position: absolute;
@@ -222,6 +222,15 @@ h2 {
   align-content: start;
   justify-content: end;
   gap: 8px;
+  width: min(400px, 50%);
+  max-width: 400px;
+}
+.song-actions small {
+  flex: 1 0 100%;
+  color: var(--muted);
+  font-size: 0.65rem;
+  line-height: 1.25;
+  text-align: right;
 }
 .notation-controls {
   display: flex;

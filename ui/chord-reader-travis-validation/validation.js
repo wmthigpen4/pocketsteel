@@ -1077,8 +1077,8 @@
     renderNotationControls();
     const finish = byId("finish-track");
     finish.textContent = trackFeedback().reviewComplete
-      ? "Song reviewed ✓"
-      : "Finish song review";
+      ? "This song is reviewed ✓"
+      : "Mark this song reviewed";
     finish.disabled = Boolean(trackFeedback().reviewComplete);
     renderTrackList();
     renderSegments();

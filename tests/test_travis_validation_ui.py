@@ -29,6 +29,11 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'data-status="timing"' in html
     assert 'data-status="unsure"' in html
     assert 'id="finish-track"' in html
+    assert "Mark this song reviewed" in html
+    assert "Corrections and comments save automatically" in html
+    assert "applies only to this song" in html
+    assert "Download feedback backup" in html
+    assert "Download backup" not in html
     assert 'id="song-key"' in html
     assert 'data-notation="chords"' in html
     assert 'data-notation="nns"' in html
@@ -63,6 +68,7 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'displayMode: "nns"' in script
     assert '"pending_assumed_correct"' in script
     assert "record.reviewComplete" in script
+    assert "This song is reviewed ✓" in script
     assert "highestConfidence" in script
     assert "Highest-confidence starting track" in script
     assert "scrollIntoView" in script
