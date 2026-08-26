@@ -1,0 +1,60 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "steel-guitar-rag-travis-validation",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": true,
+  "vars": {
+    "ENVIRONMENT": "development",
+    "BUILD_SHA": "development",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "steel-guitar-rag-travis-validation-local",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "steel-guitar-rag-travis-validation-local",
+    },
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 },
+  },
+  "env": {
+    "production": {
+      "name": "steel-guitar-rag-travis-validation-production",
+      "vars": {
+        "ENVIRONMENT": "production",
+        "BUILD_SHA": "CONFIGURE_AT_DEPLOY",
+      },
+      "routes": [
+        {
+          "pattern": "travis-validation.steelguitarrag.com",
+          "custom_domain": true,
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "steel-guitar-rag-travis-validation-production",
+          "database_id": "a2d4b326-377c-4846-ad4f-a8cbc2bd1daf",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "MEDIA",
+          "bucket_name": "steel-guitar-rag-travis-validation-production",
+        },
+      ],
+    },
+  },
+}

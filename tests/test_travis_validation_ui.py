@@ -31,6 +31,10 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'const DATA_URL = "./local-data/proof.json"' in script
     assert 'get("session") || "default"' in script
     assert "localStorage.setItem" in script
+    assert 'const FEEDBACK_URL = "/api/travis-validation/feedback"' in script
+    assert "Saving securely" in script
+    assert "saveRemoteTrack" in script
+    assert "keepalive: true" in script
     assert 'schemaVersion: "chord_reader_travis_feedback_v1"' in script
     assert 'status: "assumed_correct"' in script
     assert '"pending_assumed_correct"' in script

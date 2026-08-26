@@ -2,6 +2,10 @@
   "use strict";
 
   const DATA_URL = "./local-data/proof.json";
+  const FEEDBACK_URL = "/api/travis-validation/feedback";
+  const REMOTE_MODE = !["127.0.0.1", "localhost"].includes(
+    window.location.hostname,
+  );
   const STORAGE_PREFIX = "chord-reader-travis-validation-v1";
   const STORAGE_SESSION =
     new URLSearchParams(window.location.search).get("session") || "default";
@@ -43,7 +47,20 @@
     B: 11,
     Cb: 11,
   };
-  const NNS_INTERVALS = ["1", "b2", "2", "b3", "3", "4", "#4", "5", "b6", "6", "b7", "7"];
+  const NNS_INTERVALS = [
+    "1",
+    "b2",
+    "2",
+    "b3",
+    "3",
+    "4",
+    "#4",
+    "5",
+    "b6",
+    "6",
+    "b7",
+    "7",
+  ];
   const pct = (value) => `${(Number(value || 0) * 100).toFixed(0)}%`;
   const clock = (seconds) => {
     const value = Math.max(0, Number(seconds) || 0);
@@ -56,6 +73,9 @@
   let feedback;
   let activeSegment = -1;
   let activeFilter = "all";
+  let remoteSaveSequence = Promise.resolve();
+  const remoteSaveTimers = new Map();
+  const clientVersions = new Map();
 
   function parseChord(symbol) {
     const value = String(symbol || "").trim();
@@ -72,8 +92,23 @@
   }
 
   function inferKey(track) {
-    const degreeWeights = [2.7, -0.6, 0.8, -0.5, 0.7, 1.25, -0.7, 1.8, -0.5, 0.65, -0.4, 0.35];
-    const expectedQualities = ["major", null, "minor", null, "minor", "major", null, "major", null, "minor", null, "diminished"];
+    const degreeWeights = [
+      2.7, -0.6, 0.8, -0.5, 0.7, 1.25, -0.7, 1.8, -0.5, 0.65, -0.4, 0.35,
+    ];
+    const expectedQualities = [
+      "major",
+      null,
+      "minor",
+      null,
+      "minor",
+      "major",
+      null,
+      "major",
+      null,
+      "minor",
+      null,
+      "diminished",
+    ];
     let bestPitchClass = 0;
     let bestScore = -Infinity;
     KEY_NAMES.forEach((_name, tonic) => {
@@ -90,7 +125,8 @@
             ? 0.9
             : -0.25
           : 0;
-        score += Number(entry.seconds || 0) * (degreeWeights[interval] + qualityBonus);
+        score +=
+          Number(entry.seconds || 0) * (degreeWeights[interval] + qualityBonus);
       });
       if (score > bestScore) {
         bestScore = score;
@@ -111,13 +147,19 @@
 
   function chordToNns(symbol, key) {
     const chord = parseChord(symbol);
-    if (!chord) return /^(N\.?C\.?|N)$/i.test(String(symbol || "").trim()) ? "N.C." : symbol || "—";
+    if (!chord)
+      return /^(N\.?C\.?|N)$/i.test(String(symbol || "").trim())
+        ? "N.C."
+        : symbol || "—";
     const tonic = NOTE_PITCH_CLASSES[key];
     const root = NOTE_PITCH_CLASSES[chord.root];
     if (tonic === undefined || root === undefined) return symbol;
     const degree = NNS_INTERVALS[(root - tonic + 12) % 12];
     const bassPitch = NOTE_PITCH_CLASSES[chord.bass];
-    const bass = bassPitch === undefined ? "" : `/${NNS_INTERVALS[(bassPitch - tonic + 12) % 12]}`;
+    const bass =
+      bassPitch === undefined
+        ? ""
+        : `/${NNS_INTERVALS[(bassPitch - tonic + 12) % 12]}`;
     return `${degree}${nnsQuality(chord.quality)}${bass}`;
   }
 
@@ -128,7 +170,9 @@
   function displayChord(segment) {
     const symbol = chordSymbol(segment);
     const record = trackFeedback();
-    return record.displayMode === "nns" ? chordToNns(symbol, record.songKey) : symbol;
+    return record.displayMode === "nns"
+      ? chordToNns(symbol, record.songKey)
+      : symbol;
   }
 
   function storageKey() {
@@ -147,7 +191,19 @@
     };
   }
 
-  function loadFeedback() {
+  async function loadFeedback() {
+    if (REMOTE_MODE) {
+      const response = await fetch(FEEDBACK_URL, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok)
+        throw new Error(
+          (await response.json()).error || "Protected feedback could not load.",
+        );
+      const stored = await response.json();
+      return { ...blankFeedback(), ...stored, tracks: stored.tracks || {} };
+    }
     try {
       return JSON.parse(localStorage.getItem(storageKey())) || blankFeedback();
     } catch (_error) {
@@ -189,10 +245,58 @@
 
   function saveFeedback() {
     feedback.updatedAt = new Date().toISOString();
-    localStorage.setItem(storageKey(), JSON.stringify(feedback));
-    byId("save-status").textContent =
-      `Saved locally at ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
+    if (REMOTE_MODE) {
+      scheduleRemoteSave(trackFeedback().trackId);
+    } else {
+      localStorage.setItem(storageKey(), JSON.stringify(feedback));
+      byId("save-status").textContent =
+        `Saved locally at ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
+    }
     renderProgress();
+  }
+
+  function scheduleRemoteSave(trackId) {
+    const version = (clientVersions.get(trackId) || 0) + 1;
+    clientVersions.set(trackId, version);
+    clearTimeout(remoteSaveTimers.get(trackId));
+    byId("save-status").textContent = "Saving securely…";
+    remoteSaveTimers.set(
+      trackId,
+      setTimeout(() => {
+        remoteSaveTimers.delete(trackId);
+        remoteSaveSequence = remoteSaveSequence
+          .then(() => saveRemoteTrack(trackId, version))
+          .catch((error) => {
+            byId("save-status").textContent = `Save failed: ${error.message}`;
+          });
+      }, 300),
+    );
+  }
+
+  async function saveRemoteTrack(trackId, version) {
+    const record = feedback.tracks[trackId];
+    if (!record) return;
+    const response = await fetch(
+      `${FEEDBACK_URL}/${encodeURIComponent(trackId)}`,
+      {
+        method: "PUT",
+        credentials: "same-origin",
+        keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(record),
+      },
+    );
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.error || "Protected feedback did not save.");
+    record.serverRevision = result.revision;
+    record.serverUpdatedAt = result.updatedAt;
+    if (clientVersions.get(trackId) !== version) {
+      scheduleRemoteSave(trackId);
+      return;
+    }
+    byId("save-status").textContent =
+      `Saved securely at ${new Date(result.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
   }
 
   function segmentFeedback(index) {
@@ -295,7 +399,8 @@
       card.hidden = !shouldShow(index);
       card.querySelector(".time-range").textContent =
         `${clock(segment.start)}–${clock(segment.end)}`;
-      card.querySelector(".predicted-chord").textContent = displayChord(segment);
+      card.querySelector(".predicted-chord").textContent =
+        displayChord(segment);
       card.querySelector(".predicted-chord").title = chordSymbol(segment);
       card.querySelector(".confidence").textContent =
         `${pct(segment.confidence)} confidence`;
@@ -417,7 +522,8 @@
   function renderNotationControls() {
     const record = trackFeedback();
     byId("song-key").value = record.songKey;
-    byId("key-source").textContent = `Song key · ${record.keySource === "reviewer" ? "reviewer selected" : "suggested"}`;
+    byId("key-source").textContent =
+      `Song key · ${record.keySource === "reviewer" ? "reviewer selected" : "suggested"}`;
     document.querySelectorAll("[data-notation]").forEach((button) => {
       const active = button.dataset.notation === record.displayMode;
       button.classList.toggle("active", active);
@@ -461,7 +567,10 @@
           start: segment.start,
           end: segment.end,
           predictedChord: segment.productLabel || segment.label || "N.C.",
-          predictedNns: chordToNns(segment.productLabel || segment.label || "N.C.", record.songKey),
+          predictedNns: chordToNns(
+            segment.productLabel || segment.label || "N.C.",
+            record.songKey,
+          ),
           modelConfidence: segment.confidence,
           ...(record.segments[index] || {
             status: record.reviewComplete
@@ -527,12 +636,15 @@
         throw new Error(`Prediction bundle returned ${response.status}.`);
       return response.json();
     })
-    .then((value) => {
+    .then(async (value) => {
       if (value.schemaVersion !== "chord_reader_local_song_test_v1")
         throw new Error("Unexpected prediction bundle.");
       proof = value;
-      feedback = loadFeedback();
+      feedback = await loadFeedback();
       byId("track-total").textContent = String(proof.tracks.length);
+      if (REMOTE_MODE)
+        byId("save-status").textContent =
+          "Secure backend connected. Changes save automatically.";
       populateKeyOptions();
       bindControls();
       const highestConfidence = proof.tracks.reduce(

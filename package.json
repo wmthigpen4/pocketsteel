@@ -10,6 +10,8 @@
     "lint:js": "eslint workers/interest-digest.js functions/api/interest.js",
     "check:travis-companion": "tsc --noEmit -p workers/travis-companion/tsconfig.json",
     "test:travis-companion": "vitest run --config workers/travis-companion/vitest.config.ts",
+    "check:chord-validation": "tsc --noEmit -p workers/chord-reader-validation/tsconfig.json",
+    "test:chord-validation": "vitest run --config workers/chord-reader-validation/vitest.config.ts",
     "test:worker": "vitest run --config vitest.config.mjs",
     "build:travis-preview:draft": ".venv/bin/python scripts/package_travis_companion.py --output tmp/travis-preview-draft --manifest tmp/travis-preview-draft.release-manifest.json --source-date-epoch 1786683600",
     "verify:travis-preview": ".venv/bin/python scripts/verify_travis_companion.py --bundle tmp/travis-preview-draft --manifest tmp/travis-preview-draft.release-manifest.json"
