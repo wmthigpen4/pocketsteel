@@ -83,6 +83,8 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert ".chord-card.corrected" in css
     assert ".chord-card.selected-for-merge" in css
     assert ".chord-card.manual-merge" in css
+    assert "box-shadow: inset 0 -3px 0 var(--gold)" in css
+    assert "background: rgba(237, 196, 110, 0.18)" in css
     assert ".chord-grid {" in css
     assert "display: flex" in css
     assert "overflow: hidden" in css

@@ -586,8 +586,9 @@ audio {
 }
 
 .chord-part.active {
-  color: var(--panel);
-  background: var(--accent);
+  color: var(--ink);
+  background: rgba(237, 196, 110, 0.18);
+  box-shadow: inset 0 -3px 0 var(--gold);
 }
 
 .chord-separator {
