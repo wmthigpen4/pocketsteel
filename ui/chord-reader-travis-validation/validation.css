@@ -232,6 +232,33 @@ h2 {
   color: var(--muted);
   font-size: 0.67rem;
 }
+
+.timing-controls {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.timing-controls > div {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.timing-controls button {
+  min-height: 2rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+#grid-offset {
+  min-width: 3.8rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .rhythm-controls select,
 .rhythm-controls input {
   min-width: 82px;
@@ -487,6 +514,22 @@ audio {
 }
 .predicted-chord {
   font-size: 1.65rem;
+}
+
+.chord-part {
+  display: inline-block;
+  padding: 0.08em 0.18em;
+  border-radius: 0.2em;
+}
+
+.chord-part.active {
+  color: var(--panel);
+  background: var(--accent);
+}
+
+.chord-separator {
+  color: var(--muted);
+  padding: 0 0.12em;
 }
 .confidence {
   color: var(--blue);

@@ -43,6 +43,7 @@ export type StoredTrack = {
   songMeter: "2/4" | "3/4" | "4/4" | "6/8";
   meterSource: "detected" | "reviewer";
   tempoBpm: number;
+  timingOffsetSeconds: number;
   reviewComplete: boolean;
   reviewedAt: string | null;
   segments: Record<
@@ -101,6 +102,13 @@ export function normalizeTrackPayload(
   const tempoBpm = Number(input.tempoBpm);
   if (!Number.isFinite(tempoBpm) || tempoBpm < 40 || tempoBpm > 240)
     throw new HttpError("tempoBpm is invalid.");
+  const timingOffsetSeconds = Number(input.timingOffsetSeconds);
+  if (
+    !Number.isFinite(timingOffsetSeconds) ||
+    timingOffsetSeconds < -2 ||
+    timingOffsetSeconds > 2
+  )
+    throw new HttpError("timingOffsetSeconds is invalid.");
   if (typeof input.reviewComplete !== "boolean")
     throw new HttpError("reviewComplete is invalid.");
 
@@ -172,6 +180,7 @@ export function normalizeTrackPayload(
     songMeter: input.songMeter as StoredTrack["songMeter"],
     meterSource: input.meterSource,
     tempoBpm,
+    timingOffsetSeconds,
     reviewComplete: input.reviewComplete,
     reviewedAt: nullableIso(input.reviewedAt),
     segments,

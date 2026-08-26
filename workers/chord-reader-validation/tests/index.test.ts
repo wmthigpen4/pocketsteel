@@ -15,6 +15,7 @@ function fixture() {
     songMeter: "4/4" as const,
     meterSource: "detected" as const,
     tempoBpm: 118,
+    timingOffsetSeconds: 0.1,
     reviewComplete: false,
     reviewedAt: null,
     segments: {
@@ -67,6 +68,15 @@ describe("Travis validation backend", () => {
         fixture().trackId,
       ),
     ).toThrow(/status/u);
+  });
+
+  it("rejects an out-of-range timing offset", () => {
+    expect(() =>
+      normalizeTrackPayload(
+        { ...fixture(), timingOffsetSeconds: 2.1 },
+        fixture().trackId,
+      ),
+    ).toThrow(/timingOffsetSeconds/u);
   });
 
   it("rejects overlapping or inverted structural merges", () => {

@@ -32,6 +32,8 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'id="merge-selected"' in html
     assert 'id="song-meter"' in html
     assert 'id="song-tempo"' in html
+    assert 'id="grid-earlier"' in html
+    assert 'id="grid-later"' in html
     assert 'class="beat-grid"' in html
     assert 'class="merge-select"' in html
     assert 'class="unmerge-button"' in html
@@ -57,6 +59,9 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "function rhythmicDisplayItems" in script
     assert "function chordDecisionForBar" in script
     assert "supported half-bar split" in script
+    assert "possible half-bar split — verify" in script
+    assert "function displayItemChordAt" in script
+    assert "timingOffsetSeconds" in script
     assert "unstable raw changes collapsed" in script
     assert "requestAnimationFrame" in script
     assert "beat-aligned bars" in script

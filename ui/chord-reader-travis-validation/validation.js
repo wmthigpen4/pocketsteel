@@ -237,6 +237,7 @@
         songMeter: track.track.rhythm?.meter || "4/4",
         meterSource: "detected",
         tempoBpm: Math.round(Number(track.track.rhythm?.tempoBpm) || 100),
+        timingOffsetSeconds: Number(track.track.rhythm?.gridOffsetSeconds || 0),
         reviewComplete: false,
         reviewedAt: null,
         segments: {},
@@ -256,6 +257,10 @@
     if (!record.meterSource) record.meterSource = "detected";
     if (!Number.isFinite(Number(record.tempoBpm)))
       record.tempoBpm = Math.round(Number(track.track.rhythm?.tempoBpm) || 100);
+    if (!Number.isFinite(Number(record.timingOffsetSeconds)))
+      record.timingOffsetSeconds = Number(
+        track.track.rhythm?.gridOffsetSeconds || 0,
+      );
     if (!Array.isArray(record.boxMerges)) record.boxMerges = [];
     Object.values(record.segments).forEach((segment) => {
       if (segment.status === "unreviewed") segment.status = "assumed_correct";
@@ -420,24 +425,36 @@
       second.coverage >= 0.6 &&
       first.confidence >= 0.64 &&
       second.confidence >= 0.64;
+    const possibleSplit =
+      first &&
+      second &&
+      first.symbol !== second.symbol &&
+      first.coverage >= 0.6 &&
+      second.coverage >= 0.6 &&
+      Math.max(first.confidence, second.confidence) >= 0.55 &&
+      Math.min(first.confidence, second.confidence) >= 0.2;
     const rawSymbols = new Set(
       sourceIndices.map((index) =>
         chordSymbol(selected.prediction.segments[index]),
       ),
     );
-    const chordSymbols = supportedSplit
+    const chordSymbols = possibleSplit
       ? [first.symbol, second.symbol]
       : [full?.symbol || "N.C."];
     return {
       chordSymbols,
       splitSupported: Boolean(supportedSplit),
+      splitUncertain: Boolean(possibleSplit && !supportedSplit),
       aggregationUnstable: rawSymbols.size > chordSymbols.length,
     };
   }
 
   function rhythmicDisplayItems() {
     const rhythm = selected.track.rhythm;
-    const beats = (rhythm?.beatTimesSeconds || []).map(Number);
+    const offset = Number(trackFeedback().timingOffsetSeconds || 0);
+    const beats = (rhythm?.beatTimesSeconds || [])
+      .map((time) => Number(time) + offset)
+      .filter((time) => time >= 0);
     if (beats.length < 2) return null;
     const beatsPerBar = Number(trackFeedback().songMeter.split("/")[0]) || 4;
     const barStarts = beats.filter((_time, index) => index % beatsPerBar === 0);
@@ -536,12 +553,7 @@
         reviewIndex: index,
         start: Number(selected.prediction.segments[sourceIndices[0]].start),
         end: Number(segment.end),
-        confidence:
-          grouped.reduce(
-            (sum, entry) => sum + entry.confidence * (entry.end - entry.start),
-            0,
-          ) /
-          (grouped.at(-1).end - grouped[0].start),
+        confidence: itemConfidence(sourceIndices),
         autoGrouped: sourceIndices.length > 1,
       });
     });
@@ -606,9 +618,10 @@
         beatTimes: grouped.flatMap((entry) => entry.beatTimes || []),
         chordSymbols: mergedSymbols.slice(0, 2),
         splitSupported: grouped.some((entry) => entry.splitSupported),
-        aggregationUnstable: grouped.some(
-          (entry) => entry.aggregationUnstable,
-        ) || mergedSymbols.length > 2,
+        splitUncertain: grouped.some((entry) => entry.splitUncertain),
+        aggregationUnstable:
+          grouped.some((entry) => entry.aggregationUnstable) ||
+          mergedSymbols.length > 2,
         isBar: grouped.every((entry) => entry.isBar),
         manualMerge: merge,
       });
@@ -635,21 +648,25 @@
     return item.manualMerge || segmentFeedback(item.reviewIndex);
   }
 
-  function displayItemChord(item) {
-    if (item.kind === "lead-in") return "N.C.";
+  function displaySymbolsForItem(item) {
+    if (item.kind === "lead-in") return ["N.C."];
     const symbols = item.manualMerge?.correctedChord
       ? [item.manualMerge.correctedChord]
       : item.chordSymbols?.length
         ? item.chordSymbols
         : [chordSymbol(item.segment)];
     const record = trackFeedback();
-    return symbols
-      .map((symbol) =>
-        record.displayMode === "nns"
-          ? chordToNns(symbol, record.songKey)
-          : symbol,
-      )
-      .join(" / ");
+    return symbols.map((symbol) =>
+      record.displayMode === "nns"
+        ? chordToNns(symbol, record.songKey)
+        : symbol,
+    );
+  }
+
+  function displayItemChordAt(item, time) {
+    const symbols = displaySymbolsForItem(item);
+    if (symbols.length < 2) return symbols[0];
+    return symbols[time >= item.start + (item.end - item.start) / 2 ? 1 : 0];
   }
 
   function segmentFeedback(index) {
@@ -842,14 +859,27 @@
       card.querySelector(".box-number").textContent = boxLabel(item);
       card.querySelector(".time-range").textContent =
         `${clock(item.start)}–${clock(item.end)}`;
-      card.querySelector(".predicted-chord").textContent =
-        displayItemChord(item);
-      card.querySelector(".predicted-chord").title =
+      const predictedChord = card.querySelector(".predicted-chord");
+      const displayedSymbols = displaySymbolsForItem(item);
+      displayedSymbols.forEach((symbol, symbolIndex) => {
+        if (symbolIndex) {
+          const separator = document.createElement("span");
+          separator.className = "chord-separator";
+          separator.textContent = "/";
+          predictedChord.append(separator);
+        }
+        const part = document.createElement("span");
+        part.className = "chord-part";
+        part.dataset.chordPart = String(symbolIndex);
+        part.textContent = symbol;
+        predictedChord.append(part);
+      });
+      predictedChord.title =
         item.kind === "lead-in" ? "Lead-in silence" : chordSymbol(item.segment);
       card.querySelector(".confidence").textContent =
         item.kind === "lead-in"
           ? "Not a chord box"
-          : `${pct(item.confidence)} confidence${item.splitSupported ? " · supported half-bar split" : ""}${item.aggregationUnstable ? " · unstable raw changes collapsed" : ""}${item.autoGrouped ? " · transient grouped" : ""}`;
+          : `${pct(item.confidence)} confidence${item.splitSupported ? " · supported half-bar split" : ""}${item.splitUncertain ? " · possible half-bar split — verify" : ""}${item.aggregationUnstable ? " · unstable raw changes collapsed" : ""}${item.autoGrouped ? " · transient grouped" : ""}`;
       const beatGrid = card.querySelector(".beat-grid");
       (item.beatTimes || []).forEach((time, beatIndex) => {
         const marker = document.createElement("span");
@@ -975,6 +1005,9 @@
     document
       .querySelectorAll(".beat-marker.active")
       .forEach((marker) => marker.classList.remove("active"));
+    document
+      .querySelectorAll(".chord-part.active")
+      .forEach((part) => part.classList.remove("active"));
     const beatItem = currentDisplayItems[index];
     if (beatItem?.beatTimes?.length) {
       const beatIndex = beatItem.beatTimes.reduce(
@@ -988,13 +1021,27 @@
         )
         ?.classList.add("active");
     }
+    const item = currentDisplayItems[index];
+    if (item) {
+      const partIndex =
+        displaySymbolsForItem(item).length > 1 &&
+        time >= item.start + (item.end - item.start) / 2
+          ? 1
+          : 0;
+      document
+        .querySelector(
+          `.chord-card[data-index="${index}"] .chord-part[data-chord-part="${partIndex}"]`,
+        )
+        ?.classList.add("active");
+      byId("current-chord").textContent = displayItemChordAt(item, time);
+    } else {
+      byId("current-chord").textContent = "—";
+    }
     if (index === activeSegment && !force) return;
     activeSegment = index;
     document
       .querySelectorAll(".chord-card.active")
       .forEach((card) => card.classList.remove("active"));
-    const item = currentDisplayItems[index];
-    byId("current-chord").textContent = item ? displayItemChord(item) : "—";
     byId("current-confidence").textContent = item
       ? item.kind === "lead-in"
         ? "Lead-in"
@@ -1027,6 +1074,8 @@
           : "detected"
     }`;
     byId("song-tempo").value = String(Math.round(record.tempoBpm));
+    byId("grid-offset").textContent =
+      `${record.timingOffsetSeconds >= 0 ? "+" : ""}${Number(record.timingOffsetSeconds).toFixed(2)}s`;
     const rhythm = selected.track.rhythm;
     byId("rhythm-confidence").textContent = rhythm
       ? `${pct(rhythm.meterConfidence)} meter · ${pct(rhythm.tempoConfidence)} tempo confidence${provisional ? " · automatic meter guess was not decisive" : ""}`
@@ -1152,6 +1201,28 @@
       trackFeedback().tempoBpm = Math.round(nextTempo || 100);
       saveFeedback();
       renderNotationControls();
+    });
+    const nudgeGrid = (seconds) => {
+      const record = trackFeedback();
+      record.timingOffsetSeconds = Math.max(
+        -2,
+        Math.min(2, Number((record.timingOffsetSeconds + seconds).toFixed(2))),
+      );
+      saveFeedback();
+      renderNotationControls();
+      renderSegments();
+      updatePlayback(true);
+    };
+    byId("grid-earlier").addEventListener("click", () => nudgeGrid(-0.05));
+    byId("grid-later").addEventListener("click", () => nudgeGrid(0.05));
+    byId("grid-reset").addEventListener("click", () => {
+      trackFeedback().timingOffsetSeconds = Number(
+        selected.track.rhythm?.gridOffsetSeconds || 0,
+      );
+      saveFeedback();
+      renderNotationControls();
+      renderSegments();
+      updatePlayback(true);
     });
     document.querySelectorAll("[data-notation]").forEach((button) => {
       button.addEventListener("click", () => {

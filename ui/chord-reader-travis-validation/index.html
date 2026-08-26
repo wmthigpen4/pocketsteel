@@ -92,6 +92,18 @@
                       max="240"
                       step="1" /><small id="rhythm-confidence"></small
                   ></label>
+                  <div class="timing-controls" aria-label="Beat-grid alignment">
+                    <span>Grid alignment</span>
+                    <div>
+                      <button type="button" id="grid-earlier">−0.05s</button>
+                      <output id="grid-offset">0.00s</output>
+                      <button type="button" id="grid-later">+0.05s</button>
+                      <button type="button" id="grid-reset">Reset</button>
+                    </div>
+                    <small
+                      >Moves every beat and bar boundary for this song.</small
+                    >
+                  </div>
                 </div>
               </div>
             </div>
@@ -230,6 +242,6 @@
       </article>
     </template>
 
-    <script src="./validation.js?v=6"></script>
+    <script src="./validation.js?v=7"></script>
   </body>
 </html>
