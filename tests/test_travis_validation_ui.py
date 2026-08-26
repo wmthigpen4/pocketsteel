@@ -106,6 +106,10 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "overflow: hidden" in css
     assert ".audio-scrubber" in css
     assert "#audio-seek" in css
+    assert (
+        "grid-template-rows: auto auto auto auto auto auto minmax(260px, 1fr) auto"
+        in css
+    )
 
 
 def test_local_builder_creates_browser_ready_output_urls_and_clean_titles(tmp_path: Path) -> None:

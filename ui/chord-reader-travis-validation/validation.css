@@ -396,29 +396,36 @@ h2 {
   border-color: var(--green);
   background: #202b1a;
 }
+.audio-player {
+  position: relative;
+  height: 54px;
+  margin: 8px 0;
+}
 audio {
+  display: block;
   width: 100%;
-  margin: 8px 0 2px;
+  height: 54px;
+  margin: 0;
   accent-color: var(--green);
 }
 .audio-scrubber {
-  display: grid;
-  grid-template-columns: 3.2rem minmax(0, 1fr) 3.2rem;
-  align-items: center;
-  gap: 0.65rem;
-  margin-bottom: 0.4rem;
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 92px;
+  left: 150px;
 }
 .audio-scrubber output {
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-}
-#audio-duration {
-  text-align: right;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 #audio-seek {
   width: 100%;
-  height: 1.7rem;
+  height: 26px;
   margin: 0;
   cursor: ew-resize;
   accent-color: var(--green);
@@ -427,6 +434,12 @@ audio {
 #audio-seek:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
+}
+@media (max-width: 720px) {
+  .audio-scrubber {
+    right: 64px;
+    left: 112px;
+  }
 }
 .now-playing {
   display: grid;
