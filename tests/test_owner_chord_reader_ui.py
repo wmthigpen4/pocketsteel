@@ -27,7 +27,7 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     assert 'id="transport-toggle"' in html
     assert 'id="timing-mode"' in html
     assert 'src="./timing.js?v=2"' in html
-    assert 'src="./owner-test.js?v=3"' in html
+    assert 'src="./owner-test.js?v=4"' in html
     assert 'aria-label="Persistent playback controls"' in html
     assert 'addEventListener("drop"' in script
     assert "fetch(`${API}/analyze`" in script
@@ -44,6 +44,9 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     assert "function chordToNns" in script
     assert 'addEventListener("play", syncTransport)' in script
     assert 'setAttribute("aria-current", "true")' in script
+    assert "function keepUpcomingChangesVisible" in script
+    assert "grid.scrollTo" in script
+    assert "scrollIntoView" not in script
     assert "OwnerChordTiming.itemsForTrack" in script
     assert 'phaseAnchored = track.rhythm?.phase?.status === "anchored"' in timing
     assert 'mode: "exact-model-transitions"' in timing

@@ -122,6 +122,17 @@
     byId("transport-time").textContent = clock(audio.currentTime);
   }
 
+  function keepUpcomingChangesVisible(active) {
+    if (!active) return;
+    const grid = byId("bar-grid");
+    const gridTop = grid.getBoundingClientRect().top;
+    const activeTop = active.getBoundingClientRect().top;
+    grid.scrollTo({
+      top: Math.max(0, grid.scrollTop + activeTop - gridTop - 2),
+      behavior: "smooth",
+    });
+  }
+
   function updatePlayback() {
     if (!selected) return;
     const time = byId("audio").currentTime;
@@ -146,7 +157,7 @@
     active?.classList.add("active");
     active?.setAttribute("aria-current", "true");
     active?.querySelector(`[data-chord-part="${chordIndex}"]`)?.classList.add("active-part");
-    active?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    keepUpcomingChangesVisible(active);
   }
 
   function renderSelected() {
