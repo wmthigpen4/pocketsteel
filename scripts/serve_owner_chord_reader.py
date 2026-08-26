@@ -34,6 +34,13 @@ from scripts.build_local_chord_reader_test import (
 PAGE_ROOT = REPO_ROOT / "ui/chord-reader-owner-test"
 OUTPUT_ROOT = PAGE_ROOT / "local-data"
 MANIFEST_PATH = OUTPUT_ROOT / "tracks.json"
+STATIC_PATHS = {
+    "/ui/chord-reader-owner-test/",
+    "/ui/chord-reader-owner-test/index.html",
+    "/ui/chord-reader-owner-test/owner-test.css",
+    "/ui/chord-reader-owner-test/owner-test.js",
+    "/ui/chord-reader-owner-test/timing.js",
+}
 MAX_UPLOAD_BYTES = 750 * 1024 * 1024
 ENGINE_LABEL = "Current Travis-validation ensemble with phase-safe timing"
 ANALYSIS_LOCK = Lock()
@@ -327,7 +334,22 @@ class OwnerChordReaderHandler(SimpleHTTPRequestHandler):
             return
         if self._serve_seekable_audio(pathname):
             return
-        super().do_GET()
+        if pathname in STATIC_PATHS:
+            super().do_GET()
+            return
+        self.send_error(HTTPStatus.NOT_FOUND)
+
+    def do_HEAD(self) -> None:  # noqa: N802
+        pathname = urlsplit(self.path).path
+        if pathname == "/":
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", "/ui/chord-reader-owner-test/")
+            self.end_headers()
+            return
+        if pathname in STATIC_PATHS:
+            super().do_HEAD()
+            return
+        self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:  # noqa: N802
         if urlsplit(self.path).path != "/api/owner-chord-test/analyze":

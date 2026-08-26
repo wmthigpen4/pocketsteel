@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.serve_owner_chord_reader import _clean_title, _slug
+from scripts.serve_owner_chord_reader import STATIC_PATHS, _clean_title, _slug
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +16,7 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     server = (ROOT / "scripts/serve_owner_chord_reader.py").read_text(encoding="utf-8")
 
     assert "My Chord Reader Test" in html
+    assert "Private owner workbench" in html
     assert 'id="drop-zone"' in html
     assert 'id="file-input"' in html
     assert "Stays on this Mac" in html
@@ -38,6 +39,7 @@ def test_owner_page_is_a_local_drop_and_listening_surface() -> None:
     assert "may bind only to localhost" in server
     assert "Accept-Ranges" in server
     assert "HTTPStatus.PARTIAL_CONTENT" in server
+    assert "pathname in STATIC_PATHS" in server
     assert 'let displayMode = "nns"' in script
     assert "function chordToNns" in script
     assert 'addEventListener("play", syncTransport)' in script
@@ -62,3 +64,10 @@ def test_owner_test_names_are_bounded_and_browser_safe() -> None:
     assert _slug("***") == "song"
     assert _clean_title("  Goodness   of God  ", "fallback.mov") == "Goodness of God"
     assert _clean_title("", "fallback.mov") == "fallback"
+
+
+def test_owner_server_static_allowlist_does_not_expose_repo_files() -> None:
+    assert "/ui/chord-reader-owner-test/" in STATIC_PATHS
+    assert "/ui/chord-reader-owner-test/owner-test.js" in STATIC_PATHS
+    assert "/.git/config" not in STATIC_PATHS
+    assert "/scripts/serve_owner_chord_reader.py" not in STATIC_PATHS
