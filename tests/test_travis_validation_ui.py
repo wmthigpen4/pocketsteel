@@ -23,6 +23,7 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'id="song-key"' in html
     assert 'data-notation="chords"' in html
     assert 'data-notation="nns"' in html
+    assert 'class="active"\n                      data-notation="nns"' in html
     assert "Right chord (only if different)" in html
     assert "Split/slash chord" in html
     assert 'class="rail-labels"' in html
@@ -50,6 +51,7 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "keepalive: true" in script
     assert 'schemaVersion: "chord_reader_travis_feedback_v1"' in script
     assert 'status: "assumed_correct"' in script
+    assert 'displayMode: "nns"' in script
     assert '"pending_assumed_correct"' in script
     assert "record.reviewComplete" in script
     assert "highestConfidence" in script

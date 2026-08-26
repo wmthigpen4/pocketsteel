@@ -237,7 +237,7 @@
         suggestedKey: inferKey(track),
         songKey: inferKey(track),
         keySource: "suggested",
-        displayMode: "chords",
+        displayMode: "nns",
         songMeter: track.track.rhythm?.meter || "4/4",
         meterSource: "detected",
         tempoBpm: Math.round(Number(track.track.rhythm?.tempoBpm) || 100),
@@ -262,7 +262,7 @@
     if (!record.suggestedKey) record.suggestedKey = inferKey(track);
     if (!record.songKey) record.songKey = record.suggestedKey;
     if (!record.keySource) record.keySource = "suggested";
-    if (!record.displayMode) record.displayMode = "chords";
+    if (!record.displayMode) record.displayMode = "nns";
     if (!record.songMeter)
       record.songMeter = track.track.rhythm?.meter || "4/4";
     if (!record.meterSource) record.meterSource = "detected";
