@@ -43,6 +43,20 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'class="rail-labels"' in html
     assert 'id="song-notes"' in html
     assert 'id="export-feedback"' in html
+    assert 'id="review-intro"' in html
+    assert "One expert review powers the whole experience" in html
+    assert "Capture the MP3" in html
+    assert "Draft the chords" in html
+    assert "Travis reviews" in html
+    assert "Publish to Companion" in html
+    assert "reviewed chords and lesson transcript" in html
+    assert "Every correction helps the engine get closer the first time" in html
+    assert "expert-labeled examples" in html
+    assert "open-source" in html
+    assert "paid apps I could find" in html
+    assert "claim that it is perfect" in html
+    assert 'id="start-review"' in html
+    assert 'id="show-intro"' in html
     assert 'id="completion-celebration"' in html
     assert "Every song is complete!" in html
     assert "All corrections, comments, timing notes" in html
@@ -99,6 +113,9 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "function syncSeekControls" in script
     assert "function seekFromControl" in script
     assert "function showCompletionCelebration" in script
+    assert "function showIntro" in script
+    assert "function hideIntro" in script
+    assert "localStorage.setItem(introSeenKey()" in script
     assert "function hideCompletionCelebration" in script
     assert "All feedback is captured and saved securely." in script
     assert "sessionStorage.setItem(completionDismissKey()" in script
@@ -124,6 +141,8 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert ".audio-scrubber" in css
     assert "#audio-seek" in css
     assert ".completion-celebration" in css
+    assert ".review-intro" in css
+    assert ".intro-flow" in css
     assert "@keyframes confetti-fall" in css
     assert "@media (prefers-reduced-motion: reduce)" in css
     assert (

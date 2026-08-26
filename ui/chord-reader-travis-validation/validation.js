@@ -201,6 +201,10 @@
     return `${storageKey()}:completion-dismissed`;
   }
 
+  function introSeenKey() {
+    return `${storageKey()}:intro-seen`;
+  }
+
   function completedTrackCount() {
     if (!proof || !feedback) return 0;
     return proof.tracks.filter((item) => trackFeedback(item).reviewComplete)
@@ -276,6 +280,25 @@
         ? celebrationReturnFocus
         : fallback;
     focusTarget?.focus();
+  }
+
+  function showIntro({ force = false } = {}) {
+    if (!force && localStorage.getItem(introSeenKey())) return;
+    if (allTracksReviewed() && !force) return;
+    const intro = byId("review-intro");
+    if (!intro || !intro.hidden) return;
+    intro.hidden = false;
+    document.body.classList.add("intro-open");
+    requestAnimationFrame(() => byId("start-review").focus());
+  }
+
+  function hideIntro() {
+    const intro = byId("review-intro");
+    if (!intro || intro.hidden) return;
+    intro.hidden = true;
+    document.body.classList.remove("intro-open");
+    localStorage.setItem(introSeenKey(), new Date().toISOString());
+    document.querySelector("#track-list button.active")?.focus();
   }
 
   function blankFeedback() {
@@ -1464,6 +1487,10 @@
       syncSeekControls(true);
     });
     byId("finish-track").addEventListener("click", finishTrack);
+    byId("show-intro").addEventListener("click", () =>
+      showIntro({ force: true }),
+    );
+    byId("start-review").addEventListener("click", hideIntro);
     byId("close-completion").addEventListener(
       "click",
       hideCompletionCelebration,
@@ -1472,6 +1499,10 @@
       if (event.target === event.currentTarget) hideCompletionCelebration();
     });
     document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !byId("review-intro").hidden) {
+        hideIntro();
+        return;
+      }
       if (event.key === "Escape" && !byId("completion-celebration").hidden)
         hideCompletionCelebration();
     });
@@ -1621,6 +1652,7 @@
         proof.tracks[0],
       );
       selectTrack(highestConfidence.track.id);
+      showIntro();
       showCompletionCelebration();
     })
     .catch((error) => {

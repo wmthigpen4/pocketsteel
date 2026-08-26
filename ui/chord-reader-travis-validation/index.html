@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chord Reader — Travis Validation</title>
-    <link rel="stylesheet" href="./validation.css?v=14" />
+    <link rel="stylesheet" href="./validation.css?v=15" />
   </head>
   <body>
     <main class="shell">
@@ -17,8 +17,13 @@
             and only enter corrections or comments where they are needed.
           </p>
         </div>
-        <div class="pilot-count">
-          <strong id="track-total">15</strong><span>review tracks</span>
+        <div class="hero-actions">
+          <button type="button" id="show-intro" class="intro-reopen">
+            How this works
+          </button>
+          <div class="pilot-count">
+            <strong id="track-total">15</strong><span>review tracks</span>
+          </div>
         </div>
       </header>
 
@@ -247,6 +252,106 @@
     </main>
 
     <section
+      id="review-intro"
+      class="review-intro"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="intro-title"
+      aria-describedby="intro-summary"
+      hidden>
+      <div class="intro-card">
+        <p class="eyebrow">From Travis’s lesson to the Pocket Steel Companion</p>
+        <h2 id="intro-title">One expert review powers the whole experience.</h2>
+        <p id="intro-summary" class="intro-summary">
+          The chord reader creates the first draft. Travis’s ears turn it into
+          a trusted, publishable song map.
+        </p>
+
+        <div class="intro-flow" aria-label="Lesson production workflow">
+          <article>
+            <span>01</span>
+            <strong>New video lesson</strong>
+            <p>Travis records and publishes a new lesson.</p>
+          </article>
+          <b aria-hidden="true">&#8594;</b>
+          <article>
+            <span>02</span>
+            <strong>Capture the MP3</strong>
+            <p>The lesson audio becomes the source for chord analysis.</p>
+          </article>
+          <b aria-hidden="true">&#8594;</b>
+          <article>
+            <span>03</span>
+            <strong>Draft the chords</strong>
+            <p>The chord reader builds a time-aligned play-along draft.</p>
+          </article>
+          <b aria-hidden="true">&#8594;</b>
+          <article class="expert-step">
+            <span>04</span>
+            <strong>Travis reviews</strong>
+            <p>He corrects chords, timing, splits, keys, and bar structure.</p>
+          </article>
+          <b aria-hidden="true">&#8594;</b>
+          <article>
+            <span>05</span>
+            <strong>Publish to Companion</strong>
+            <p>The approved chord timeline powers the finished play-along.</p>
+          </article>
+        </div>
+
+        <div class="intro-outcomes">
+          <article>
+            <span>Play-along output</span>
+            <strong>Reviewed chords appear at the correct moment in the song.</strong>
+          </article>
+          <div class="outcome-plus" aria-hidden="true">+</div>
+          <article>
+            <span>Tablature output</span>
+            <strong
+              >The reviewed chords and lesson transcript become the foundation
+              for a tablature draft.</strong
+            >
+          </article>
+        </div>
+
+        <section class="intro-vision" aria-label="Long-term vision">
+          <article>
+            <span>Why your review matters</span>
+            <h3>Every correction helps the engine get closer the first time.</h3>
+            <p>
+              Your edits create expert-labeled examples of the mistakes that
+              matter: wrong chords, late changes, bad count-ins, misplaced
+              downbeats, and incorrect split bars. I can synthesize those
+              patterns to tune the engine and measure whether each new version
+              needs less human correction.
+            </p>
+          </article>
+          <article class="comparison-note">
+            <span>Why I believe this is worth building</span>
+            <h3>The starting point is already unusually strong.</h3>
+            <p>
+              In the comparisons I have run, this is already producing more
+              useful, time-aligned country chord maps than the open-source
+              tools, online services, and paid apps I could find. That is not a
+              claim that it is perfect—your review is how I find and close the
+              remaining gap.
+            </p>
+          </article>
+        </section>
+
+        <p class="intro-assurance">
+          The long-term goal is simple: every new lesson starts with a better
+          draft, takes less of your time to approve, and reaches the Companion
+          faster. You are reviewing a draft—not building the chart from
+          scratch.
+        </p>
+        <button type="button" id="start-review" class="intro-start">
+          Start the 15-song review
+        </button>
+      </div>
+    </section>
+
+    <section
       id="completion-celebration"
       class="completion-celebration"
       role="dialog"
@@ -334,6 +439,6 @@
     </template>
 
     <script src="./phase-anchor.js?v=8"></script>
-    <script src="./validation.js?v=14"></script>
+    <script src="./validation.js?v=15"></script>
   </body>
 </html>
