@@ -43,6 +43,12 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert 'class="rail-labels"' in html
     assert 'id="song-notes"' in html
     assert 'id="export-feedback"' in html
+    assert 'id="completion-celebration"' in html
+    assert "Every song is complete!" in html
+    assert "All corrections, comments, timing notes" in html
+    assert "Your feedback will be synthesized across all 15 songs" in html
+    assert 'id="completion-save-status"' in html
+    assert 'id="close-completion"' in html
     assert 'class="box-number"' in html
     assert 'id="merge-selected"' in html
     assert 'id="song-meter"' in html
@@ -92,6 +98,11 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "requestAnimationFrame" in script
     assert "function syncSeekControls" in script
     assert "function seekFromControl" in script
+    assert "function showCompletionCelebration" in script
+    assert "function hideCompletionCelebration" in script
+    assert "All feedback is captured and saved securely." in script
+    assert "sessionStorage.setItem(completionDismissKey()" in script
+    assert 'document.body.classList.toggle("pilot-complete", complete)' in script
     assert 'seek.addEventListener("pointerdown"' in script
     assert 'seek.addEventListener("input", seekFromControl)' in script
     assert 'seek.addEventListener("pointerup", finishSeek)' in script
@@ -112,6 +123,9 @@ def test_private_validation_page_exposes_review_and_export_controls() -> None:
     assert "overflow: hidden" in css
     assert ".audio-scrubber" in css
     assert "#audio-seek" in css
+    assert ".completion-celebration" in css
+    assert "@keyframes confetti-fall" in css
+    assert "@media (prefers-reduced-motion: reduce)" in css
     assert (
         "grid-template-rows: auto auto auto auto auto auto minmax(260px, 1fr) auto"
         in css

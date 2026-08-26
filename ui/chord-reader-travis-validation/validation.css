@@ -750,6 +750,247 @@ footer {
 footer p {
   margin-bottom: 0.3rem;
 }
+
+.pilot-complete .pilot-count {
+  border-color: var(--green);
+  background: linear-gradient(135deg, rgba(67, 103, 38, 0.92), rgba(26, 47, 20, 0.92));
+  box-shadow: 0 0 28px rgba(185, 239, 112, 0.22);
+}
+
+.pilot-complete #overall-progress {
+  color: var(--green);
+  text-shadow: 0 0 18px rgba(185, 239, 112, 0.35);
+}
+
+.completion-celebration {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(185, 239, 112, 0.18), transparent 34rem),
+    rgba(5, 8, 5, 0.94);
+  backdrop-filter: blur(12px);
+  animation: celebration-backdrop 320ms ease-out both;
+}
+
+.celebration-glow {
+  position: absolute;
+  width: min(76vw, 820px);
+  aspect-ratio: 1;
+  border: 2px solid rgba(185, 239, 112, 0.16);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 70px rgba(145, 207, 255, 0.035),
+    0 0 0 150px rgba(237, 196, 110, 0.025);
+  animation: celebration-pulse 2.2s ease-in-out infinite;
+}
+
+.celebration-card {
+  position: relative;
+  z-index: 2;
+  width: min(720px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: clamp(24px, 3.4vh, 44px) clamp(24px, 5vw, 52px);
+  border: 1px solid rgba(185, 239, 112, 0.65);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(29, 38, 26, 0.98), rgba(13, 17, 13, 0.98));
+  box-shadow:
+    0 36px 110px rgba(0, 0, 0, 0.65),
+    0 0 60px rgba(185, 239, 112, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  text-align: center;
+  animation: celebration-arrive 620ms cubic-bezier(0.2, 0.9, 0.2, 1.15) both;
+}
+
+.celebration-check {
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #10160c;
+  font-size: 3rem;
+  font-weight: 950;
+  box-shadow: 0 0 42px rgba(185, 239, 112, 0.45);
+  animation: celebration-check 700ms 260ms cubic-bezier(0.2, 1.25, 0.35, 1) both;
+}
+
+.celebration-card .eyebrow {
+  margin-bottom: 0.8rem;
+  color: var(--gold);
+}
+
+.celebration-card h2 {
+  margin-bottom: 0.8rem;
+  font-size: clamp(2.35rem, 6vw, 4.15rem);
+  line-height: 0.95;
+}
+
+.completion-summary {
+  max-width: 600px;
+  margin: 0 auto 22px;
+  color: #e9ebE4;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+}
+
+.completion-next {
+  padding: 18px 20px;
+  border: 1px solid rgba(145, 207, 255, 0.3);
+  border-radius: 16px;
+  background: rgba(145, 207, 255, 0.07);
+  text-align: left;
+}
+
+.completion-next strong {
+  color: var(--blue);
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.completion-next p {
+  margin: 6px 0 0;
+  color: #e1e6dd;
+}
+
+.completion-impact {
+  margin: 20px auto 10px;
+  color: var(--green);
+  font-weight: 760;
+}
+
+.completion-save-status {
+  min-height: 1.4em;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.completion-close {
+  display: block;
+  min-width: min(100%, 300px);
+  margin: 12px auto 0;
+  padding: 13px 20px;
+  border: 1px solid var(--green);
+  border-radius: 12px;
+  background: var(--green);
+  color: #10160c;
+  font-weight: 900;
+}
+
+.completion-close:hover,
+.completion-close:focus-visible {
+  filter: brightness(1.08);
+  box-shadow: 0 0 24px rgba(185, 239, 112, 0.28);
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.celebration-confetti,
+.celebration-confetti i {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.celebration-confetti i {
+  left: 0;
+  width: 8px;
+  height: 17px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-fall var(--confetti-speed) var(--confetti-delay) linear infinite;
+}
+
+@keyframes celebration-backdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes celebration-arrive {
+  from { opacity: 0; transform: translateY(35px) scale(0.88); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes celebration-check {
+  from { opacity: 0; transform: rotate(-18deg) scale(0.35); }
+  to { opacity: 1; transform: rotate(0) scale(1); }
+}
+
+@keyframes celebration-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+@keyframes confetti-fall {
+  0% { opacity: 0; transform: translate3d(var(--confetti-x), -12vh, 0) rotate(0deg); }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(calc(var(--confetti-x) + var(--confetti-drift)), 112vh, 0) rotate(var(--confetti-turn)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .completion-celebration,
+  .celebration-card,
+  .celebration-check,
+  .celebration-glow,
+  .celebration-confetti i {
+    animation: none;
+  }
+  .celebration-confetti {
+    display: none;
+  }
+}
+
+@media (max-height: 720px) and (min-width: 641px) {
+  .celebration-card {
+    padding: 16px 36px;
+  }
+  .celebration-check {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 8px;
+    font-size: 2rem;
+  }
+  .celebration-card .eyebrow {
+    margin-bottom: 0.35rem;
+    font-size: 0.62rem;
+  }
+  .celebration-card h2 {
+    margin-bottom: 0.4rem;
+    font-size: 2.75rem;
+  }
+  .completion-summary {
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+  }
+  .completion-next {
+    padding: 9px 12px;
+  }
+  .completion-next p {
+    margin-top: 3px;
+    font-size: 0.84rem;
+  }
+  .completion-impact {
+    margin: 9px auto 4px;
+    font-size: 0.84rem;
+  }
+  .completion-save-status {
+    margin-top: 5px;
+    font-size: 0.7rem;
+  }
+  .completion-close {
+    padding: 9px 16px;
+  }
+}
+
 [hidden] {
   display: none !important;
 }
@@ -795,5 +1036,14 @@ footer p {
   }
   .song-actions {
     justify-content: start;
+  }
+  .completion-celebration {
+    align-items: start;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .celebration-card {
+    margin: 16px 0;
+    padding: 28px 20px;
   }
 }

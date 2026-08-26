@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chord Reader — Travis Validation</title>
-    <link rel="stylesheet" href="./validation.css?v=13" />
+    <link rel="stylesheet" href="./validation.css?v=14" />
   </head>
   <body>
     <main class="shell">
@@ -246,6 +246,51 @@
       </footer>
     </main>
 
+    <section
+      id="completion-celebration"
+      class="completion-celebration"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="completion-title"
+      aria-describedby="completion-summary completion-next"
+      hidden>
+      <div
+        id="celebration-confetti"
+        class="celebration-confetti"
+        aria-hidden="true"></div>
+      <div class="celebration-glow" aria-hidden="true"></div>
+      <div class="celebration-card">
+        <div class="celebration-check" aria-hidden="true">&#10003;</div>
+        <p class="eyebrow">15 of 15 songs reviewed</p>
+        <h2 id="completion-title">Every song is complete!</h2>
+        <p id="completion-summary" class="completion-summary">
+          All corrections, comments, timing notes, key changes, and accepted
+          chord boxes have been captured.
+        </p>
+        <div id="completion-next" class="completion-next">
+          <strong>What happens next</strong>
+          <p>
+            Your feedback will be synthesized across all 15 songs to find
+            recurring patterns and determine what can make the chord model
+            stronger.
+          </p>
+        </div>
+        <p class="completion-impact">
+          You’ll hear back ASAP with exactly what your review revealed and what
+          impact it had on the model.
+        </p>
+        <button type="button" id="close-completion" class="completion-close">
+          Done — thank you!
+        </button>
+        <p
+          id="completion-save-status"
+          class="completion-save-status"
+          role="status">
+          Finishing the secure save…
+        </p>
+      </div>
+    </section>
+
     <template id="chord-template">
       <article class="chord-card">
         <div class="box-tools">
@@ -289,6 +334,6 @@
     </template>
 
     <script src="./phase-anchor.js?v=8"></script>
-    <script src="./validation.js?v=13"></script>
+    <script src="./validation.js?v=14"></script>
   </body>
 </html>

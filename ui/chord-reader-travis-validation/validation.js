@@ -84,6 +84,7 @@
   let remoteSaveSequence = Promise.resolve();
   const remoteSaveTimers = new Map();
   const clientVersions = new Map();
+  let celebrationReturnFocus = null;
 
   function parseChord(symbol) {
     const value = String(symbol || "").trim();
@@ -196,6 +197,87 @@
     return `${STORAGE_PREFIX}:${STORAGE_SESSION}:${hashes.slice(0, 96)}`;
   }
 
+  function completionDismissKey() {
+    return `${storageKey()}:completion-dismissed`;
+  }
+
+  function completedTrackCount() {
+    if (!proof || !feedback) return 0;
+    return proof.tracks.filter((item) => trackFeedback(item).reviewComplete)
+      .length;
+  }
+
+  function allTracksReviewed() {
+    return (
+      Boolean(proof?.tracks.length) &&
+      completedTrackCount() === proof.tracks.length
+    );
+  }
+
+  function updateCompletionSaveStatus(message) {
+    const status = byId("completion-save-status");
+    if (status) status.textContent = message;
+  }
+
+  function populateCelebrationConfetti() {
+    const container = byId("celebration-confetti");
+    if (!container || container.childElementCount) return;
+    const colors = ["#b9ef70", "#91cfff", "#edc46e", "#ff907c", "#f8f7f2"];
+    for (let index = 0; index < 52; index += 1) {
+      const piece = document.createElement("i");
+      piece.style.setProperty("--confetti-x", `${(index * 37) % 101}vw`);
+      piece.style.setProperty(
+        "--confetti-drift",
+        `${((index * 23) % 31) - 15}vw`,
+      );
+      piece.style.setProperty(
+        "--confetti-delay",
+        `${-((index * 0.13) % 3.8)}s`,
+      );
+      piece.style.setProperty(
+        "--confetti-speed",
+        `${3.4 + ((index * 7) % 19) / 10}s`,
+      );
+      piece.style.setProperty(
+        "--confetti-turn",
+        `${360 + ((index * 71) % 720)}deg`,
+      );
+      piece.style.background = colors[index % colors.length];
+      container.append(piece);
+    }
+  }
+
+  function showCompletionCelebration({ force = false } = {}) {
+    if (!allTracksReviewed()) return;
+    if (!force && sessionStorage.getItem(completionDismissKey())) return;
+    const celebration = byId("completion-celebration");
+    if (!celebration || !celebration.hidden) return;
+    populateCelebrationConfetti();
+    celebrationReturnFocus = document.activeElement;
+    celebration.hidden = false;
+    document.body.classList.add("celebrating");
+    updateCompletionSaveStatus(
+      REMOTE_MODE
+        ? "All feedback is captured. Finishing the secure save…"
+        : "All feedback is captured and saved on this device.",
+    );
+    requestAnimationFrame(() => byId("close-completion").focus());
+  }
+
+  function hideCompletionCelebration() {
+    const celebration = byId("completion-celebration");
+    if (!celebration || celebration.hidden) return;
+    celebration.hidden = true;
+    document.body.classList.remove("celebrating");
+    sessionStorage.setItem(completionDismissKey(), "true");
+    const fallback = document.querySelector("#track-list button.active");
+    const focusTarget =
+      celebrationReturnFocus && !celebrationReturnFocus.disabled
+        ? celebrationReturnFocus
+        : fallback;
+    focusTarget?.focus();
+  }
+
   function blankFeedback() {
     return {
       schemaVersion: "chord_reader_travis_feedback_v1",
@@ -302,6 +384,10 @@
       localStorage.setItem(storageKey(), JSON.stringify(feedback));
       byId("save-status").textContent =
         `Saved locally at ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
+      if (allTracksReviewed())
+        updateCompletionSaveStatus(
+          "All feedback is captured and saved on this device.",
+        );
     }
     renderProgress();
   }
@@ -319,6 +405,10 @@
           .then(() => saveRemoteTrack(trackId, version))
           .catch((error) => {
             byId("save-status").textContent = `Save failed: ${error.message}`;
+            if (allTracksReviewed())
+              updateCompletionSaveStatus(
+                `Your review is complete, but the secure save needs attention: ${error.message}`,
+              );
           });
       }, 300),
     );
@@ -348,6 +438,8 @@
     }
     byId("save-status").textContent =
       `Saved securely at ${new Date(result.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
+    if (allTracksReviewed())
+      updateCompletionSaveStatus("All feedback is captured and saved securely.");
   }
 
   function isLeadIn(segment, index) {
@@ -1033,11 +1125,13 @@
     byId("track-progress").textContent = record.reviewComplete
       ? "Reviewed"
       : "Pending";
-    const completedTracks = proof.tracks.filter(
-      (item) => trackFeedback(item).reviewComplete,
-    ).length;
+    const completedTracks = completedTrackCount();
+    const complete = completedTracks === proof.tracks.length;
     byId("overall-progress").textContent =
-      `${completedTracks} of ${proof.tracks.length} reviewed`;
+      complete
+        ? `${completedTracks} of ${proof.tracks.length} reviewed · Complete!`
+        : `${completedTracks} of ${proof.tracks.length} reviewed`;
+    document.body.classList.toggle("pilot-complete", complete);
     renderTrackList();
   }
 
@@ -1287,6 +1381,10 @@
     record.reviewedAt = new Date().toISOString();
     saveFeedback();
     renderTrack();
+    if (allTracksReviewed()) {
+      sessionStorage.removeItem(completionDismissKey());
+      showCompletionCelebration({ force: true });
+    }
   }
 
   function exportFeedback() {
@@ -1366,6 +1464,17 @@
       syncSeekControls(true);
     });
     byId("finish-track").addEventListener("click", finishTrack);
+    byId("close-completion").addEventListener(
+      "click",
+      hideCompletionCelebration,
+    );
+    byId("completion-celebration").addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) hideCompletionCelebration();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !byId("completion-celebration").hidden)
+        hideCompletionCelebration();
+    });
     byId("export-feedback").addEventListener("click", exportFeedback);
     byId("merge-selected").addEventListener("click", mergeSelectedBoxes);
     byId("clear-box-selection").addEventListener("click", clearBoxSelection);
@@ -1512,6 +1621,7 @@
         proof.tracks[0],
       );
       selectTrack(highestConfidence.track.id);
+      showCompletionCelebration();
     })
     .catch((error) => {
       byId("song-title").textContent = "The validation data could not load.";
