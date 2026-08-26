@@ -1,1 +1,2 @@
 TRAVIS_EMAIL=reviewer@example.invalid
+OWNER_EMAIL=owner@example.invalid

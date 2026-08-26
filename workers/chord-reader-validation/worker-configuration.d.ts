@@ -7,6 +7,7 @@ interface __BaseEnv_Env {
 	ENVIRONMENT: "production" | "development";
 	BUILD_SHA: "CONFIGURE_AT_DEPLOY" | "development";
 	TRAVIS_EMAIL: string;
+	OWNER_EMAIL?: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
@@ -18,6 +19,7 @@ declare namespace Cloudflare {
 		ENVIRONMENT: "production";
 		BUILD_SHA: "CONFIGURE_AT_DEPLOY";
 		TRAVIS_EMAIL: string;
+		OWNER_EMAIL?: string;
 	}
 	interface Env extends __BaseEnv_Env {}
 }
@@ -26,7 +28,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "BUILD_SHA" | "TRAVIS_EMAIL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "BUILD_SHA" | "TRAVIS_EMAIL" | "OWNER_EMAIL">> {}
 }
 
 // Begin runtime types

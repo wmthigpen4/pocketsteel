@@ -3,7 +3,8 @@
 This dedicated Worker serves the private 15-song validation pilot, streams its
 audio from a private R2 bucket, and saves per-song reviewer feedback to D1.
 Every application and API route fails closed unless Cloudflare Access identifies
-the exact email configured by the `TRAVIS_EMAIL` Worker secret.
+the exact reviewer configured by the `TRAVIS_EMAIL` Worker secret or the
+protected owner configured by `OWNER_EMAIL`.
 
 ## Local development
 
@@ -25,11 +26,12 @@ that header and requires `ctx.access` from Cloudflare Access.
 3. Upload `app/index.html`, `app/validation.css`, `app/phase-anchor.js`,
    `app/validation.js`, `proof/proof.json`, and the fixed `audio/*.mp3` pilot
    objects to R2.
-4. Set `TRAVIS_EMAIL` with `wrangler secret put`; never commit the address.
+4. Set `TRAVIS_EMAIL` and `OWNER_EMAIL` with `wrangler secret put`; never commit
+   either address.
 5. Deploy the production Worker to
    `https://travis-validation.steelguitarrag.com`.
 6. Before allowing use, protect all Worker traffic with Cloudflare Access and
-   an exact-email allow policy for the same address.
+   an exact-email allow policy limited to the reviewer and owner addresses.
 
 The browser JSON download remains available as a backup, but the normal review
 workflow writes every changed track to D1 automatically.

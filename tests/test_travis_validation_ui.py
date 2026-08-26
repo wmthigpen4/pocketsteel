@@ -170,3 +170,6 @@ def test_protected_worker_routes_the_phase_anchor_asset() -> None:
     ).read_text(encoding="utf-8")
     assert '`${APP_BASE}/phase-anchor.js`' in worker
     assert 'return "app/phase-anchor.js"' in worker
+    assert "env.TRAVIS_EMAIL" in worker
+    assert "env.OWNER_EMAIL" in worker
+    assert "if (!isReviewer && !isOwner)" in worker

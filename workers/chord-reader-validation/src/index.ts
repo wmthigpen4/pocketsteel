@@ -71,6 +71,7 @@ async function reviewerEmail(
   ctx: ExecutionContext,
 ): Promise<string> {
   const configured = env.TRAVIS_EMAIL?.trim().toLowerCase();
+  const owner = env.OWNER_EMAIL?.trim().toLowerCase();
   if (!configured)
     throw new HttpError("Reviewer access is not configured.", 503);
 
@@ -88,7 +89,9 @@ async function reviewerEmail(
   const email = identity?.email?.trim().toLowerCase();
   if (!email)
     throw new HttpError("Cloudflare Access authentication is required.", 401);
-  if (!(await timingSafeEqual(email, configured)))
+  const isReviewer = await timingSafeEqual(email, configured);
+  const isOwner = owner ? await timingSafeEqual(email, owner) : false;
+  if (!isReviewer && !isOwner)
     throw new HttpError("This review is assigned to a different account.", 403);
   return email;
 }
