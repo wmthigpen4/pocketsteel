@@ -11,9 +11,16 @@
     const total = Math.max(0, Math.floor(Number(seconds) || 0));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
   };
+  const preciseClock = (seconds) => {
+    const value = Math.max(0, Number(seconds) || 0);
+    const minutes = Math.floor(value / 60);
+    return `${minutes}:${String((value % 60).toFixed(1)).padStart(4, "0")}`;
+  };
   let tracks = [];
   let selected = null;
-  let activeBar = -1;
+  let timeline = { mode: "exact-model-transitions", items: [] };
+  let activeItemId = "";
+  let activeChordIndex = -1;
   let displayMode = "nns";
   let selectedKey = "C";
 
@@ -40,9 +47,13 @@
     return `${NNS_INTERVALS[(root - tonic + 12) % 12]}${quality}${bass}`;
   }
 
-  function chordLabel(bar) {
-    const symbols = bar.chordSymbols || ["N.C."];
-    return symbols.map((symbol) => displayMode === "nns" ? chordToNns(symbol) : symbol).join(" → ");
+  function shownChord(symbol) {
+    return displayMode === "nns" ? chordToNns(symbol) : symbol;
+  }
+
+  function timelineName(mode, plural = false) {
+    if (mode === "beat-aligned-bars") return plural ? "bars" : "bar";
+    return plural ? "changes" : "change";
   }
 
   function renderSongList() {
@@ -55,7 +66,8 @@
       const title = document.createElement("strong");
       title.textContent = track.title;
       const meta = document.createElement("span");
-      meta.textContent = `${clock(track.durationSeconds)} · ${track.summary.barCount} bars`;
+      const trackTimeline = OwnerChordTiming.itemsForTrack(track);
+      meta.textContent = `${clock(track.durationSeconds)} · ${trackTimeline.items.length} ${timelineName(trackTimeline.mode, true)}`;
       button.append(title, meta);
       button.addEventListener("click", () => selectTrack(track.id));
       list.append(button);
@@ -75,20 +87,25 @@
   function renderBars() {
     const grid = byId("bar-grid");
     grid.replaceChildren();
-    selected.bars.forEach((bar) => {
+    timeline.items.forEach((item) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `bar-card${Number(bar.confidence) >= 0.9 ? " high-confidence" : ""}${bar.splitUncertain ? " uncertain" : ""}`;
-      button.dataset.bar = String(bar.bar);
+      button.className = `bar-card${Number(item.confidence) >= 0.9 ? " high-confidence" : ""}${item.splitUncertain ? " uncertain" : ""}`;
+      button.dataset.itemId = item.id;
       const number = document.createElement("span");
       number.className = "bar-number";
-      number.textContent = `BAR ${bar.bar} · ${clock(bar.start)}`;
+      number.textContent = `${timelineName(timeline.mode).toUpperCase()} ${item.position} · ${preciseClock(item.start)}`;
       const chord = document.createElement("strong");
-      chord.textContent = chordLabel(bar);
+      (item.chordSymbols || ["N.C."]).forEach((symbol, index) => {
+        const part = document.createElement("span");
+        part.dataset.chordPart = String(index);
+        part.textContent = shownChord(symbol);
+        chord.append(part);
+      });
       const confidence = document.createElement("span");
-      confidence.textContent = `${percent(bar.confidence)} confidence${bar.splitUncertain ? " · verify split" : ""}`;
+      confidence.textContent = `${percent(item.confidence)} confidence${item.splitUncertain ? " · verify split" : ""}`;
       button.append(number, chord, confidence);
-      button.addEventListener("click", () => seek(bar.start).catch(() => {}));
+      button.addEventListener("click", () => seek(item.start).catch(() => {}));
       grid.append(button);
     });
   }
@@ -108,19 +125,23 @@
   function updatePlayback() {
     if (!selected) return;
     const time = byId("audio").currentTime;
-    const bar = selected.bars.find((item) => time >= Number(item.start) && time < Number(item.end));
-    if ((bar?.bar || -1) === activeBar) {
+    const item = OwnerChordTiming.itemAt(timeline.items, time);
+    const chordIndex = item ? OwnerChordTiming.chordIndexAt(item, time) : -1;
+    if ((item?.id || "") === activeItemId && chordIndex === activeChordIndex) {
       syncTransport();
       return;
     }
-    activeBar = bar?.bar || -1;
+    activeItemId = item?.id || "";
+    activeChordIndex = chordIndex;
     document.querySelectorAll(".bar-card.active").forEach((item) => item.classList.remove("active"));
-    byId("current-bar").textContent = bar?.bar || "—";
-    byId("current-chord").textContent = bar ? chordLabel(bar) : "N.C.";
-    byId("current-confidence").textContent = bar ? percent(bar.confidence) : "—";
+    document.querySelectorAll(".bar-card .active-part").forEach((part) => part.classList.remove("active-part"));
+    byId("current-bar").textContent = item?.position || "—";
+    byId("current-chord").textContent = item ? shownChord(OwnerChordTiming.chordAt(item, time)) : "N.C.";
+    byId("current-confidence").textContent = item ? percent(item.confidence) : "—";
     syncTransport();
-    const active = document.querySelector(`.bar-card[data-bar="${activeBar}"]`);
+    const active = document.querySelector(`.bar-card[data-item-id="${activeItemId}"]`);
     active?.classList.add("active");
+    active?.querySelector(`[data-chord-part="${chordIndex}"]`)?.classList.add("active-part");
     active?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
   }
 
@@ -128,6 +149,18 @@
     byId("workspace").hidden = false;
     byId("selected-title").textContent = selected.title;
     const rhythm = selected.rhythm || {};
+    timeline = OwnerChordTiming.itemsForTrack(selected);
+    const positionName = timelineName(timeline.mode);
+    const positionPlural = timelineName(timeline.mode, true);
+    byId("transport-position-label").textContent = positionName;
+    byId("current-position-label").textContent = positionName;
+    byId("seek-legend").textContent = `Click any ${positionName} to seek.`;
+    byId("bar-grid").setAttribute("aria-label", `Predicted chord ${positionPlural}`);
+    const timingMode = byId("timing-mode");
+    timingMode.dataset.mode = timeline.mode;
+    timingMode.textContent = timeline.mode === "beat-aligned-bars"
+      ? "Beat-aligned bars · downbeat phase passed validation. Split chords switch at the bar midpoint."
+      : "Exact model timing · downbeat phase was unresolved, so boxes follow the engine's raw chord-change timestamps instead of a guessed bar grid.";
     selectedKey = KEY_NAMES.includes(rhythm.key) ? rhythm.key : "C";
     const key = byId("song-key");
     key.replaceChildren(...KEY_NAMES.map((name) => {
@@ -142,15 +175,16 @@
       rhythm.key ? `${rhythm.key} ${rhythm.keyMode || ""}`.trim() : null,
       rhythm.meter,
       rhythm.tempoBpm ? `${Math.round(rhythm.tempoBpm)} BPM` : null,
-      `${selected.summary.segmentCount} raw changes`,
+      `${timeline.items.length} ${positionPlural}`,
     ].filter(Boolean).join(" · ");
     byId("mean-confidence").textContent = percent(selected.summary.meanConfidence);
-    byId("disclosure").textContent = `${selected.disclosure} Engine: ${selected.engine.label}. Downbeat phase: ${rhythm.phase?.status || "unresolved"}.`;
+    byId("disclosure").textContent = `${selected.disclosure} Engine: ${selected.engine.label}. Downbeat phase: ${rhythm.phase?.status || "unresolved"}. Display timing: ${timeline.mode}.`;
     const audio = byId("audio");
     audio.pause();
     audio.src = selected.audioUrl;
     audio.load();
-    activeBar = -1;
+    activeItemId = "";
+    activeChordIndex = -1;
     renderSongList();
     renderBars();
     updatePlayback();
@@ -190,7 +224,8 @@
       await loadTracks(result.id);
       byId("song-title-input").value = "";
       byId("file-input").value = "";
-      status(`${result.title} is ready: ${result.summary.barCount} predicted bars.`, "success");
+      const resultTimeline = OwnerChordTiming.itemsForTrack(result);
+      status(`${result.title} is ready: ${resultTimeline.items.length} predicted ${timelineName(resultTimeline.mode, true)}.`, "success");
     } catch (error) {
       status(error instanceof Error ? error.message : String(error), "error");
     } finally {
@@ -222,7 +257,8 @@
   });
   byId("song-key").addEventListener("change", (event) => {
     selectedKey = event.target.value;
-    activeBar = -1;
+    activeItemId = "";
+    activeChordIndex = -1;
     renderBars();
     updatePlayback();
   });
@@ -233,7 +269,8 @@
       item.classList.toggle("active", active);
       item.setAttribute("aria-pressed", String(active));
     });
-    activeBar = -1;
+    activeItemId = "";
+    activeChordIndex = -1;
     renderBars();
     updatePlayback();
   }));

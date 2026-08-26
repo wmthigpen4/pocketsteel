@@ -70,6 +70,8 @@ h2 { margin-bottom: 8px; font-size: clamp(1.55rem, 3vw, 2.45rem); letter-spacing
 .notation-controls button:last-child { border-radius: 0 8px 8px 0; }
 .notation-controls button.active { border-color: var(--gold); background: rgba(237,196,110,.12); color: var(--gold); }
 audio { width: 100%; margin: 8px 0 18px; }
+.timing-mode { margin: -4px 0 14px; padding: 11px 13px; border: 1px solid rgba(145,207,255,.3); border-radius: 11px; background: rgba(145,207,255,.08); color: var(--blue); font-size: .82rem; line-height: 1.4; }
+.timing-mode[data-mode="beat-aligned-bars"] { border-color: rgba(185,239,112,.3); background: rgba(185,239,112,.07); color: var(--green); }
 .now-playing { display: grid; grid-template-columns: .5fr 1fr .7fr; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .now-playing div { padding: 14px 16px; background: #101214; }
 .now-playing div + div { border-left: 1px solid var(--line); }
@@ -85,7 +87,10 @@ audio { width: 100%; margin: 8px 0 18px; }
 .bar-card span, .bar-card strong { display: block; }
 .bar-card .bar-number { color: var(--muted); font-size: .68rem; font-weight: 800; letter-spacing: .07em; }
 .bar-card strong { margin: 11px 0 8px; font-size: 1.28rem; }
-.bar-card span:last-child { color: var(--muted); font-size: .72rem; }
+.bar-card strong span { display: inline; }
+.bar-card strong span + span::before { content: " → "; color: var(--muted); }
+.bar-card strong span.active-part { color: var(--blue); }
+.bar-card > span:last-child { color: var(--muted); font-size: .72rem; }
 .disclosure { margin-top: 18px; padding: 14px 16px; border-left: 3px solid var(--gold); background: rgba(237,196,110,.06); font-size: .86rem; line-height: 1.5; }
 
 @media (max-width: 1200px) {

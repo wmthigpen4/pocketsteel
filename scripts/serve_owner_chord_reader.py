@@ -35,7 +35,7 @@ PAGE_ROOT = REPO_ROOT / "ui/chord-reader-owner-test"
 OUTPUT_ROOT = PAGE_ROOT / "local-data"
 MANIFEST_PATH = OUTPUT_ROOT / "tracks.json"
 MAX_UPLOAD_BYTES = 750 * 1024 * 1024
-ENGINE_LABEL = "Current Travis-validation ensemble and bar display"
+ENGINE_LABEL = "Current Travis-validation ensemble with phase-safe timing"
 ANALYSIS_LOCK = Lock()
 
 
@@ -195,6 +195,7 @@ def analyze_file(
         prediction = _recognizer().predict(wav_path, prediction_id=identifier)
         rhythm = _rhythm(wav_path)
     bars, phase = _display_bars(prediction, rhythm)
+    timing_mode = "beat-aligned-bars" if phase["status"] == "anchored" else "exact-model-transitions"
     item = {
         "schemaVersion": "owner_chord_reader_track_v1",
         "id": identifier,
@@ -207,7 +208,7 @@ def analyze_file(
         "engine": {
             "label": ENGINE_LABEL,
             "prediction": "frozen-domain-gated-v8",
-            "display": "current-travis-bar-display",
+            "display": "travis-phase-safe-timing-v2",
             "modelSha256": {path.name: _sha256(path) for path in MODEL_PATHS},
         },
         "rhythm": {
@@ -215,9 +216,15 @@ def analyze_file(
             "keyMode": rhythm.get("keyMode"),
             "meter": rhythm.get("meter"),
             "tempoBpm": rhythm.get("tempo"),
+            "beatTimesSeconds": rhythm.get("beatTimesSeconds") or [],
             "phase": phase,
         },
-        "summary": {**_summary(prediction), "barCount": len(bars)},
+        "summary": {
+            **_summary(prediction),
+            "barCount": len(bars),
+            "displayItemCount": len(bars) if timing_mode == "beat-aligned-bars" else len(prediction["segments"]),
+        },
+        "timingMode": timing_mode,
         "segments": prediction["segments"],
         "bars": bars,
         "disclosure": (
@@ -253,6 +260,61 @@ class OwnerChordReaderHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _serve_seekable_audio(self, pathname: str) -> bool:
+        prefix = "/ui/chord-reader-owner-test/local-data/audio/"
+        if not pathname.startswith(prefix):
+            return False
+        audio_root = (OUTPUT_ROOT / "audio").resolve()
+        requested = (audio_root / unquote(pathname[len(prefix) :])).resolve()
+        if requested.parent != audio_root or not requested.is_file():
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return True
+        size = requested.stat().st_size
+        start = 0
+        end = size - 1
+        status = HTTPStatus.OK
+        range_header = self.headers.get("Range")
+        if range_header:
+            match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header.strip())
+            if not match or (not match.group(1) and not match.group(2)):
+                self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.end_headers()
+                return True
+            if match.group(1):
+                start = int(match.group(1))
+                end = int(match.group(2)) if match.group(2) else end
+            else:
+                suffix_length = int(match.group(2))
+                start = max(0, size - suffix_length)
+            if start >= size or end < start:
+                self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.end_headers()
+                return True
+            end = min(end, size - 1)
+            status = HTTPStatus.PARTIAL_CONTENT
+        length = end - start + 1
+        self.send_response(status)
+        self.send_header("Content-Type", "audio/mpeg")
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(length))
+        if status == HTTPStatus.PARTIAL_CONTENT:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Cache-Control", "private, no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        with requested.open("rb") as source:
+            source.seek(start)
+            remaining = length
+            while remaining:
+                chunk = source.read(min(64 * 1024, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
+        return True
+
     def do_GET(self) -> None:  # noqa: N802
         pathname = urlsplit(self.path).path
         if pathname == "/":
@@ -262,6 +324,8 @@ class OwnerChordReaderHandler(SimpleHTTPRequestHandler):
             return
         if pathname == "/api/owner-chord-test/tracks":
             self._json(_read_manifest())
+            return
+        if self._serve_seekable_audio(pathname):
             return
         super().do_GET()
 

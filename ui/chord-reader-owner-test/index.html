@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>My Chord Reader Test</title>
-    <link rel="stylesheet" href="./owner-test.css?v=1" />
+    <link rel="stylesheet" href="./owner-test.css?v=2" />
   </head>
   <body>
     <main class="shell">
@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">Private localhost workbench</p>
           <h1>My Chord Reader Test</h1>
-          <p class="lede">Drop a song, let the Travis-validation engine build its chord map, then listen through every bar.</p>
+          <p class="lede">Drop a song, let the Travis-validation engine build its chord map, then listen through every predicted change.</p>
         </div>
         <div class="engine-badge"><span>Current engine</span><strong>Travis validation</strong></div>
       </header>
@@ -46,7 +46,7 @@
         <div class="reader-card">
           <div class="sticky-transport" aria-label="Persistent playback controls">
             <button id="transport-toggle" type="button" aria-label="Play song">▶ <span>Play</span></button>
-            <div><span>Bar</span><strong id="transport-bar">—</strong></div>
+            <div><span id="transport-position-label">Change</span><strong id="transport-bar">—</strong></div>
             <div class="transport-chord"><span>Chord</span><strong id="transport-chord">N.C.</strong></div>
             <div><span>Time</span><strong id="transport-time">0:00</strong></div>
           </div>
@@ -63,17 +63,19 @@
             <div class="confidence-badge"><span>Mean confidence</span><strong id="mean-confidence">—</strong></div>
           </div>
           <audio id="audio" controls preload="metadata"></audio>
+          <div id="timing-mode" class="timing-mode" role="status"></div>
           <div class="now-playing" aria-live="polite">
-            <div><span>Bar</span><strong id="current-bar">—</strong></div>
+            <div><span id="current-position-label">Change</span><strong id="current-bar">—</strong></div>
             <div><span>Chord</span><strong id="current-chord">N.C.</strong></div>
             <div><span>Confidence</span><strong id="current-confidence">—</strong></div>
           </div>
-          <div class="legend"><span>Click any bar to seek.</span><span>A gold edge marks ≥90% engine confidence.</span><span>Key and NNS display are listening aids; they do not change the prediction.</span><span>Confidence is not accuracy.</span></div>
-          <div id="bar-grid" class="bar-grid" aria-label="Predicted chord bars"></div>
+          <div class="legend"><span id="seek-legend">Click any change to seek.</span><span>A gold edge marks ≥90% engine confidence.</span><span>Key and NNS display are listening aids; they do not change the prediction.</span><span>Confidence is not accuracy.</span></div>
+          <div id="bar-grid" class="bar-grid" aria-label="Predicted chord timeline"></div>
           <div class="disclosure" id="disclosure"></div>
         </div>
       </section>
     </main>
-    <script src="./owner-test.js?v=1"></script>
+    <script src="./timing.js?v=2"></script>
+    <script src="./owner-test.js?v=2"></script>
   </body>
 </html>
