@@ -1,0 +1,214 @@
+{
+  "fixtureVersion": "platform_howdy_characterization_v1",
+  "source": {
+    "repository": "wmthigpen4/steel-guitar-rag",
+    "ref": "preserve/companion-howy-v9-9a79d45-20260905",
+    "commit": "9a79d454491b843f74942ce9193f335512e402ad",
+    "path": "partner_companions/travis_howdy/content/howdy.draft.json",
+    "sha256": "a5437a788daf312e6a5cb5c7c77e267f6b70aed69aff93961426f424321cfccf"
+  },
+  "integration": {
+    "baseCommit": "4a77e849c9c9ba8e13429d91ae055d06d0de7ce5",
+    "governanceCommit": "2f7a18b9215d1a27db344cb756966d0f1663b9c1",
+    "strategy": "selective_contract_port_without_legacy_history_merge"
+  },
+  "observedShape": {
+    "schemaVersion": "lesson_companion_v1",
+    "topLevelFields": [
+      "alternatePositions",
+      "approvals",
+      "artifactSha256",
+      "buildSha",
+      "chordTimeline",
+      "companionId",
+      "contentStatus",
+      "copedent",
+      "display",
+      "events",
+      "layers",
+      "lesson",
+      "media",
+      "modelCallsAllowed",
+      "modes",
+      "phrases",
+      "print",
+      "release",
+      "revision",
+      "runtimeMode",
+      "schemaVersion",
+      "subtitle",
+      "title"
+    ],
+    "counts": {
+      "events": 12,
+      "phrases": 4,
+      "chords": 4
+    },
+    "eventFields": [
+      "bar",
+      "beat",
+      "chordEventId",
+      "durationBeats",
+      "endMs",
+      "id",
+      "instruction",
+      "movement",
+      "musicalVerified",
+      "notationPitch",
+      "phraseId",
+      "rhythm",
+      "startMs",
+      "tabNotes"
+    ],
+    "tabNoteFields": [
+      "controls",
+      "fret",
+      "string",
+      "technique"
+    ],
+    "phraseFields": [
+      "barEnd",
+      "barStart",
+      "endMs",
+      "eventIds",
+      "id",
+      "label",
+      "lessonNote",
+      "reviewStatus",
+      "shortLabel",
+      "startMs"
+    ],
+    "chordFields": [
+      "barEnd",
+      "barStart",
+      "endMs",
+      "id",
+      "nns",
+      "startMs",
+      "symbol",
+      "verified"
+    ]
+  },
+  "syntheticContract": {
+    "schemaVersion": "lesson_companion_v1",
+    "runtimeMode": "published_deterministic",
+    "modelCallsAllowed": false,
+    "media": {
+      "durationMs": 6000,
+      "scopes": {
+        "fullSong": {
+          "id": "full-song",
+          "startMs": 0,
+          "endMs": 6000,
+          "durationMs": 6000
+        },
+        "taughtSolo": {
+          "id": "taught-solo",
+          "startMs": 1500,
+          "endMs": 4500,
+          "durationMs": 3000
+        }
+      }
+    },
+    "copedent": {
+      "id": "synthetic-e9",
+      "stringsHighToLow": [
+        {"string": 1, "openPitch": "F#4"},
+        {"string": 2, "openPitch": "D#4"},
+        {"string": 3, "openPitch": "G#4"},
+        {"string": 4, "openPitch": "E4"},
+        {"string": 5, "openPitch": "B3"},
+        {"string": 6, "openPitch": "G#3"},
+        {"string": 7, "openPitch": "F#3"},
+        {"string": 8, "openPitch": "E3"},
+        {"string": 9, "openPitch": "D3"},
+        {"string": 10, "openPitch": "B2"}
+      ],
+      "controls": [
+        {"code": "A", "strings": [5, 10]},
+        {"code": "B", "strings": [3, 6]}
+      ]
+    },
+    "phrases": [
+      {
+        "id": "phrase-a",
+        "startMs": 0,
+        "endMs": 3000,
+        "eventIds": ["event-a", "event-b", "event-c"]
+      }
+    ],
+    "chordTimeline": [
+      {
+        "id": "chord-a",
+        "startMs": 0,
+        "endMs": 2000,
+        "symbol": "I",
+        "tabNotes": [
+          {"string": 5, "fret": 3, "controls": ["A"], "technique": "hold"}
+        ]
+      },
+      {
+        "id": "chord-b",
+        "startMs": 2000,
+        "endMs": 3000,
+        "symbol": "IV",
+        "tabNotes": [
+          {"string": 6, "fret": 5, "controls": ["B"], "technique": "hold"}
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-a",
+        "phraseId": "phrase-a",
+        "chordEventId": "chord-a",
+        "startMs": 0,
+        "endMs": 1000,
+        "bar": 1,
+        "beat": 1,
+        "notationPitch": "E4",
+        "tabNotes": [
+          {"string": 5, "fret": 3, "controls": ["A"], "technique": "slide-in"}
+        ]
+      },
+      {
+        "id": "event-b",
+        "phraseId": "phrase-a",
+        "chordEventId": "chord-a",
+        "startMs": 1000,
+        "endMs": 2000,
+        "bar": 1,
+        "beat": 2,
+        "notationPitch": "G#4",
+        "tabNotes": [
+          {"string": 3, "fret": 3, "controls": ["B"], "technique": "pick"}
+        ]
+      },
+      {
+        "id": "event-c",
+        "phraseId": "phrase-a",
+        "chordEventId": "chord-b",
+        "startMs": 2000,
+        "endMs": 3000,
+        "bar": 1,
+        "beat": 3,
+        "notationPitch": "B4",
+        "tabNotes": [
+          {"string": 5, "fret": 5, "controls": [], "technique": "sustain"}
+        ]
+      }
+    ]
+  },
+  "selectionCases": [
+    {"relativeMs": 0, "currentEventId": "event-a", "nextEventId": "event-b", "chordId": "chord-a"},
+    {"relativeMs": 999, "currentEventId": "event-a", "nextEventId": "event-b", "chordId": "chord-a"},
+    {"relativeMs": 1000, "currentEventId": "event-b", "nextEventId": "event-c", "chordId": "chord-a"},
+    {"relativeMs": 2000, "currentEventId": "event-c", "nextEventId": "event-c", "chordId": "chord-b"},
+    {"relativeMs": 3000, "currentEventId": "event-c", "nextEventId": "event-c", "chordId": "chord-b"}
+  ],
+  "scopeCases": [
+    {"layerId": "lesson-map", "relativeMs": 500, "scopeId": "taught-solo", "absoluteMs": 2000},
+    {"layerId": "phrase-practice", "relativeMs": 1000, "scopeId": "taught-solo", "absoluteMs": 2500},
+    {"layerId": "play-along", "relativeMs": 2500, "scopeId": "full-song", "absoluteMs": 2500}
+  ]
+}
