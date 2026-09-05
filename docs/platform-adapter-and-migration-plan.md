@@ -1,8 +1,8 @@
 # Platform v1 Adapter and Non-Migration Plan
 
-Status: M1a core, M1b read-only copedent projections, and M2a pure song/event
-core authorized; M2b–M2d adapters/parity and consumer cutover remain separate
-architecture-review candidates
+Status: M1a core, M1b copedent projections, M2a song/event core, and M2b
+read-only RAG adapter implemented; M2c–M2d and consumer cutover remain
+separate architecture-review candidates
 
 ## Adapter Boundary
 
@@ -159,6 +159,12 @@ change RAG API or browser consumers.
 
 Exit: zero error diagnostics and documented warnings; existing RAG tests pass.
 
+Outcome: implemented as `project_rag_song_practice`. The characterized plan
+projects with zero errors. RAG-only fields are preserved as product metadata;
+derived clock/structure ranges and the existing saturated post-roll display
+behavior are explicit warnings. The adapter is not called by a product
+runtime and changes no source record.
+
 ### Slice M2c — Howdy Adapter
 
 Port only the minimum sanitized mapping code needed to project the preserved
@@ -199,7 +205,7 @@ candidate commit, rollback commit, and explicit persistence decision.
 
 ## Architecture Review Outcome
 
-Reviews have ended in `PASS` for M1a, M1b, and M2a only. Each later-slice
+Reviews have ended in `PASS` for M1a, M1b, M2a, and M2b only. Each later-slice
 review ends in one of:
 
 - `PASS`: approve only the named next slice;
@@ -208,7 +214,7 @@ review ends in one of:
   without loss;
 - `BLOCKED`: name missing evidence.
 
-M2b and later slices remain bounded by their own consumer evidence and normal
-repository gates. M2a completion does not implicitly authorize a product
-event adapter, consumer cutover, persistence change, deployment, or directory
-move.
+M2c and later slices remain bounded by their own consumer evidence and normal
+repository gates. M2b completion does not authorize the Howdy adapter,
+cross-product parity, a runtime consumer, persistence change, deployment, or
+directory move.

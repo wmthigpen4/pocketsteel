@@ -26,16 +26,23 @@ from packages.song_model.core import (
     timeline_to_dict,
     validate_timeline,
 )
+from packages.song_model.rag_adapter import (
+    AdapterDiagnostic,
+    RagTimelineProjection,
+    project_rag_song_practice,
+)
 
 __all__ = (
     "SCHEMA_VERSION",
     "Articulation",
+    "AdapterDiagnostic",
     "ChordBody",
     "ClockDomain",
     "ClockParentMapping",
     "FretboardPosition",
     "MechanicalValidity",
     "NoteState",
+    "RagTimelineProjection",
     "SelectionState",
     "SongStructure",
     "SongTimeline",
@@ -47,6 +54,7 @@ __all__ = (
     "ValidationIssue",
     "canonical_timeline_json",
     "map_clock_range_to_root",
+    "project_rag_song_practice",
     "select_event",
     "timeline_digest",
     "timeline_from_dict",

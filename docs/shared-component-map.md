@@ -10,9 +10,10 @@ This map identifies actual sources before extraction. A file listed here is
 not approved to move, rename, or become a public contract.
 
 Implementation note: the governed platform branch now adds isolated
-`packages.steel_theory` and `packages.song_model` foundations for M1a–M2a.
-They do not replace any product consumer listed below; this map continues to
-describe the audited product sources and migration surface.
+`packages.steel_theory` and `packages.song_model` foundations for M1a–M2a,
+plus the read-only RAG projection in M2b. They do not replace any product
+consumer listed below; this map continues to describe the audited product
+sources and migration surface.
 
 ## Current Shape
 

@@ -1,6 +1,7 @@
 # Shared Song and Steel-Event Core
 
-Status: M2a implemented; no product consumer or persistence migration
+Status: M2a core and M2b read-only RAG adapter implemented; no product
+consumer or persistence migration
 
 Scope: `PLATFORM:SHARED`
 
@@ -69,9 +70,11 @@ M2a does not:
 - introduce a dual write, backfill, feature flag, or deployment; or
 - move existing product modules into a new directory layout.
 
-## Next Gate
+## Adapter Status And Next Gate
 
-M2b is the next bounded candidate: a read-only RAG event adapter tested against
-the pinned RAG fixture. It must preserve the source record, return explicit
-loss/ambiguity diagnostics, and make no runtime consumer change. M2c remains a
-separate Howdy adapter slice, followed by cross-product parity in M2d.
+M2b now supplies a read-only RAG event adapter tested against the pinned RAG
+fixture and existing planner. It preserves RAG-only data outside the timeline,
+returns explicit diagnostics, and makes no runtime consumer change.
+
+M2c is the next bounded candidate: the equivalent read-only Howdy adapter
+against its sanitized fixture. Cross-product parity remains M2d.

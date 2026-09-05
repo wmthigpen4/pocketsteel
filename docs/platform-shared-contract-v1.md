@@ -1,8 +1,8 @@
 # Steel Guitar Platform Shared Contract v1 Candidate
 
-Status: accepted for M1a steel theory, M1b read-only copedent projections, and
-M2a pure song/event behavior; product adapters remain architecture-review
-candidates and this is not a runtime or persistence contract
+Status: accepted for M1a steel theory, M1b copedent projections, M2a pure
+song/event behavior, and the M2b read-only RAG adapter; Howdy/parity adapters
+remain candidates and this is not a runtime or persistence contract
 
 Decision owner: Lane 18 Product / Architecture
 
@@ -218,11 +218,11 @@ Architecture review must explicitly accept or change these proposed choices:
 10. product approval and provenance remain outside the shared document.
 
 The user approved M1a and M1b for the isolated steel-theory/copedent foundation
-and read-only copedent projections, then approved M2a for the pure song/event
-model, strict validation, canonical serialization, clock transforms, and
-nullable selection. Product event adapters, persistence, and consumer cutover
-remain under review. `steel_platform_timeline_v1` remains an interchange
-candidate and must not be used in product runtime or persisted artifacts.
+and read-only copedent projections, M2a for the pure song/event model, and M2b
+for the read-only RAG event adapter. The Howdy adapter, cross-product parity,
+persistence, and consumer cutover remain under review.
+`steel_platform_timeline_v1` remains an interchange candidate and must not be
+used in product runtime or persisted artifacts.
 
 ## Acceptance Gates for Implementation
 
@@ -238,9 +238,12 @@ M2a implements the following shared-only requirements in `packages.song_model`:
 - mechanical copedent/pitch validation;
 - current/next selection tests for pre-roll, boundaries, gaps, and post-roll;
 
+M2b implements the RAG adapter requirement against
+`platform_rag_contract_v1.json`, including explicit product-metadata,
+derived-range, and post-roll diagnostics.
+
 The following adapter requirements remain proposed for later slices:
 
-- a RAG adapter tested against `platform_rag_contract_v1.json`;
 - a Howdy adapter tested against `platform_howdy_contract_v1.json`;
 - diagnostics for every unmapped source field or technique;
 - proof that no product read/write path, schema version, deployment, or
