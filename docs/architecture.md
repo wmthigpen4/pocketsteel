@@ -5,6 +5,12 @@ Last verified: 2026-07-13
 This is the canonical current architecture. Older phase, switch, deployment,
 and cleanup plans are historical inputs, not operating instructions.
 
+This file describes the current Steel Guitar RAG runtime. The governing target
+for Steel Guitar RAG plus Travis Companion is the
+[platform architecture constitution](platform-architecture.md). The current
+flat layout is transitional and does not assign shared domain ownership to the
+RAG product.
+
 ## Product Surfaces
 
 One protected application exposes four workspaces:
