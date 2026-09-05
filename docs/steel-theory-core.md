@@ -1,6 +1,7 @@
 # Shared Steel-Theory Core
 
-Status: M1a implemented; not connected to either product runtime
+Status: M1a core and M1b read-only copedent projections implemented; not
+connected to either product runtime
 
 ## What This Slice Adds
 
@@ -54,6 +55,27 @@ answer routing, fretboard UI, and saved data are unchanged. The older runtime
 may therefore continue to omit 5-6-7 A+B or return incomplete dominant-position
 results until a later adapter/cutover slice is tested and approved.
 
+## Read-Only Product Projections
+
+M1b adds pure mapping functions without importing either product package:
+
+- The RAG projection reads the existing versioned profile payload and selects
+  the approved A/B subset. Its additional pedals and levers remain product
+  data and produce a warning rather than being silently discarded.
+- The Howdy projection accepts the sanitized `synthetic-e9` contract only when
+  the caller supplies the approved fixture-to-`emmons-e9-basic` revision 1
+  match. It verifies all ten open pitches and the exact strings affected by A
+  and B before expanding the shared profile.
+- Howdy's missing revision and semitone deltas remain explicit warnings. They
+  are supplied by the approved match, never inferred from the letters A/B.
+- A missing approval, open-string mismatch, affected-string mismatch, or
+  explicit delta mismatch is an error and returns no projected profile.
+
+Both successful projections produce the same canonical snapshot and digest,
+and both retain the dominant-seventh and A+B ii-minor regression rules. The
+projection is created in memory during tests; it does not write or migrate a
+product record.
+
 ## Fail-Closed Rules
 
 - Unknown strings, controls, qualities, and notes raise errors.
@@ -66,8 +88,8 @@ results until a later adapter/cutover slice is tested and approved.
 
 ## Next Development Gate
 
-M1b may add read-only projections from the existing RAG copedent profile and an
-explicitly approved Howdy profile match. It must prove pitch, control, revision,
-and snapshot-digest parity without changing either product consumer. The
-dominant and ii-minor cases in this document remain regression tests during
-that work.
+M2a may implement the pure song/event core against the synthetic candidate
+fixture. That is a separate architecture gate. RAG and Howdy product adapters,
+consumer cutover, persistence, deployment, and directory movement remain
+unapproved. The dominant and ii-minor cases in this document remain regression
+tests throughout later work.

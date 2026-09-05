@@ -19,15 +19,25 @@ from packages.steel_theory.core import (
     snapshot_digest,
     standard_emmons_e9_basic,
 )
+from packages.steel_theory.projections import (
+    ApprovedProfileMatch,
+    CopedentProjection,
+    ProjectionDiagnostic,
+    project_howdy_copedent,
+    project_rag_copedent,
+)
 
 __all__ = (
     "BASIC_GRIP_FAMILIES",
+    "ApprovedProfileMatch",
     "ChordIdentity",
     "CopedentControl",
     "CopedentProfile",
+    "CopedentProjection",
     "ControlChange",
     "GripAnalysis",
     "GripFamily",
+    "ProjectionDiagnostic",
     "ResolvedNote",
     "StringTuning",
     "analyze_grip",
@@ -35,6 +45,8 @@ __all__ = (
     "classify_exact_grip",
     "find_exact_positions",
     "major_key_degree",
+    "project_howdy_copedent",
+    "project_rag_copedent",
     "resolve_note",
     "snapshot_digest",
     "standard_emmons_e9_basic",

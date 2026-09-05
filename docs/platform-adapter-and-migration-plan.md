@@ -1,7 +1,8 @@
 # Platform v1 Adapter and Non-Migration Plan
 
-Status: M1a steel-theory core authorized; M1b and all M2 adapter/cutover work
-remain architecture-review candidates and are not authorized by this document
+Status: M1a core and M1b read-only copedent projections authorized; all M2
+event, adapter, and cutover work remains an architecture-review candidate and
+is not authorized by this document
 
 ## Adapter Boundary
 
@@ -131,6 +132,11 @@ revision, and digest behavior. Do not change either product consumer.
 
 Exit: zero copedent error diagnostics; both characterization suites pass.
 
+Outcome: implemented for the RAG A/B projection and the explicitly approved
+sanitized Howdy `synthetic-e9` fixture match. The successful projections share
+one snapshot/digest and preserve warnings for RAG controls outside M1a and
+Howdy's omitted revision/deltas. Neither product consumes the projection.
+
 ### Slice M2a — Song/Event Core
 
 Implement pure clock, structure, position, event-envelope, validation,
@@ -197,6 +203,7 @@ one of:
   without loss;
 - `BLOCKED`: name missing evidence.
 
-M1b and later slices remain bounded by their own consumer evidence and normal
-repository gates. M1a completion does not implicitly authorize an adapter,
-consumer cutover, persistence change, deployment, or directory move.
+M2 and later slices remain bounded by their own consumer evidence and normal
+repository gates. M1b completion does not implicitly authorize the song/event
+model, a product event adapter, consumer cutover, persistence change,
+deployment, or directory move.

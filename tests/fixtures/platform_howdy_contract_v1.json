@@ -12,6 +12,14 @@
     "governanceCommit": "2f7a18b9215d1a27db344cb756966d0f1663b9c1",
     "strategy": "selective_contract_port_without_legacy_history_merge"
   },
+  "copedentMatch": {
+    "status": "approved-for-m1b-synthetic-projection-only",
+    "approvalId": "m1b-synthetic-howdy-emmons-e9-basic-v1-20260905",
+    "sourceProfileId": "synthetic-e9",
+    "canonicalProfileId": "emmons-e9-basic",
+    "canonicalRevision": 1,
+    "limitation": "The sanitized source identifies open strings and affected strings but omits control deltas and revision. This approval does not identify a private or player-specific copedent."
+  },
   "observedShape": {
     "schemaVersion": "lesson_companion_v1",
     "topLevelFields": [

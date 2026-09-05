@@ -15,10 +15,12 @@ evidence for `docs/platform-shared-contract-v1.md`. Architecture review
 accepted only the M1a steel-theory/copedent boundary; event, adapter, and
 consumer-cutover portions remain candidates.
 
-M1a now implements the pure steel-theory/copedent core and its first audited
-grip rules. The next proposed gate is M1b read-only copedent projection. M1a
-does not authorize product imports, song/event adapters, consumer cutover,
-persistence, deployment, or broad reorganization.
+M1a implements the pure steel-theory/copedent core and its first audited grip
+rules. M1b now implements read-only RAG and sanitized Howdy copedent
+projections with explicit diagnostics and no consumer changes. The next
+proposed gate is M2a, the pure song/event core. M1b does not authorize product
+event adapters, consumer cutover, persistence, deployment, or broad
+reorganization.
 
 ## Entry Gates Before Extraction
 

@@ -1,7 +1,8 @@
 # Steel Guitar Platform Shared Contract v1 Candidate
 
-Status: accepted for M1a steel-theory implementation; event/adapters remain an
-architecture-review candidate and are not runtime or persistence contracts
+Status: accepted for M1a steel theory and M1b read-only copedent projections;
+event/adapters remain an architecture-review candidate and are not runtime or
+persistence contracts
 
 Decision owner: Lane 18 Product / Architecture
 
@@ -216,10 +217,11 @@ Architecture review must explicitly accept or change these proposed choices:
 9. non-overlapping logical tracks make singular selection deterministic;
 10. product approval and provenance remain outside the shared document.
 
-The user approved M1a, the isolated steel-theory/copedent foundation. The event,
-selection, adapter, persistence, and consumer-cutover decisions remain under
-review. `steel_platform_timeline_v1` is still a candidate name and must not be
-used in product runtime or persisted artifacts.
+The user approved M1a and M1b: the isolated steel-theory/copedent foundation
+and read-only copedent projections. The event, selection, event-adapter,
+persistence, and consumer-cutover decisions remain under review.
+`steel_platform_timeline_v1` is still a candidate name and must not be used in
+product runtime or persisted artifacts.
 
 ## Acceptance Gates for Implementation
 
