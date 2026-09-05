@@ -9,6 +9,11 @@ Companion comparison: local `feature/chord-reader-ssl-v9` at `9a79d454`
 This map identifies actual sources before extraction. A file listed here is
 not approved to move, rename, or become a public contract.
 
+Implementation note: the governed platform branch now adds isolated
+`packages.steel_theory` and `packages.song_model` foundations for M1a–M2a.
+They do not replace any product consumer listed below; this map continues to
+describe the audited product sources and migration surface.
+
 ## Current Shape
 
 The main branch has no `apps/`, `packages/`, or product-neutral `services/`

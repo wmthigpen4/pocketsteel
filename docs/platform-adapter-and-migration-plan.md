@@ -1,8 +1,8 @@
 # Platform v1 Adapter and Non-Migration Plan
 
-Status: M1a core and M1b read-only copedent projections authorized; all M2
-event, adapter, and cutover work remains an architecture-review candidate and
-is not authorized by this document
+Status: M1a core, M1b read-only copedent projections, and M2a pure song/event
+core authorized; M2b–M2d adapters/parity and consumer cutover remain separate
+architecture-review candidates
 
 ## Adapter Boundary
 
@@ -146,6 +146,11 @@ package may import a product.
 
 Exit: shared clock/event tests pass and dependency direction remains green.
 
+Outcome: implemented in `packages.song_model` against the synthetic fixture.
+The strict validator, canonical serializer/digest, root-clock transforms, and
+nullable selection are shared-only. Product records, APIs, browsers,
+persistence, production, and the test site are unchanged.
+
 ### Slice M2b — RAG Adapter
 
 Add a pure adapter for the characterized RAG fixture. Compare canonical
@@ -194,8 +199,8 @@ candidate commit, rollback commit, and explicit persistence decision.
 
 ## Architecture Review Outcome
 
-The first review ended in `PASS` for M1a only. Each later-slice review ends in
-one of:
+Reviews have ended in `PASS` for M1a, M1b, and M2a only. Each later-slice
+review ends in one of:
 
 - `PASS`: approve only the named next slice;
 - `NEEDS_ARCHITECTURE_DECISION`: list exact contract choices to revise;
@@ -203,7 +208,7 @@ one of:
   without loss;
 - `BLOCKED`: name missing evidence.
 
-M2 and later slices remain bounded by their own consumer evidence and normal
-repository gates. M1b completion does not implicitly authorize the song/event
-model, a product event adapter, consumer cutover, persistence change,
-deployment, or directory move.
+M2b and later slices remain bounded by their own consumer evidence and normal
+repository gates. M2a completion does not implicitly authorize a product
+event adapter, consumer cutover, persistence change, deployment, or directory
+move.

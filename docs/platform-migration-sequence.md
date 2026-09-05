@@ -11,16 +11,17 @@ step is independently reversible and ends at a named terminal state.
 
 M0 contract characterization is complete on the governed integration stack.
 The source-pinned RAG and Howdy fixtures and their contradiction matrix are the
-evidence for `docs/platform-shared-contract-v1.md`. Architecture review
-accepted only the M1a steel-theory/copedent boundary; event, adapter, and
+evidence for `docs/platform-shared-contract-v1.md`. Architecture review has
+accepted the shared-only M1a, M1b, and M2a boundaries; product adapters and
 consumer-cutover portions remain candidates.
 
 M1a implements the pure steel-theory/copedent core and its first audited grip
-rules. M1b now implements read-only RAG and sanitized Howdy copedent
-projections with explicit diagnostics and no consumer changes. The next
-proposed gate is M2a, the pure song/event core. M1b does not authorize product
-event adapters, consumer cutover, persistence, deployment, or broad
-reorganization.
+rules. M1b implements read-only RAG and sanitized Howdy copedent projections
+with explicit diagnostics. M2a now implements the pure song/event core,
+including strict validation, canonical serialization, clock transforms, and
+nullable playback selection. The next proposed gate is M2b, a read-only RAG
+event adapter. M2a does not authorize a product consumer change, persistence,
+deployment, or broad reorganization.
 
 ## Entry Gates Before Extraction
 

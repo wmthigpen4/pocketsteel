@@ -1,8 +1,8 @@
 # Steel Guitar Platform Shared Contract v1 Candidate
 
-Status: accepted for M1a steel theory and M1b read-only copedent projections;
-event/adapters remain an architecture-review candidate and are not runtime or
-persistence contracts
+Status: accepted for M1a steel theory, M1b read-only copedent projections, and
+M2a pure song/event behavior; product adapters remain architecture-review
+candidates and this is not a runtime or persistence contract
 
 Decision owner: Lane 18 Product / Architecture
 
@@ -217,11 +217,12 @@ Architecture review must explicitly accept or change these proposed choices:
 9. non-overlapping logical tracks make singular selection deterministic;
 10. product approval and provenance remain outside the shared document.
 
-The user approved M1a and M1b: the isolated steel-theory/copedent foundation
-and read-only copedent projections. The event, selection, event-adapter,
-persistence, and consumer-cutover decisions remain under review.
-`steel_platform_timeline_v1` is still a candidate name and must not be used in
-product runtime or persisted artifacts.
+The user approved M1a and M1b for the isolated steel-theory/copedent foundation
+and read-only copedent projections, then approved M2a for the pure song/event
+model, strict validation, canonical serialization, clock transforms, and
+nullable selection. Product event adapters, persistence, and consumer cutover
+remain under review. `steel_platform_timeline_v1` remains an interchange
+candidate and must not be used in product runtime or persisted artifacts.
 
 ## Acceptance Gates for Implementation
 
@@ -230,19 +231,22 @@ slice. Its accepted boundary is documented in `docs/steel-theory-core.md` and
 requires pure pitch/control behavior, canonical copedent serialization, audited
 grip rules, package-boundary proof, and no product consumer changes.
 
-The following event and adapter requirements remain proposed for later slices:
+M2a implements the following shared-only requirements in `packages.song_model`:
 
 - a pure validator and deterministic canonical serializer;
 - clock-graph and clock-transform tests;
 - mechanical copedent/pitch validation;
 - current/next selection tests for pre-roll, boundaries, gaps, and post-roll;
+
+The following adapter requirements remain proposed for later slices:
+
 - a RAG adapter tested against `platform_rag_contract_v1.json`;
 - a Howdy adapter tested against `platform_howdy_contract_v1.json`;
 - diagnostics for every unmapped source field or technique;
 - proof that no product read/write path, schema version, deployment, or
   persisted record changed.
 
-The proposed example lives in
+The accepted M2a example lives in
 `tests/fixtures/platform_shared_contract_v1_candidate.json`. Its tests verify
-the candidate's internal invariants; they do not constitute architecture
-approval or runtime adoption.
+the candidate's internal invariants and shared implementation; they do not
+constitute product-adapter approval or runtime adoption.
