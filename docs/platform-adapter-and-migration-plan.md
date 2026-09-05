@@ -1,7 +1,7 @@
 # Platform v1 Adapter and Non-Migration Plan
 
-Status: architecture-review candidate; implementation is not authorized by
-this document
+Status: M1a steel-theory core authorized; M1b and all M2 adapter/cutover work
+remain architecture-review candidates and are not authorized by this document
 
 ## Adapter Boundary
 
@@ -188,13 +188,15 @@ candidate commit, rollback commit, and explicit persistence decision.
 
 ## Architecture Review Outcome
 
-Review ends in one of:
+The first review ended in `PASS` for M1a only. Each later-slice review ends in
+one of:
 
-- `PASS`: approve M1a only;
+- `PASS`: approve only the named next slice;
 - `NEEDS_ARCHITECTURE_DECISION`: list exact contract choices to revise;
 - `NEEDS_PRODUCT_DECISION`: list product behavior that cannot be projected
   without loss;
 - `BLOCKED`: name missing evidence.
 
-A pass authorizes only M1a. Later slices remain bounded by their own consumer
-evidence and normal repository gates.
+M1b and later slices remain bounded by their own consumer evidence and normal
+repository gates. M1a completion does not implicitly authorize an adapter,
+consumer cutover, persistence change, deployment, or directory move.
