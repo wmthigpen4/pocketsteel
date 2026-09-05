@@ -38,7 +38,7 @@ deployment = [
 ]
 
 [tool.setuptools]
-packages = ["steel_guitar_rag"]
+packages = ["steel_guitar_rag", "packages", "packages.song_model", "packages.steel_theory"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -1,0 +1,53 @@
+"""Pure steel-theory and copedent foundations shared by both products."""
+
+from packages.steel_theory.core import (
+    BASIC_GRIP_FAMILIES,
+    ChordIdentity,
+    CopedentControl,
+    CopedentProfile,
+    ControlChange,
+    GripAnalysis,
+    GripFamily,
+    ResolvedNote,
+    StringTuning,
+    analyze_grip,
+    canonical_snapshot,
+    classify_exact_grip,
+    find_exact_positions,
+    major_key_degree,
+    resolve_note,
+    snapshot_digest,
+    standard_emmons_e9_basic,
+)
+from packages.steel_theory.projections import (
+    ApprovedProfileMatch,
+    CopedentProjection,
+    ProjectionDiagnostic,
+    project_howdy_copedent,
+    project_rag_copedent,
+)
+
+__all__ = (
+    "BASIC_GRIP_FAMILIES",
+    "ApprovedProfileMatch",
+    "ChordIdentity",
+    "CopedentControl",
+    "CopedentProfile",
+    "CopedentProjection",
+    "ControlChange",
+    "GripAnalysis",
+    "GripFamily",
+    "ProjectionDiagnostic",
+    "ResolvedNote",
+    "StringTuning",
+    "analyze_grip",
+    "canonical_snapshot",
+    "classify_exact_grip",
+    "find_exact_positions",
+    "major_key_degree",
+    "project_howdy_copedent",
+    "project_rag_copedent",
+    "resolve_note",
+    "snapshot_digest",
+    "standard_emmons_e9_basic",
+)

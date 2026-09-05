@@ -1,0 +1,225 @@
+{
+  "schemaVersion": "steel_platform_timeline_v1",
+  "id": "platform:synthetic:g-to-c",
+  "revision": 1,
+  "clocks": [
+    {
+      "id": "full-song",
+      "kind": "media",
+      "durationMs": 4000,
+      "parentMapping": null
+    },
+    {
+      "id": "taught-solo",
+      "kind": "window",
+      "durationMs": 2000,
+      "parentMapping": {
+        "parentClockId": "full-song",
+        "parentStartMs": 1000
+      }
+    }
+  ],
+  "copedent": {
+    "profileId": "emmons-e9-basic",
+    "revision": 1,
+    "snapshotDigest": "sha256:3dd26de129636760f860a4f6fdab95db5c592ffd4731e98ab3cba61b188b999a",
+    "snapshot": {
+      "tuning": "E9",
+      "stringOrder": "numbered-high-to-low",
+      "strings": [
+        {"string": 1, "openPitch": {"midi": 66, "label": "F#4"}},
+        {"string": 2, "openPitch": {"midi": 63, "label": "D#4"}},
+        {"string": 3, "openPitch": {"midi": 68, "label": "G#4"}},
+        {"string": 4, "openPitch": {"midi": 64, "label": "E4"}},
+        {"string": 5, "openPitch": {"midi": 59, "label": "B3"}},
+        {"string": 6, "openPitch": {"midi": 56, "label": "G#3"}},
+        {"string": 7, "openPitch": {"midi": 54, "label": "F#3"}},
+        {"string": 8, "openPitch": {"midi": 52, "label": "E3"}},
+        {"string": 9, "openPitch": {"midi": 50, "label": "D3"}},
+        {"string": 10, "openPitch": {"midi": 47, "label": "B2"}}
+      ],
+      "controls": [
+        {
+          "id": "A",
+          "changes": [
+            {"string": 5, "semitones": 2},
+            {"string": 10, "semitones": 2}
+          ]
+        },
+        {
+          "id": "B",
+          "changes": [
+            {"string": 3, "semitones": 1},
+            {"string": 6, "semitones": 1}
+          ]
+        }
+      ]
+    }
+  },
+  "positions": [
+    {
+      "id": "position-g",
+      "notes": [
+        {"string": 4, "fret": 3, "controls": [], "pitch": {"midi": 67, "label": "G4"}},
+        {"string": 5, "fret": 3, "controls": [], "pitch": {"midi": 62, "label": "D4"}},
+        {"string": 6, "fret": 3, "controls": [], "pitch": {"midi": 59, "label": "B3"}}
+      ],
+      "validity": {
+        "status": "valid",
+        "checks": ["string-bounds", "fret-bounds", "controls-defined", "pitch-consistency"]
+      }
+    },
+    {
+      "id": "position-c",
+      "notes": [
+        {"string": 4, "fret": 3, "controls": [], "pitch": {"midi": 67, "label": "G4"}},
+        {"string": 5, "fret": 3, "controls": ["A"], "pitch": {"midi": 64, "label": "E4"}},
+        {"string": 6, "fret": 3, "controls": ["B"], "pitch": {"midi": 60, "label": "C4"}}
+      ],
+      "validity": {
+        "status": "valid",
+        "checks": ["string-bounds", "fret-bounds", "controls-defined", "pitch-consistency"]
+      }
+    }
+  ],
+  "structures": [
+    {
+      "id": "section-a",
+      "kind": "section",
+      "clockId": "full-song",
+      "startMs": 1000,
+      "endMs": 3000,
+      "eventIds": ["chord-a", "chord-b", "steel-a", "steel-b"]
+    },
+    {
+      "id": "measure-1",
+      "kind": "measure",
+      "clockId": "taught-solo",
+      "startMs": 0,
+      "endMs": 2000,
+      "eventIds": ["chord-a", "chord-b", "steel-a", "steel-b"]
+    },
+    {
+      "id": "phrase-a",
+      "kind": "phrase",
+      "clockId": "taught-solo",
+      "startMs": 0,
+      "endMs": 2000,
+      "eventIds": ["steel-a", "steel-b"]
+    }
+  ],
+  "events": [
+    {
+      "id": "chord-a",
+      "kind": "chord",
+      "trackId": "chords",
+      "clockId": "taught-solo",
+      "startMs": 0,
+      "endMs": 1000,
+      "structureIds": ["section-a", "measure-1"],
+      "body": {"symbol": "G", "positionId": "position-g"}
+    },
+    {
+      "id": "steel-a",
+      "kind": "steel",
+      "trackId": "steel-main",
+      "clockId": "taught-solo",
+      "startMs": 0,
+      "endMs": 1000,
+      "structureIds": ["section-a", "measure-1", "phrase-a"],
+      "body": {
+        "role": "comp",
+        "chordEventId": "chord-a",
+        "positionId": "position-g",
+        "notes": [
+          {
+            "string": 4,
+            "fret": 3,
+            "controls": [],
+            "pitch": {"midi": 67, "label": "G4"},
+            "articulations": [{"kind": "pick"}],
+            "transitions": []
+          },
+          {
+            "string": 5,
+            "fret": 3,
+            "controls": [],
+            "pitch": {"midi": 62, "label": "D4"},
+            "articulations": [{"kind": "pick"}],
+            "transitions": []
+          },
+          {
+            "string": 6,
+            "fret": 3,
+            "controls": [],
+            "pitch": {"midi": 59, "label": "B3"},
+            "articulations": [{"kind": "pick"}],
+            "transitions": []
+          }
+        ],
+        "validity": {
+          "status": "valid",
+          "checks": ["string-bounds", "fret-bounds", "controls-defined", "pitch-consistency"]
+        }
+      }
+    },
+    {
+      "id": "chord-b",
+      "kind": "chord",
+      "trackId": "chords",
+      "clockId": "taught-solo",
+      "startMs": 1000,
+      "endMs": 2000,
+      "structureIds": ["section-a", "measure-1"],
+      "body": {"symbol": "C", "positionId": "position-c"}
+    },
+    {
+      "id": "steel-b",
+      "kind": "steel",
+      "trackId": "steel-main",
+      "clockId": "taught-solo",
+      "startMs": 1000,
+      "endMs": 2000,
+      "structureIds": ["section-a", "measure-1", "phrase-a"],
+      "body": {
+        "role": "comp",
+        "chordEventId": "chord-b",
+        "positionId": "position-c",
+        "notes": [
+          {
+            "string": 4,
+            "fret": 3,
+            "controls": [],
+            "pitch": {"midi": 67, "label": "G4"},
+            "articulations": [{"kind": "sustain"}],
+            "transitions": []
+          },
+          {
+            "string": 5,
+            "fret": 3,
+            "controls": ["A"],
+            "pitch": {"midi": 64, "label": "E4"},
+            "articulations": [{"kind": "sustain"}],
+            "transitions": [
+              {"kind": "control-change", "controlsAdded": ["A"]}
+            ]
+          },
+          {
+            "string": 6,
+            "fret": 3,
+            "controls": ["B"],
+            "pitch": {"midi": 60, "label": "C4"},
+            "articulations": [{"kind": "sustain"}],
+            "transitions": [
+              {"kind": "control-change", "controlsAdded": ["B"]}
+            ]
+          }
+        ],
+        "validity": {
+          "status": "valid",
+          "checks": ["string-bounds", "fret-bounds", "controls-defined", "pitch-consistency"]
+        }
+      }
+    }
+  ]
+}

@@ -7,6 +7,24 @@ Baseline: current-state audit dated 2026-09-05
 The repository will move by contract and consumer, not by directory tree. Each
 step is independently reversible and ends at a named terminal state.
 
+## Current Position
+
+M0 contract characterization is complete on the governed integration stack.
+The source-pinned RAG and Howdy fixtures and their contradiction matrix are the
+evidence for `docs/platform-shared-contract-v1.md`. Architecture review has
+accepted M1a, M1b, M2a, and the read-only RAG adapter in M2b. The Howdy
+adapter, cross-product parity, and consumer cutover remain candidates.
+
+M1a implements the pure steel-theory/copedent core and its first audited grip
+rules. M1b implements read-only RAG and sanitized Howdy copedent projections
+with explicit diagnostics. M2a now implements the pure song/event core,
+including strict validation, canonical serialization, clock transforms, and
+nullable playback selection. M2b now projects the characterized RAG plan with
+zero errors while preserving product-only metadata and documenting derived
+ranges and the post-roll selection difference. The next proposed gate is M2c,
+a read-only Howdy event adapter. M2b does not authorize a product consumer
+change, persistence, deployment, or broad reorganization.
+
 ## Entry Gates Before Extraction
 
 1. Preserve the running production commit and active Companion history on
