@@ -66,9 +66,13 @@ The characterization suite can additionally verify the source snapshot by
 setting `HOWDY_COMPANION_SOURCE` to the preserved draft path. Normal CI validates
 the sanitized fixture without requiring the legacy application tree.
 
-## Next Bounded Slice
+## Cross-Product Follow-On
 
-Continue M0 by capturing the RAG-side event, fretboard, tablature, song, and
-Play-Along projections in the same synthetic vocabulary. Do not extract shared
-runtime code until the RAG and Companion fixtures expose their agreements and
-contradictions.
+The matching RAG snapshot now lives in
+`tests/fixtures/platform_rag_contract_v1.json`. The evidence and resulting
+agreement/contradiction matrix are recorded in
+`docs/platform-contract-comparison.md`.
+
+The next bounded architecture slice may propose the M1/M2 typed event, clock,
+copedent, and tablature vocabulary with compatibility adapters. Do not extract
+shared runtime code or migrate persisted product payloads in that proposal.

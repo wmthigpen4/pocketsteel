@@ -1,0 +1,214 @@
+{
+  "fixtureVersion": "platform_rag_characterization_v1",
+  "source": {
+    "integrationBaseCommit": "4a77e849c9c9ba8e13429d91ae055d06d0de7ce5",
+    "files": {
+      "steel_guitar_rag/song_practice.py": "7b1dd26a7b4114ea3a9567f21759d6191f7a2292c450119195714b5e322d2e64",
+      "steel_guitar_rag/tab_engine.py": "f15b3bc01ae7bbb06f29f8ba419567267f4c510ff01df273e5e99cf8ddca3d2c",
+      "steel_guitar_rag/fretboard_examples.py": "dbf4753051ecf81f89f6ba6d90727f38d6f12cf65f72502b2677edc9e0d60e3d",
+      "steel_guitar_rag/answer_tab_examples.py": "a2f5226ce291268aae050494ec059dabef72ca46dfdfb1e01f57cb6910efdd33",
+      "ui/song-projects.js": "1d1f85bf433fc14d791e90c6802d2d163146d76c0046616403fe09175d6669ef",
+      "ui/play-song.js": "dc7ad2ebb78ba9bc13793de1445b94f8cb54f0dfdab94e54ac1bea68c661e685",
+      "ui/practice-tools.js": "796dd0af5777a6f844cf6b061881d41b0d45b85db3b4c537ce95b63224bc389e",
+      "ui/practice-transport.js": "9a1aa3f86a6abb1b5e93043e7598de4545448edbca6657209859862fa81f6364"
+    }
+  },
+  "observedShape": {
+    "requestSchemaVersion": "song_practice_request_v1",
+    "planSchemaVersion": "song_practice_plan_v1",
+    "planFields": [
+      "events",
+      "level",
+      "provenance",
+      "route",
+      "schemaVersion",
+      "targetCopedentId",
+      "targetCopedentLabel",
+      "targetCopedentRevision",
+      "timelineHash",
+      "warnings"
+    ],
+    "eventFields": [
+      "alternatives",
+      "chord",
+      "endMs",
+      "id",
+      "measureId",
+      "position",
+      "role",
+      "sectionId",
+      "startMs",
+      "status"
+    ],
+    "positionFields": [
+      "chord",
+      "completeness",
+      "controlLabels",
+      "controls",
+      "fret",
+      "grip",
+      "id",
+      "instruction",
+      "levers",
+      "notes",
+      "pedals",
+      "quality",
+      "root",
+      "status",
+      "strings",
+      "validation"
+    ],
+    "positionNoteFields": [
+      "changeLabels",
+      "changes",
+      "fret",
+      "note",
+      "pitch",
+      "pitchLabel",
+      "string"
+    ],
+    "tabEventFields": ["chord", "notes"],
+    "tabNoteFields": ["articulation", "changes", "fret", "string"]
+  },
+  "syntheticInput": {
+    "schemaVersion": "song_practice_request_v1",
+    "level": "chord_karaoke",
+    "key": "G",
+    "meter": "4/4",
+    "style": "classic_country",
+    "events": [
+      {
+        "id": "event-a",
+        "measureId": "measure-1",
+        "sectionId": "section-a",
+        "chord": "G",
+        "startMs": 0,
+        "endMs": 1000,
+        "role": "comp"
+      },
+      {
+        "id": "event-b",
+        "measureId": "measure-1",
+        "sectionId": "section-a",
+        "chord": "C",
+        "startMs": 1000,
+        "endMs": 2000,
+        "role": "comp"
+      }
+    ]
+  },
+  "expectedPlanProjection": {
+    "schemaVersion": "song_practice_plan_v1",
+    "level": "chord_karaoke",
+    "timelineHash": "5df1983f68ee3190315a9cf04c5cb80cf3df38433b7698e437d2a6f825ba0cf0",
+    "targetCopedentId": "emmons-e9-basic",
+    "targetCopedentRevision": 1,
+    "route": {
+      "coherentAcrossChart": true,
+      "preference": "balanced",
+      "homeFret": 3
+    },
+    "provenance": {
+      "kind": "deterministic_e9_chord_route",
+      "audioReceived": false,
+      "lyricsReceived": false,
+      "ragUsed": false,
+      "stage": 1
+    },
+    "events": [
+      {
+        "id": "event-a",
+        "measureId": "measure-1",
+        "sectionId": "section-a",
+        "chord": "G",
+        "startMs": 0,
+        "endMs": 1000,
+        "role": "comp",
+        "status": "ready",
+        "position": {
+          "id": "song-position-1",
+          "fret": 3,
+          "strings": [4, 5, 6],
+          "grip": "4-5-6",
+          "controls": [],
+          "validation": ["absolute_pitch", "chord_tones", "mechanical_controls"],
+          "notes": [
+            {"string": 4, "fret": 3, "changes": [], "pitchLabel": "G4"},
+            {"string": 5, "fret": 3, "changes": [], "pitchLabel": "D4"},
+            {"string": 6, "fret": 3, "changes": [], "pitchLabel": "B3"}
+          ]
+        }
+      },
+      {
+        "id": "event-b",
+        "measureId": "measure-1",
+        "sectionId": "section-a",
+        "chord": "C",
+        "startMs": 1000,
+        "endMs": 2000,
+        "role": "comp",
+        "status": "ready",
+        "position": {
+          "id": "song-position-2",
+          "fret": 3,
+          "strings": [4, 5, 6],
+          "grip": "4-5-6",
+          "controls": ["A", "B"],
+          "validation": ["absolute_pitch", "chord_tones", "mechanical_controls"],
+          "notes": [
+            {"string": 4, "fret": 3, "changes": [], "pitchLabel": "G4"},
+            {"string": 5, "fret": 3, "changes": ["A"], "pitchLabel": "E4"},
+            {"string": 6, "fret": 3, "changes": ["B"], "pitchLabel": "C4"}
+          ]
+        }
+      }
+    ]
+  },
+  "expectedTabProjection": {
+    "chord": "G",
+    "notes": [
+      {
+        "string": 5,
+        "fret": 3,
+        "changes": ["A"],
+        "articulation": "slide-in"
+      }
+    ]
+  },
+  "expectedFretboardProjection": {
+    "type": "e9-fretboard-diagram",
+    "tuning": "E9",
+    "key": "G",
+    "copedent": {
+      "id": "default_e9",
+      "status": "deterministic_static_grip"
+    },
+    "strings": {
+      "count": 10
+    },
+    "position": {
+      "id": "g-major-456-open-3",
+      "fret": 3,
+      "strings": [4, 5, 6],
+      "grip": "4-5-6",
+      "pedals": [],
+      "levers": [],
+      "notes": {"4": "G", "5": "D", "6": "B"},
+      "intervals": {"4": "1", "5": "5", "6": "3"},
+      "positionKind": "full_chord_position",
+      "validationStatus": "pitch_validated"
+    }
+  },
+  "playbackSelectionCases": [
+    {"timeMs": -1, "currentIndex": -1, "currentId": null, "nextId": "event-a"},
+    {"timeMs": 0, "currentIndex": 0, "currentId": "event-a", "nextId": "event-b"},
+    {"timeMs": 999, "currentIndex": 0, "currentId": "event-a", "nextId": "event-b"},
+    {"timeMs": 1000, "currentIndex": 1, "currentId": "event-b", "nextId": null},
+    {"timeMs": 2000, "currentIndex": 1, "currentId": "event-b", "nextId": null}
+  ],
+  "loopCases": [
+    {"startBar": 1, "endBar": 2, "expected": {"startBar": 1, "endBar": 2, "startMs": 0, "endMs": 2000}},
+    {"startBar": 2, "endBar": 3, "expected": {"startBar": 2, "endBar": 3, "startMs": 1000, "endMs": 3000}},
+    {"startBar": 0, "endBar": 99, "expected": {"startBar": 1, "endBar": 3, "startMs": 0, "endMs": 3000}}
+  ]
+}
