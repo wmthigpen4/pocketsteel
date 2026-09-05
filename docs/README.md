@@ -14,6 +14,10 @@ The user-facing app name is Steel Guitar RAG. The canonical Python namespace is
 
 ## Current Engineering Documents
 
+- [Platform Architecture Constitution](platform-architecture.md)
+- [Repository And Environment Inventory](current-state-inventory.md)
+- [Shared Component Map](shared-component-map.md)
+- [Platform Migration Sequence](platform-migration-sequence.md)
 - [Architecture](architecture.md)
 - [Private Preview Operations](private-preview-operations.md)
 - [Verified Commands](current-commands.md)
@@ -28,3 +32,4 @@ The user-facing app name is Steel Guitar RAG. The canonical Python namespace is
 ## Agent Workflow
 
 - [Codex Workflow](codex-workflow.md)
+- [Repository Operating Model](../AGENTS.md)

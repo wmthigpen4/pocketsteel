@@ -1,4 +1,4 @@
-# Agent Operating Model
+# Agent Operating Model — Two Products, One Platform
 
 This repo uses a human-in-the-loop workflow. Codex must classify every task before acting. For a new feature, the user approves the feature scope once; that approval authorizes the normal end-to-end Autopilot loop through implementation, tests, exact-path commits, protected-preview update, automated smoke, and the user-smoke handoff. Ask again only when the work expands beyond the approved scope or reaches an unapproved RED action.
 
@@ -9,7 +9,22 @@ Do not introduce alternate or legacy product names.
 
 ## Project Purpose
 
-This project builds a steel-guitar learning/search assistant: a retrieval-augmented, source-aware answer system for pedal steel guitar. The product promise is not a generic chatbot. It should answer like a steel-guitar assistant that understands strings, frets, pedals, levers, grips, intervals, copedents, tone/gear symptoms, practice work, and forum wisdom.
+This repository is the home of two products built on one steel-guitar platform:
+
+- **Steel Guitar RAG**: source-aware search, SGF retrieval, general learning tools, and the protected web application.
+- **Travis Companion**: Ask Travis, Travis-specific lessons, Howdy, and Companion-specific learning experiences.
+- **Steel Guitar Platform**: shared steel theory, copedent, fretboard, tablature, song-model, and Play-Along behavior used by both products.
+
+The repository is still in a transitional flat layout. The target `apps/`,
+`packages/`, and `services/` directories described in
+`docs/platform-architecture.md` are architectural boundaries, not permission
+to reorganize files. Establish contracts and characterize consumers before any
+move.
+
+Steel Guitar RAG's product promise is not a generic chatbot. It should answer
+like a steel-guitar assistant that understands strings, frets, pedals, levers,
+grips, intervals, copedents, tone/gear symptoms, practice work, and forum
+wisdom.
 
 The system is expected to combine:
 
@@ -18,6 +33,170 @@ The system is expected to combine:
 - Curated source/vendor registry answers.
 - Private/profile-backed copedent and lesson data behind auth gates.
 - Future lesson transcripts, PDFs/OCR notes, manuals, tab docs, and source-inbox material after provenance review.
+
+## Architectural Scopes
+
+Every substantive task must declare exactly one primary architectural scope in
+addition to its functional lane:
+
+- `PRODUCT:RAG`: Steel Guitar RAG UI, answer behavior, SGF retrieval, source
+  cards, corpus-facing workflows, and RAG-only operations.
+- `PRODUCT:COMPANION`: Travis Companion, Ask Travis, Travis lessons, Howdy,
+  partner content packaging, and Companion-only UX.
+- `PLATFORM:SHARED`: canonical steel theory, copedent, fretboard, tablature,
+  song-model, playback synchronization, and Play-Along engines.
+- `INFRASTRUCTURE`: CI, deployment definitions, runtime supervision, Cloudflare,
+  environment configuration, and release/promotion tooling.
+
+A task may name secondary scopes only when the objective truly crosses a
+boundary. Cross-scope work must list the exact consumers and paths. A product
+task does not gain permission to edit the other product. Discovering a shared
+dependency does not expand the task; it produces `NEEDS_ARCHITECTURE_DECISION`
+unless the shared paths and validation matrix were already permitted.
+
+Functional lanes answer **who performs the work**. Architectural scopes answer
+**what product or platform surface may change**. Both are required.
+
+## Substantive Run Charter
+
+Before editing, every substantive implementation, migration, deployment, or
+cross-file task must record this charter in its working notes or handoff:
+
+```text
+Objective: one finite outcome
+Lane: functional owner
+Primary scope: PRODUCT:RAG | PRODUCT:COMPANION | PLATFORM:SHARED | INFRASTRUCTURE
+Secondary scopes: None, or exact named scopes
+Model tier: LIGHT | STANDARD | HIGH-REASONING
+Routing reason: task/risk reason for that tier
+Permitted paths: exact files or narrow path prefixes
+Forbidden paths: explicit adjacent surfaces
+Consumers to verify: exact product/package consumers
+Success criteria: observable checks
+Budget: time, token, paid-call, or work-unit cap as applicable
+Stop conditions: conditions that end the run without scope expansion
+Terminal state: PASS | BLOCKED | NEEDS_PRODUCT_DECISION |
+  NEEDS_ARCHITECTURE_DECISION | REGRESSION | BUDGET_EXHAUSTED
+```
+
+The objective must be finite and testable. `Improve the platform`, `clean the
+repo`, and `keep trying until it works` are not valid objectives. If a budget
+is not numeric, define a bounded work unit such as one contract, one consumer,
+or one failing test group. A blocker never authorizes new paths, more paid
+calls, a different environment, or a broader architecture change.
+
+## Model Routing Policy
+
+Choose the least expensive tier that can reliably complete the named work.
+Model names are operator configuration; repository policy selects a tier and
+reasoning level so the rule remains stable as model offerings change.
+
+### LIGHT
+
+Use for inventory, documentation, narrow searches, status refreshes,
+mechanical edits, formatting, and focused deterministic checks. LIGHT must not
+make cross-product architecture decisions or invent domain contracts.
+
+### STANDARD
+
+Use for ordinary feature implementation, scoped refactors with an approved
+contract, test repair, UI integration, and shared-package implementation whose
+interfaces and consumer matrix are already defined.
+
+### HIGH-REASONING
+
+Use only for a named architecture decision, cross-cutting defect, domain/schema
+contract, dependency-boundary design, migration design, or a failure that has
+resisted a bounded STANDARD attempt. HIGH-REASONING runs require exact allowed
+paths, explicit forbidden paths, a finite budget, and terminal states before
+work starts.
+
+Escalation requires a recorded reason such as an unresolved cross-consumer
+contract, contradictory evidence, or a reproduced failure whose cause remains
+unclear after one bounded STANDARD attempt. Duration alone is not a reason.
+After the decision or diagnosis is complete, de-escalate implementation,
+mechanical edits, and routine verification to STANDARD or LIGHT. Do not let a
+HIGH-REASONING run roam into unrelated cleanup.
+
+## Product And Platform Dependency Rules
+
+The target direction is:
+
+```text
+apps -> packages          ALLOWED
+packages -> packages      ALLOWED
+services -> packages      ALLOWED
+packages -> apps          FORBIDDEN
+packages -> services      FORBIDDEN
+RAG app -> Companion app  FORBIDDEN
+Companion app -> RAG app  FORBIDDEN
+service -> app            FORBIDDEN
+```
+
+Apps may integrate with services through documented API/client contracts;
+they must not import service implementation internals. Shared domain truth
+must live in `packages/` once extracted. Until extraction, the current
+locations listed in `docs/shared-component-map.md` are transitional sources,
+not product ownership claims.
+
+Product UX and copy may diverge. Domain truth may not. Do not create product-
+specific fretboard math, copedent semantics, tablature event semantics, song
+timelines, or playback state when a canonical shared contract exists or is
+required. The CI boundary check applies to current transitional product roots
+and activates automatically for future `apps/`, `packages/`, and `services/`
+roots.
+
+## Shared-Platform Change Gate
+
+Any change to fretboard, tablature, Play-Along, steel theory, song model,
+canonical copedent representation, or playback synchronization is
+`PLATFORM:SHARED` even when requested through one product. Before completion it
+must provide:
+
+1. The contract being changed, with compatibility/version effect.
+2. Every known consumer, including both products when present.
+3. Characterization tests for existing behavior before movement or redesign.
+4. The smallest implementation consistent with the contract.
+5. Focused shared-platform tests.
+6. Steel Guitar RAG consumer tests.
+7. Travis Companion consumer tests.
+8. Staging smoke for every affected deployed consumer.
+9. The exact candidate commit and evidence tied to that commit.
+
+If a consumer or test harness does not yet exist on the integration branch,
+the task cannot claim cross-product completion. It ends with the missing
+consumer evidence named explicitly. A product-only success cannot close a
+shared-platform change.
+
+## Exact-Commit Promotion Contract
+
+Promotion is always about an immutable commit, never a branch name or mutable
+working tree:
+
+```text
+feature branch -> local validation -> integration candidate full SHA
+  -> test.steelguitarrag.com -> automated smoke -> user smoke when required
+  -> approved full SHA -> app.steelguitarrag.com
+```
+
+- Record the full 40-character candidate SHA, source branch, merge base, and
+  exact file set before staging deployment.
+- The candidate must be reachable from a named, backed-up integration branch
+  before promotion. A release directory is evidence, not the only copy.
+- Build and test from a clean checkout of that SHA. CI, `/api/version`, smoke,
+  and approval evidence must all identify the same commit.
+- Staging and production must use immutable detached release checkouts.
+- Production may promote only the exact staging-approved SHA. Rebuilding from
+  a later branch head creates a new candidate and repeats the gates.
+- Record an exact known-good rollback SHA before activation. Rollback changes
+  runtime selection only; it must not delete releases, data, or evidence.
+- Never deploy from the primary development worktree or from uncommitted files.
+
+Exact-path staging is mandatory. Before committing, list approved files/hunks,
+stage only those paths/hunks, review `git diff --cached --name-only`, review the
+entire cached diff, and run `git diff --cached --check`. The cached path set
+must match the approved path set. `git add .`, `git add -A`, directory-wide
+staging, and wildcard staging are forbidden.
 
 ## Active Lanes
 

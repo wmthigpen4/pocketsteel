@@ -11,6 +11,10 @@ The user-facing app name is Steel Guitar RAG. The canonical Python namespace is
 The protected application now has four workspaces: Chat, Fretboard Explorer,
 Melody Studio, and Lessons. Start with these canonical documents:
 
+- [Platform architecture constitution](docs/platform-architecture.md)
+- [Repository and environment inventory](docs/current-state-inventory.md)
+- [Shared component map](docs/shared-component-map.md)
+- [Platform migration sequence](docs/platform-migration-sequence.md)
 - [Current architecture](docs/architecture.md)
 - [Private preview operations](docs/private-preview-operations.md)
 - [Verified commands](docs/current-commands.md)
@@ -20,6 +24,10 @@ Melody Studio, and Lessons. Start with these canonical documents:
 
 Use the hash-locked Python 3.12 and Node 24 toolchains for reproducible builds.
 Older phase and deployment plans are retained as historical records.
+
+The repository is governed as two products—Steel Guitar RAG and Travis
+Companion—on one shared steel-guitar platform. The current flat layout is
+transitional; the target boundaries do not authorize a broad reorganization.
 
 The personal MVP is intentionally small:
 
