@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import plistlib
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -72,9 +73,23 @@ def test_preflight_requires_an_exact_expected_release(tmp_path: Path) -> None:
 def test_preflight_rejects_a_branch_checkout(tmp_path: Path) -> None:
     env_file = tmp_path / "private-preview.env"
     env_file.write_text("STEEL_RAG_TEST=1\n", encoding="utf-8")
-    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    fake_home = tmp_path / "home"
+    release = fake_home / ".steel-rag/releases/branch-checkout"
+    release.mkdir(parents=True)
+    subprocess.run(["git", "init", "-b", "test-branch"], cwd=release, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "CI Test"], cwd=release, check=True)
+    subprocess.run(["git", "config", "user.email", "ci-test@example.invalid"], cwd=release, check=True)
+    (release / "tracked.txt").write_text("branch checkout\n", encoding="utf-8")
+    subprocess.run(["git", "add", "tracked.txt"], cwd=release, check=True)
+    subprocess.run(["git", "commit", "-m", "test branch checkout"], cwd=release, check=True, capture_output=True)
+    python_path = release / ".venv/bin/python"
+    python_path.parent.mkdir(parents=True)
+    python_path.symlink_to(sys.executable)
+    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=release, text=True).strip()
     result = _run(
         "preflight",
+        HOME=str(fake_home),
+        STEEL_RAG_REPO_DIR=str(release),
         STEEL_RAG_ENV_FILE=str(env_file),
         STEEL_RAG_EXPECTED_GIT_SHA=sha,
     )

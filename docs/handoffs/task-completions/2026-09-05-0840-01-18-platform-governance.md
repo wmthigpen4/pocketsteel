@@ -52,6 +52,10 @@ Completed:
   transitional and future target roots.
 - Updated Python CI to create the `.venv` path required by existing repository
   tests and deployment preflight assumptions, then added the boundary check.
+- Made the existing branch-checkout preflight test construct its own clean
+  branch release under an isolated fake release root. This removes assumptions
+  about whether a CI checkout is attached, detached, or under the release
+  directory without changing the deployment guard itself.
 - Audited GitHub branches, open PRs, branch protection/rulesets, recent Actions
   runs, local worktrees/releases, active hostnames, launch services, loopback
   versions, and current RAG/Companion implementations.
@@ -100,6 +104,7 @@ Intentionally not changed:
 - `docs/shared-component-map.md`
 - `scripts/check_platform_boundaries.py`
 - `tests/test_platform_boundaries.py`
+- `tests/test_private_preview_launchagent.py`
 - this handoff
 
 No files were moved or deleted. The ignored local `.venv/` is a verification
@@ -115,9 +120,11 @@ environment and must not be staged.
 - mypy for the checker: passed.
 - `git diff --check`: passed before staging.
 - Full Python suite in a fresh locked Python 3.12 `.venv`: 1,647 passed in the
-  clean post-commit checkout. The pre-commit run had one expected failure
-  because the deployment preflight test rejects a dirty checkout before
-  reaching its branch-check assertion.
+  clean post-commit checkout and again after the portable branch-fixture fix.
+- First draft-PR CI run: the new boundary step passed. Python then reached one
+  pre-existing checkout-layout assumption—1,643 passed and 3 skipped—and the
+  test fixture was corrected without changing deployment code. A replacement
+  CI run is required after this exact-path follow-up commit.
 - GitHub audit: current main run had 1,636 passed, 3 skipped, 4 failed before
   this CI fix; JavaScript audit failure remains unresolved.
 
@@ -175,6 +182,7 @@ Companion characterization slice.
 - `docs/handoffs/task-completions/2026-09-05-0840-01-18-platform-governance.md`
 - `scripts/check_platform_boundaries.py`
 - `tests/test_platform_boundaries.py`
+- `tests/test_private_preview_launchagent.py`
 
 ## Files That Must Not Be Staged
 
